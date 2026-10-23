@@ -1,32 +1,11 @@
 {
-  "name": "classroom-assistant-bot",
+  "name": "orionai-fullstack",
   "version": "1.0.0",
-  "description": "AI Assistant untuk Google Classroom via Telegram",
-  "main": "bot.js",
+  "private": true,
+  "description": "Fullstack Boilerplate: Express.js Backend + React Vite Frontend",
   "scripts": {
-    "start": "node bot.js",
-    "dev": "node --watch bot.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "dependencies": {
-    "@discordjs/opus": "^0.10.0",
-    "@discordjs/voice": "^0.19.2",
-    "@google/generative-ai": "^0.24.1",
-    "axios": "^1.14.0",
-    "chrome-finder": "^1.0.7",
-    "discord.js": "^14.26.2",
-    "dotenv": "^17.4.0",
-    "googleapis": "^171.4.0",
-    "node-cron": "^4.2.1",
-    "opusscript": "^0.0.8",
-    "puppeteer-core": "^21.11.0",
-    "telegraf": "^4.16.3"
-  },
-  "allowScripts": {
-    "@discordjs/opus@0.10.0": true
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "install:all": "npm --prefix backend install && npm --prefix frontend install"
   }
 }
