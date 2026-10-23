@@ -1,0 +1,115 @@
+/* ==========================================================================
+   Cozy Monochrome Design System (Warm Black & Off-White)
+   Super Minimalist, Focused, Serene
+   ========================================================================== */
+
+:root {
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-full: 9999px;
+  --transition-smooth: 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Cozy Dark (Default) */
+[data-theme='dark'],
+:root:not([data-theme='light']) {
+  --bg-app: #121213;
+  --bg-sidebar: #171719;
+  --bg-surface: #1c1c1f;
+  --bg-surface-hover: #232326;
+  --bg-card: #18181b;
+  --bg-input: #19191c;
+
+  --border-subtle: #242428;
+  --border-strong: #333338;
+  --border-focus: #e4e2dd;
+
+  --text-primary: #f5f4ef;
+  --text-secondary: #9c9a94;
+  --text-muted: #676560;
+
+  --accent-solid: #f5f4ef;
+  --accent-solid-text: #121213;
+  --accent-subtle: rgba(245, 244, 239, 0.08);
+
+  --code-bg: #0e0e10;
+  --code-border: #222226;
+
+  --shadow-dock: 0 10px 30px rgba(0, 0, 0, 0.5);
+  --shadow-card: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+/* Cozy Light (Paper / Ivory & Ink) */
+[data-theme='light'] {
+  --bg-app: #faf9f5;
+  --bg-sidebar: #f3f1ea;
+  --bg-surface: #ece9e1;
+  --bg-surface-hover: #e4e1d7;
+  --bg-card: #ffffff;
+  --bg-input: #ffffff;
+
+  --border-subtle: #dedbd2;
+  --border-strong: #c8c5bb;
+  --border-focus: #1c1b18;
+
+  --text-primary: #1c1b18;
+  --text-secondary: #5a5852;
+  --text-muted: #88857c;
+
+  --accent-solid: #1c1b18;
+  --accent-solid-text: #faf9f5;
+  --accent-subtle: rgba(28, 27, 24, 0.06);
+
+  --code-bg: #f4f2ec;
+  --code-border: #dfdcd3;
+
+  --shadow-dock: 0 10px 30px rgba(0, 0, 0, 0.06);
+  --shadow-card: 0 2px 10px rgba(0, 0, 0, 0.04);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-sans);
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color var(--transition-smooth), color var(--transition-smooth);
+}
+
+input, button, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+code, pre {
+  font-family: var(--font-mono);
+}
+
+/* Subtle scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
