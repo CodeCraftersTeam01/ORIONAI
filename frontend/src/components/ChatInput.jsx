@@ -11,6 +11,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { processFile, formatFileSize } from '../utils/fileHelpers';
+import ModelSelector from './ModelSelector';
 
 export default function ChatInput({
   input,
@@ -20,6 +21,8 @@ export default function ChatInput({
   onSend,
   isGenerating,
   isCentered = false,
+  selectedModel = 'orion-mid',
+  setSelectedModel,
 }) {
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -182,6 +185,15 @@ export default function ChatInput({
 
         {/* Input Controls Row */}
         <div className="chat-input-controls-row">
+          {/* Model Selector Pill & Popover */}
+          {setSelectedModel && (
+            <ModelSelector
+              selectedModel={selectedModel}
+              onSelectModel={setSelectedModel}
+              disabled={isGenerating}
+            />
+          )}
+
           {/* Paperclip Attachment Button */}
           <button
             type="button"

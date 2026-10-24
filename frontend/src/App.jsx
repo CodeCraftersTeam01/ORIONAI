@@ -251,6 +251,20 @@ export default function App() {
   const [copiedMsgId, setCopiedMsgId] = useState(null);
   const [toast, setToast] = useState(null);
 
+  // Selected AI Model (Orion Low, Mid, High, Nemotron 3, Agnes)
+  const [selectedModel, setSelectedModel] = useState(() => {
+    return localStorage.getItem('orion_selected_model') || 'orion-mid';
+  });
+
+  const handleModelChange = (modelId) => {
+    setSelectedModel(modelId);
+    try {
+      localStorage.setItem('orion_selected_model', modelId);
+    } catch {
+      // storage quota fallback
+    }
+  };
+
   // Dynamic recommendations: automatically randomized on each page reload / new session
   const [recommendations, setRecommendations] = useState(() =>
     getRandomRecommendations(3)
@@ -382,6 +396,7 @@ export default function App() {
       id: aiMessageId,
       role: 'assistant',
       content: '',
+      model: selectedModel,
       timestamp: new Date().toISOString(),
     };
 
@@ -422,6 +437,7 @@ export default function App() {
           message: displayPrompt,
           history: activeSession ? activeSession.messages : [],
           attachments: activeAttachments,
+          model: selectedModel,
         }),
         signal: controller.signal,
       });
@@ -513,6 +529,7 @@ export default function App() {
           body: JSON.stringify({
             message: userText,
             history: activeSession ? activeSession.messages : [],
+            model: selectedModel,
           }),
         });
         if (fallbackRes.ok) {
@@ -857,6 +874,8 @@ export default function App() {
           onSend={() => handleSendMessage()}
           isGenerating={isGenerating}
           isCentered={messages.length === 0}
+          selectedModel={selectedModel}
+          setSelectedModel={handleModelChange}
         />
       </main>
 

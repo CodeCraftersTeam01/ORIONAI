@@ -4,13 +4,49 @@ import { chatRateLimiter, validateChatInput } from '../middleware/security.js';
 
 const router = Router();
 
-// Single Model: Orion (OpenAI compatible)
-const SINGLE_MODEL = {
-  id: 'orion',
-  name: 'Orion (OpenAI Compatible)',
-  description: 'Model utama berarsitektur konstelasi kosmik.',
-  status: 'active',
-};
+// Available Models List
+const AVAILABLE_MODELS = [
+  {
+    id: 'orion-low',
+    name: 'Orion Low',
+    tier: 'low',
+    badge: 'Low',
+    description: 'Respon santai & sederhana, to-the-point, tidak ribet.',
+    status: 'active',
+  },
+  {
+    id: 'orion-mid',
+    name: 'Orion Mid',
+    tier: 'mid',
+    badge: 'Mid',
+    description: 'Seimbang, cerdas & praktis untuk kebutuhan harian.',
+    status: 'active',
+  },
+  {
+    id: 'orion-high',
+    name: 'Orion High',
+    tier: 'high',
+    badge: 'High',
+    description: 'Super pintar! Deep reasoning, analisis arsitektur & logika mendalam.',
+    status: 'active',
+  },
+  {
+    id: 'nemotron-3',
+    name: 'Nemotron 3',
+    tier: 'free',
+    badge: 'Free',
+    description: 'NVIDIA Nemotron 3 open-weights, efisien & bebas biaya.',
+    status: 'active',
+  },
+  {
+    id: 'agnes',
+    name: 'Agnes AI',
+    tier: 'agnes',
+    badge: 'Agnes',
+    description: 'Asisten Agnes cerdas, lincah, ekspresif & adaptif.',
+    status: 'active',
+  },
+];
 
 // Inspirational prompt suggestions
 const SUGGESTIONS = [
@@ -43,12 +79,13 @@ const SUGGESTIONS = [
 // POST /api/chat/message (Standard JSON Response with Rate Limiting & Input Validation)
 router.post('/message', chatRateLimiter, validateChatInput, async (req, res, next) => {
   try {
-    const { message, history, attachments } = req.body;
+    const { message, history, attachments, model } = req.body;
 
     const result = await getChatCompletion({
       message,
       history: history || [],
       attachments: attachments || [],
+      model: model || 'orion-mid',
     });
 
     res.json({
@@ -72,7 +109,7 @@ router.post('/message', chatRateLimiter, validateChatInput, async (req, res, nex
 
 // POST /api/chat/stream (Real-time SSE Streaming with Rate Limiting & Input Validation)
 router.post('/stream', chatRateLimiter, validateChatInput, (req, res) => {
-  const { message, history, attachments } = req.body;
+  const { message, history, attachments, model } = req.body;
   const abortController = new AbortController();
 
   req.on('close', () => {
@@ -96,6 +133,7 @@ router.post('/stream', chatRateLimiter, validateChatInput, (req, res) => {
     message,
     history: history || [],
     attachments: attachments || [],
+    model: model || 'orion-mid',
     signal: abortController.signal,
     onChunk: (chunk) => {
       if (res.writableEnded) return;
@@ -122,7 +160,7 @@ router.post('/stream', chatRateLimiter, validateChatInput, (req, res) => {
 router.get('/models', (req, res) => {
   res.json({
     success: true,
-    model: SINGLE_MODEL,
+    models: AVAILABLE_MODELS,
     status: 'online',
   });
 });

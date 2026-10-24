@@ -147,6 +147,14 @@ export const validateChatInput = (req, res, next) => {
     }
   }
 
+  // 4. Validate 'model' selection
+  const ALLOWED_MODELS = ['orion-low', 'orion-mid', 'orion-high', 'nemotron-3', 'agnes'];
+  if (typeof req.body.model === 'string' && ALLOWED_MODELS.includes(req.body.model)) {
+    req.body.model = req.body.model;
+  } else {
+    req.body.model = 'orion-mid';
+  }
+
   req.body.message = trimmedMessage;
   req.body.attachments = validAttachments;
   next();
