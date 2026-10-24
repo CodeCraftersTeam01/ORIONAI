@@ -956,213 +956,222 @@ export default function App() {
           </div>
         </header>
 
-        {/* View Switching: Minimalist Dashboard vs Smooth Animated Chat View */}
-        {currentView === 'dashboard' ? (
-          /* ================= CLEAN DASHBOARD VIEW ================= */
-          <div key="dashboard-view" className="dashboard-home-view animate-smooth-fade">
-            <div className="dashboard-center-card">
-              <div className="dashboard-logo-wrap">
-                <OrionLogo size="lg" isGenerating={false} />
+        {/* Message Stream or Unified Spatial Hero (Seamless shared elements) */}
+        <div className={`messages-container ${(messages.length === 0 || currentView === 'dashboard') ? 'is-empty' : ''}`}>
+          {(messages.length === 0 || currentView === 'dashboard') ? (
+            /* Unified Hero Container (Persists seamlessly across Dashboard & Chat) */
+            <div className={`welcome-hero-container ${currentView === 'dashboard' ? 'is-dashboard-mode' : 'is-chat-mode'}`}>
+              <div className="welcome-logo-badge">
+                <OrionLogo size="lg" isGenerating={isGenerating} />
               </div>
 
-              <h1 className="dashboard-greeting-title">
-                {`Hi Arjuna, ${getTimeGreeting()}`.split('').map((char, index) => (
-                  <span
-                    key={`greet-${char}-${index}`}
-                    className="blur-char"
-                    style={{ animationDelay: `${0.1 + index * 0.028}s` }}
-                  >
-                    {char === ' ' ? '\u00A0' : char}
-                  </span>
-                ))}
-              </h1>
-
-              <div className="dashboard-rotating-subtitle" key={subtitleIndex}>
-                {rotatingSubtitles[subtitleIndex].split('').map((char, index) => (
-                  <span
-                    key={`sub-${subtitleIndex}-${char}-${index}`}
-                    className="blur-subtitle-char"
-                    style={{ animationDelay: `${0.05 + index * 0.022}s` }}
-                  >
-                    {char === ' ' ? '\u00A0' : char}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        ) : (
-          /* ================= CHAT VIEW WITH SMOOTH ENTRANCE ================= */
-          <div className="chat-view-container animate-chat-entrance">
-            {/* Message Stream or Simple Elegant Welcome Hero */}
-            <div className={`messages-container ${messages.length === 0 ? 'is-empty' : ''}`}>
-              {messages.length === 0 ? (
-                /* Simple, Elegant Welcome */
-                <div className="welcome-hero-container">
-                  <div className="welcome-logo-badge">
-                    <OrionLogo size="lg" isGenerating={isGenerating} />
-                  </div>
-
-                  <h1 className="welcome-headline">
-                    Hi Arjuna, what’s on your mind?
-                  </h1>
-
-                  {/* Reserved spatial slot for floating centered input */}
-                  <div className="welcome-input-slot" aria-hidden="true" />
-
-                  {/* Minimalist Dynamic Recommendations (No Cards - Clean iPhone-style Rows) */}
-                  <div className="dynamic-recs-wrapper">
-                    <div className="dynamic-recs-header">
-                      <span className="dynamic-recs-caption">Rekomendasi</span>
-                    </div>
-
-                    <div className="dynamic-recs-list">
-                      {recommendations.map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          className="dynamic-rec-row"
-                          onClick={() => handleSendMessage(item.prompt)}
+              {/* Seamless Text Morph */}
+              <div className="welcome-titles-wrapper">
+                {currentView === 'dashboard' ? (
+                  <div key="dashboard-titles" className="welcome-text-fader animate-title-fade">
+                    <h1 className="welcome-headline compact-gap">
+                      {`Hi Arjuna, ${getTimeGreeting()}`.split('').map((char, index) => (
+                        <span
+                          key={`greet-${char}-${index}`}
+                          className="blur-char"
+                          style={{ animationDelay: `${0.06 + index * 0.024}s` }}
                         >
-                          <span className="dynamic-rec-icon">
-                            {renderRecommendationIcon(item.icon)}
-                          </span>
-                          <span className="dynamic-rec-text">{item.text}</span>
-                        </button>
+                          {char === ' ' ? '\u00A0' : char}
+                        </span>
+                      ))}
+                    </h1>
+
+                    <div className="dashboard-rotating-subtitle" key={subtitleIndex}>
+                      {rotatingSubtitles[subtitleIndex].split('').map((char, index) => (
+                        <span
+                          key={`sub-${subtitleIndex}-${char}-${index}`}
+                          className="blur-subtitle-char"
+                          style={{ animationDelay: `${0.04 + index * 0.02}s` }}
+                        >
+                          {char === ' ' ? '\u00A0' : char}
+                        </span>
                       ))}
                     </div>
                   </div>
+                ) : (
+                  <div key="chat-titles" className="welcome-text-fader animate-title-fade">
+                    <h1 className="welcome-headline compact-gap">
+                      {'Hi Arjuna, what’s on your mind?'.split('').map((char, index) => (
+                        <span
+                          key={`chat-${char}-${index}`}
+                          className="blur-char"
+                          style={{ animationDelay: `${0.05 + index * 0.022}s` }}
+                        >
+                          {char === ' ' ? '\u00A0' : char}
+                        </span>
+                      ))}
+                    </h1>
+                  </div>
+                )}
+              </div>
+
+              {/* Reserved spatial slot for floating centered input (Smooth collapse/expand) */}
+              <div
+                className={`welcome-input-slot ${currentView === 'dashboard' ? 'is-collapsed' : 'is-expanded'}`}
+                aria-hidden="true"
+              />
+
+              {/* Minimalist Dynamic Recommendations (Smooth slide-up entrance) */}
+              <div className={`dynamic-recs-wrapper ${currentView === 'dashboard' ? 'is-hidden-recs' : 'is-visible-recs'}`}>
+                <div className="dynamic-recs-header">
+                  <span className="dynamic-recs-caption">Rekomendasi</span>
                 </div>
-              ) : (
-                /* Messages Stream */
-                <div className="messages-stream">
-                  {messages.map((msg, index) => {
-                    const isLast = index === messages.length - 1;
-                    const isStreamingThis = msg.role === 'assistant' && isLast && isGenerating;
-                    return (
-                      <div
-                        key={msg.id}
-                        className={`message-bubble-row ${msg.role === 'user' ? 'user-side' : 'ai-side'}`}
-                      >
-                        <div className="message-content-col">
-                          <div className="message-body-card">
-                            {msg.role === 'user' ? (
-                              <div className="user-message-wrapper">
-                                {msg.attachments && msg.attachments.length > 0 && (
-                                  <div className="msg-attachments-grid">
-                                    {msg.attachments.map((att) => (
-                                      att.type === 'image' && att.data ? (
-                                        <div
-                                          key={att.id}
-                                          className="msg-image-card"
-                                          onClick={() => setPreviewImage(att)}
-                                          title="Klik untuk memperbesar"
+
+                <div className="dynamic-recs-list">
+                  {recommendations.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className="dynamic-rec-row"
+                      onClick={() => {
+                        handleSendMessage(item.prompt);
+                        setCurrentView('chat');
+                      }}
+                    >
+                      <span className="dynamic-rec-icon">
+                        {renderRecommendationIcon(item.icon)}
+                      </span>
+                      <span className="dynamic-rec-text">{item.text}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Messages Stream (Active conversation in Chat view) */
+            <div className="messages-stream">
+              {messages.map((msg, index) => {
+                const isLast = index === messages.length - 1;
+                const isStreamingThis = msg.role === 'assistant' && isLast && isGenerating;
+                return (
+                  <div
+                    key={msg.id}
+                    className={`message-bubble-row ${msg.role === 'user' ? 'user-side' : 'ai-side'}`}
+                  >
+                    <div className="message-content-col">
+                      <div className="message-body-card">
+                        {msg.role === 'user' ? (
+                          <div className="user-message-wrapper">
+                            {msg.attachments && msg.attachments.length > 0 && (
+                              <div className="msg-attachments-grid">
+                                {msg.attachments.map((att) => (
+                                  att.type === 'image' && att.data ? (
+                                    <div
+                                      key={att.id}
+                                      className="msg-image-card"
+                                      onClick={() => setPreviewImage(att)}
+                                      title="Klik untuk memperbesar"
+                                    >
+                                      <img src={att.data} alt={att.name} />
+                                      <div className="image-zoom-overlay">
+                                        <Maximize2 size={16} />
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div key={att.id} className="msg-file-card">
+                                      <div className="msg-file-icon">
+                                        {renderFileCategoryIcon(att.category)}
+                                      </div>
+                                      <div className="msg-file-details">
+                                        <span className="msg-file-name" title={att.name}>{att.name}</span>
+                                        <span className="msg-file-size">{formatFileSize(att.size)}</span>
+                                      </div>
+                                      {att.data && (
+                                        <a
+                                          href={att.data}
+                                          download={att.name}
+                                          className="msg-file-download-btn"
+                                          title="Unduh berkas"
+                                          onClick={(e) => e.stopPropagation()}
                                         >
-                                          <img src={att.data} alt={att.name} />
-                                          <div className="image-zoom-overlay">
-                                            <Maximize2 size={16} />
-                                          </div>
-                                        </div>
-                                      ) : (
-                                        <div key={att.id} className="msg-file-card">
-                                          <div className="msg-file-icon">
-                                            {renderFileCategoryIcon(att.category)}
-                                          </div>
-                                          <div className="msg-file-details">
-                                            <span className="msg-file-name" title={att.name}>{att.name}</span>
-                                            <span className="msg-file-size">{formatFileSize(att.size)}</span>
-                                          </div>
-                                          {att.data && (
-                                            <a
-                                              href={att.data}
-                                              download={att.name}
-                                              className="msg-file-download-btn"
-                                              title="Unduh berkas"
-                                              onClick={(e) => e.stopPropagation()}
-                                            >
-                                              <Download size={13} />
-                                            </a>
-                                          )}
-                                        </div>
-                                      )
-                                    ))}
-                                  </div>
-                                )}
-                                {msg.content && <div className="user-text-content">{msg.content}</div>}
+                                          <Download size={13} />
+                                        </a>
+                                      )}
+                                    </div>
+                                  )
+                                ))}
                               </div>
-                            ) : msg.content === '' ? (
-                              <ThinkingIndicator
-                                model={msg.model || selectedModel}
-                                reasoningTier={msg.reasoningTier || reasoningTier}
-                              />
-                            ) : (
-                              <FormattedMessage content={msg.content} isStreaming={isStreamingThis} />
                             )}
+                            {msg.content && <div className="user-text-content">{msg.content}</div>}
                           </div>
+                        ) : msg.content === '' ? (
+                          <ThinkingIndicator
+                            model={msg.model || selectedModel}
+                            reasoningTier={msg.reasoningTier || reasoningTier}
+                          />
+                        ) : (
+                          <FormattedMessage content={msg.content} isStreaming={isStreamingThis} />
+                        )}
+                      </div>
 
-                          {/* Action Bar for AI Message */}
-                          {msg.role === 'assistant' && msg.content !== '' && (
-                            <div className="message-actions-bar">
-                              <button
-                                type="button"
-                                className="msg-action-btn"
-                                onClick={() => handleCopyMessage(msg.id, msg.content)}
-                                title="Salin jawaban"
-                              >
-                                {copiedMsgId === msg.id ? (
-                                  <>
-                                    <Check size={12} />
-                                    <span>Tersalin</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Copy size={12} />
-                                    <span>Salin</span>
-                                  </>
-                                )}
-                              </button>
+                      {/* Action Bar for AI Message */}
+                      {msg.role === 'assistant' && msg.content !== '' && (
+                        <div className="message-actions-bar">
+                          <button
+                            type="button"
+                            className="msg-action-btn"
+                            onClick={() => handleCopyMessage(msg.id, msg.content)}
+                            title="Salin jawaban"
+                          >
+                            {copiedMsgId === msg.id ? (
+                              <>
+                                <Check size={12} />
+                                <span>Tersalin</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy size={12} />
+                                <span>Salin</span>
+                              </>
+                            )}
+                          </button>
 
-                              {isLast && !isGenerating && (
-                                <button
-                                  type="button"
-                                  className="msg-action-btn"
-                                  onClick={handleRegenerate}
-                                  title="Buat ulang"
-                                >
-                                  <RotateCcw size={12} />
-                                  <span>Buat Ulang</span>
-                                </button>
-                              )}
-                            </div>
+                          {isLast && !isGenerating && (
+                            <button
+                              type="button"
+                              className="msg-action-btn"
+                              onClick={handleRegenerate}
+                              title="Buat ulang"
+                            >
+                              <RotateCcw size={12} />
+                              <span>Buat Ulang</span>
+                            </button>
                           )}
                         </div>
-                      </div>
-                    );
-                  })}
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
 
-                  <div ref={messagesEndRef} className="messages-bottom-anchor" style={{ height: '7.5rem', flexShrink: 0 }} />
-                </div>
-              )}
+              <div ref={messagesEndRef} className="messages-bottom-anchor" style={{ height: '7.5rem', flexShrink: 0 }} />
             </div>
+          )}
+        </div>
 
-            {/* Persistent Chat Input with Seamless Glide Animation (Smooth No Cut) */}
-            <ChatInput
-              input={input}
-              setInput={setInput}
-              attachments={attachments}
-              setAttachments={setAttachments}
-              onSend={() => handleSendMessage()}
-              onStop={handleStopGeneration}
-              isGenerating={isGenerating}
-              isCentered={messages.length === 0}
-              selectedModel={selectedModel}
-              setSelectedModel={handleModelChange}
-              reasoningTier={reasoningTier}
-              setReasoningTier={handleReasoningTierChange}
-              customProviders={customProviders}
-              onOpenManageProviders={() => setIsManageProvidersOpen(true)}
-            />
-          </div>
-        )}
+        {/* Persistent Chat Input with Seamless Glide Animation from Bottom */}
+        <ChatInput
+          input={input}
+          setInput={setInput}
+          attachments={attachments}
+          setAttachments={setAttachments}
+          onSend={() => handleSendMessage()}
+          onStop={handleStopGeneration}
+          isGenerating={isGenerating}
+          isCentered={messages.length === 0 || currentView === 'dashboard'}
+          isHiddenDashboard={currentView === 'dashboard'}
+          selectedModel={selectedModel}
+          setSelectedModel={handleModelChange}
+          reasoningTier={reasoningTier}
+          setReasoningTier={handleReasoningTierChange}
+          customProviders={customProviders}
+          onOpenManageProviders={() => setIsManageProvidersOpen(true)}
+        />
       </main>
 
       {/* Settings Modal */}

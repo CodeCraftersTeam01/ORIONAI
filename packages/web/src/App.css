@@ -1243,21 +1243,31 @@
   width: 100%;
   margin: auto;
   text-align: center;
-  padding: 1.5rem 1.25rem 2.5rem;
+  padding: 1.25rem 1.25rem 2rem;
   display: flex;
   flex-direction: column;
   align-items: center;
-  animation: messageEntry 0.35s ease-out;
   position: relative;
   z-index: 2;
+  transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+              padding 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.welcome-hero-container.is-dashboard-mode {
+  transform: translateY(-13.5vh);
+  padding-bottom: 2rem;
+}
+
+.welcome-hero-container.is-chat-mode {
+  transform: translateY(-2.5vh);
 }
 
 .welcome-logo-badge {
-  margin-bottom: 1.35rem;
+  margin-bottom: 0.35rem !important; /* Snug, close to text as requested */
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.95rem;
+  padding: 0.85rem;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(24px) saturate(190%);
@@ -1266,7 +1276,7 @@
   box-shadow: 
     inset 0 1px 1.5px rgba(255, 255, 255, 0.95),
     0 12px 32px -6px rgba(0, 85, 255, 0.15);
-  transition: all 0.3s ease;
+  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 [data-theme='dark'] .welcome-logo-badge {
@@ -1280,15 +1290,50 @@
     0 0 24px -2px rgba(0, 85, 255, 0.2);
 }
 
+.welcome-titles-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 4.8rem;
+  width: 100%;
+  margin-top: 0;
+}
+
+.welcome-text-fader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  animation: titleCrossFade 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes titleCrossFade {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
 .welcome-headline {
   font-family: 'Google Sans', 'Outfit', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', sans-serif;
-  font-size: clamp(1.75rem, 3.6vw, 2.45rem);
+  font-size: clamp(2.1rem, 4.6vw, 3.2rem);
   font-weight: 400;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.02em;
   color: #1f1f1f;
-  margin-bottom: 2.25rem;
-  line-height: 1.25;
+  margin-top: 0;
+  margin-bottom: 0.25rem;
+  line-height: 1.2;
   text-wrap: balance;
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 [data-theme='dark'] .welcome-headline {
@@ -1304,15 +1349,47 @@
   margin-bottom: 2.25rem;
   pointer-events: none;
   visibility: hidden;
+  transition: height 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+              margin 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Minimalist Dynamic Recommendations (iPhone-style, No Cards) */
+.welcome-input-slot.is-collapsed {
+  height: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.welcome-input-slot.is-expanded {
+  height: 54px;
+  margin-bottom: 2.25rem;
+}
+
+/* Minimalist Dynamic Recommendations (Smooth collapse/expand transition) */
 .dynamic-recs-wrapper {
   width: 100%;
   max-width: 680px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
+  transition: opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+              max-height 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+              margin 0.55s ease;
+}
+
+.dynamic-recs-wrapper.is-hidden-recs {
+  opacity: 0 !important;
+  transform: translateY(40px) scale(0.96) !important;
+  pointer-events: none !important;
+  max-height: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+}
+
+.dynamic-recs-wrapper.is-visible-recs {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+  max-height: 400px;
 }
 
 .dynamic-recs-header {
@@ -1423,9 +1500,19 @@
   align-items: center;
   pointer-events: none;
   z-index: 50; /* Above messages-container and ambient glow */
-  transition: bottom 0.65s cubic-bezier(0.16, 1, 0.3, 1),
-              padding 0.65s cubic-bezier(0.16, 1, 0.3, 1),
+  transition: bottom 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+              filter 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+              padding 0.7s cubic-bezier(0.16, 1, 0.3, 1),
               background 0.45s ease;
+}
+
+.chat-input-wrapper.is-hidden-dashboard {
+  transform: translateY(200px) scale(0.92) !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  filter: blur(14px) !important;
 }
 
 .chat-input-box {
@@ -1607,6 +1694,14 @@
     bottom: calc(50% - 92px);
     padding: 0 1.5rem;
     background: transparent;
+  }
+
+  /* When hidden in dashboard, translate deep down below viewport bottom so it ascends gracefully from below */
+  .chat-input-wrapper.is-centered.is-hidden-dashboard {
+    transform: translateY(calc(50vh + 140px)) scale(0.92) !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    filter: blur(14px) !important;
   }
 
   /* Luxurious 100px Pill Blurmorphism (Apple / Liner Frosted Glass) */
@@ -1839,7 +1934,7 @@
   }
 
   .welcome-logo-badge {
-    margin-bottom: 1rem;
+    margin-bottom: 0.35rem !important;
     padding: 0.8rem;
   }
 
@@ -1847,7 +1942,8 @@
     font-family: 'Google Sans', 'Outfit', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', sans-serif;
     font-size: clamp(1.45rem, 5.8vw, 1.95rem);
     font-weight: 400;
-    margin-bottom: 1.75rem;
+    margin-top: 0;
+    margin-bottom: 0.35rem;
     padding: 0 0.25rem;
   }
 

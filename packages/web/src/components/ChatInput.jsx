@@ -23,6 +23,7 @@ export default function ChatInput({
   onStop,
   isGenerating,
   isCentered = false,
+  isHiddenDashboard = false,
   selectedModel = 'orion',
   setSelectedModel,
   reasoningTier = 'medium',
@@ -143,7 +144,7 @@ export default function ChatInput({
   const canSend = (input.trim().length > 0 || attachments.length > 0) && !isGenerating && !isProcessingFiles;
 
   return (
-    <div className={`chat-input-wrapper ${isCentered ? 'is-centered' : 'is-docked'}`}>
+    <div className={`chat-input-wrapper ${isCentered ? 'is-centered' : 'is-docked'} ${isHiddenDashboard ? 'is-hidden-dashboard' : ''}`}>
       <div
         className={`chat-input-box ${isDragging ? 'is-drag-over' : ''}`}
         onClick={() => textareaRef.current?.focus()}
