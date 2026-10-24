@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, MessageSquare, Trash2, Settings, Volume2, VolumeX, Sun, Moon, X } from 'lucide-react';
+import { Plus, MessageSquare, Trash2, Settings, Volume2, VolumeX, X } from 'lucide-react';
 import OrionLogo from './OrionLogo';
 
 export default function Sidebar({
@@ -11,8 +11,6 @@ export default function Sidebar({
   onOpenSettings,
   soundEnabled,
   onToggleSound,
-  theme,
-  onToggleTheme,
   isOpen,
   onCloseMobile,
 }) {

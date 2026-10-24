@@ -614,8 +614,6 @@ export default function App() {
         onOpenSettings={() => setIsSettingsOpen(true)}
         soundEnabled={soundEnabled}
         onToggleSound={() => setSoundEnabled((prev) => !prev)}
-        theme={theme}
-        onToggleTheme={toggleTheme}
         isOpen={isSidebarOpen}
         onCloseMobile={() => setIsSidebarOpen(false)}
       />
