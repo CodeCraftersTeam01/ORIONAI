@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Copy, Check } from 'lucide-react';
 import katex from 'katex';
 import MermaidBlock, { tryConvertAsciiToMermaid } from './MermaidBlock';
@@ -37,11 +37,40 @@ function MathInline({ formula }) {
   }
 }
 
+function formatCodeContent(rawCode, language) {
+  if (!rawCode) return '';
+  let cleaned = rawCode;
+
+  const isHtml =
+    /^(html|htm|xml|svg)$/i.test(language) ||
+    /<!DOCTYPE|<html|<\/[a-z]+>/i.test(cleaned);
+
+  if (isHtml) {
+    // 1. Fix <!DOCTYPEhtml> -> <!DOCTYPE html>
+    cleaned = cleaned.replace(/<!DOCTYPE\s*([a-zA-Z0-9]+)>/gi, '<!DOCTYPE $1>');
+    // 2. Fix merged tag and attribute like <sectionid="kontak"> -> <section id="kontak"> or <ahref= -> <a href=
+    cleaned = cleaned.replace(
+      /(<[a-zA-Z1-6]+)(id|class|href|src|type|name|content|rel|style|title|alt|width|height|value|placeholder|target|method|action|lang|charset)=/gi,
+      '$1 $2='
+    );
+    // 3. Fix missing closing tag bracket on title like <titleHalaman HTML Saya</title> -> <title>Halaman HTML Saya</title>
+    cleaned = cleaned.replace(/<title([A-Za-z0-9\s]+)<\/title>/gi, '<title>$1</title>');
+    // 4. Fix HTML comments merged like <!--BagianHeader--> -> <!-- Bagian Header -->
+    cleaned = cleaned.replace(/<!--([^\s-][\s\S]*?[^\s-])-->/g, '<!-- $1 -->');
+  }
+
+  return cleaned;
+}
+
 function CodeBlock({ code, language }) {
   const [copied, setCopied] = useState(false);
+  const formattedCode = useMemo(() => {
+    const clean = formatCodeContent(code, language);
+    return clean ? clean.replace(/^\r?\n/, '') : '';
+  }, [code, language]);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(code);
+    navigator.clipboard.writeText(formattedCode || code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -70,7 +99,7 @@ function CodeBlock({ code, language }) {
         </button>
       </div>
       <pre className="code-block-content">
-        <code>{code}</code>
+        <code>{formattedCode || code}</code>
       </pre>
     </div>
   );
@@ -79,26 +108,48 @@ function CodeBlock({ code, language }) {
 function FormattedMessage({ content, isStreaming = false }) {
   if (!content) return null;
 
+  // 1. Normalize code boundaries:
+  // - Separate code block if glued to preceding text (e.g. coba:```html -> coba:\n\n```html)
+  // - Ensure newline after ```<lang> if missing (e.g. ```html<!DOCTYPE -> ```html\n<!DOCTYPE)
+  let normalizedContent = content
+    .replace(/([^\s\n])(```)/g, '$1\n\n$2')
+    .replace(/(```[a-zA-Z0-9_#-]*)(<|[a-zA-Z0-9_{$!])/g, '$1\n$2');
+
+  // 2. If content has raw un-fenced HTML document snippet, wrap it in a code block
+  if (!normalizedContent.includes('```')) {
+    normalizedContent = normalizedContent.replace(
+      /(^|\n)([ \t]*(?:<!DOCTYPE\s+html|<html[\s>])[\s\S]*?<\/html>)/gi,
+      '$1\n```html\n$2\n```\n'
+    );
+  }
+
   // Split content by code blocks and display math blocks ($$...$$ or \[...\])
   const parts = [];
-  const blockRegex = /(```([a-zA-Z0-9_-]*)\n([\s\S]*?)```)|(\$\$([\s\S]*?)\$\$)|(\\\[([\s\S]*?)\\\])/g;
+  const blockRegex = /(```([a-zA-Z0-9_#-]*)[ \t]*(?:\r?\n)?([\s\S]*?)(?:```|$))|(\$\$([\s\S]*?)\$\$)|(\\\[([\s\S]*?)\\\])/g;
   let lastIndex = 0;
   let match;
 
-  while ((match = blockRegex.exec(content)) !== null) {
+  while ((match = blockRegex.exec(normalizedContent)) !== null) {
     if (match.index > lastIndex) {
       parts.push({
         type: 'text',
-        value: content.substring(lastIndex, match.index),
+        value: normalizedContent.substring(lastIndex, match.index),
       });
     }
 
     if (match[1]) {
       // Code block
+      let lang = (match[2] || '').trim();
+      const codeVal = match[3] || '';
+      if (!lang || lang === 'text') {
+        if (/<!DOCTYPE|<html|<\/[a-z]+>/i.test(codeVal)) {
+          lang = 'html';
+        }
+      }
       parts.push({
         type: 'code',
-        language: match[2] || 'text',
-        value: match[3],
+        language: lang || 'code',
+        value: codeVal,
       });
     } else if (match[4]) {
       // Math block $$...$$
@@ -114,13 +165,16 @@ function FormattedMessage({ content, isStreaming = false }) {
       });
     }
 
+    if (match[0].length === 0) {
+      blockRegex.lastIndex++;
+    }
     lastIndex = match.index + match[0].length;
   }
 
-  if (lastIndex < content.length) {
+  if (lastIndex < normalizedContent.length) {
     parts.push({
       type: 'text',
-      value: content.substring(lastIndex),
+      value: normalizedContent.substring(lastIndex),
     });
   }
 
@@ -465,7 +519,7 @@ function getTableAlignments(line) {
             <CodeBlock
               key={index}
               code={part.value}
-              language={part.language}
+              language={lang || part.language}
             />
           );
         }
