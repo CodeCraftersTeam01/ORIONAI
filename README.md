@@ -90,4 +90,6 @@ CLIENT_URL=http://localhost:5173
 AI_BASE_URL=https://pi.leopard-gila.ts.net/v1
 AI_API_KEY=your_orion_api_key_here
 AI_MODEL=orion
+AGNES_MODEL=agnes-2.5-flash
+NEMOTRON_MODEL=nvidia/nemotron-3-ultra-550b-a55b:free
 ```

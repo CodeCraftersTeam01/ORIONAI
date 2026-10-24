@@ -4,6 +4,8 @@ dotenv.config();
 const BASE_URL = process.env.AI_BASE_URL || 'https://pi.leopard-gila.ts.net/v1';
 const API_KEY = process.env.AI_API_KEY;
 const MODEL_NAME = process.env.AI_MODEL || 'orion';
+const AGNES_MODEL = process.env.AGNES_MODEL || 'agnes-2.5-flash';
+const NEMOTRON_MODEL = process.env.NEMOTRON_MODEL || 'nvidia/nemotron-3-ultra-550b-a55b:free';
 
 if (!API_KEY) {
   console.warn('⚠️ [SECURITY] AI_API_KEY belum dikonfigurasi di file .env');
@@ -43,7 +45,7 @@ export function getModelConfig(modelId = 'orion', reasoningTier = 'medium') {
     return {
       id: 'agnes',
       name: 'Agnes 2.5 Flash',
-      upstreamModel: MODEL_NAME,
+      upstreamModel: AGNES_MODEL,
       temperature: 0.7,
       systemPromptExtra: `
 [IDENTITAS: AGNES 2.5 FLASH]
@@ -58,7 +60,7 @@ Karakteristik & Perilaku:
     return {
       id: 'nemotron-3',
       name: 'Nemotron 3',
-      upstreamModel: MODEL_NAME,
+      upstreamModel: NEMOTRON_MODEL,
       temperature: 0.6,
       systemPromptExtra: `
 [IDENTITAS MODEL: NVIDIA NEMOTRON 3 (FREE TIER)]
@@ -126,7 +128,7 @@ Karakteristik:
 export function sanitizeOrionText(text, modelId) {
   if (!text) return text;
 
-  // Bila model Agnes yang dipilih, jangan timpa nama Agnes!
+  // Bila model Agnes yang dipilih, pertahankan identitas Agnes!
   if (modelId === 'agnes') {
     return text
       .replace(/\bSapiens AI\b/gi, 'Agnes AI')
@@ -135,7 +137,16 @@ export function sanitizeOrionText(text, modelId) {
       .replace(/created by Sapiens AI/gi, 'powered by Agnes');
   }
 
-  // Untuk model Orion dan Nemotron, terapkan sanitasi standar Orion
+  // Bila model Nemotron yang dipilih, pertahankan identitas Nemotron!
+  if (modelId === 'nemotron-3') {
+    return text
+      .replace(/\bSapiens AI\b/gi, 'Nemotron')
+      .replace(/developed by Sapiens AI/gi, 'powered by Nemotron')
+      .replace(/dikembangkan oleh Sapiens AI/gi, 'ditenagai oleh Nemotron')
+      .replace(/created by Sapiens AI/gi, 'powered by Nemotron');
+  }
+
+  // Untuk model Orion, terapkan sanitasi standar Orion
   return text
     .replace(/\bAgnes\b/gi, 'Orion AI')
     .replace(/\bSapiens AI\b/gi, 'Orion AI')
@@ -317,6 +328,7 @@ export async function streamChatCompletion({
 }) {
   const { messages, config } = buildMessagesPayload({ message, history, attachments, modelId: model, reasoningTier });
   const { targetUrl, headers, targetModel, temperature } = resolveEndpointAndHeaders(customProvider, config);
+  console.log(`[AI STREAM] Routing request -> modelId: "${model}", targetModel: "${targetModel}", targetUrl: "${targetUrl}"`);
 
   try {
     const response = await fetch(targetUrl, {
