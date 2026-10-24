@@ -147,12 +147,29 @@ export const validateChatInput = (req, res, next) => {
     }
   }
 
-  // 4. Validate 'model' selection
-  const ALLOWED_MODELS = ['orion-low', 'orion-mid', 'orion-high', 'nemotron-3', 'agnes'];
+  // 4. Validate 'model' & 'reasoningTier' selection
+  const ALLOWED_MODELS = ['orion', 'agnes', 'nemotron-3', 'orion-low', 'orion-mid', 'orion-high'];
   if (typeof req.body.model === 'string' && ALLOWED_MODELS.includes(req.body.model)) {
-    req.body.model = req.body.model;
+    // Normalise backwards compatibility
+    if (req.body.model === 'orion-low') {
+      req.body.model = 'orion';
+      req.body.reasoningTier = 'low';
+    } else if (req.body.model === 'orion-high') {
+      req.body.model = 'orion';
+      req.body.reasoningTier = 'high';
+    } else if (req.body.model === 'orion-mid') {
+      req.body.model = 'orion';
+      req.body.reasoningTier = 'medium';
+    }
   } else {
-    req.body.model = 'orion-mid';
+    req.body.model = 'orion';
+  }
+
+  const ALLOWED_REASONING = ['low', 'medium', 'high'];
+  if (typeof req.body.reasoningTier === 'string' && ALLOWED_REASONING.includes(req.body.reasoningTier)) {
+    req.body.reasoningTier = req.body.reasoningTier;
+  } else {
+    req.body.reasoningTier = 'medium';
   }
 
   req.body.message = trimmedMessage;

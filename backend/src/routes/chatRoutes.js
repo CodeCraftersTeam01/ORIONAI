@@ -4,48 +4,38 @@ import { chatRateLimiter, validateChatInput } from '../middleware/security.js';
 
 const router = Router();
 
-// Available Models List
+// Available Models List matching Gemini-style Model Selector
 const AVAILABLE_MODELS = [
   {
-    id: 'orion-low',
-    name: 'Orion Low',
-    tier: 'low',
-    badge: 'Low',
-    description: 'Respon santai & sederhana, to-the-point, tidak ribet.',
+    id: 'orion',
+    name: 'Orion',
+    displayName: 'Orion',
+    subtitle: 'Tugas kompleks & penalaran',
+    supportsReasoning: true,
     status: 'active',
   },
   {
-    id: 'orion-mid',
-    name: 'Orion Mid',
-    tier: 'mid',
-    badge: 'Mid',
-    description: 'Seimbang, cerdas & praktis untuk kebutuhan harian.',
-    status: 'active',
-  },
-  {
-    id: 'orion-high',
-    name: 'Orion High',
-    tier: 'high',
-    badge: 'High',
-    description: 'Super pintar! Deep reasoning, analisis arsitektur & logika mendalam.',
+    id: 'agnes',
+    name: 'Agnes 2.5 Flash',
+    displayName: 'Agnes 2.5 Flash',
+    subtitle: 'Bantuan serbaguna & kreatif',
+    supportsReasoning: false,
     status: 'active',
   },
   {
     id: 'nemotron-3',
     name: 'Nemotron 3',
-    tier: 'free',
-    badge: 'Free',
-    description: 'NVIDIA Nemotron 3 open-weights, efisien & bebas biaya.',
+    displayName: 'Nemotron 3',
+    subtitle: 'Jawaban tercepat bebas biaya',
+    supportsReasoning: false,
     status: 'active',
   },
-  {
-    id: 'agnes',
-    name: 'Agnes AI',
-    tier: 'agnes',
-    badge: 'Agnes',
-    description: 'Asisten Agnes cerdas, lincah, ekspresif & adaptif.',
-    status: 'active',
-  },
+];
+
+const REASONING_TIERS = [
+  { id: 'low', name: 'Low', desc: 'Quick and efficient' },
+  { id: 'medium', name: 'Medium', desc: 'Balanced depth' },
+  { id: 'high', name: 'High', desc: 'Extra thorough' },
 ];
 
 // Inspirational prompt suggestions
@@ -79,13 +69,14 @@ const SUGGESTIONS = [
 // POST /api/chat/message (Standard JSON Response with Rate Limiting & Input Validation)
 router.post('/message', chatRateLimiter, validateChatInput, async (req, res, next) => {
   try {
-    const { message, history, attachments, model } = req.body;
+    const { message, history, attachments, model, reasoningTier } = req.body;
 
     const result = await getChatCompletion({
       message,
       history: history || [],
       attachments: attachments || [],
-      model: model || 'orion-mid',
+      model: model || 'orion',
+      reasoningTier: reasoningTier || 'medium',
     });
 
     res.json({
@@ -109,7 +100,7 @@ router.post('/message', chatRateLimiter, validateChatInput, async (req, res, nex
 
 // POST /api/chat/stream (Real-time SSE Streaming with Rate Limiting & Input Validation)
 router.post('/stream', chatRateLimiter, validateChatInput, (req, res) => {
-  const { message, history, attachments, model } = req.body;
+  const { message, history, attachments, model, reasoningTier } = req.body;
   const abortController = new AbortController();
 
   req.on('close', () => {
@@ -133,7 +124,8 @@ router.post('/stream', chatRateLimiter, validateChatInput, (req, res) => {
     message,
     history: history || [],
     attachments: attachments || [],
-    model: model || 'orion-mid',
+    model: model || 'orion',
+    reasoningTier: reasoningTier || 'medium',
     signal: abortController.signal,
     onChunk: (chunk) => {
       if (res.writableEnded) return;
@@ -161,6 +153,7 @@ router.get('/models', (req, res) => {
   res.json({
     success: true,
     models: AVAILABLE_MODELS,
+    reasoningTiers: REASONING_TIERS,
     status: 'online',
   });
 });

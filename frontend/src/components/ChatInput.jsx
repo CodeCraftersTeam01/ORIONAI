@@ -21,8 +21,10 @@ export default function ChatInput({
   onSend,
   isGenerating,
   isCentered = false,
-  selectedModel = 'orion-mid',
+  selectedModel = 'orion',
   setSelectedModel,
+  reasoningTier = 'medium',
+  setReasoningTier,
 }) {
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -183,18 +185,9 @@ export default function ChatInput({
           </div>
         )}
 
-        {/* Input Controls Row */}
+        {/* Input Controls Row (Image 2 style) */}
         <div className="chat-input-controls-row">
-          {/* Model Selector Pill & Popover */}
-          {setSelectedModel && (
-            <ModelSelector
-              selectedModel={selectedModel}
-              onSelectModel={setSelectedModel}
-              disabled={isGenerating}
-            />
-          )}
-
-          {/* Paperclip Attachment Button */}
+          {/* Paperclip Attachment Button (Left) */}
           <button
             type="button"
             className="btn-attach-file"
@@ -222,7 +215,7 @@ export default function ChatInput({
             accept="image/*,.pdf,.txt,.md,.csv,.json,.js,.jsx,.ts,.tsx,.py,.html,.css,.sql,.doc,.docx"
           />
 
-          {/* Chat Textarea */}
+          {/* Chat Textarea (Center) */}
           <textarea
             ref={textareaRef}
             className="chat-textarea"
@@ -238,6 +231,17 @@ export default function ChatInput({
             rows={1}
             disabled={isGenerating}
           />
+
+          {/* Model Selector Pill (Right, before Send Button) */}
+          {setSelectedModel && (
+            <ModelSelector
+              selectedModel={selectedModel}
+              reasoningTier={reasoningTier}
+              onSelectModel={setSelectedModel}
+              onSelectReasoningTier={setReasoningTier}
+              disabled={isGenerating}
+            />
+          )}
 
           {/* Send Button */}
           <button

@@ -251,15 +251,32 @@ export default function App() {
   const [copiedMsgId, setCopiedMsgId] = useState(null);
   const [toast, setToast] = useState(null);
 
-  // Selected AI Model (Orion Low, Mid, High, Nemotron 3, Agnes)
+  // Selected AI Model (Orion, Agnes 2.5 Flash, Nemotron 3) & Reasoning Tier (Low, Medium, High)
   const [selectedModel, setSelectedModel] = useState(() => {
-    return localStorage.getItem('orion_selected_model') || 'orion-mid';
+    const saved = localStorage.getItem('orion_selected_model');
+    if (saved === 'agnes' || saved === 'nemotron-3') return saved;
+    return 'orion';
+  });
+
+  const [reasoningTier, setReasoningTier] = useState(() => {
+    const saved = localStorage.getItem('orion_reasoning_tier');
+    if (saved === 'low' || saved === 'medium' || saved === 'high') return saved;
+    return 'medium';
   });
 
   const handleModelChange = (modelId) => {
     setSelectedModel(modelId);
     try {
       localStorage.setItem('orion_selected_model', modelId);
+    } catch {
+      // storage quota fallback
+    }
+  };
+
+  const handleReasoningTierChange = (tierId) => {
+    setReasoningTier(tierId);
+    try {
+      localStorage.setItem('orion_reasoning_tier', tierId);
     } catch {
       // storage quota fallback
     }
@@ -397,6 +414,7 @@ export default function App() {
       role: 'assistant',
       content: '',
       model: selectedModel,
+      reasoningTier: selectedModel === 'orion' ? reasoningTier : null,
       timestamp: new Date().toISOString(),
     };
 
@@ -438,6 +456,7 @@ export default function App() {
           history: activeSession ? activeSession.messages : [],
           attachments: activeAttachments,
           model: selectedModel,
+          reasoningTier: selectedModel === 'orion' ? reasoningTier : null,
         }),
         signal: controller.signal,
       });
@@ -530,6 +549,7 @@ export default function App() {
             message: userText,
             history: activeSession ? activeSession.messages : [],
             model: selectedModel,
+            reasoningTier: selectedModel === 'orion' ? reasoningTier : null,
           }),
         });
         if (fallbackRes.ok) {
@@ -876,6 +896,8 @@ export default function App() {
           isCentered={messages.length === 0}
           selectedModel={selectedModel}
           setSelectedModel={handleModelChange}
+          reasoningTier={reasoningTier}
+          setReasoningTier={handleReasoningTierChange}
         />
       </main>
 
