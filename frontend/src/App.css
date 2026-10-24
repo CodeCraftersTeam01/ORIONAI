@@ -649,6 +649,7 @@
   align-items: center;
   gap: 0.65rem;
   padding: 0.35rem 0;
+  min-height: 28px;
   user-select: none;
   animation: messageEntry 0.25s ease-out;
 }
@@ -657,6 +658,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.28rem;
+  flex-shrink: 0;
 }
 
 .thinking-dots .dot {
@@ -676,6 +678,7 @@
 }
 
 .thinking-shine-text {
+  display: inline-block;
   font-size: 0.88rem;
   font-weight: 500;
   letter-spacing: -0.01em;
@@ -693,6 +696,11 @@
   -webkit-text-fill-color: transparent;
   background-clip: text;
   animation: textShineSweep 2.2s linear infinite;
+}
+
+.thinking-text-anim {
+  animation: textShineSweep 2.2s linear infinite, thinkingTextFadeIn 0.36s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity, filter;
 }
 
 [data-theme='light'] .thinking-shine-text {
@@ -717,6 +725,19 @@
   }
   100% {
     background-position: -110% 0;
+  }
+}
+
+@keyframes thinkingTextFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(3.5px);
+    filter: blur(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
   }
 }
 

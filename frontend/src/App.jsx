@@ -57,6 +57,7 @@ import Sidebar from './components/Sidebar';
 import ChatInput from './components/ChatInput';
 import FormattedMessage from './components/FormattedMessage';
 import SettingsModal from './components/SettingsModal';
+import ThinkingIndicator from './components/ThinkingIndicator';
 import { soundEffects } from './utils/soundEffects';
 import { formatFileSize } from './utils/fileHelpers';
 import './App.css';
@@ -829,14 +830,10 @@ export default function App() {
                             {msg.content && <div className="user-text-content">{msg.content}</div>}
                           </div>
                         ) : msg.content === '' ? (
-                          <div className="thinking-row">
-                            <div className="thinking-dots">
-                              <span className="dot" />
-                              <span className="dot" />
-                              <span className="dot" />
-                            </div>
-                            <span className="thinking-shine-text">Thinking...</span>
-                          </div>
+                          <ThinkingIndicator
+                            model={msg.model || selectedModel}
+                            reasoningTier={msg.reasoningTier || reasoningTier}
+                          />
                         ) : (
                           <FormattedMessage content={msg.content} isStreaming={isStreamingThis} />
                         )}
