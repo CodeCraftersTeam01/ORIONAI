@@ -597,7 +597,7 @@ export default function ManageProvidersModal({
                           <div className="provider-saved-main">
                             <div className="provider-saved-title-row">
                               <span className="provider-saved-name">{prov.name}</span>
-                              <span className="provider-saved-cat">OPENAI COMPATIBLE</span>
+                              <span className="provider-saved-cat">OpenAI Compatible</span>
                               {enabledModels > 0 && (
                                 <span className="provider-saved-active-tag">
                                   {enabledModels} model aktif
@@ -605,7 +605,7 @@ export default function ManageProvidersModal({
                               )}
                             </div>
                             <div className="provider-saved-meta">
-                              <code className="provider-code-chip">{keyCount} connection</code>
+                              <code className="provider-code-chip">{keyCount} koneksi</code>
                               <span className="provider-url-truncate" title={prov.baseUrl}>
                                 {prov.baseUrl}
                               </span>
@@ -821,10 +821,10 @@ export default function ManageProvidersModal({
                   <div>
                     <div className="provider-title-tag-row">
                       <h3 className="provider-manage-title">{currentProvider.name}</h3>
-                      <span className="provider-badge-pill">OPENAI COMPATIBLE</span>
+                      <span className="provider-badge-pill">OpenAI Compatible</span>
                     </div>
                     <span className="provider-manage-subinfo">
-                      {(currentProvider.apiKeys?.length || (currentProvider.apiKey ? 1 : 0))} connection aktif • {currentProvider.models?.filter((m) => m.enabled)?.length || 0} model aktif
+                      {(currentProvider.apiKeys?.length || (currentProvider.apiKey ? 1 : 0))} koneksi aktif • {currentProvider.models?.filter((m) => m.enabled)?.length || 0} model aktif
                     </span>
                   </div>
                 </div>
@@ -836,7 +836,7 @@ export default function ManageProvidersModal({
                     onClick={() => setIsAddingApiKey(!isAddingApiKey)}
                   >
                     <Plus size={13} />
-                    <span>+ ADD API KEY</span>
+                    <span>Tambah API Key</span>
                   </button>
                   <button
                     type="button"
@@ -844,7 +844,7 @@ export default function ManageProvidersModal({
                     onClick={() => setIsEditingBaseDetails(!isEditingBaseDetails)}
                   >
                     <Edit3 size={13} />
-                    <span>EDIT</span>
+                    <span>Ubah</span>
                   </button>
                   <button
                     type="button"
@@ -855,7 +855,7 @@ export default function ManageProvidersModal({
                     }}
                   >
                     <Trash2 size={13} />
-                    <span>DELETE</span>
+                    <span>Hapus</span>
                   </button>
                 </div>
               </div>
@@ -905,15 +905,15 @@ export default function ManageProvidersModal({
                 </div>
               )}
 
-              {/* Card 2: OpenAI Compatible Details Card */}
+              {/* Card 2: Detail Endpoint Card */}
               <div className="provider-panel-card">
                 <div className="provider-card-topbar">
-                  <span className="provider-topbar-mono">&gt;_ OPENAI COMPATIBLE DETAILS</span>
-                  <span className="provider-topbar-right-label">Endpoint Target</span>
+                  <span className="provider-section-title">Detail Endpoint</span>
+                  <span className="provider-topbar-right-label">Chat Endpoint</span>
                 </div>
                 <div className="provider-detail-content-row">
                   <div className="provider-detail-url-box">
-                    <span className="provider-detail-label">Chat Completions:</span>
+                    <span className="provider-detail-label">Endpoint Chat:</span>
                     <span className="provider-detail-url">
                       {cleanChatCompletionsUrl(currentProvider.baseUrl)}
                     </span>
@@ -926,28 +926,28 @@ export default function ManageProvidersModal({
                     {copiedUrl ? (
                       <>
                         <Check size={13} />
-                        <span>TERSLIN!</span>
+                        <span>Tersalin!</span>
                       </>
                     ) : (
                       <>
                         <Copy size={13} />
-                        <span>SALIN URL</span>
+                        <span>Salin URL</span>
                       </>
                     )}
                   </button>
                 </div>
               </div>
 
-              {/* Card 3: CONNECTIONS (API KEYS) */}
+              {/* Card 3: Koneksi API Key */}
               <div className="provider-panel-card">
                 <div className="provider-card-topbar">
                   <div className="provider-card-title-group">
                     <Key size={14} />
-                    <span className="provider-topbar-mono">CONNECTIONS (API KEYS)</span>
+                    <span className="provider-section-title">Koneksi &amp; API Key</span>
                   </div>
                   <div className="provider-topbar-actions">
                     <span className="provider-round-robin-badge">
-                      Round Robin <Check size={12} />
+                      Round Robin Aktif <Check size={12} />
                     </span>
                     <button
                       type="button"
@@ -958,10 +958,10 @@ export default function ManageProvidersModal({
                       {isTestingConnection ? (
                         <>
                           <Loader2 size={12} className="provider-spinner" />
-                          <span>MENGUJI...</span>
+                          <span>Menguji...</span>
                         </>
                       ) : (
-                        <span>TEST CONNECTION</span>
+                        <span>Uji Koneksi</span>
                       )}
                     </button>
                   </div>
@@ -1025,12 +1025,12 @@ export default function ManageProvidersModal({
                         <div className="provider-key-item-left">
                           <Key size={14} className="provider-key-icon" />
                           <span className="provider-key-title">
-                            {k.name || `Key ${idx + 1}`} • active #{idx + 1}
+                            {k.name || `API Key ${idx + 1}`} (Koneksi #{idx + 1})
                           </span>
                           <span className="provider-key-masked">{maskApiKey(k.key)}</span>
                         </div>
                         <div className="provider-key-item-right">
-                          <span className="provider-managed-tag">Managed Active</span>
+                          <span className="provider-managed-tag">Aktif</span>
                           <button
                             type="button"
                             className="provider-btn-icon is-danger"
@@ -1046,31 +1046,31 @@ export default function ManageProvidersModal({
                     <div className="provider-key-item-row">
                       <div className="provider-key-item-left">
                         <Key size={14} className="provider-key-icon" />
-                        <span className="provider-key-title">Key 1 • active #1</span>
+                        <span className="provider-key-title">API Key Utama (Koneksi #1)</span>
                         <span className="provider-key-masked">{maskApiKey(currentProvider.apiKey)}</span>
                       </div>
                       <div className="provider-key-item-right">
-                        <span className="provider-managed-tag">Managed Active</span>
+                        <span className="provider-managed-tag">Aktif</span>
                       </div>
                     </div>
                   ) : (
                     <div className="provider-keys-empty">
-                      <span>Tidak ada API Key tersimpan (koneksi offline/lokal tanpa autentikasi). Klik <b>+ ADD API KEY</b> di atas jika provider memerlukan bearer token.</span>
+                      <span>Belum ada API Key tersimpan (koneksi lokal atau offline tanpa autentikasi). Klik tombol <b>Tambah API Key</b> di atas bila provider memerlukan token.</span>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Card 4: AVAILABLE MODELS (MATCHING SCREENSHOT 3) */}
+              {/* Card 4: Model Tersedia */}
               <div className="provider-panel-card">
                 <div className="provider-card-topbar">
                   <div className="provider-card-title-group">
                     <Bot size={14} />
-                    <span className="provider-topbar-mono">AVAILABLE MODELS</span>
+                    <span className="provider-section-title">Daftar Model Tersedia</span>
                   </div>
                 </div>
                 <p className="provider-models-desc">
-                  Tambahkan model OpenAI-compatible secara manual atau impor otomatis dari endpoint /models.
+                  Pilih model yang ingin diaktifkan di obrolan. Impor otomatis dari server atau tambahkan ID model secara manual.
                 </p>
 
                 {/* Inputs Row */}
@@ -1078,7 +1078,7 @@ export default function ManageProvidersModal({
                   <input
                     type="text"
                     className="provider-text-field provider-mono"
-                    placeholder="Model ID (misal: gpt-4o, deepseek-v3, llama-3.3-70b)"
+                    placeholder="Model ID (misal: gpt-4o, deepseek-v3, qwen2.5:3b)"
                     value={manualModelId}
                     onChange={(e) => setManualModelId(e.target.value)}
                     style={{ flex: 1.4 }}
@@ -1096,7 +1096,7 @@ export default function ManageProvidersModal({
                     className="provider-btn-add-action"
                     disabled={!manualModelId.trim()}
                   >
-                    + ADD
+                    Tambah
                   </button>
                   <button
                     type="button"
@@ -1107,12 +1107,12 @@ export default function ManageProvidersModal({
                     {isImportingModels ? (
                       <>
                         <Loader2 size={13} className="provider-spinner" />
-                        <span>MENGIMPOR...</span>
+                        <span>Mengimpor...</span>
                       </>
                     ) : (
                       <>
                         <Download size={13} />
-                        <span>IMPORT FROM /MODELS</span>
+                        <span>Impor dari /models</span>
                       </>
                     )}
                   </button>
@@ -1132,7 +1132,7 @@ export default function ManageProvidersModal({
                 {/* Models List */}
                 <div className="provider-models-list-container">
                   {(!currentProvider.models || currentProvider.models.length === 0) ? (
-                    /* Empty State Matching Screenshot 3 */
+                    /* Empty State */
                     <div className="provider-models-empty-state">
                       <div className="provider-empty-bot-icon">
                         <Bot size={28} />
@@ -1141,7 +1141,7 @@ export default function ManageProvidersModal({
                         Belum ada model yang didaftarkan untuk provider ini.
                       </p>
                       <p className="provider-empty-sub-text">
-                        Ketik Model ID di atas lalu klik &quot;+ Add&quot;, atau klik &quot;Import from /models&quot; untuk deteksi otomatis.
+                        Ketik ID model di atas lalu klik &quot;Tambah&quot;, atau klik &quot;Impor dari /models&quot; untuk deteksi model otomatis dari server.
                       </p>
                     </div>
                   ) : (
@@ -1203,7 +1203,7 @@ export default function ManageProvidersModal({
                                   ) : (
                                     <span className="provider-model-status is-untested">
                                       <HelpCircle size={11} />
-                                      Belum dites (Uji sebelum dicentang)
+                                      Belum diuji (klik Tes Model untuk verifikasi)
                                     </span>
                                   )}
                                 </div>
