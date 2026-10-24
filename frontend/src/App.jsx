@@ -31,6 +31,7 @@ import {
   Lightbulb,
   Palette,
   RefreshCw,
+  Square,
 } from 'lucide-react';
 import AuroraBackground from './components/AuroraBackground';
 import OrionLogo from './components/OrionLogo';
@@ -511,6 +512,25 @@ export default function App() {
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
+    let accumulated = '';
+    let rafId = null;
+
+    const commitUpdate = (text) => {
+      setSessions((prev) =>
+        prev.map((s) => {
+          if (s.id === activeSessionId) {
+            return {
+              ...s,
+              messages: s.messages.map((m) =>
+                m.id === aiMessageId ? { ...m, content: text } : m
+              ),
+            };
+          }
+          return s;
+        })
+      );
+    };
+
     try {
       const res = await fetch('/api/chat/stream', {
         method: 'POST',
@@ -530,26 +550,8 @@ export default function App() {
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder('utf-8');
-      let accumulated = '';
       let buffer = '';
-      let rafId = null;
       let lastCommit = 0;
-
-      const commitUpdate = (text) => {
-        setSessions((prev) =>
-          prev.map((s) => {
-            if (s.id === activeSessionId) {
-              return {
-                ...s,
-                messages: s.messages.map((m) =>
-                  m.id === aiMessageId ? { ...m, content: text } : m
-                ),
-              };
-            }
-            return s;
-          })
-        );
-      };
 
       const throttleCommit = (text) => {
         const now = performance.now();
@@ -622,6 +624,7 @@ export default function App() {
             reasoningTier: selectedModel === 'orion' ? reasoningTier : null,
             customProvider: activeCustomProvider,
           }),
+          signal: controller.signal,
         });
         if (fallbackRes.ok) {
           const json = await fallbackRes.json();
@@ -640,10 +643,34 @@ export default function App() {
       soundEffects.playReceive();
     } catch (err) {
       console.error('Failed to get response:', err);
-      const isAbort = err.name === 'AbortError';
-      const errorContent = isAbort
-        ? 'Permintaan dihentikan.'
-        : `⚠️ **Respon terhambat / Gagal terhubung**:\n\n${err.message}\n\n*Server AI eksternal (Tailscale \`pi.leopard-gila.ts.net\`) saat ini sedang offline atau mengembalikan HTTP 502 Bad Gateway. Silakan periksa koneksi Tailscale/layanan di node Pi, atau pilih custom provider lain seperti Ollama / OpenAI.*`;
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+
+      const isAbort = err.name === 'AbortError' || err.message?.includes('aborted');
+      if (isAbort) {
+        if (!accumulated.trim()) {
+          setSessions((prev) =>
+            prev.map((s) => {
+              if (s.id === activeSessionId) {
+                return {
+                  ...s,
+                  messages: s.messages.map((m) =>
+                    m.id === aiMessageId ? { ...m, content: 'Respon dihentikan oleh pengguna.' } : m
+                  ),
+                };
+              }
+              return s;
+            })
+          );
+        } else {
+          commitUpdate(accumulated);
+        }
+        return;
+      }
+
+      const errorContent = `⚠️ **Respon terhambat / Gagal terhubung**:\n\n${err.message}\n\n*Server AI eksternal (Tailscale \`pi.leopard-gila.ts.net\`) saat ini sedang offline atau mengembalikan HTTP 502 Bad Gateway. Silakan periksa koneksi Tailscale/layanan di node Pi, atau pilih custom provider lain seperti Ollama / OpenAI.*`;
 
       setSessions((prev) =>
         prev.map((s) => {
@@ -659,9 +686,34 @@ export default function App() {
         })
       );
     } finally {
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      abortControllerRef.current = null;
       setIsGenerating(false);
     }
   };
+
+  const handleStopGeneration = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsGenerating(false);
+  };
+
+  // Keyboard shortcut: Press Escape to stop generation
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      if (e.key === 'Escape' && isGenerating) {
+        e.preventDefault();
+        handleStopGeneration();
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [isGenerating]);
 
   const handleCopyMessage = (msgId, text) => {
     navigator.clipboard.writeText(text);
@@ -898,10 +950,23 @@ export default function App() {
                             {msg.content && <div className="user-text-content">{msg.content}</div>}
                           </div>
                         ) : msg.content === '' ? (
-                          <ThinkingIndicator
-                            model={msg.model || selectedModel}
-                            reasoningTier={msg.reasoningTier || reasoningTier}
-                          />
+                          <div className="thinking-row-wrapper">
+                            <ThinkingIndicator
+                              model={msg.model || selectedModel}
+                              reasoningTier={msg.reasoningTier || reasoningTier}
+                            />
+                            {isGenerating && isLast && (
+                              <button
+                                type="button"
+                                className="thinking-stop-btn"
+                                onClick={handleStopGeneration}
+                                title="Hentikan respon (Esc)"
+                              >
+                                <Square size={10} fill="currentColor" stroke="none" />
+                                <span>Hentikan</span>
+                              </button>
+                            )}
+                          </div>
                         ) : (
                           <FormattedMessage content={msg.content} isStreaming={isStreamingThis} />
                         )}
@@ -929,15 +994,29 @@ export default function App() {
                           )}
                         </button>
 
-                        <button
-                          type="button"
-                          className="msg-action-btn"
-                          onClick={handleRegenerate}
-                          title="Buat ulang"
-                        >
-                          <RotateCcw size={12} />
-                          <span>Buat Ulang</span>
-                        </button>
+                        {isLast && !isGenerating && (
+                          <button
+                            type="button"
+                            className="msg-action-btn"
+                            onClick={handleRegenerate}
+                            title="Buat ulang"
+                          >
+                            <RotateCcw size={12} />
+                            <span>Buat Ulang</span>
+                          </button>
+                        )}
+
+                        {isStreamingThis && (
+                          <button
+                            type="button"
+                            className="msg-action-btn stop-action-btn"
+                            onClick={handleStopGeneration}
+                            title="Hentikan pembuatan respon (Esc)"
+                          >
+                            <Square size={10} fill="currentColor" stroke="none" />
+                            <span>Hentikan</span>
+                          </button>
+                        )}
                       </div>
                     )}
                     </div>
@@ -957,6 +1036,7 @@ export default function App() {
           attachments={attachments}
           setAttachments={setAttachments}
           onSend={() => handleSendMessage()}
+          onStop={handleStopGeneration}
           isGenerating={isGenerating}
           isCentered={messages.length === 0}
           selectedModel={selectedModel}

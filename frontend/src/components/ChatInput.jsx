@@ -9,6 +9,7 @@ import {
   File,
   Image as ImageIcon,
   Loader2,
+  Square,
 } from 'lucide-react';
 import { processFile, formatFileSize } from '../utils/fileHelpers';
 import ModelSelector from './ModelSelector';
@@ -19,6 +20,7 @@ export default function ChatInput({
   attachments = [],
   setAttachments,
   onSend,
+  onStop,
   isGenerating,
   isCentered = false,
   selectedModel = 'orion',
@@ -247,20 +249,35 @@ export default function ChatInput({
             />
           )}
 
-          {/* Send Button */}
-          <button
-            type="button"
-            className={`btn-send-message ${canSend ? 'active' : ''}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (canSend) onSend();
-            }}
-            disabled={!canSend}
-            title="Kirim (Enter)"
-            aria-label="Kirim pesan"
-          >
-            <ArrowUp size={16} />
-          </button>
+          {/* Send or Stop Button */}
+          {isGenerating ? (
+            <button
+              type="button"
+              className="btn-send-message btn-stop-active active"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (typeof onStop === 'function') onStop();
+              }}
+              title="Hentikan respon (Esc)"
+              aria-label="Hentikan respon AI"
+            >
+              <Square size={12} fill="currentColor" stroke="none" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={`btn-send-message ${canSend ? 'active' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (canSend) onSend();
+              }}
+              disabled={!canSend}
+              title="Kirim (Enter)"
+              aria-label="Kirim pesan"
+            >
+              <ArrowUp size={16} />
+            </button>
+          )}
         </div>
 
         {/* Drag and Drop Active Overlay Banner */}
