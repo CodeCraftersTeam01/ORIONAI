@@ -4738,5 +4738,306 @@
   }
 }
 
+/* ==========================================================================
+   DASHBOARD HOME VIEW (Minimalist Logo & Time-based Greeting)
+   ========================================================================== */
+.dashboard-home-view {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem 4rem;
+  text-align: center;
+  position: relative;
+  z-index: 2;
+  overflow: hidden;
+}
+
+.dashboard-center-card {
+  max-width: 720px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.dashboard-logo-wrap {
+  margin-bottom: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  filter: drop-shadow(0 0 35px rgba(59, 130, 246, 0.22));
+}
+
+.dashboard-logo-wrap:hover {
+  transform: scale(1.04);
+}
+
+.dashboard-greeting-title {
+  font-family: 'Google Sans', 'Outfit', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', sans-serif;
+  font-size: clamp(2.1rem, 4.8vw, 3.4rem);
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  color: var(--text-primary);
+  margin-bottom: 0.65rem;
+  line-height: 1.18;
+  text-wrap: balance;
+}
+
+[data-theme='dark'] .dashboard-greeting-title {
+  color: #f3f4f6;
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.4);
+}
+
+.dashboard-subtext {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  margin-bottom: 2.25rem;
+  max-width: 440px;
+  line-height: 1.5;
+}
+
+/* ==========================================================================
+   SIDEBAR NAVIGATION IN DASHBOARD MODE
+   ========================================================================== */
+.sidebar-nav-section {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 0.5rem 0.65rem;
+}
+
+.sidebar-nav-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.sidebar-nav-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  color: var(--text-primary);
+}
+
+.sidebar-nav-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme='light'] .sidebar-nav-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+.nav-item-icon-wrap {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+[data-theme='light'] .nav-item-icon-wrap {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.nav-item-icon-wrap.chat-accent {
+  background: rgba(59, 130, 246, 0.16);
+  color: #60a5fa;
+}
+
+.sidebar-nav-item:hover .nav-item-icon-wrap {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-nav-item.primary-chat-item:hover .nav-item-icon-wrap.chat-accent {
+  background: rgba(59, 130, 246, 0.28);
+  color: #93c5fd;
+}
+
+.nav-item-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.nav-item-label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.nav-item-desc {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-item-arrow {
+  color: var(--text-tertiary);
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.sidebar-nav-item:hover .nav-item-arrow {
+  color: var(--text-primary);
+  transform: translateX(3px);
+}
+
+/* ==========================================================================
+   BACK TO DASHBOARD BUTTON IN CHAT MODE
+   ========================================================================== */
+.sidebar-chat-mode-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.sidebar-back-wrap {
+  padding: 0.65rem 0.85rem 0.25rem;
+}
+
+.btn-back-dashboard {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+[data-theme='light'] .btn-back-dashboard {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+.btn-back-dashboard:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: var(--text-primary);
+}
+
+[data-theme='light'] .btn-back-dashboard:hover {
+  background: rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+.btn-back-dashboard .back-arrow-icon {
+  transition: transform 0.2s ease;
+}
+
+.btn-back-dashboard:hover .back-arrow-icon {
+  transform: translateX(-3px);
+}
+
+/* Header Back button */
+.btn-header-back-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: 0.35rem;
+}
+
+.btn-header-back-home:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+/* ==========================================================================
+   SMOOTH ENTRANCE ANIMATIONS
+   ========================================================================== */
+@keyframes chatViewEntrance {
+  0% {
+    opacity: 0;
+    transform: translateY(22px) scale(0.985);
+    filter: blur(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.animate-chat-entrance {
+  animation: chatViewEntrance 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+@keyframes smoothFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-smooth-fade {
+  animation: smoothFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes sidebarSectionSlide {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-sidebar-nav,
+.animate-sidebar-chat {
+  animation: sidebarSectionSlide 0.25s ease-out forwards;
+}
+
+
 
 

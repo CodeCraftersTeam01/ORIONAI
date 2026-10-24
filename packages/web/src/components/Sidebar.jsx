@@ -1,8 +1,24 @@
 import React from 'react';
-import { Plus, MessageSquare, Trash2, Settings, Volume2, VolumeX, X } from 'lucide-react';
+import {
+  Plus,
+  MessageSquare,
+  Trash2,
+  Settings,
+  Volume2,
+  VolumeX,
+  X,
+  ArrowLeft,
+  Cpu,
+  ChevronRight,
+  Sparkles,
+  LayoutDashboard,
+} from 'lucide-react';
 import OrionLogo from './OrionLogo';
 
 export default function Sidebar({
+  currentView = 'dashboard',
+  onNavigate,
+  onOpenProviders,
   sessions,
   activeSessionId,
   onSelectSession,
@@ -28,7 +44,12 @@ export default function Sidebar({
       <aside className={`chat-sidebar ${isOpen ? 'open' : ''}`}>
         {/* Brand Header */}
         <div className="sidebar-brand">
-          <div className="brand-header-left">
+          <div
+            className="brand-header-left"
+            onClick={() => onNavigate?.('dashboard')}
+            style={{ cursor: 'pointer' }}
+            title="Kembali ke Dashboard Utama"
+          >
             <OrionLogo size="sm" showRings={false} />
             <div className="brand-text-block">
               <span className="brand-name">Orion Agent</span>
@@ -47,60 +68,142 @@ export default function Sidebar({
           </div>
         </div>
 
-        {/* New Chat Button */}
-        <div className="sidebar-action-wrap">
-          <button
-            type="button"
-            className="btn-new-chat"
-            onClick={() => {
-              onNewSession();
-              if (window.innerWidth < 768) onCloseMobile();
-            }}
-          >
-            <Plus size={15} />
-            <span>Chat Baru</span>
-          </button>
-        </div>
-
-        {/* Sessions List */}
-        <div className="sidebar-history-section">
-          <div className="section-label">Riwayat</div>
-          <div className="sessions-scroll-list">
-            {sessions.length === 0 ? (
-              <div className="no-sessions-hint">Belum ada obrolan</div>
-            ) : (
-              sessions.map((session) => (
-                <div
-                  key={session.id}
-                  className={`session-item ${session.id === activeSessionId ? 'active' : ''}`}
-                  onClick={() => {
-                    onSelectSession(session.id);
-                    if (window.innerWidth < 768) onCloseMobile();
-                  }}
-                >
-                  <MessageSquare size={14} className="session-icon" />
-                  <span className="session-title" title={session.title}>
-                    {session.title || 'Percakapan Tanpa Judul'}
-                  </span>
-                  {sessions.length > 1 && (
-                    <button
-                      type="button"
-                      className="session-delete-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteSession(session.id);
-                      }}
-                      title="Hapus obrolan"
-                      aria-label="Hapus obrolan"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  )}
+        {/* Content depending on currentView */}
+        {currentView === 'dashboard' ? (
+          /* ================= DASHBOARD NAVIGATION MENU ================= */
+          <div className="sidebar-nav-section animate-sidebar-nav">
+            <div className="section-label">Navigasi</div>
+            <nav className="sidebar-nav-menu">
+              <button
+                type="button"
+                className="sidebar-nav-item primary-chat-item"
+                onClick={() => {
+                  onNavigate?.('chat');
+                  if (window.innerWidth < 768) onCloseMobile();
+                }}
+              >
+                <div className="nav-item-icon-wrap chat-accent">
+                  <MessageSquare size={16} />
                 </div>
-              ))
-            )}
+                <div className="nav-item-text">
+                  <span className="nav-item-label">Chat</span>
+                  <span className="nav-item-desc">Mulai Percakapan</span>
+                </div>
+                <ChevronRight size={14} className="nav-item-arrow" />
+              </button>
+
+              <button
+                type="button"
+                className="sidebar-nav-item"
+                onClick={() => {
+                  onOpenProviders?.();
+                  if (window.innerWidth < 768) onCloseMobile();
+                }}
+              >
+                <div className="nav-item-icon-wrap">
+                  <Cpu size={16} />
+                </div>
+                <div className="nav-item-text">
+                  <span className="nav-item-label">Provider</span>
+                  <span className="nav-item-desc">Kelola Model AI</span>
+                </div>
+                <ChevronRight size={14} className="nav-item-arrow" />
+              </button>
+
+              <button
+                type="button"
+                className="sidebar-nav-item"
+                onClick={() => {
+                  onOpenSettings?.();
+                  if (window.innerWidth < 768) onCloseMobile();
+                }}
+              >
+                <div className="nav-item-icon-wrap">
+                  <Settings size={16} />
+                </div>
+                <div className="nav-item-text">
+                  <span className="nav-item-label">Settings</span>
+                  <span className="nav-item-desc">Preferensi & Suara</span>
+                </div>
+                <ChevronRight size={14} className="nav-item-arrow" />
+              </button>
+            </nav>
           </div>
-        </div>
+        ) : (
+          /* ================= CHAT VIEW SIDEBAR ================= */
+          <div className="sidebar-chat-mode-wrap animate-sidebar-chat">
+            {/* Back to Dashboard Button (Di atas Chat Baru) */}
+            <div className="sidebar-back-wrap">
+              <button
+                type="button"
+                className="btn-back-dashboard"
+                onClick={() => {
+                  onNavigate?.('dashboard');
+                  if (window.innerWidth < 768) onCloseMobile();
+                }}
+                title="Kembali ke Dashboard Utama"
+              >
+                <ArrowLeft size={14} className="back-arrow-icon" />
+                <span>Kembali ke Dashboard</span>
+              </button>
+            </div>
+
+            {/* New Chat Button */}
+            <div className="sidebar-action-wrap">
+              <button
+                type="button"
+                className="btn-new-chat"
+                onClick={() => {
+                  onNewSession();
+                  if (window.innerWidth < 768) onCloseMobile();
+                }}
+              >
+                <Plus size={15} />
+                <span>Chat Baru</span>
+              </button>
+            </div>
+
+            {/* Sessions List */}
+            <div className="sidebar-history-section">
+              <div className="section-label">Riwayat</div>
+              <div className="sessions-scroll-list">
+                {sessions.length === 0 ? (
+                  <div className="no-sessions-hint">Belum ada obrolan</div>
+                ) : (
+                  sessions.map((session) => (
+                    <div
+                      key={session.id}
+                      className={`session-item ${session.id === activeSessionId ? 'active' : ''}`}
+                      onClick={() => {
+                        onSelectSession(session.id);
+                        if (window.innerWidth < 768) onCloseMobile();
+                      }}
+                    >
+                      <MessageSquare size={14} className="session-icon" />
+                      <span className="session-title" title={session.title}>
+                        {session.title || 'Percakapan Tanpa Judul'}
+                      </span>
+                      {sessions.length > 1 && (
+                        <button
+                          type="button"
+                          className="session-delete-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteSession(session.id);
+                          }}
+                          title="Hapus obrolan"
+                          aria-label="Hapus obrolan"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="sidebar-footer">
