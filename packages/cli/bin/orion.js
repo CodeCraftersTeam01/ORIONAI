@@ -9,10 +9,39 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const distPath = path.resolve(__dirname, '../../web/dist');
 
+// Read dynamic version from root package.json or cli package.json
+let appVersion = '1.0.0';
+try {
+  const rootPkgPath = path.resolve(__dirname, '../../../package.json');
+  if (fs.existsSync(rootPkgPath)) {
+    const pkg = JSON.parse(fs.readFileSync(rootPkgPath, 'utf8'));
+    appVersion = pkg.version || '1.0.0';
+  }
+} catch {
+  // fallback to default
+}
+
 const args = process.argv.slice(2);
 
+// Check if --version, -v, -V, or version
+if (
+  args.includes('--version') ||
+  args.includes('-v') ||
+  args.includes('-V') ||
+  args[0] === 'version'
+) {
+  console.log(`🌌 Orion Agent v${appVersion}`);
+  console.log(`├── Platform: ${process.platform} (${process.arch})`);
+  console.log(`├── Node.js:  ${process.version}`);
+  console.log(`└── Packages:`);
+  console.log(`    ├── @orion-agent/cli    v${appVersion}`);
+  console.log(`    ├── @orion-agent/server v${appVersion}`);
+  console.log(`    └── @orion-agent/web    v${appVersion}`);
+  process.exit(0);
+}
+
 // Check if --help or -h
-if (args.includes('--help') || args.includes('-h')) {
+if (args.includes('--help') || args.includes('-h') || args[0] === 'help') {
   console.log(`
 🌌 Orion Agent CLI — Platform Asisten Cerdas Kosmik
 
@@ -21,19 +50,14 @@ Penggunaan:
   orion --view          Jalankan service dan langsung buka Orion Agent di browser
   orion start           Jalankan service server di foreground
   orion --port <angka>  Gunakan port kustom (default: 5001)
+  orion --version       Tampilkan informasi versi lengkap
 
 Opsi:
-  --view, -v            Otomatis membuka browser default ke antarmuka web
+  --view, -o, --open    Otomatis membuka browser default ke antarmuka web
   --port, -p <nomor>    Tentukan port server (default: 5001)
+  --version, -v, -V     Tampilkan versi Orion Agent dan lingkungan runtime
   --help, -h            Tampilkan petunjuk penggunaan ini
-  --version, -V         Tampilkan versi Orion Agent
 `);
-  process.exit(0);
-}
-
-// Check if --version or -V
-if (args.includes('--version') || args.includes('-V')) {
-  console.log('Orion Agent v1.0.0');
   process.exit(0);
 }
 
@@ -47,7 +71,11 @@ if (portIdx !== -1 && args[portIdx + 1]) {
   }
 }
 
-const shouldView = args.includes('--view') || args.includes('-v') || args.includes('view');
+const shouldView =
+  args.includes('--view') ||
+  args.includes('-o') ||
+  args.includes('--open') ||
+  args.includes('view');
 
 async function main() {
   console.log('✦ Memulai Orion Agent Service...');
