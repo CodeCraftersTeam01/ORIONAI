@@ -1,0 +1,29 @@
+# Development & Git
+.git
+.github
+.gitignore
+.oxlintrc.json
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# Environment secrets
+.env
+.env.*
+!.env.example
+
+# Source files for frontend (only web/dist is packaged)
+packages/web/src
+packages/web/public
+packages/web/index.html
+packages/web/vite.config.js
+packages/web/node_modules
+
+# Tests & Scratches
+scratch/
+test/
+tests/
+__tests__/

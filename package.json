@@ -1,21 +1,33 @@
 {
   "name": "orion-agent",
   "version": "1.0.0",
-  "description": "Orion Agent — Intelligent Cosmic AI Platform & Assistant",
+  "description": "Orion Agent — Intelligent Cosmic AI Platform & Assistant Monorepo",
   "type": "module",
-  "main": "backend/src/server.js",
+  "main": "packages/server/src/server.js",
   "bin": {
     "orion": "./bin/orion.js",
     "orion-agent": "./bin/orion.js"
   },
+  "workspaces": [
+    "packages/*"
+  ],
+  "files": [
+    "bin",
+    "packages/cli",
+    "packages/server",
+    "packages/web/dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
-    "start": "node bin/orion.js",
-    "orion": "node bin/orion.js",
-    "view": "node bin/orion.js --view",
-    "build": "npm --prefix frontend run build",
-    "dev:backend": "npm --prefix backend run dev",
-    "dev:frontend": "npm --prefix frontend run dev",
-    "install:all": "npm install && npm --prefix backend install && npm --prefix frontend install"
+    "start": "node packages/cli/bin/orion.js",
+    "orion": "node packages/cli/bin/orion.js",
+    "view": "node packages/cli/bin/orion.js --view",
+    "build": "npm --prefix packages/web run build",
+    "dev:server": "npm --prefix packages/server run dev",
+    "dev:web": "npm --prefix packages/web run dev",
+    "lint": "npm --prefix packages/web run lint",
+    "install:all": "npm install"
   },
   "keywords": [
     "orion",
@@ -24,7 +36,8 @@
     "assistant",
     "chat",
     "cli",
-    "agent"
+    "agent",
+    "monorepo"
   ],
   "author": "Lanvry <wardilanang46@gmail.com>",
   "license": "MIT",

@@ -4,10 +4,12 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const backendEnvPath = path.resolve(__dirname, '../../.env');
+const serverEnvPath = path.resolve(__dirname, '../../.env');
+const rootEnvPath = path.resolve(__dirname, '../../../../.env');
 
 dotenv.config();
-dotenv.config({ path: backendEnvPath });
+dotenv.config({ path: rootEnvPath });
+dotenv.config({ path: serverEnvPath });
 
 const BASE_URL = process.env.AI_BASE_URL || 'https://pi.leopard-gila.ts.net/v1';
 const API_KEY = process.env.AI_API_KEY;

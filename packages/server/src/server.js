@@ -65,11 +65,17 @@ import { exec } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const distPath = path.resolve(__dirname, '../../frontend/dist');
+const candidateDistPaths = [
+  path.resolve(__dirname, '../../web/dist'),
+  path.resolve(__dirname, '../../frontend/dist'),
+  path.resolve(process.cwd(), 'packages/web/dist'),
+  path.resolve(process.cwd(), 'dist'),
+];
+const distPath = candidateDistPaths.find((p) => fs.existsSync(p)) || candidateDistPaths[0];
 const hasDist = fs.existsSync(distPath);
 
 if (hasDist) {
-  // Serve static UI assets from frontend/dist
+  // Serve static UI assets from web/dist
   app.use(express.static(distPath));
 } else {
   // Root fallback route for API only mode

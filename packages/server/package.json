@@ -1,7 +1,7 @@
 {
-  "name": "backend",
+  "name": "@orion-agent/server",
   "version": "1.0.0",
-  "description": "Express.js REST API Backend",
+  "description": "Express.js REST API & Streaming Engine for Orion Agent",
   "type": "module",
   "main": "src/server.js",
   "scripts": {
@@ -11,10 +11,12 @@
   "keywords": [
     "express",
     "api",
-    "backend"
+    "orion",
+    "ai",
+    "agent"
   ],
-  "author": "",
-  "license": "ISC",
+  "author": "Lanvry <wardilanang46@gmail.com>",
+  "license": "MIT",
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "cors": "^2.8.5",
