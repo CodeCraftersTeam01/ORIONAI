@@ -76,7 +76,7 @@ function CodeBlock({ code, language }) {
   );
 }
 
-export default function FormattedMessage({ content, isStreaming = false }) {
+function FormattedMessage({ content, isStreaming = false }) {
   if (!content) return null;
 
   // Split content by code blocks and display math blocks ($$...$$ or \[...\])
@@ -482,3 +482,5 @@ function getTableAlignments(line) {
     </div>
   );
 }
+
+export default React.memo(FormattedMessage);

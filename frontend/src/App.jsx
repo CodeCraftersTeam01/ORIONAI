@@ -353,23 +353,39 @@ export default function App() {
     localStorage.setItem('orion_sound', soundEnabled ? 'true' : 'false');
   }, [soundEnabled]);
 
+  // Debounce localStorage persistence and avoid synchronous disk I/O while streaming
   useEffect(() => {
-    try {
-      localStorage.setItem('orion_chat_sessions', JSON.stringify(sessions));
-    } catch {
-      // storage quota
-    }
-  }, [sessions]);
+    if (isGenerating) return;
+    const timeoutId = setTimeout(() => {
+      try {
+        localStorage.setItem('orion_chat_sessions', JSON.stringify(sessions));
+      } catch {
+        // storage quota
+      }
+    }, 500);
+    return () => clearTimeout(timeoutId);
+  }, [sessions, isGenerating]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const isScrollingRef = useRef(false);
+  const scrollToBottom = (instant = false) => {
+    if (!messagesEndRef.current) return;
+    if (instant || isGenerating) {
+      if (isScrollingRef.current) return;
+      isScrollingRef.current = true;
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+        isScrollingRef.current = false;
+      });
+    } else {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   const activeSession = sessions.find((s) => s.id === activeSessionId) || sessions[0];
   const messages = activeSession ? activeSession.messages : [];
 
   useEffect(() => {
-    scrollToBottom();
+    scrollToBottom(isGenerating);
   }, [messages, isGenerating]);
 
   const showToast = (message) => {
@@ -555,7 +571,7 @@ export default function App() {
 
       const throttleCommit = (text) => {
         const now = performance.now();
-        if (now - lastCommit < 24) {
+        if (now - lastCommit < 32) {
           if (!rafId) {
             rafId = requestAnimationFrame(() => {
               rafId = null;
@@ -564,6 +580,10 @@ export default function App() {
             });
           }
           return;
+        }
+        if (rafId) {
+          cancelAnimationFrame(rafId);
+          rafId = null;
         }
         lastCommit = now;
         commitUpdate(text);
@@ -950,23 +970,10 @@ export default function App() {
                             {msg.content && <div className="user-text-content">{msg.content}</div>}
                           </div>
                         ) : msg.content === '' ? (
-                          <div className="thinking-row-wrapper">
-                            <ThinkingIndicator
-                              model={msg.model || selectedModel}
-                              reasoningTier={msg.reasoningTier || reasoningTier}
-                            />
-                            {isGenerating && isLast && (
-                              <button
-                                type="button"
-                                className="thinking-stop-btn"
-                                onClick={handleStopGeneration}
-                                title="Hentikan respon (Esc)"
-                              >
-                                <Square size={10} fill="currentColor" stroke="none" />
-                                <span>Hentikan</span>
-                              </button>
-                            )}
-                          </div>
+                          <ThinkingIndicator
+                            model={msg.model || selectedModel}
+                            reasoningTier={msg.reasoningTier || reasoningTier}
+                          />
                         ) : (
                           <FormattedMessage content={msg.content} isStreaming={isStreamingThis} />
                         )}
@@ -1003,18 +1010,6 @@ export default function App() {
                           >
                             <RotateCcw size={12} />
                             <span>Buat Ulang</span>
-                          </button>
-                        )}
-
-                        {isStreamingThis && (
-                          <button
-                            type="button"
-                            className="msg-action-btn stop-action-btn"
-                            onClick={handleStopGeneration}
-                            title="Hentikan pembuatan respon (Esc)"
-                          >
-                            <Square size={10} fill="currentColor" stroke="none" />
-                            <span>Hentikan</span>
                           </button>
                         )}
                       </div>
