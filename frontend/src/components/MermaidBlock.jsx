@@ -10,6 +10,7 @@ function ensureMermaidInit(isDark) {
     mermaid.initialize({
       startOnLoad: false,
       securityLevel: 'loose',
+      suppressErrorRendering: true, // Prevents Mermaid from injecting ugly red bomb error into document.body
       theme: isDark ? 'dark' : 'neutral',
       fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Rounded", "SF Pro Text", sans-serif',
       fontSize: 13,
@@ -53,6 +54,67 @@ function ensureMermaidInit(isDark) {
   } catch (err) {
     console.warn('Mermaid init error:', err);
   }
+}
+
+/**
+ * Intelligent Auto-Repair for Mermaid Syntax
+ * Fixes common syntax errors such as:
+ * - Unquoted brackets inside node labels: Compare[array[j] > array[j+1]?] -> Compare["array[j] > array[j+1]?"]
+ * - Unquoted conditions in decision nodes: CheckOuter{i < n-1?} -> CheckOuter{"i < n-1?"}
+ * - Unquoted stadium pills: Start([Mulai]) -> Start(["Mulai"])
+ * - Unquoted subgraphs: subgraph Name [Loop Dalam] -> subgraph Name ["Loop Dalam"]
+ */
+export function autoRepairMermaid(code) {
+  if (!code || typeof code !== 'string') return code;
+
+  const lines = code.split('\n');
+  const repaired = lines.map((line) => {
+    // Preserve comments and directives
+    if (line.trim().startsWith('%%')) return line;
+
+    let processed = line;
+
+    // 1. Subgraph labels with brackets: subgraph InnerLoop [Loop Dalam] -> subgraph InnerLoop ["Loop Dalam"]
+    processed = processed.replace(
+      /^(.*subgraph\s+[a-zA-Z0-9_-]+\s*)\[([^"\n\r\]]+)\](.*)$/i,
+      '$1["$2"]$3'
+    );
+
+    // 2. Stadium nodes: Start([Mulai]) -> Start(["Mulai"])
+    processed = processed.replace(
+      /([a-zA-Z0-9_-]+)\(\[\s*([^"\n\r]+?)\s*\]\)/g,
+      (match, id, text) => {
+        if (text.startsWith('"') && text.endsWith('"')) return match;
+        const clean = text.replace(/"/g, "'");
+        return `${id}(["${clean}"])`;
+      }
+    );
+
+    // 3. Decision rhombus nodes with comparison/brackets: CheckOuter{i < n-1?} -> CheckOuter{"i < n-1?"}
+    processed = processed.replace(
+      /([a-zA-Z0-9_-]+)\{\s*([^"\n\r{}]+?)\s*\}/g,
+      (match, id, text) => {
+        if (text.startsWith('"') && text.endsWith('"')) return match;
+        const clean = text.replace(/"/g, "'");
+        return `${id}{"${clean}"}`;
+      }
+    );
+
+    // 4. Rectangular nodes with nested brackets or arithmetic: Compare[array[j] > array[j+1]?] -> Compare["array[j] > array[j+1]?"]
+    // Matches node identifier followed by [...] that is not yet quoted
+    processed = processed.replace(
+      /([a-zA-Z0-9_-]+)\[([^"\n\r]+)\]/g,
+      (match, id, text) => {
+        if (text.startsWith('"') && text.endsWith('"')) return match;
+        const clean = text.replace(/"/g, "'");
+        return `${id}["${clean}"]`;
+      }
+    );
+
+    return processed;
+  });
+
+  return repaired.join('\n');
 }
 
 /**
@@ -128,6 +190,21 @@ export default function MermaidBlock({ code, title = 'Flowchart' }) {
   const [copied, setCopied] = useState(false);
   const containerRef = useRef(null);
 
+  // Helper to remove any Mermaid error artifacts injected into body
+  const cleanupMermaidArtifacts = (renderId) => {
+    try {
+      const stray = document.querySelectorAll(`[id^="${renderId}"], [id^="dmermaid"], svg[aria-roledescription="error"]`);
+      stray.forEach((el) => {
+        // If element is not inside container, remove it from document body
+        if (!containerRef.current || !containerRef.current.contains(el)) {
+          el.remove();
+        }
+      });
+    } catch {
+      // ignore
+    }
+  };
+
   // Re-render when theme or code changes
   useEffect(() => {
     let isMounted = true;
@@ -135,34 +212,35 @@ export default function MermaidBlock({ code, title = 'Flowchart' }) {
     ensureMermaidInit(isDark);
 
     const renderId = `mermaid_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
-    const cleanedCode = code.trim();
+    const sanitizedCode = autoRepairMermaid(code.trim());
 
     try {
       mermaid
-        .render(renderId, cleanedCode)
+        .render(renderId, sanitizedCode)
         .then(({ svg }) => {
           if (isMounted) {
             setSvgHtml(svg);
             setError(null);
+            cleanupMermaidArtifacts(renderId);
           }
         })
         .catch((err) => {
           console.warn('Mermaid render error:', err);
           if (isMounted) {
             setError(err.message || 'Gagal memproses diagram');
-            // Cleanup any stray DOM inserted by mermaid on parse failure
-            const errEl = document.getElementById(renderId);
-            if (errEl) errEl.remove();
+            cleanupMermaidArtifacts(renderId);
           }
         });
     } catch (err) {
       if (isMounted) {
         setError(err.message || 'Gagal memproses diagram');
+        cleanupMermaidArtifacts(renderId);
       }
     }
 
     return () => {
       isMounted = false;
+      cleanupMermaidArtifacts(renderId);
     };
   }, [code]);
 

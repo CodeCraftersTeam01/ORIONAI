@@ -1756,29 +1756,48 @@
 /* ==========================================================================
    SETTINGS MODAL (Minimal Cozy)
    ========================================================================== */
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 999;
   padding: 1.5rem;
-  animation: messageEntry 0.2s ease-out;
+  animation: modalFadeIn 0.2s ease-out forwards;
+}
+
+[data-theme='dark'] .modal-backdrop {
+  background: rgba(0, 0, 0, 0.6);
 }
 
 .modal-dialog {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  box-shadow: var(--shadow-dock);
+  box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.16), 0 0 1px 1px rgba(0, 0, 0, 0.04);
   border-radius: var(--radius-md);
   max-width: 480px;
   width: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  animation: messageEntry 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+[data-theme='dark'] .modal-dialog {
+  box-shadow: 0 20px 52px -10px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .modal-header {
