@@ -1767,20 +1767,26 @@
 
 .modal-backdrop {
   position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.22);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  /* Overshoot viewport by 60px to completely eliminate Safari/WebKit backdrop-filter edge bleed dark border */
+  top: -60px;
+  left: -60px;
+  right: -60px;
+  bottom: -60px;
+  background: rgba(250, 249, 245, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 999;
   padding: 1.5rem;
+  border: none;
+  outline: none;
   animation: modalFadeIn 0.2s ease-out forwards;
 }
 
 [data-theme='dark'] .modal-backdrop {
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(18, 18, 19, 0.65);
 }
 
 .modal-dialog {
@@ -2287,7 +2293,10 @@
    ========================================================================== */
 .image-lightbox-backdrop {
   position: fixed;
-  inset: 0;
+  top: -60px;
+  left: -60px;
+  right: -60px;
+  bottom: -60px;
   background: rgba(0, 0, 0, 0.82);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
