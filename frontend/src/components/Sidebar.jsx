@@ -40,16 +40,6 @@ export default function Sidebar({
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
             <button
               type="button"
-              className="btn-theme-toggle"
-              onClick={onToggleTheme}
-              title={theme === 'dark' ? 'Ganti ke tema terang (Cozy Light)' : 'Ganti ke tema gelap (Cozy Dark)'}
-              aria-label="Toggle Theme"
-            >
-              {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
-            </button>
-
-            <button
-              type="button"
               className="mobile-close-btn"
               onClick={onCloseMobile}
               aria-label="Tutup sidebar"

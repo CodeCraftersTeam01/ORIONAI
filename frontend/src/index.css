@@ -4,14 +4,22 @@
    ========================================================================== */
 
 :root {
-  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "SF Pro Text", "SF Pro Display", "SF Pro", -apple-system-subheadline, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: "SF Mono", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   --radius-xs: 4px;
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 18px;
+  --radius-xl: 24px;
   --radius-full: 9999px;
-  --transition-smooth: 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-smooth: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Tryliner Brand & Aurora Color Tokens */
+  --tryliner-cyan: #97e6ff;
+  --tryliner-cyan-hover: #7fe0ff;
+  --tryliner-blue: #0055ff;
+  --tryliner-blue-dark: #0041be;
+  --tryliner-navy: #101638;
 }
 
 /* Cozy Dark (Default) */
@@ -86,6 +94,10 @@ html, body {
   color: var(--text-primary);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  letter-spacing: -0.012em;
   transition: background-color var(--transition-smooth), color var(--transition-smooth);
 }
 

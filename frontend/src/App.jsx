@@ -12,9 +12,47 @@ import {
   FileCode,
   FileSpreadsheet,
   File,
+  Sparkles,
+  Plus,
+  ExternalLink,
+  Sun,
+  Moon,
+  Volume2,
+  VolumeX,
+  Settings,
+  ChevronRight,
+  Code2,
+  Cpu,
+  ArrowUpRight,
+  BookOpen,
+  PenLine,
+  Sprout,
+  Compass,
+  Lightbulb,
+  Palette,
+  RefreshCw,
 } from 'lucide-react';
-import ConstellationCanvas from './components/ConstellationCanvas';
+import AuroraBackground from './components/AuroraBackground';
 import OrionLogo from './components/OrionLogo';
+
+function GithubIcon({ size = 15, className = '' }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
+      <path d="M9 18c-4.51 2-5-2-7-2" />
+    </svg>
+  );
+}
 import Sidebar from './components/Sidebar';
 import ChatInput from './components/ChatInput';
 import FormattedMessage from './components/FormattedMessage';
@@ -23,25 +61,159 @@ import { soundEffects } from './utils/soundEffects';
 import { formatFileSize } from './utils/fileHelpers';
 import './App.css';
 
-const QUICK_STARTERS = [
-  'Bantu buatkan struktur clean architecture Express.js dengan ES Modules',
-  'Jelaskan konsep asynchronous dan event loop di Node.js',
-  'Bagaimana tips mendesain UI minimalis yang nyaman dibaca?',
+const DYNAMIC_RECOMMENDATIONS_POOL = [
+  {
+    id: 'essay',
+    icon: 'book',
+    text: 'Help me outline an essay',
+    prompt: 'Bantu saya menyusun kerangka esai yang terstruktur, tajam, dan persuasif.',
+  },
+  {
+    id: 'bucket-list',
+    icon: 'pen',
+    text: 'Build a bucket list based on my dreams',
+    prompt: 'Bantu saya menyusun bucket list bermakna berdasarkan impian dan target jangka panjang saya.',
+  },
+  {
+    id: 'plant',
+    icon: 'sprout',
+    text: 'Tell me what’s wrong with my plant',
+    prompt: 'Daun tanaman hias saya mulai menguning di bagian ujungnya, apa kemungkinan penyebabnya dan bagaimana cara merawatnya?',
+  },
+  {
+    id: 'clean-arch',
+    icon: 'code',
+    text: 'Bantu rancang clean architecture Express.js',
+    prompt: 'Bantu buatkan struktur clean architecture Express.js dengan ES Modules, dependency injection, dan repository pattern.',
+  },
+  {
+    id: 'async-loop',
+    icon: 'sparkles',
+    text: 'Jelaskan konsep asynchronous dan event loop',
+    prompt: 'Jelaskan konsep asynchronous, call stack, microtask queue, dan event loop di JavaScript dengan analogi visual.',
+  },
+  {
+    id: 'ui-minimal',
+    icon: 'pen',
+    text: 'Bagaimana tips mendesain UI minimalis yang nyaman?',
+    prompt: 'Bagaimana tips mendesain UI minimalis yang nyaman dibaca dengan prinsip cozy typography dan whitespace?',
+  },
+  {
+    id: 'story',
+    icon: 'book',
+    text: 'Kembangkan ide cerita fiksi pendek misteri',
+    prompt: 'Bantu kembangkan ide premis cerita fiksi pendek misteri dengan twist psikologis yang tak terduga.',
+  },
+  {
+    id: 'morning-routine',
+    icon: 'compass',
+    text: 'Rancang rutinitas pagi untuk fokus mendalam',
+    prompt: 'Rancang rutinitas pagi 45 menit tanpa layar HP untuk mencapai fokus mendalam sebelum jam kerja dimulai.',
+  },
+  {
+    id: 'side-project',
+    icon: 'lightbulb',
+    text: 'Brainstorm 5 ide proyek sampingan berbasis AI',
+    prompt: 'Berikan 5 ide proyek sampingan berbasis AI yang unik, aplikatif, dan realistis untuk diselesaikan dalam 1 bulan.',
+  },
+  {
+    id: 'analogies',
+    icon: 'compass',
+    text: 'Jelaskan teori relativitas dengan analogi sehari-hari',
+    prompt: 'Jelaskan konsep dasar teori relativitas umum Einstein menggunakan analogi visual sederhana sehari-hari.',
+  },
+  {
+    id: 'color-palette',
+    icon: 'palette',
+    text: 'Inspirasi palet warna modern hangat & minimalis',
+    prompt: 'Berikan rekomendasi palet warna modern bertema warm monochrome dan ivory paper untuk website portofolio.',
+  },
+  {
+    id: 'learn-habit',
+    icon: 'sprout',
+    text: 'Strategi membaca & merangkum buku teknis',
+    prompt: 'Bagaimana teknik efektif membaca dan mendokumentasikan intisari buku teknis agar dapat diterapkan langsung?',
+  },
 ];
 
+const getRandomRecommendations = (count = 3, currentIds = []) => {
+  const filtered = DYNAMIC_RECOMMENDATIONS_POOL.filter(
+    (item) => !currentIds.includes(item.id)
+  );
+  const poolToUse = filtered.length >= count ? filtered : DYNAMIC_RECOMMENDATIONS_POOL;
+  const shuffled = [...poolToUse].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, count);
+};
+
+const renderRecommendationIcon = (iconName) => {
+  switch (iconName) {
+    case 'book':
+      return <BookOpen size={15} strokeWidth={1.75} />;
+    case 'pen':
+      return <PenLine size={15} strokeWidth={1.75} />;
+    case 'sprout':
+      return <Sprout size={15} strokeWidth={1.75} />;
+    case 'code':
+      return <Code2 size={15} strokeWidth={1.75} />;
+    case 'sparkles':
+      return <Sparkles size={15} strokeWidth={1.75} />;
+    case 'compass':
+      return <Compass size={15} strokeWidth={1.75} />;
+    case 'lightbulb':
+      return <Lightbulb size={15} strokeWidth={1.75} />;
+    case 'palette':
+      return <Palette size={15} strokeWidth={1.75} />;
+    default:
+      return <Sparkles size={15} strokeWidth={1.75} />;
+  }
+};
+
 export default function App() {
-  // Theme state: 'dark' (cozy black) or 'light' (cozy ivory paper)
-  const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('orion_theme') || 'dark';
+  // Theme mode state: 'system' (auto detect browser/OS), 'light' (default white), 'dark' (optional black)
+  const [themeMode, setThemeMode] = useState(() => {
+    return localStorage.getItem('orion_theme_mode') || 'system';
   });
 
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('orion_theme', theme);
-  }, [theme]);
+  const getSystemTheme = () => {
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    return 'light'; // default putih
+  };
 
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  const [theme, setTheme] = useState(() => {
+    const savedMode = localStorage.getItem('orion_theme_mode') || 'system';
+    if (savedMode === 'dark') return 'dark';
+    if (savedMode === 'light') return 'light';
+    return getSystemTheme();
+  });
+
+  // Apply theme to document attribute & storage
+  useEffect(() => {
+    const resolvedTheme = themeMode === 'system' ? getSystemTheme() : themeMode;
+    setTheme(resolvedTheme);
+    document.documentElement.setAttribute('data-theme', resolvedTheme);
+    localStorage.setItem('orion_theme_mode', themeMode);
+  }, [themeMode]);
+
+  // Dynamically listen to browser/OS system dark mode changes
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemChange = (e) => {
+      if (themeMode === 'system') {
+        const nextTheme = e.matches ? 'dark' : 'light';
+        setTheme(nextTheme);
+        document.documentElement.setAttribute('data-theme', nextTheme);
+      }
+    };
+
+    mq.addEventListener?.('change', handleSystemChange);
+    return () => mq.removeEventListener?.('change', handleSystemChange);
+  }, [themeMode]);
+
+  const handleSelectThemeMode = (mode) => {
+    setThemeMode(mode);
   };
 
   // Sessions state
@@ -78,6 +250,11 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [copiedMsgId, setCopiedMsgId] = useState(null);
   const [toast, setToast] = useState(null);
+
+  // Dynamic recommendations: automatically randomized on each page reload / new session
+  const [recommendations, setRecommendations] = useState(() =>
+    getRandomRecommendations(3)
+  );
 
   const messagesEndRef = useRef(null);
   const abortControllerRef = useRef(null);
@@ -131,6 +308,7 @@ export default function App() {
     };
     setSessions((prev) => [newSession, ...prev]);
     setActiveSessionId(newSession.id);
+    setRecommendations(getRandomRecommendations(3));
   };
 
   const handleDeleteSession = (sessionId) => {
@@ -416,8 +594,8 @@ export default function App() {
 
   return (
     <div className="orion-layout">
-      {/* Serene Monochrome Background Canvas */}
-      <ConstellationCanvas theme={theme} />
+      {/* Dynamic WebGL Aurora Mesh Background (tryliner.fun style) */}
+      <AuroraBackground active={messages.length === 0} theme={theme} />
 
       {/* Minimal Toast */}
       {toast && (
@@ -444,94 +622,118 @@ export default function App() {
 
       {/* Main Area */}
       <main className="chat-main">
-        {/* Minimal Navbar */}
-        <header className="chat-navbar">
-          <div className="nav-left">
+        {/* Simple Transparent Header (No Background) */}
+        <header className="chat-header-simple">
+          <div className="header-simple-left">
             <button
               type="button"
               className="btn-toggle-sidebar"
               onClick={() => setIsSidebarOpen(true)}
               aria-label="Buka riwayat"
+              title="Riwayat Percakapan"
             >
               <Menu size={18} />
             </button>
-
-            <span className="session-active-title">
-              {activeSession ? activeSession.title : 'Orion'}
-            </span>
           </div>
 
-          <div className="nav-right">
+          <div className="header-simple-center">
             {messages.length > 0 && (
-              <button
-                type="button"
-                className="nav-icon-action"
-                onClick={handleExportChat}
-                title="Ekspor obrolan (.md)"
-                aria-label="Ekspor obrolan"
-              >
-                <Download size={15} />
-              </button>
+              <span className="session-active-title">
+                {activeSession ? activeSession.title : 'Orion'}
+              </span>
             )}
+          </div>
+
+          <div className="header-simple-right">
+            <button
+              type="button"
+              className="btn-simple-new-chat"
+              onClick={handleNewSession}
+              title="Obrolan Baru"
+            >
+              <Plus size={14} />
+              <span>Chat Baru</span>
+            </button>
 
             {messages.length > 0 && (
-              <button
-                type="button"
-                className="nav-icon-action"
-                onClick={() => {
-                  if (confirm('Bersihkan percakapan ini?')) {
-                    setSessions((prev) =>
-                      prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [] } : s))
-                    );
-                  }
-                }}
-                title="Bersihkan"
-                aria-label="Bersihkan"
-              >
-                <Trash2 size={15} />
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="nav-icon-simple"
+                  onClick={handleExportChat}
+                  title="Ekspor obrolan (.md)"
+                  aria-label="Ekspor obrolan"
+                >
+                  <Download size={15} />
+                </button>
+
+                <button
+                  type="button"
+                  className="nav-icon-simple"
+                  onClick={() => {
+                    if (confirm('Bersihkan percakapan ini?')) {
+                      setSessions((prev) =>
+                        prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [] } : s))
+                      );
+                    }
+                  }}
+                  title="Bersihkan obrolan"
+                  aria-label="Bersihkan obrolan"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </>
             )}
+
+            <button
+              type="button"
+              className="nav-icon-simple"
+              onClick={() => setIsSettingsOpen(true)}
+              title="Pengaturan"
+              aria-label="Pengaturan"
+            >
+              <Settings size={15} />
+            </button>
           </div>
         </header>
 
-        {/* Ambient Blue Surface Glow for New Chat (Fades out when chat starts) */}
-        <div
-          className={`ambient-blue-glow ${messages.length === 0 ? 'active' : ''}`}
-          aria-hidden="true"
-        >
-          <div className="ambient-blob blob-center" />
-          <div className="ambient-blob blob-left" />
-          <div className="ambient-blob blob-right" />
-        </div>
-
-        {/* Message Stream or Super Simple Welcome Hero */}
-        <div className="messages-container">
+        {/* Message Stream or Simple Elegant Welcome Hero */}
+        <div className={`messages-container ${messages.length === 0 ? 'is-empty' : ''}`}>
           {messages.length === 0 ? (
-            /* Super Simple Welcome */
+            /* Simple, Elegant Welcome */
             <div className="welcome-hero-container">
               <div className="welcome-logo-badge">
                 <OrionLogo size="lg" isGenerating={isGenerating} />
               </div>
 
               <h1 className="welcome-headline">
-                Bagaimana saya bisa membantu hari ini?
+                Hi Arjuna, what’s on your mind?
               </h1>
 
-              {/* Reserved slot for centered desktop input */}
+              {/* Reserved spatial slot for floating centered input */}
               <div className="welcome-input-slot" aria-hidden="true" />
 
-              {/* 3 Simple Starter Pills */}
-              <div className="starters-list">
-                {QUICK_STARTERS.map((prompt, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    className="starter-pill"
-                    onClick={() => handleSendMessage(prompt)}
-                  >
-                    <span>{prompt}</span>
-                  </button>
-                ))}
+              {/* Minimalist Dynamic Recommendations (No Cards - Clean iPhone-style Rows) */}
+              <div className="dynamic-recs-wrapper">
+                <div className="dynamic-recs-header">
+                  <span className="dynamic-recs-caption">Rekomendasi</span>
+                </div>
+
+                <div className="dynamic-recs-list">
+                  {recommendations.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className="dynamic-rec-row"
+                      onClick={() => handleSendMessage(item.prompt)}
+                    >
+                      <span className="dynamic-rec-icon">
+                        {renderRecommendationIcon(item.icon)}
+                      </span>
+                      <span className="dynamic-rec-text">{item.text}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           ) : (
@@ -643,12 +845,12 @@ export default function App() {
                 );
               })}
 
-              <div ref={messagesEndRef} className="messages-bottom-anchor" style={{ height: '3.5rem', flexShrink: 0 }} />
+              <div ref={messagesEndRef} className="messages-bottom-anchor" style={{ height: '7.5rem', flexShrink: 0 }} />
             </div>
           )}
         </div>
 
-        {/* Super Simple Input Dock with Centered Hero State */}
+        {/* Persistent Chat Input with Seamless Glide Animation (Smooth No Cut) */}
         <ChatInput
           input={input}
           setInput={setInput}
@@ -666,8 +868,9 @@ export default function App() {
         onClose={() => setIsSettingsOpen(false)}
         soundEnabled={soundEnabled}
         onToggleSound={() => setSoundEnabled((prev) => !prev)}
+        themeMode={themeMode}
         theme={theme}
-        onToggleTheme={toggleTheme}
+        onSelectThemeMode={handleSelectThemeMode}
         onClearAllSessions={handleClearAllSessions}
       />
 

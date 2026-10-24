@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { X, Sun, Moon, Volume2, Trash2 } from 'lucide-react';
+import { X, Sun, Moon, Laptop, Volume2, Trash2 } from 'lucide-react';
 import { soundEffects } from '../utils/soundEffects';
 
 export default function SettingsModal({
@@ -7,8 +7,9 @@ export default function SettingsModal({
   onClose,
   soundEnabled,
   onToggleSound,
-  theme,
-  onToggleTheme,
+  themeMode = 'system',
+  theme = 'light',
+  onSelectThemeMode,
   onClearAllSessions,
 }) {
   // Close on Escape
@@ -40,22 +41,43 @@ export default function SettingsModal({
         </div>
 
         <div className="modal-body">
-          {/* Section: Theme Toggle */}
-          <div className="settings-row">
+          {/* Section: Theme Selector */}
+          <div className="settings-row theme-settings-row">
             <div>
               <div className="settings-item-title">Tema Tampilan</div>
               <div className="settings-item-desc">
-                {theme === 'dark' ? 'Cozy Dark (Charcoal & Warm White)' : 'Cozy Light (Ivory Paper & Ink)'}
+                Default putih, opsional hitam, atau ikuti preferensi sistem browser secara otomatis
               </div>
             </div>
-            <button
-              type="button"
-              className="btn-pill-action"
-              onClick={onToggleTheme}
-            >
-              {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-              <span>{theme === 'dark' ? 'Ganti ke Terang' : 'Ganti ke Gelap'}</span>
-            </button>
+            <div className="theme-selector-group">
+              <button
+                type="button"
+                className={`theme-selector-btn ${themeMode === 'system' ? 'active' : ''}`}
+                onClick={() => onSelectThemeMode('system')}
+                title="Ikuti sistem browser/OS secara otomatis"
+              >
+                <Laptop size={13} />
+                <span>Sistem</span>
+              </button>
+              <button
+                type="button"
+                className={`theme-selector-btn ${themeMode === 'light' ? 'active' : ''}`}
+                onClick={() => onSelectThemeMode('light')}
+                title="Tema Terang (Putih / Default)"
+              >
+                <Sun size={13} />
+                <span>Terang</span>
+              </button>
+              <button
+                type="button"
+                className={`theme-selector-btn ${themeMode === 'dark' ? 'active' : ''}`}
+                onClick={() => onSelectThemeMode('dark')}
+                title="Tema Gelap (Hitam / Opsional)"
+              >
+                <Moon size={13} />
+                <span>Gelap</span>
+              </button>
+            </div>
           </div>
 
           {/* Section: Sound */}

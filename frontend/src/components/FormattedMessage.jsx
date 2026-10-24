@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
 import katex from 'katex';
+import MermaidBlock, { tryConvertAsciiToMermaid } from './MermaidBlock';
 
 function MathBlock({ formula }) {
   try {
@@ -431,6 +432,35 @@ function getTableAlignments(line) {
       {parts.map((part, index) => {
         const isLastPart = index === parts.length - 1;
         if (part.type === 'code') {
+          const lang = (part.language || '').toLowerCase().trim();
+          const trimmedCode = (part.value || '').trim();
+
+          // 1. Explicit mermaid block or direct diagram declaration
+          if (
+            lang === 'mermaid' ||
+            /^(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram|erDiagram|pie|gantt|mindmap|timeline)\b/m.test(trimmedCode)
+          ) {
+            return (
+              <MermaidBlock
+                key={index}
+                code={trimmedCode}
+                title="Flowchart"
+              />
+            );
+          }
+
+          // 2. ASCII Box Flowchart auto-detection (converts box drawing like in user screenshot to Mermaid SVG)
+          const convertedMermaid = tryConvertAsciiToMermaid(part.value);
+          if (convertedMermaid) {
+            return (
+              <MermaidBlock
+                key={index}
+                code={convertedMermaid}
+                title="Flowchart Visual (SVG)"
+              />
+            );
+          }
+
           return (
             <CodeBlock
               key={index}
