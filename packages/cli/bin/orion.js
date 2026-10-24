@@ -3,13 +3,136 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import os from 'os';
+import { execSync } from 'child_process';
 import { startServer } from '../../server/src/server.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const distPath = path.resolve(__dirname, '../../web/dist');
 
-// Read dynamic version from root package.json or cli package.json
+// Runtime directory for PID tracking
+const runtimeDir = path.join(os.homedir(), '.orion');
+const pidFile = path.join(runtimeDir, 'orion.pid');
+
+function ensureRuntimeDir() {
+  if (!fs.existsSync(runtimeDir)) {
+    fs.mkdirSync(runtimeDir, { recursive: true });
+  }
+}
+
+function savePid(port) {
+  try {
+    ensureRuntimeDir();
+    fs.writeFileSync(pidFile, JSON.stringify({ pid: process.pid, port, time: Date.now() }));
+  } catch {
+    // Ignore runtime directory write failures
+  }
+}
+
+function cleanPid() {
+  try {
+    if (fs.existsSync(pidFile)) {
+      fs.unlinkSync(pidFile);
+    }
+  } catch {
+    // Ignore
+  }
+}
+
+function getRunningPids(targetPort) {
+  const pids = new Set();
+
+  // 1. Check PID from state file
+  try {
+    if (fs.existsSync(pidFile)) {
+      const data = JSON.parse(fs.readFileSync(pidFile, 'utf8'));
+      if (data.pid && data.pid !== process.pid) {
+        try {
+          process.kill(data.pid, 0); // check if alive
+          pids.add(data.pid);
+        } catch {
+          cleanPid();
+        }
+      }
+    }
+  } catch {}
+
+  // 2. Check port listeners
+  try {
+    if (process.platform === 'win32') {
+      const output = execSync(`netstat -ano | findstr :${targetPort}`, {
+        encoding: 'utf8',
+        stdio: ['pipe', 'pipe', 'ignore'],
+      });
+      output
+        .trim()
+        .split('\n')
+        .forEach((line) => {
+          const parts = line.trim().split(/\s+/);
+          const pid = parseInt(parts[parts.length - 1], 10);
+          if (!isNaN(pid) && pid > 0 && pid !== process.pid) {
+            pids.add(pid);
+          }
+        });
+    } else {
+      const output = execSync(`lsof -ti :${targetPort}`, {
+        encoding: 'utf8',
+        stdio: ['pipe', 'pipe', 'ignore'],
+      });
+      output
+        .trim()
+        .split('\n')
+        .forEach((line) => {
+          const pid = parseInt(line.trim(), 10);
+          if (!isNaN(pid) && pid > 0 && pid !== process.pid) {
+            pids.add(pid);
+          }
+        });
+    }
+  } catch {}
+
+  return Array.from(pids);
+}
+
+async function stopRunningService(targetPort, silent = false) {
+  const pids = getRunningPids(targetPort);
+  if (pids.length === 0) {
+    if (!silent) {
+      console.log(`ℹ️  Tidak ada Orion Agent yang sedang berjalan di port ${targetPort}.`);
+    }
+    cleanPid();
+    return false;
+  }
+
+  for (const pid of pids) {
+    try {
+      process.kill(pid, 'SIGTERM');
+      if (!silent) {
+        console.log(`🛑 Menghentikan Orion Agent (PID: ${pid}) di port ${targetPort}...`);
+      }
+    } catch {}
+  }
+
+  // Brief pause to allow graceful termination
+  await new Promise((res) => setTimeout(res, 500));
+
+  // Force kill if any PID remains
+  for (const pid of pids) {
+    try {
+      process.kill(pid, 0); // still alive?
+      process.kill(pid, 'SIGKILL');
+    } catch {}
+  }
+
+  cleanPid();
+  if (!silent) {
+    console.log(`✅ Orion Agent di port ${targetPort} berhasil dihentikan.`);
+  }
+  return true;
+}
+
+// Read dynamic version
 let appVersion = '1.0.0';
 try {
   const rootPkgPath = path.resolve(__dirname, '../../../package.json');
@@ -17,11 +140,19 @@ try {
     const pkg = JSON.parse(fs.readFileSync(rootPkgPath, 'utf8'));
     appVersion = pkg.version || '1.0.0';
   }
-} catch {
-  // fallback to default
-}
+} catch {}
 
 const args = process.argv.slice(2);
+
+// Check custom port
+let targetPort = parseInt(process.env.PORT, 10) || 5001;
+const portIdx = args.findIndex((a) => a === '--port' || a === '-p');
+if (portIdx !== -1 && args[portIdx + 1]) {
+  const parsedPort = parseInt(args[portIdx + 1], 10);
+  if (!isNaN(parsedPort) && parsedPort > 0 && parsedPort < 65536) {
+    targetPort = parsedPort;
+  }
+}
 
 // Check if --version, -v, -V, or version
 if (
@@ -40,35 +171,66 @@ if (
   process.exit(0);
 }
 
-// Check if --help or -h
+// Check if --help or -h or help
 if (args.includes('--help') || args.includes('-h') || args[0] === 'help') {
   console.log(`
-🌌 Orion Agent CLI — Platform Asisten Cerdas Kosmik
+🌌 Orion Agent CLI — Platform Asisten Cerdas Kosmik (v${appVersion})
 
 Penggunaan:
-  orion [opsi]
+  orion [perintah/opsi]
+
+Perintah Utama:
   orion --view          Jalankan service dan langsung buka Orion Agent di browser
   orion start           Jalankan service server di foreground
-  orion --port <angka>  Gunakan port kustom (default: 5001)
+  orion --stop          Hentikan service Orion Agent yang sedang berjalan
+  orion --restart       Muat ulang / restart service Orion Agent
+  orion --status        Cek apakah Orion Agent sedang aktif
   orion --version       Tampilkan informasi versi lengkap
+  orion --help          Tampilkan petunjuk penggunaan ini
 
-Opsi:
+Opsi Tambahan:
   --view, -o, --open    Otomatis membuka browser default ke antarmuka web
   --port, -p <nomor>    Tentukan port server (default: 5001)
+  --stop, stop          Hentikan proses yang berjalan di port target
+  --restart, restart    Restart service server
+  --status, status      Cek status service (aktif/nonaktif)
   --version, -v, -V     Tampilkan versi Orion Agent dan lingkungan runtime
-  --help, -h            Tampilkan petunjuk penggunaan ini
+  --help, -h            Tampilkan bantuan ini
+
+Contoh Penggunaan:
+  orion --view                  # Buka di browser di port 5001
+  orion --restart --view        # Restart service dan buka ulang di browser
+  orion --stop                  # Matikan service di port 5001
+  orion --stop --port 5005      # Matikan service spesifik di port 5005
 `);
   process.exit(0);
 }
 
-// Check custom port
-let targetPort = parseInt(process.env.PORT, 10) || 5001;
-const portIdx = args.findIndex((a) => a === '--port' || a === '-p');
-if (portIdx !== -1 && args[portIdx + 1]) {
-  const parsedPort = parseInt(args[portIdx + 1], 10);
-  if (!isNaN(parsedPort) && parsedPort > 0 && parsedPort < 65536) {
-    targetPort = parsedPort;
+// Handle --stop or stop
+if (args.includes('--stop') || args[0] === 'stop') {
+  await stopRunningService(targetPort);
+  process.exit(0);
+}
+
+// Handle --status or status
+if (args.includes('--status') || args[0] === 'status') {
+  const pids = getRunningPids(targetPort);
+  if (pids.length > 0) {
+    console.log(`🟢 Orion Agent AKTIF di port ${targetPort} (PID: ${pids.join(', ')})`);
+    console.log(`🌐 URL: http://localhost:${targetPort}`);
+  } else {
+    console.log(`⚪ Orion Agent TIDAK AKTIF di port ${targetPort}.`);
+    console.log(`💡 Jalankan "orion --view" untuk menyalakan.`);
   }
+  process.exit(0);
+}
+
+// Handle --restart or restart
+const isRestart = args.includes('--restart') || args[0] === 'restart';
+if (isRestart) {
+  console.log(`🔄 Me-restart Orion Agent di port ${targetPort}...`);
+  await stopRunningService(targetPort, true);
+  await new Promise((res) => setTimeout(res, 600));
 }
 
 const shouldView =
@@ -91,17 +253,33 @@ async function main() {
       openBrowser: shouldView,
     });
 
+    savePid(targetPort);
+
+    process.on('SIGINT', () => {
+      cleanPid();
+      process.exit(0);
+    });
+    process.on('SIGTERM', () => {
+      cleanPid();
+      process.exit(0);
+    });
+    process.on('exit', () => {
+      cleanPid();
+    });
+
     console.log(`\n🌌 Orion Agent siap digunakan di ${url}`);
     if (shouldView) {
       console.log(`🌐 Membuka antarmuka web di browser default...`);
     } else {
       console.log(`💡 Tip: Jalankan "orion --view" untuk langsung membuka browser.`);
     }
+    console.log(`💡 Untuk mematikan sewaktu-waktu: orion --stop`);
     console.log(`🛑 Tekan Ctrl+C untuk menghentikan service.\n`);
   } catch (err) {
     if (err.code === 'EADDRINUSE') {
       console.error(`\n⚠️  Port ${targetPort} sedang digunakan.`);
-      console.error(`💡 Gunakan port lain: orion --port ${targetPort + 1} --view\n`);
+      console.error(`💡 Gunakan port lain: orion --port ${targetPort + 1} --view`);
+      console.error(`💡 Atau hentikan service lama dengan: orion --stop\n`);
     } else {
       console.error('\n❌ Terjadi kesalahan saat memulai Orion Agent:', err.message);
     }
