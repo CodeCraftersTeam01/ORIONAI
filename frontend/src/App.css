@@ -445,7 +445,7 @@
   max-height: 360px;
   min-height: 220px;
   pointer-events: none;
-  z-index: 0;
+  z-index: 1;
   overflow: hidden;
   opacity: 0;
   visibility: hidden;
@@ -484,35 +484,35 @@
   visibility: visible;
 }
 
-/* In-Chat mode: Height 5%, subtle and subdued glow */
+/* In-Chat mode: Height 12vh (100-135px), subtle and visible ambient aurora */
 .tryliner-aurora-wrapper.in-chat {
-  height: 5vh;
-  min-height: 32px;
-  max-height: 48px;
-  opacity: 0.30;
+  height: 12vh;
+  min-height: 100px;
+  max-height: 135px;
+  opacity: 0.70;
 }
 
 [data-theme='light'] .tryliner-aurora-wrapper.in-chat {
-  opacity: 0.24;
+  opacity: 0.58;
 }
 
 .tryliner-aurora-wrapper.in-chat .tryliner-aurora-canvas {
-  filter: blur(4px);
-  opacity: 0.80;
+  filter: blur(3px);
+  opacity: 0.95;
 }
 
 .tryliner-aurora-wrapper.in-chat .tryliner-aurora-bottom-boost {
-  opacity: 0.14;
-  filter: blur(20px);
+  opacity: 0.42;
+  filter: blur(28px);
 }
 
 [data-theme='light'] .tryliner-aurora-wrapper.in-chat .tryliner-aurora-bottom-boost {
-  opacity: 0.16;
-  filter: blur(20px);
+  opacity: 0.38;
+  filter: blur(28px);
 }
 
 .tryliner-aurora-wrapper.in-chat .tryliner-aurora-feather {
-  opacity: 0.96;
+  opacity: 0.35;
 }
 
 /* 106% bleed width so left/right canvas corners never clip */
@@ -1624,8 +1624,17 @@
     );
     background: linear-gradient(
       to top,
-      var(--bg-app) 38%,
-      var(--bg-app) 52%,
+      rgba(10, 10, 12, 0.55) 0%,
+      rgba(10, 10, 12, 0.25) 45%,
+      transparent 100%
+    );
+  }
+
+  [data-theme='light'] .chat-input-wrapper.is-docked::before {
+    background: linear-gradient(
+      to top,
+      rgba(247, 247, 249, 0.60) 0%,
+      rgba(247, 247, 249, 0.25) 45%,
       transparent 100%
     );
   }
