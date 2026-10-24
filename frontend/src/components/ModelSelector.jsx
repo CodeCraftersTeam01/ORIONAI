@@ -21,45 +21,92 @@ export default function ModelSelector({
   const containerRef = useRef(null);
   const flyoutTimeoutRef = useRef(null);
 
+  // Extract enabled models from custom providers
+  const customModelItems = useMemo(() => {
+    const items = [];
+    (customProviders || []).forEach((prov) => {
+      const enabledModels = (prov.models || []).filter((m) => m.enabled);
+      if (enabledModels.length > 0) {
+        enabledModels.forEach((m) => {
+          items.push({
+            id: `${prov.id}::${m.id}`,
+            name: m.name || m.id,
+            displayName: m.name || m.id,
+            subtitle: `${prov.name} • ${m.id}`,
+            providerName: prov.name,
+            providerId: prov.id,
+            modelId: m.id,
+            hasModel: true,
+          });
+        });
+      } else if (prov.modelId) {
+        // Legacy fallback
+        items.push({
+          id: `${prov.id}::${prov.modelId}`,
+          name: prov.displayName || prov.name,
+          displayName: prov.displayName || prov.name,
+          subtitle: `${prov.name} • ${prov.modelId}`,
+          providerName: prov.name,
+          providerId: prov.id,
+          modelId: prov.modelId,
+          hasModel: true,
+        });
+      } else {
+        // Provider exists but hasn't enabled any models yet
+        items.push({
+          id: prov.id,
+          name: prov.name,
+          displayName: prov.name,
+          subtitle: 'Belum ada model aktif (klik untuk kelola)',
+          providerName: prov.name,
+          providerId: prov.id,
+          modelId: null,
+          hasModel: false,
+        });
+      }
+    });
+    return items;
+  }, [customProviders]);
+
   // Combine standard models with enabled custom provider models
   const allModels = useMemo(() => {
     const list = [...AVAILABLE_MODELS];
-    (customProviders || []).forEach((prov) => {
-      if (Array.isArray(prov.models) && prov.models.length > 0) {
-        prov.models
-          .filter((m) => m.enabled)
-          .forEach((m) => {
-            list.push({
-              id: `${prov.id}::${m.id}`,
-              name: m.name || m.id,
-              displayName: m.name || m.id,
-              subtitle: `${prov.name} • ${m.id}`,
-              isCustom: true,
-              providerId: prov.id,
-              modelId: m.id,
-              supportsReasoning: false,
-            });
-          });
-      } else if (prov.modelId) {
-        // Legacy fallback
+    customModelItems.forEach((item) => {
+      if (item.hasModel) {
         list.push({
-          id: prov.id,
-          name: prov.name,
-          displayName: prov.displayName || prov.name,
-          subtitle: prov.subtitle || `${prov.name} • ${prov.modelId}`,
+          id: item.id,
+          name: item.name,
+          displayName: item.displayName,
+          subtitle: item.subtitle,
           isCustom: true,
-          providerId: prov.id,
-          modelId: prov.modelId,
+          providerId: item.providerId,
+          modelId: item.modelId,
           supportsReasoning: false,
         });
       }
     });
     return list;
-  }, [customProviders]);
+  }, [customModelItems]);
 
   const currentModel = useMemo(() => {
+    if (selectedModel && selectedModel.includes('::')) {
+      const [provId, modId] = selectedModel.split('::');
+      const found = allModels.find((m) => m.id === selectedModel);
+      if (found) return found;
+      const prov = (customProviders || []).find((p) => p.id === provId);
+      return {
+        id: selectedModel,
+        name: modId,
+        displayName: modId,
+        subtitle: prov ? `${prov.name} • ${modId}` : modId,
+        isCustom: true,
+        providerId: provId,
+        modelId: modId,
+        supportsReasoning: false,
+      };
+    }
     return allModels.find((m) => m.id === selectedModel) || AVAILABLE_MODELS[0];
-  }, [allModels, selectedModel]);
+  }, [allModels, selectedModel, customProviders]);
 
   const currentTier = getReasoningTierById(reasoningTier);
   const canUseReasoning = Boolean(currentModel.supportsReasoning);
@@ -138,57 +185,69 @@ export default function ModelSelector({
       {/* Main Model Dropdown Menu */}
       {isOpen && (
         <div className="gemini-dropdown-menu" onClick={(e) => e.stopPropagation()}>
-          {/* Built-in Models List */}
-          <div className="gemini-menu-list">
-            {AVAILABLE_MODELS.map((item) => {
-              const isSelected = item.id === currentModel.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={`gemini-menu-item ${isSelected ? 'selected' : ''}`}
-                  onClick={() => handleModelClick(item.id)}
-                >
-                  <div className="gemini-item-check-col">
-                    {isSelected ? <Check size={14} className="gemini-check-icon" /> : null}
-                  </div>
-                  <div className="gemini-item-text-col">
-                    <span className="gemini-item-title">{item.displayName}</span>
-                    <span className="gemini-item-subtitle">{item.subtitle}</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+          {/* Scrollable Model List Area */}
+          <div className="gemini-models-scroll-container">
+            {/* Built-in Models List */}
+            <div className="gemini-menu-list">
+              {AVAILABLE_MODELS.map((item) => {
+                const isSelected = item.id === currentModel.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`gemini-menu-item ${isSelected ? 'selected' : ''}`}
+                    onClick={() => handleModelClick(item.id)}
+                  >
+                    <div className="gemini-item-check-col">
+                      {isSelected ? <Check size={14} className="gemini-check-icon" /> : null}
+                    </div>
+                    <div className="gemini-item-text-col">
+                      <span className="gemini-item-title">{item.displayName}</span>
+                      <span className="gemini-item-subtitle">{item.subtitle}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
 
-          {/* Custom Providers List if available */}
-          {customProviders.length > 0 && (
-            <>
-              <div className="gemini-menu-divider" />
-              <div className="gemini-section-tag">Custom Provider</div>
-              <div className="gemini-menu-list">
-                {customProviders.map((prov) => {
-                  const isSelected = prov.id === currentModel.id;
-                  return (
-                    <button
-                      key={prov.id}
-                      type="button"
-                      className={`gemini-menu-item ${isSelected ? 'selected' : ''}`}
-                      onClick={() => handleModelClick(prov.id)}
-                    >
-                      <div className="gemini-item-check-col">
-                        {isSelected ? <Check size={14} className="gemini-check-icon" /> : null}
-                      </div>
-                      <div className="gemini-item-text-col">
-                        <span className="gemini-item-title">{prov.name}</span>
-                        <span className="gemini-item-subtitle">{prov.modelId}</span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          )}
+            {/* Custom Providers List if available */}
+            {customModelItems.length > 0 && (
+              <>
+                <div className="gemini-menu-divider" />
+                <div className="gemini-section-tag">Model Kustom</div>
+                <div className="gemini-menu-list">
+                  {customModelItems.map((item) => {
+                    const isSelected = item.id === currentModel.id;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className={`gemini-menu-item ${isSelected ? 'selected' : ''}`}
+                        onClick={() => {
+                          if (item.hasModel) {
+                            handleModelClick(item.id);
+                          } else {
+                            setIsOpen(false);
+                            if (typeof onOpenManageProviders === 'function') {
+                              onOpenManageProviders();
+                            }
+                          }
+                        }}
+                      >
+                        <div className="gemini-item-check-col">
+                          {isSelected ? <Check size={14} className="gemini-check-icon" /> : null}
+                        </div>
+                        <div className="gemini-item-text-col">
+                          <span className="gemini-item-title">{item.displayName}</span>
+                          <span className="gemini-item-subtitle">{item.subtitle}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
 
           <div className="gemini-menu-divider" />
 
