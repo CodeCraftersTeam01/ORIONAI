@@ -1,19 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Plus,
   Trash2,
-  Edit2,
+  Edit3,
   Check,
   Eye,
   EyeOff,
-  Radio,
-  ExternalLink,
-  RefreshCw,
-  Server,
   Zap,
   AlertCircle,
-  Sparkles,
+  CheckCircle2,
+  Loader2,
+  Layers,
 } from 'lucide-react';
 import { PROVIDER_TEMPLATES, getTemplateById } from '../utils/providerTemplates';
 
@@ -26,6 +24,7 @@ export default function ManageProvidersModal({
   onDeleteProvider,
   onSelectProvider,
 }) {
+  const [activeTab, setActiveTab] = useState(customProviders.length === 0 ? 'form' : 'list');
   const [editingId, setEditingId] = useState(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState('ollama');
 
@@ -40,11 +39,28 @@ export default function ManageProvidersModal({
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState(null); // { success: boolean, message: string }
 
+  // Close on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  // Sync tab if providers empty
+  useEffect(() => {
+    if (customProviders.length === 0 && activeTab === 'list') {
+      setActiveTab('form');
+    }
+  }, [customProviders.length, activeTab]);
+
   if (!isOpen) return null;
 
   const currentTemplate = getTemplateById(selectedTemplateId);
 
-  // Handle template selection change
   const handleTemplateSelect = (templateId) => {
     setSelectedTemplateId(templateId);
     const tmpl = getTemplateById(templateId);
@@ -63,11 +79,15 @@ export default function ManageProvidersModal({
     setApiKey(provider.apiKey || '');
     setModelId(provider.modelId || '');
     setTestResult(null);
+    setActiveTab('form');
   };
 
   const handleCancelEdit = () => {
     setEditingId(null);
     handleTemplateSelect('ollama');
+    if (customProviders.length > 0) {
+      setActiveTab('list');
+    }
   };
 
   const handleTestConnection = async () => {
@@ -120,7 +140,7 @@ export default function ManageProvidersModal({
       id: editingId || `custom-${Date.now()}`,
       name: name.trim(),
       displayName: name.trim(),
-      subtitle: `${currentTemplate.icon} ${modelId.trim()}`,
+      subtitle: `${currentTemplate.category} • ${modelId.trim()}`,
       templateId: selectedTemplateId,
       baseUrl: baseUrl.trim(),
       apiKey: apiKey.trim(),
@@ -131,284 +151,313 @@ export default function ManageProvidersModal({
 
     onSaveProvider(providerData);
 
-    // If new provider, automatically activate it
     if (!editingId) {
       onSelectProvider(providerData.id);
     }
 
-    handleCancelEdit();
+    setEditingId(null);
+    setActiveTab('list');
   };
 
   return (
-    <div className="settings-modal-backdrop" onClick={onClose} role="presentation">
+    <div className="modal-backdrop" onClick={onClose} aria-modal="true" role="dialog">
       <div
-        className="settings-modal-content manage-providers-modal"
+        className="modal-dialog provider-modal-dialog"
         onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-labelledby="providers-modal-title"
       >
         {/* Header */}
-        <div className="settings-modal-header">
-          <div className="settings-header-title-row">
-            <div className="provider-modal-icon-badge">
-              <Server size={18} />
-            </div>
-            <div>
-              <h2 id="providers-modal-title" className="settings-modal-title">
-                Kelola Custom Provider
-              </h2>
-              <p className="settings-modal-subtitle">
-                Hubungkan model lokal (Ollama) atau API OpenAI-compatible eksternal
-              </p>
-            </div>
+        <div className="modal-header">
+          <div className="provider-modal-title-group">
+            <h2 className="modal-title">Kelola Provider AI</h2>
+            <p className="provider-modal-desc">
+              Hubungkan endpoint OpenAI-compatible lokal (Ollama) atau cloud eksternal
+            </p>
           </div>
           <button
             type="button"
-            className="settings-close-btn"
+            className="modal-close-btn"
             onClick={onClose}
             aria-label="Tutup jendela"
           >
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
 
-        {/* Modal Body */}
-        <div className="settings-modal-body manage-providers-body">
-          {/* Section 1: Daftar Provider Tersimpan */}
-          <div className="provider-section">
-            <div className="provider-section-title">
-              <span>Provider Tersimpan ({customProviders.length})</span>
-            </div>
+        {/* Tab Controls */}
+        <div className="provider-tab-bar">
+          <button
+            type="button"
+            className={`provider-tab-btn ${activeTab === 'list' ? 'active' : ''}`}
+            onClick={() => setActiveTab('list')}
+            disabled={customProviders.length === 0}
+          >
+            <span>Tersimpan ({customProviders.length})</span>
+          </button>
+          <button
+            type="button"
+            className={`provider-tab-btn ${activeTab === 'form' ? 'active' : ''}`}
+            onClick={() => {
+              if (activeTab !== 'form') {
+                setEditingId(null);
+                handleTemplateSelect('ollama');
+              }
+              setActiveTab('form');
+            }}
+          >
+            <span>{editingId ? 'Edit Provider' : '+ Tambah Provider'}</span>
+          </button>
+        </div>
 
-            {customProviders.length === 0 ? (
-              <div className="provider-empty-state">
-                <Sparkles size={20} className="empty-icon" />
-                <p>Belum ada custom provider yang ditambahkan.</p>
-                <span>Pilih template di bawah untuk menambahkan Ollama, OpenAI, Gemini, dll.</span>
-              </div>
-            ) : (
-              <div className="provider-cards-grid">
+        {/* Body */}
+        <div className="modal-body provider-modal-body">
+          {activeTab === 'list' ? (
+            /* Tab: Saved Providers */
+            <div className="provider-list-view">
+              <div className="provider-items-container">
                 {customProviders.map((prov) => {
                   const tmpl = getTemplateById(prov.templateId);
                   const isActive = activeProviderId === prov.id;
                   return (
                     <div
                       key={prov.id}
-                      className={`provider-card ${isActive ? 'active' : ''}`}
+                      className={`provider-list-card ${isActive ? 'is-active' : ''}`}
                     >
-                      <div className="provider-card-main">
-                        <div className="provider-card-header">
-                          <span className="provider-card-icon">{tmpl.icon}</span>
-                          <div className="provider-card-info">
-                            <span className="provider-card-name">{prov.name}</span>
-                            <span className="provider-card-model">{prov.modelId}</span>
-                          </div>
-                          {isActive && (
-                            <span className="provider-active-badge">Aktif</span>
-                          )}
+                      <div className="provider-card-details">
+                        <div className="provider-card-headline">
+                          <span className="provider-name-text">{prov.name}</span>
+                          <span className="provider-category-tag">{tmpl.category}</span>
+                          {isActive && <span className="provider-status-tag">Aktif</span>}
                         </div>
-                        <div className="provider-card-url" title={prov.baseUrl}>
-                          {prov.baseUrl}
+                        <div className="provider-card-subline">
+                          <code className="provider-code-chip">{prov.modelId}</code>
+                          <span className="provider-url-text" title={prov.baseUrl}>
+                            {prov.baseUrl}
+                          </span>
                         </div>
                       </div>
 
-                      <div className="provider-card-actions">
+                      <div className="provider-card-buttons">
                         {!isActive ? (
                           <button
                             type="button"
-                            className="provider-action-btn select-btn"
+                            className="provider-btn-select"
                             onClick={() => onSelectProvider(prov.id)}
                             title="Gunakan provider ini"
                           >
-                            <Check size={13} />
-                            <span>Pilih</span>
+                            Pilih
                           </button>
                         ) : (
-                          <span className="provider-selected-tag">Dipakai</span>
+                          <span className="provider-btn-active">Terpilih</span>
                         )}
                         <button
                           type="button"
-                          className="provider-action-btn edit-btn"
+                          className="provider-btn-icon"
                           onClick={() => handleStartEdit(prov)}
                           title="Edit konfigurasi"
+                          aria-label="Edit provider"
                         >
-                          <Edit2 size={13} />
+                          <Edit3 size={14} />
                         </button>
                         <button
                           type="button"
-                          className="provider-action-btn delete-btn"
+                          className="provider-btn-icon is-danger"
                           onClick={() => onDeleteProvider(prov.id)}
                           title="Hapus provider"
+                          aria-label="Hapus provider"
                         >
-                          <Trash2 size={13} />
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </div>
                   );
                 })}
               </div>
-            )}
-          </div>
 
-          <div className="settings-divider" />
-
-          {/* Section 2: Form Tambah / Edit Provider */}
-          <form onSubmit={handleSubmit} className="provider-form">
-            <div className="provider-section-title">
-              <span>{editingId ? 'Edit Konfigurasi Provider' : 'Tambah Provider Baru'}</span>
-              {editingId && (
+              <div className="provider-list-footer">
                 <button
                   type="button"
-                  className="provider-cancel-edit-btn"
-                  onClick={handleCancelEdit}
+                  className="provider-add-trigger"
+                  onClick={() => {
+                    setEditingId(null);
+                    handleTemplateSelect('ollama');
+                    setActiveTab('form');
+                  }}
                 >
-                  Batal Edit
+                  <Plus size={14} />
+                  <span>Tambah Provider Baru</span>
                 </button>
+              </div>
+            </div>
+          ) : (
+            /* Tab: Form */
+            <form onSubmit={handleSubmit} className="provider-edit-form">
+              {/* Preset Selector */}
+              <div className="provider-form-row">
+                <label className="provider-label" htmlFor="provider-preset-select">
+                  Template Preset
+                </label>
+                <select
+                  id="provider-preset-select"
+                  className="provider-select-input"
+                  value={selectedTemplateId}
+                  onChange={(e) => handleTemplateSelect(e.target.value)}
+                >
+                  {PROVIDER_TEMPLATES.map((tmpl) => (
+                    <option key={tmpl.id} value={tmpl.id}>
+                      {tmpl.name} ({tmpl.category})
+                    </option>
+                  ))}
+                </select>
+                <span className="provider-field-help">{currentTemplate.description}</span>
+              </div>
+
+              {/* Grid: Name & Model ID */}
+              <div className="provider-grid-2">
+                <div className="provider-form-row">
+                  <label className="provider-label" htmlFor="provider-name-input">
+                    Nama Tampilan
+                  </label>
+                  <input
+                    id="provider-name-input"
+                    type="text"
+                    className="provider-text-field"
+                    placeholder="Contoh: Ollama Llama 3"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="provider-form-row">
+                  <label className="provider-label" htmlFor="provider-model-input">
+                    Model ID
+                  </label>
+                  <input
+                    id="provider-model-input"
+                    type="text"
+                    className="provider-text-field provider-mono"
+                    placeholder="Contoh: llama3, gpt-4o, gemini-1.5-flash"
+                    value={modelId}
+                    onChange={(e) => setModelId(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Suggested models if available */}
+              {currentTemplate.suggestedModels?.length > 0 && (
+                <div className="provider-models-quicklist">
+                  <span className="quicklist-label">Model rujukan:</span>
+                  <div className="quicklist-chips">
+                    {currentTemplate.suggestedModels.map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        className={`quicklist-chip ${modelId === m ? 'selected' : ''}`}
+                        onClick={() => setModelId(m)}
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
-            </div>
 
-            {/* Template Selector Pills */}
-            <div className="provider-field-group">
-              <label className="provider-field-label">Pilih Template / Preset</label>
-              <div className="provider-templates-scroll">
-                {PROVIDER_TEMPLATES.map((tmpl) => (
-                  <button
-                    key={tmpl.id}
-                    type="button"
-                    className={`provider-template-pill ${selectedTemplateId === tmpl.id ? 'active' : ''}`}
-                    onClick={() => handleTemplateSelect(tmpl.id)}
-                  >
-                    <span className="template-icon">{tmpl.icon}</span>
-                    <span className="template-name">{tmpl.name}</span>
-                  </button>
-                ))}
-              </div>
-              <p className="provider-template-desc">{currentTemplate.description}</p>
-            </div>
-
-            {/* Form Inputs Grid */}
-            <div className="provider-inputs-grid">
-              <div className="provider-input-item">
-                <label className="provider-field-label">Nama Provider</label>
+              {/* Base URL */}
+              <div className="provider-form-row">
+                <label className="provider-label" htmlFor="provider-url-input">
+                  Base URL (OpenAI-compatible)
+                </label>
                 <input
+                  id="provider-url-input"
                   type="text"
-                  className="provider-text-input"
-                  placeholder="Contoh: Ollama Llama 3"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  className="provider-text-field provider-mono"
+                  placeholder="http://localhost:11434/v1"
+                  value={baseUrl}
+                  onChange={(e) => setBaseUrl(e.target.value)}
                   required
                 />
+                <span className="provider-field-help">
+                  Endpoint otomatis diarahkan ke <code>/chat/completions</code>
+                </span>
               </div>
 
-              <div className="provider-input-item">
-                <label className="provider-field-label">Model ID</label>
-                <input
-                  type="text"
-                  className="provider-text-input"
-                  placeholder="Contoh: llama3, gpt-4o, gemini-1.5-flash"
-                  value={modelId}
-                  onChange={(e) => setModelId(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Model Suggestions Pills if available */}
-            {currentTemplate.suggestedModels?.length > 0 && (
-              <div className="suggested-models-row">
-                <span className="suggested-label">Model cepat:</span>
-                {currentTemplate.suggestedModels.map((m) => (
+              {/* API Key */}
+              <div className="provider-form-row">
+                <label className="provider-label" htmlFor="provider-key-input">
+                  API Key {currentTemplate.requiresApiKey ? '(Wajib)' : '(Opsional untuk Ollama lokal)'}
+                </label>
+                <div className="provider-key-wrapper">
+                  <input
+                    id="provider-key-input"
+                    type={showApiKey ? 'text' : 'password'}
+                    className="provider-text-field provider-mono"
+                    placeholder={currentTemplate.placeholderKey}
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                  />
                   <button
-                    key={m}
                     type="button"
-                    className={`suggested-chip ${modelId === m ? 'active' : ''}`}
-                    onClick={() => setModelId(m)}
+                    className="provider-eye-btn"
+                    onClick={() => setShowApiKey(!showApiKey)}
+                    title={showApiKey ? 'Sembunyikan' : 'Tampilkan'}
+                    tabIndex={-1}
                   >
-                    {m}
+                    {showApiKey ? <EyeOff size={14} /> : <Eye size={14} />}
                   </button>
-                ))}
+                </div>
               </div>
-            )}
 
-            <div className="provider-input-item">
-              <label className="provider-field-label">Base URL (Endpoint API)</label>
-              <input
-                type="text"
-                className="provider-text-input"
-                placeholder="http://localhost:11434/v1"
-                value={baseUrl}
-                onChange={(e) => setBaseUrl(e.target.value)}
-                required
-              />
-              <span className="provider-hint-text">
-                Otomatis diarahkan ke endpoint <code>/chat/completions</code>
-              </span>
-            </div>
+              {/* Test status banner */}
+              {testResult && (
+                <div className={`provider-banner ${testResult.success ? 'is-success' : 'is-error'}`}>
+                  {testResult.success ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}
+                  <span>{testResult.message}</span>
+                </div>
+              )}
 
-            <div className="provider-input-item">
-              <label className="provider-field-label">
-                API Key {currentTemplate.requiresApiKey ? '(Wajib)' : '(Opsional)'}
-              </label>
-              <div className="provider-key-input-wrapper">
-                <input
-                  type={showApiKey ? 'text' : 'password'}
-                  className="provider-text-input"
-                  placeholder={currentTemplate.placeholderKey}
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                />
+              {/* Form Bottom Actions */}
+              <div className="provider-form-footer">
                 <button
                   type="button"
-                  className="key-toggle-btn"
-                  onClick={() => setShowApiKey(!showApiKey)}
-                  title={showApiKey ? 'Sembunyikan API Key' : 'Tampilkan API Key'}
+                  className="provider-test-btn"
+                  onClick={handleTestConnection}
+                  disabled={isTesting || !baseUrl.trim()}
                 >
-                  {showApiKey ? <EyeOff size={15} /> : <Eye size={15} />}
+                  {isTesting ? (
+                    <>
+                      <Loader2 size={13} className="provider-spinner" />
+                      <span>Menguji koneksi...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Zap size={13} />
+                      <span>Tes Koneksi</span>
+                    </>
+                  )}
                 </button>
+
+                <div className="provider-footer-right">
+                  {editingId && (
+                    <button
+                      type="button"
+                      className="provider-cancel-btn"
+                      onClick={handleCancelEdit}
+                    >
+                      Batal
+                    </button>
+                  )}
+                  <button
+                    type="submit"
+                    className="provider-save-btn"
+                    disabled={!name.trim() || !baseUrl.trim() || !modelId.trim()}
+                  >
+                    {editingId ? 'Simpan Perubahan' : 'Simpan Provider'}
+                  </button>
+                </div>
               </div>
-            </div>
-
-            {/* Test Connection Feedback */}
-            {testResult && (
-              <div
-                className={`provider-test-banner ${testResult.success ? 'success' : 'error'}`}
-              >
-                {testResult.success ? <Check size={16} /> : <AlertCircle size={16} />}
-                <span>{testResult.message}</span>
-              </div>
-            )}
-
-            {/* Form Actions */}
-            <div className="provider-form-actions">
-              <button
-                type="button"
-                className="provider-btn-secondary"
-                onClick={handleTestConnection}
-                disabled={isTesting || !baseUrl.trim()}
-              >
-                {isTesting ? (
-                  <>
-                    <RefreshCw size={14} className="spin-icon" />
-                    <span>Menguji koneksi...</span>
-                  </>
-                ) : (
-                  <>
-                    <Zap size={14} />
-                    <span>Tes Koneksi</span>
-                  </>
-                )}
-              </button>
-
-              <button
-                type="submit"
-                className="provider-btn-primary"
-                disabled={!name.trim() || !baseUrl.trim() || !modelId.trim()}
-              >
-                <Plus size={15} />
-                <span>{editingId ? 'Simpan Perubahan' : 'Tambahkan Provider'}</span>
-              </button>
-            </div>
-          </form>
+            </form>
+          )}
         </div>
       </div>
     </div>
