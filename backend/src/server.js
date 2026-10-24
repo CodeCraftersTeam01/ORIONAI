@@ -58,28 +58,96 @@ app.use(
   })
 );
 
-// Root route
-app.get('/', (req, res) => {
-  res.json({
-    name: 'Orion AI API',
-    status: 'healthy',
-    version: '1.0.0',
-    timestamp: new Date().toISOString(),
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
+import { exec } from 'child_process';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const distPath = path.resolve(__dirname, '../../frontend/dist');
+const hasDist = fs.existsSync(distPath);
+
+if (hasDist) {
+  // Serve static UI assets from frontend/dist
+  app.use(express.static(distPath));
+} else {
+  // Root fallback route for API only mode
+  app.get('/', (req, res) => {
+    res.json({
+      name: 'Orion AI API',
+      status: 'healthy',
+      version: '1.0.0',
+      timestamp: new Date().toISOString(),
+    });
   });
-});
+}
 
 // Mount Routes
 app.use('/api', apiRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/items', itemRoutes);
 
+// SPA routing: any non-API GET request serves frontend index.html if dist exists
+if (hasDist) {
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      return next();
+    }
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+}
+
 // Error Handling
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-// Start Server
-app.listen(PORT, () => {
-  console.log(`🚀 Server berjalan aman di http://localhost:${PORT}`);
-  console.log(`🛡️  Security Headers (Helmet) & CORS Protection: Aktif`);
-  console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
-});
+/**
+ * Open URL in default browser cross-platform
+ */
+export function openUrl(url) {
+  const cmd =
+    process.platform === 'darwin'
+      ? `open "${url}"`
+      : process.platform === 'win32'
+      ? `start "" "${url}"`
+      : `xdg-open "${url}"`;
+  exec(cmd, (err) => {
+    if (err) {
+      console.log(`🌐 Silakan buka browser di: ${url}`);
+    }
+  });
+}
+
+/**
+ * Start Orion Agent server programmatically or for CLI
+ */
+export function startServer({ port = PORT, openBrowser = false } = {}) {
+  return new Promise((resolve, reject) => {
+    const server = app.listen(port, () => {
+      const actualPort = server.address().port;
+      const url = `http://localhost:${actualPort}`;
+      console.log(`\n🌌 Orion Agent aktif di ${url}`);
+      console.log(`🛡️  Security Headers & CORS: Aktif`);
+      console.log(`📡 Mode: ${hasDist ? 'Fullstack CLI (Web UI + API)' : 'API Service Only'}`);
+      if (openBrowser) {
+        console.log(`🌐 Membuka browser: ${url}`);
+        openUrl(url);
+      }
+      resolve({ server, port: actualPort, url });
+    });
+    server.on('error', reject);
+  });
+}
+
+// Start automatically if run directly via `node src/server.js`
+const isDirectRun =
+  process.argv[1] &&
+  fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+
+if (isDirectRun) {
+  startServer();
+}
+
+export { app };
+
