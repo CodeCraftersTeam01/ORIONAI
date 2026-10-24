@@ -34,18 +34,21 @@ if (process.env.NODE_ENV !== 'test') {
 app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
-// 4. Strict CORS configuration
-const allowedOrigins = [
-  CLIENT_URL,
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-];
+// 4. Flexible & Secure CORS configuration
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true; // requests without origin (like same-origin, curl, mobile)
+  if (CLIENT_URL && origin === CLIENT_URL) return true;
+  // Allow any localhost or 127.0.0.1 port (e.g. 5001, 5173, or custom ports)
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+    return true;
+  }
+  return false;
+};
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl, or same-origin)
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (isAllowedOrigin(origin)) {
         callback(null, true);
       } else {
         callback(new Error('Akses diblokir oleh kebijakan keamanan CORS'));
@@ -94,13 +97,19 @@ app.use('/api', apiRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/items', itemRoutes);
 
-// SPA routing: any non-API GET request serves frontend index.html if dist exists
+// SPA routing: any non-API GET request serves web index.html if dist exists
 if (hasDist) {
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api')) {
       return next();
     }
-    res.sendFile(path.join(distPath, 'index.html'));
+    const indexPath = path.join(distPath, 'index.html');
+    if (fs.existsSync(indexPath)) {
+      return res.sendFile(indexPath, (err) => {
+        if (err) next(err);
+      });
+    }
+    next();
   });
 }
 
