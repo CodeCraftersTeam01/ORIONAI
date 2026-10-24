@@ -2658,7 +2658,7 @@
   position: absolute;
   bottom: calc(100% + 10px);
   right: 0;
-  width: 242px;
+  width: 252px;
   max-width: calc(100vw - 32px);
   background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(24px) saturate(180%);
@@ -2686,6 +2686,38 @@
     opacity: 1;
     transform: translateY(0) scale(1);
   }
+}
+
+/* Scrollable Container for Model List */
+.gemini-models-scroll-container {
+  max-height: 240px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 2px;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+
+[data-theme='dark'] .gemini-models-scroll-container {
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.gemini-models-scroll-container::-webkit-scrollbar {
+  width: 4px;
+}
+
+.gemini-models-scroll-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.gemini-models-scroll-container::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+}
+
+[data-theme='dark'] .gemini-models-scroll-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .gemini-menu-list {
