@@ -45,6 +45,10 @@ function formatCodeContent(rawCode, language) {
     /^(html|htm|xml|svg)$/i.test(language) ||
     /<!DOCTYPE|<html|<\/[a-z]+>/i.test(cleaned);
 
+  const isCss =
+    /^(css|scss|less|style)$/i.test(language) ||
+    (!isHtml && /([.#a-zA-Z0-9_\-:* >+~]+\s*\{[\s\S]*?\})/i.test(cleaned));
+
   if (isHtml) {
     // 1. Fix <!DOCTYPEhtml> -> <!DOCTYPE html>
     cleaned = cleaned.replace(/<!DOCTYPE\s*([a-zA-Z0-9]+)>/gi, '<!DOCTYPE $1>');
@@ -57,6 +61,56 @@ function formatCodeContent(rawCode, language) {
     cleaned = cleaned.replace(/<title([A-Za-z0-9\s]+)<\/title>/gi, '<title>$1</title>');
     // 4. Fix HTML comments merged like <!--BagianHeader--> -> <!-- Bagian Header -->
     cleaned = cleaned.replace(/<!--([^\s-][\s\S]*?[^\s-])-->/g, '<!-- $1 -->');
+    // 5. Line breaks between block elements
+    cleaned = cleaned.replace(/(<!--[\s\S]*?-->)\s*(<[a-zA-Z1-6]+)/g, '$1\n$2');
+    cleaned = cleaned.replace(/(<\/[a-zA-Z1-6]+>)\s*(<!--)/g, '$1\n\n$2');
+    cleaned = cleaned.replace(
+      /(<\/(h[1-6]|header|footer|nav|main|section|article|aside|p|div|ul|ol|li|table|thead|tbody|tr|td|th)>)\s*(<(h[1-6]|header|footer|nav|main|section|article|aside|p|div|ul|ol|li|table|thead|tbody|tr|td|th)[^>]*>)/gi,
+      '$1\n$3'
+    );
+    cleaned = cleaned.replace(
+      /(<\/(section|article|header|footer|main)>)\s*(<(section|article|header|footer|main)[^>]*>)/gi,
+      '$1\n\n$3'
+    );
+  }
+
+  if (isCss) {
+    // Strip stray leading }
+    cleaned = cleaned.replace(/^\s*\}\s*/, '');
+    // Separate glued closing brace and next selector: "}header{" -> "}\n\nheader {"
+    cleaned = cleaned.replace(/\}\s*([.#a-zA-Z0-9_\-:* >+~]+)\s*\{/g, '}\n\n$1 {');
+    // Opening brace on selector: "selector{prop:" -> "selector {\n  prop:"
+    cleaned = cleaned.replace(/([.#a-zA-Z0-9_\-:* >+~]+)\s*\{\s*([a-zA-Z_\-]+:)/g, '$1 {\n  $2');
+    // Semicolon followed by another property: ";cursor:" -> ";\n  cursor:"
+    cleaned = cleaned.replace(/;(?!\s*[\r\n])\s*([a-zA-Z_\-]+:)/g, ';\n  $1');
+    // Space after property colon: "cursor:pointer" -> "cursor: pointer"
+    cleaned = cleaned.replace(
+      /(?<![:a-zA-Z0-9_\-])([a-zA-Z_\-]+):(?!\s|\/\/|hover|focus|active|visited|before|after|disabled|root)([^\s;\}]+)/gi,
+      '$1: $2'
+    );
+    // Closing brace on own line: ";}" -> ";\n}"
+    cleaned = cleaned.replace(/;(?!\s*[\r\n])\s*\}/g, ';\n}');
+
+    // Indent rules cleanly
+    const lines = cleaned.split('\n');
+    let inRule = false;
+    const formatted = lines.map((line) => {
+      let trimmed = line.trim();
+      if (!trimmed) return '';
+      if (trimmed.endsWith('{')) {
+        inRule = true;
+        return trimmed;
+      }
+      if (trimmed === '}' || trimmed.startsWith('}')) {
+        inRule = false;
+        return '}';
+      }
+      if (inRule) {
+        return '  ' + trimmed;
+      }
+      return trimmed;
+    });
+    cleaned = formatted.join('\n');
   }
 
   return cleaned;
@@ -110,12 +164,26 @@ function FormattedMessage({ content, isStreaming = false }) {
 
   // 1. Normalize code boundaries:
   // - Separate code block if glued to preceding text (e.g. coba:```html -> coba:\n\n```html)
-  // - Ensure newline after ```<lang> if missing (e.g. ```html<!DOCTYPE -> ```html\n<!DOCTYPE)
+  // - Ensure newline after ```<lang> only when directly glued (NEVER split language names!)
   let normalizedContent = content
     .replace(/([^\s\n])(```)/g, '$1\n\n$2')
-    .replace(/(```[a-zA-Z0-9_#-]*)(<|[a-zA-Z0-9_{$!])/g, '$1\n$2');
+    .replace(
+      /(```(html|css|javascript|js|json|mermaid|python|sql|bash|sh|ts|typescript|xml|yaml|yml))([a-zA-Z<\{\$\!])/gi,
+      '$1\n$3'
+    )
+    .replace(/(```[a-zA-Z0-9_#-]+)(<|[\$\!\{])/g, '$1\n$2');
 
-  // 2. If content has raw un-fenced HTML document snippet, wrap it in a code block
+  // 2. Normalize markdown headings and tables if glued together
+  // - Heading without space: ##Penjelasan -> ## Penjelasan
+  normalizedContent = normalizedContent.replace(/(^|\n)(#{1,6})([^\s#\n])/g, '$1$2 $3');
+  // - Heading glued to table: ## Heading| Col1 | Col2 | -> ## Heading\n\n| Col1 | Col2 |
+  normalizedContent = normalizedContent.replace(/^(#{1,6}\s+[^|\n]+)(\|)/gm, '$1\n\n$2');
+  // - Table delimiter glued to first row: |---|---| Text -> |---|---|\n| Text
+  normalizedContent = normalizedContent.replace(/(\|(?::?-+:?\|)+)\s*([^\s\n|])/g, '$1\n| $2');
+  // - Consecutive table rows glued on one line: ... dibuat ||2. Pilih -> ... dibuat |\n| 2. Pilih
+  normalizedContent = normalizedContent.replace(/(\|\s*)\|\s*([0-9a-zA-Z])/g, '$1\n| $2');
+
+  // 3. If content has raw un-fenced HTML document snippet, wrap it in a code block
   if (!normalizedContent.includes('```')) {
     normalizedContent = normalizedContent.replace(
       /(^|\n)([ \t]*(?:<!DOCTYPE\s+html|<html[\s>])[\s\S]*?<\/html>)/gi,
@@ -490,10 +558,12 @@ function getTableAlignments(line) {
           const trimmedCode = (part.value || '').trim();
 
           // 1. Explicit mermaid block or direct diagram declaration
-          if (
-            lang === 'mermaid' ||
-            /^(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram|erDiagram|pie|gantt|mindmap|timeline)\b/m.test(trimmedCode)
-          ) {
+          const isMermaid =
+            /^merma/i.test(lang) ||
+            /(flowchart|graph)\s*(TD|TB|BT|RL|LR)?/i.test(trimmedCode) ||
+            /^(sequenceDiagram|classDiagram|stateDiagram|erDiagram|pie|gantt|mindmap|timeline)\b/im.test(trimmedCode);
+
+          if (isMermaid) {
             return (
               <MermaidBlock
                 key={index}

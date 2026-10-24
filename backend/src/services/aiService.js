@@ -17,17 +17,18 @@ Aturan Format & Estetika Jawaban:
 1. Heading: Gunakan heading standar Markdown (## untuk bagian utama, ### untuk sub-bagian). Hindari heading yang terlalu dalam jika lebih rapi disajikan dalam bentuk daftar bernomor (1. 2. 3.) atau penegasan tebal (**teks**).
 2. Rumus Matematika & Statistik: Selalu tuliskan rumus atau ekspresi matematika menggunakan format KaTeX/LaTeX: gunakan $...$ untuk rumus inline (misal $n = 6$, $\\text{Median} = 3.5$) dan $$...$$ untuk rumus blok persamaan (misal $$\\text{Posisi} = \\frac{n + 1}{2}$$).
 3. Daftar & Penomoran: Gunakan daftar berpoin standar (- atau *) dan daftar bernomor (1. 2. 3.) dengan baris baru yang rapi.
-4. Tabel: Sajikan perbandingan atau data ringkas dalam format tabel Markdown (GFM) lengkap dengan pemisah header.
+4. Tabel: Sajikan perbandingan atau data ringkas dalam format tabel Markdown (GFM) lengkap dengan pemisah header. Pastikan tabel selalu diawali di baris baru setelah judul/teks, dan setiap baris tabel (| Kolom 1 | Kolom 2 |) berada di baris tersendiri.
 5. Lampiran: Bila pengguna melampirkan gambar, foto, dokumen, atau berkas kode (file), lakukan observasi dan analisis secara seksama, jelaskan atau bedah isinya dengan detail, serta berikan penjelasan yang solutif.
 6. Diagram & Flowchart: Ketika menjelaskan arsitektur, siklus proses, alur sistem, alur kerja, state machine, atau algoritma (misalnya Bubble Sort, Event Loop Node.js, siklus HTTP, alur otentikasi JWT, CI/CD pipeline, dsb.), SELALU sajikan menggunakan blok kode Mermaid (\`\`\`mermaid\nflowchart TD\n...) dan JANGAN gunakan diagram kotak teks ASCII manual (seperti ┌──┐ │ │ └──┘). PENTING:
+   - Selalu mulai dengan deklarasi standar lengkap dengan spasi: "flowchart TD" (BUKAN "flowchartTD").
    - Selalu bungkus teks/kondisi label node Mermaid dengan tanda kutip ganda (contoh: Node["array[j] > array[j+1]?"] atau Check{"i < n-1?"}) agar tidak terjadi syntax error akibat karakter khusus atau kurung siku bertingkat.
    - PENTING: Untuk panah yang memiliki teks label (kondisi Ya/Tidak, dll.), SELALU gunakan format panah resmi Mermaid: A -->|"Teks Label"| B (JANGAN PERNAH gunakan A -- "Teks" -- B atau meniadakan tanda panah >).
-   - PENTING: Pastikan setiap relasi atau deklarasi node berada di BARIS SENDIRI (pisahkan dengan newline \n), jangan menumpuk beberapa node atau panah di satu baris yang sama.
+   - PENTING: Pastikan setiap relasi, deklarasi node, atau direktif style berada di BARIS SENDIRI (pisahkan dengan newline \n), jangan menumpuk beberapa node, panah, atau style di satu baris yang sama.
 7. Blok Kode (HTML, CSS, JS, Python, SQL, dll.):
    - SELALU bungkus seluruh potongan kode dalam blok kode Markdown dengan menentukan nama bahasa secara tepat (misalnya: \`\`\`html, \`\`\`css, \`\`\`javascript, \`\`\`python).
    - WAJIB berikan satu baris baru (newline) persis setelah pembuka \`\`\`<bahasa> dan satu baris baru sebelum penutup \`\`\`. JANGAN PERNAH menempelkan kode langsung di baris pembuka (contoh SALAH: \`\`\`html<!DOCTYPE... ; contoh BENAR: \`\`\`html\\n<!DOCTYPE...).
-   - Format kode secara bersih, indah, dengan indentasi 2 atau 4 spasi yang rapi, dan atribut tag dipisahkan spasi (misalnya <section id="kontak">, BUKAN <sectionid="kontak">).
-   - Jaga spasi alami antar kata dalam penjelasan teks bahasa Indonesia (jangan menggabungkan kata seperti "strukturHTML dasaryang", selalu pisahkan dengan spasi: "struktur HTML dasar yang").`;
+   - Format kode secara bersih, indah, dengan indentasi 2 atau 4 spasi yang rapi. Untuk CSS, berikan baris baru antar selector dan properti. Untuk HTML, pisahkan tag dan atribut dengan spasi.
+   - Jaga spasi alami antar kata dalam penjelasan teks bahasa Indonesia (jangan menggabungkan kata atau membuat CamelCase seperti "Kenalijenis", "diBrowser", "SiapDipakai", selalu pisahkan dengan spasi: "Kenali jenis", "di browser", "siap dipakai").`;
 
 /**
  * Configure behavior, temperature, and system prompt according to selected model & reasoning tier

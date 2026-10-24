@@ -69,6 +69,12 @@ export function autoRepairMermaid(code) {
 
   let cleaned = code.trim();
 
+  // Strip stray prefix letters before diagram declaration (e.g. "d\nflowchart" -> "flowchart")
+  cleaned = cleaned.replace(/^[a-z]\s*(?=(?:flowchart|graph)\b)/i, '');
+
+  // Separate flowchartTD -> flowchart TD, graphTD -> graph TD, etc.
+  cleaned = cleaned.replace(/^(flowchart|graph)(TD|TB|BT|RL|LR)\b/gim, '$1 $2');
+
   // Ensure diagram type header if completely missing
   if (
     !/^(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram|erDiagram|pie|gantt|mindmap|timeline)\b/i.test(
@@ -78,6 +84,14 @@ export function autoRepairMermaid(code) {
     cleaned = `flowchart TD\n${cleaned}`;
   }
 
+  // Split style directives if glued to previous node or each other
+  // e.g. "]styleStart" -> "]\nstyle Start"
+  cleaned = cleaned.replace(/([\]\)\}])\s*style\s*([a-zA-Z0-9_]+)/gi, '$1\nstyle $2');
+  // e.g. "style Finishfill:" -> "style Finish fill:"
+  cleaned = cleaned.replace(/style\s*([a-zA-Z0-9_]+)fill\s*:/gi, 'style $1 fill:');
+  // e.g. "#fffstyleStep6fill:" -> "#fff\nstyle Step6 fill:"
+  cleaned = cleaned.replace(/(#[a-fA-F0-9]{3,8}|[a-zA-Z]+)\s*style\s*([a-zA-Z0-9_]+)/gi, '$1\nstyle $2');
+
   // Step 1: Split multiple statements glued on the same line after node closing brackets
   // Example: ...]F -- "Peek... OR ...]I--> Q...
   cleaned = cleaned.replace(
@@ -85,7 +99,13 @@ export function autoRepairMermaid(code) {
     '$1\n'
   );
 
-  // Step 2: Split statements when a bare node is followed by another node declaration and arrow
+  // Step 2: Split doubled node identifiers like Step2Step2 --> into Step2\nStep2 -->
+  cleaned = cleaned.replace(
+    /\b([a-zA-Z][a-zA-Z0-9_]{2,})\1\s*(?:-->|->|--)/g,
+    '$1\n$1 -->'
+  );
+
+  // Step 3: Split statements when a bare node target is followed by another node declaration and arrow
   // Example: A --> B C --> D
   cleaned = cleaned.replace(
     /([a-zA-Z0-9_]+)\s+(?=[a-zA-Z][a-zA-Z0-9_]*\s*(?:-->|->|-\.->|--|==>))/g,
@@ -98,6 +118,21 @@ export function autoRepairMermaid(code) {
     if (line.trim().startsWith('%%')) return line;
 
     let processed = line;
+
+    // Fix unclosed quotes or brackets on node declarations:
+    // e.g. Step6{"Sudah\nSelesai?" with no closing }
+    if (/\{"[^"\n\r]*"?\s*$/.test(processed) && !processed.includes('}')) {
+      processed = processed.replace(/\{"?([^"\n\r]+)"?\s*$/, '{"$1"}');
+    }
+    // e.g. Step1["Mulai with no closing ]
+    if (/\["[^"\n\r]*"?\s*$/.test(processed) && !processed.includes(']')) {
+      processed = processed.replace(/\["?([^"\n\r]+)"?\s*$/, '["$1"]');
+    }
+
+    // Fix unclosed edge label like Step1 -->|"Informasi/Portfol with missing closing "|
+    if (/-->\|"[^"|\n\r]*$/.test(processed)) {
+      processed = processed.replace(/-->\|"?([^"|\n\r]+)"?$/, '-->|"$1"| Target');
+    }
 
     // 1. Dotted arrows with invalid syntax: A -. "Label" -> B OR A -. Label -> B OR A -. "Label" .-> B OR A -. "Label" -. B
     processed = processed.replace(
@@ -161,10 +196,17 @@ export function autoRepairMermaid(code) {
       }
     );
 
+    // 8. Convert raw \n in labels inside {"..."} or ["..."] to <br/> for clean multiline rendering
+    processed = processed.replace(/(["'])(.*?)\1/g, (match, quote, inner) => {
+      return quote + inner.replace(/\\n/g, '<br/>') + quote;
+    });
+
     return processed;
   });
 
-  return repaired.join('\n');
+  return repaired
+    .filter((l) => l.trim().length > 0 && !/^style\s+[a-zA-Z0-9_]+\s*$/i.test(l.trim()))
+    .join('\n');
 }
 
 /**
