@@ -570,12 +570,17 @@ export default function App() {
 
           try {
             const parsed = JSON.parse(dataStr);
+            if (parsed.error) {
+              throw new Error(parsed.error);
+            }
             if (parsed.chunk) {
               accumulated += parsed.chunk;
               hasNewChunk = true;
             }
-          } catch {
-            // ignore non-json
+          } catch (e) {
+            if (e.message && !e.message.includes('JSON') && !e.message.includes('Unexpected')) {
+              throw e;
+            }
           }
         }
 
@@ -606,26 +611,24 @@ export default function App() {
         if (fallbackRes.ok) {
           const json = await fallbackRes.json();
           accumulated = json.data.content;
-          setSessions((prev) =>
-            prev.map((s) => {
-              if (s.id === activeSessionId) {
-                return {
-                  ...s,
-                  messages: s.messages.map((m) =>
-                    m.id === aiMessageId ? { ...m, content: accumulated } : m
-                  ),
-                };
-              }
-              return s;
-            })
-          );
+          commitUpdate(accumulated);
+        } else {
+          const errJson = await fallbackRes.json().catch(() => ({}));
+          throw new Error(errJson.message || `Layanan AI mengembalikan HTTP ${fallbackRes.status}`);
         }
+      }
+
+      if (!accumulated.trim()) {
+        throw new Error('Tidak ada respon yang diterima dari server AI.');
       }
 
       soundEffects.playReceive();
     } catch (err) {
       console.error('Failed to get response:', err);
-      const errorContent = `Koneksi terganggu. Pastikan server backend dan Tailscale aktif.\n\n*Error: ${err.message}*`;
+      const isAbort = err.name === 'AbortError';
+      const errorContent = isAbort
+        ? 'Permintaan dihentikan.'
+        : `⚠️ **Respon terhambat / Gagal terhubung**:\n\n${err.message}\n\n*Server AI eksternal (Tailscale \`pi.leopard-gila.ts.net\`) saat ini sedang offline atau mengembalikan HTTP 502 Bad Gateway. Silakan periksa koneksi Tailscale/layanan di node Pi, atau pilih custom provider lain seperti Ollama / OpenAI.*`;
 
       setSessions((prev) =>
         prev.map((s) => {
