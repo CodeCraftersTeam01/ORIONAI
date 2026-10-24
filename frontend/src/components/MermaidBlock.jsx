@@ -67,40 +67,72 @@ function ensureMermaidInit(isDark) {
 export function autoRepairMermaid(code) {
   if (!code || typeof code !== 'string') return code;
 
-  const lines = code.split('\n');
+  let cleaned = code.trim();
+
+  // Ensure diagram type header if completely missing
+  if (
+    !/^(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram|erDiagram|pie|gantt|mindmap|timeline)\b/i.test(
+      cleaned
+    )
+  ) {
+    cleaned = `flowchart TD\n${cleaned}`;
+  }
+
+  // Step 1: Split multiple statements glued on the same line after node closing brackets
+  // Example: ...]F -- "Peek... OR ...]I--> Q...
+  cleaned = cleaned.replace(
+    /([\]\)\}])\s*(?=[a-zA-Z][a-zA-Z0-9_]*\s*(?:-->|->|-\.->|--|==>))/g,
+    '$1\n'
+  );
+
+  // Step 2: Split statements when a bare node is followed by another node declaration and arrow
+  // Example: A --> B C --> D
+  cleaned = cleaned.replace(
+    /([a-zA-Z0-9_]+)\s+(?=[a-zA-Z][a-zA-Z0-9_]*\s*(?:-->|->|-\.->|--|==>))/g,
+    '$1\n'
+  );
+
+  const lines = cleaned.split('\n');
   const repaired = lines.map((line) => {
     // Preserve comments and directives
     if (line.trim().startsWith('%%')) return line;
 
     let processed = line;
 
-    // 1. Dotted arrows with invalid syntax: A -. "Label" -> B OR A -. Label -> B OR A -. "Label" .-> B
+    // 1. Dotted arrows with invalid syntax: A -. "Label" -> B OR A -. Label -> B OR A -. "Label" .-> B OR A -. "Label" -. B
     processed = processed.replace(
-      /([a-zA-Z0-9_-]+)\s*-\.\s*"?([^"\n\r]+?)"?\s*(?:->|\.->)\s*([a-zA-Z0-9_-]+)/g,
+      /([a-zA-Z0-9_]+)\s*-\.\s*"?([^"\n\r]+?)"?\s*(?:->|\.->|-\.)\s*([a-zA-Z0-9_]+)/g,
       (match, from, label, to) => {
         const cleanLabel = label.trim().replace(/"/g, "'");
         return `${from} -.->|"${cleanLabel}"| ${to}`;
       }
     );
 
-    // 2. Solid arrows with invalid syntax: A -- "Label" -> B OR A -- Label -> B OR A -- "Label" --> B
+    // 2. Solid arrows with invalid label syntax:
+    // Matches: B -- "Ya" -- C OR B -- "Ya" --> C OR B --"Tidak" --> D OR S -- "Ya" --F
     processed = processed.replace(
-      /([a-zA-Z0-9_-]+)\s*--\s*"?([^"\n\r|]+?)"?\s*(?:-->|->)\s*([a-zA-Z0-9_-]+)/g,
+      /([a-zA-Z0-9_]+)\s*(?<!-)--(?!-|>)\s*"?([^"\n\r|]+?)"?\s*(?:-->|->|--)\s*([a-zA-Z0-9_]+)/g,
       (match, from, label, to) => {
         const cleanLabel = label.trim().replace(/"/g, "'");
         return `${from} -->|"${cleanLabel}"| ${to}`;
       }
     );
 
-    // 3. Subgraph labels with brackets: subgraph InnerLoop [Loop Dalam] -> subgraph InnerLoop ["Loop Dalam"]
+    // 3. Open link / un-arrowed link: A -- B -> A --> B
     processed = processed.replace(
-      /^(.*subgraph\s+[a-zA-Z0-9_-]+\s*)\[([^"\n\r\]]+)\](.*)$/i,
+      /([a-zA-Z0-9_]+)\s*(?<!-)--(?!-|>)\s*([a-zA-Z0-9_]+)(?!["'|\[\(\{])/g,
+      '$1 --> $2'
+    );
+
+    // 4. Subgraph labels with brackets: subgraph InnerLoop [Loop Dalam] -> subgraph InnerLoop ["Loop Dalam"]
+    processed = processed.replace(
+      /^(.*subgraph\s+[a-zA-Z0-9_]+\s*)\[([^"\n\r\]]+)\](.*)$/i,
       '$1["$2"]$3'
     );
 
-    // 4. Stadium nodes: Start([Mulai]) -> Start(["Mulai"])
+    // 5. Stadium nodes: Start([Mulai]) -> Start(["Mulai"])
     processed = processed.replace(
-      /([a-zA-Z0-9_-]+)\(\[\s*([^"\n\r]+?)\s*\]\)/g,
+      /([a-zA-Z0-9_]+)\(\[\s*([^"\n\r]+?)\s*\]\)/g,
       (match, id, text) => {
         if (text.startsWith('"') && text.endsWith('"')) return match;
         const clean = text.replace(/"/g, "'");
@@ -108,9 +140,9 @@ export function autoRepairMermaid(code) {
       }
     );
 
-    // 5. Decision rhombus nodes with comparison/brackets: CheckOuter{i < n-1?} -> CheckOuter{"i < n-1?"}
+    // 6. Decision rhombus nodes with comparison/brackets: CheckOuter{i < n-1?} -> CheckOuter{"i < n-1?"}
     processed = processed.replace(
-      /([a-zA-Z0-9_-]+)\{\s*([^"\n\r{}]+?)\s*\}/g,
+      /([a-zA-Z0-9_]+)\{\s*([^"\n\r{}]+?)\s*\}/g,
       (match, id, text) => {
         if (text.startsWith('"') && text.endsWith('"')) return match;
         const clean = text.replace(/"/g, "'");
@@ -118,10 +150,10 @@ export function autoRepairMermaid(code) {
       }
     );
 
-    // 6. Rectangular nodes with nested brackets or arithmetic: Compare[array[j] > array[j+1]?] -> Compare["array[j] > array[j+1]?"]
+    // 7. Rectangular nodes with nested brackets or arithmetic: Compare[array[j] > array[j+1]?] -> Compare["array[j] > array[j+1]?"]
     // Matches node identifier followed by [...] that is not yet quoted
     processed = processed.replace(
-      /([a-zA-Z0-9_-]+)\[([^"\n\r]+)\]/g,
+      /([a-zA-Z0-9_]+)\[([^"\n\r]+)\]/g,
       (match, id, text) => {
         if (text.startsWith('"') && text.endsWith('"')) return match;
         const clean = text.replace(/"/g, "'");
