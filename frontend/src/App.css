@@ -452,7 +452,9 @@
   transition:
     opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1),
     visibility 0.85s;
-  will-change: opacity;
+  will-change: opacity, transform;
+  transform: translateZ(0);
+  contain: paint layout;
   /* Multi-stop ultra-soft feather mask for seamless borderless fade into background */
   -webkit-mask-image: linear-gradient(
     to top,
@@ -486,6 +488,9 @@
   margin-left: -3%;
   display: block;
   filter: blur(3.5px); /* Balanced sweetspot: waves undulate clearly while gradating softly into background */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform;
 }
 
 /* Radiant aura glow spread wide across the bottom horizon */

@@ -1,9 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 
 /**
- * AuroraBackground — High-Fidelity WebGL Aurora Shader (Multi-Layered Undulating Waves)
- * Renders strong, dynamic rolling electric blue, sky cyan, and sapphire waves with luminous crest highlights.
- * Smoothly fades out when active === false (when chat has messages).
+ * AuroraBackground — High-Performance WebGL Aurora Shader (Ultra-Lightweight & Smooth)
+ * Multi-harmonic undulating waves optimized for zero GPU stutter:
+ * - Scaled internal render buffer with bilinear GPU filtering
+ * - 60 FPS capped frame timing (protects ProMotion 120Hz displays from overheating)
+ * - Optimized fast-algebraic rim curves (replaces heavy exp/pow transcendental calls)
+ * - Automatic pause on background tab (Page Visibility API)
  */
 
 const VERTEX_SHADER_SRC = `#version 300 es
@@ -17,7 +20,6 @@ const FRAGMENT_SHADER_SRC = `#version 300 es
 precision highp float;
 
 uniform float u_time;
-uniform float u_pixelRatio;
 uniform vec2 u_resolution;
 
 uniform float u_scale;
@@ -25,14 +27,9 @@ uniform float u_rotation;
 uniform vec4 u_color1; // Electric Blue
 uniform vec4 u_color2; // Radiant Cyan
 uniform vec4 u_color3; // Deep Sapphire
-uniform float u_proportion;
-uniform float u_softness;
 uniform float u_distortion;
-uniform float u_swirl;
 
 out vec4 fragColor;
-
-#define TWO_PI 6.28318530718
 
 float random(vec2 st) {
   return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
@@ -57,39 +54,39 @@ void main() {
   vec2 uv_orig = gl_FragCoord.xy / u_resolution.xy;
   float t = u_time * 0.85;
 
-  // Enhanced Multi-Harmonic Rolling Wave Crests (Stronger & more pronounced wave motion)
   // Wave Layer 1: Deep rolling oceanic swell
-  float w1_a = sin(uv_orig.x * 2.8 + t * 0.75) * 0.16;
-  float w1_b = cos(uv_orig.x * 5.6 - t * 0.55 + 1.2) * 0.09;
-  float crest1 = 0.58 + (w1_a + w1_b) * (1.1 + u_distortion * 3.5);
+  float w1 = sin(uv_orig.x * 2.8 + t * 0.75) * 0.16 + cos(uv_orig.x * 5.6 - t * 0.55 + 1.2) * 0.09;
+  float crest1 = 0.58 + w1 * (1.1 + u_distortion * 3.5);
 
   // Wave Layer 2: Main electric blue surging wave
-  float w2_a = sin(uv_orig.x * 3.8 + t * 1.15 + 1.8) * 0.20;
-  float w2_b = cos(uv_orig.x * 7.4 - t * 0.90 + 2.4) * 0.10;
-  float w2_c = sin(uv_orig.x * 12.0 + t * 1.45) * 0.045;
-  float crest2 = 0.46 + (w2_a + w2_b + w2_c) * (1.2 + u_distortion * 4.2);
+  float w2 = sin(uv_orig.x * 3.8 + t * 1.15 + 1.8) * 0.20 + cos(uv_orig.x * 7.4 - t * 0.90 + 2.4) * 0.10;
+  float crest2 = 0.46 + w2 * (1.2 + u_distortion * 4.2);
 
   // Wave Layer 3: Foreground luminous cyan rippling crest
-  float w3_a = sin(uv_orig.x * 4.4 + t * 1.40 + 3.4) * 0.17;
-  float w3_b = cos(uv_orig.x * 8.8 - t * 1.05 + 0.8) * 0.08;
-  float crest3 = 0.36 + (w3_a + w3_b) * (1.1 + u_distortion * 3.6);
+  float w3 = sin(uv_orig.x * 4.4 + t * 1.40 + 3.4) * 0.17 + cos(uv_orig.x * 8.8 - t * 1.05 + 0.8) * 0.08;
+  float crest3 = 0.36 + w3 * (1.1 + u_distortion * 3.6);
 
-  // Organic fluid noise flow inside the wave bodies
+  // Fluid noise flow
   vec2 flow_uv = uv_orig * vec2(2.6, 3.8) + vec2(t * 0.28, -t * 0.14);
   float n1 = noise(flow_uv);
   float n2 = noise(flow_uv * 2.0 + vec2(-t * 0.35, t * 0.2));
 
-  // Volumetric wave body masks with soft feathered graduation into background
+  // Volumetric wave body masks
   float mask1 = smoothstep(crest1 + 0.28, crest1 - 0.08, uv_orig.y);
   float mask2 = smoothstep(crest2 + 0.24, crest2 - 0.06, uv_orig.y);
   float mask3 = smoothstep(crest3 + 0.18, crest3 - 0.05, uv_orig.y);
 
-  // Soft diffused ambient glowing crests for organic gradation into background
-  float rim1 = exp(-pow((uv_orig.y - crest1) / 0.095, 2.0)) * 0.35;
-  float rim2 = exp(-pow((uv_orig.y - crest2) / 0.085, 2.0)) * 0.50;
-  float rim3 = exp(-pow((uv_orig.y - crest3) / 0.070, 2.0)) * 0.60;
+  // Highly optimized quadratic bell curve for soft glowing crest highlights (replaces expensive exp/pow)
+  float d1 = clamp(1.0 - abs(uv_orig.y - crest1) * 9.5, 0.0, 1.0);
+  float rim1 = d1 * d1 * 0.35;
 
-  // Coordinated color palette: Deep Sapphire, Electric Blue, Radiant Cyan, Luminous White-Cyan
+  float d2 = clamp(1.0 - abs(uv_orig.y - crest2) * 10.5, 0.0, 1.0);
+  float rim2 = d2 * d2 * 0.50;
+
+  float d3 = clamp(1.0 - abs(uv_orig.y - crest3) * 12.5, 0.0, 1.0);
+  float rim3 = d3 * d3 * 0.60;
+
+  // Colors
   vec3 col_deep = u_color3.rgb * 0.90;
   vec3 col_mid  = u_color1.rgb * 1.15;
   vec3 col_cyan = u_color2.rgb * 1.30;
@@ -105,7 +102,7 @@ void main() {
   color = mix(color, col_cyan * (0.88 + 0.28 * n2), mask3);
   color += col_rim * rim3;
 
-  // Vertical falloff: soft natural fade toward the top of the canvas
+  // Vertical falloff: seamless dissolution into background
   float top_falloff = smoothstep(0.88, 0.18, uv_orig.y);
   float total_alpha = clamp(max(max(mask1 * 0.75, mask2 * 0.90), mask3 * 0.95) + rim1 * 0.35 + rim2 * 0.50 + rim3 * 0.60, 0.0, 1.0);
   total_alpha *= top_falloff;
@@ -159,7 +156,6 @@ export default function AuroraBackground({ active = true, theme = 'dark' }) {
     isRunning: false,
   });
 
-  // Track active state with smooth WebGL render lifecycle
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -169,8 +165,10 @@ export default function AuroraBackground({ active = true, theme = 'dark' }) {
       try {
         gl = canvas.getContext('webgl2', {
           alpha: true,
-          antialias: true,
-          powerPreference: 'default',
+          antialias: false, // Disabled for huge speed boost since canvas has CSS blur & feathering
+          depth: false,
+          stencil: false,
+          powerPreference: 'low-power', // Conserves battery and avoids GPU fan spinning
           preserveDrawingBuffer: false,
         });
       } catch (err) {
@@ -208,20 +206,15 @@ export default function AuroraBackground({ active = true, theme = 'dark' }) {
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
       gl.clearColor(0.0, 0.0, 0.0, 0.0);
 
-      // Cache uniform locations
       const uniforms = [
         'u_time',
-        'u_pixelRatio',
         'u_resolution',
         'u_scale',
         'u_rotation',
         'u_color1',
         'u_color2',
         'u_color3',
-        'u_proportion',
-        'u_softness',
         'u_distortion',
-        'u_swirl',
       ];
       const locations = {};
       uniforms.forEach((u) => {
@@ -230,13 +223,17 @@ export default function AuroraBackground({ active = true, theme = 'dark' }) {
       animStateRef.current.locations = locations;
     }
 
+    // High performance resolution scaling:
+    // Limits the internal buffer size to a sweetspot (~800-1100px width).
+    // The GPU automatically upscales it with zero performance penalty.
     const handleResize = () => {
       if (!canvas || !gl) return;
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const w = canvas.clientWidth || window.innerWidth;
       const h = canvas.clientHeight || window.innerHeight;
-      const targetW = Math.round(w * dpr);
-      const targetH = Math.round(h * dpr);
+
+      const scale = Math.min(1.0, 1000 / Math.max(w, 1));
+      const targetW = Math.max(320, Math.round(w * scale));
+      const targetH = Math.max(160, Math.round(h * scale));
 
       if (canvas.width !== targetW || canvas.height !== targetH) {
         canvas.width = targetW;
@@ -249,55 +246,52 @@ export default function AuroraBackground({ active = true, theme = 'dark' }) {
     resizeObserver.observe(canvas);
     handleResize();
 
-    // Start / Stop animation loop
     const state = animStateRef.current;
     let stopTimeoutId = null;
+    let lastFrameTimestamp = performance.now();
+    const TARGET_FRAME_MS = 1000 / 60; // 60 FPS cap to prevent 120Hz display overload
 
     const render = (now) => {
-      const delta = (now - state.lastFrameTime) / 1000;
-      state.lastFrameTime = now;
-      state.totalAnimationTime += delta * 0.52; // Natural, fluid wave rhythm
+      const elapsed = now - lastFrameTimestamp;
+      if (elapsed < TARGET_FRAME_MS) {
+        if (state.isRunning) {
+          state.rafId = requestAnimationFrame(render);
+        }
+        return;
+      }
+
+      // Delta time capped to 50ms to prevent huge jumps when tab switches
+      const delta = Math.min(elapsed / 1000, 0.05);
+      lastFrameTimestamp = now;
+      state.totalAnimationTime += delta * 0.52;
 
       gl.useProgram(state.program);
       gl.clear(gl.COLOR_BUFFER_BIT);
 
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const w = canvas.width;
-      const h = canvas.height;
-
       gl.uniform1f(state.locations.u_time, state.totalAnimationTime);
-      gl.uniform1f(state.locations.u_pixelRatio, dpr);
-      gl.uniform2f(state.locations.u_resolution, w, h);
+      gl.uniform2f(state.locations.u_resolution, canvas.width, canvas.height);
 
-      // Organic dynamic wave modulation: cycles between graceful swells and cresting waves
       const animTime = state.totalAnimationTime;
       const cycle1 = Math.sin(animTime * 0.38);
       const cycle2 = Math.sin(animTime * 0.24 + 1.4);
       const rawWave = 0.55 + 0.32 * cycle1 + 0.13 * cycle2;
       const waveIntensity = Math.min(Math.max(rawWave, 0.0), 1.0);
 
-      // Amplified wave parameters for prominent, undulating waves
       const currentScale = 0.35 + 0.12 * waveIntensity;
       const currentDistortion = 0.15 + 0.12 * waveIntensity;
-      const currentSwirl = 0.08 + 0.06 * waveIntensity;
-      const currentProportion = 0.50 + 0.08 * waveIntensity;
-      const currentSoftness = 0.72;
       const currentRotation = 0.015 * Math.sin(animTime * 0.15);
 
       gl.uniform1f(state.locations.u_scale, currentScale);
       gl.uniform1f(state.locations.u_rotation, currentRotation);
 
-      // Vibrant Electric Blue rgb(0, 107, 255)
+      // Electric Blue rgb(0, 107, 255)
       gl.uniform4f(state.locations.u_color1, 0.0, 0.42, 1.0, 1.0);
       // Radiant Sky Cyan rgb(97, 224, 255)
       gl.uniform4f(state.locations.u_color2, 0.38, 0.88, 1.0, 1.0);
       // Deep Royal Sapphire rgb(0, 56, 224)
       gl.uniform4f(state.locations.u_color3, 0.0, 0.22, 0.88, 1.0);
 
-      gl.uniform1f(state.locations.u_proportion, currentProportion);
-      gl.uniform1f(state.locations.u_softness, currentSoftness);
       gl.uniform1f(state.locations.u_distortion, currentDistortion);
-      gl.uniform1f(state.locations.u_swirl, currentSwirl);
 
       gl.drawArrays(gl.TRIANGLES, 0, 6);
 
@@ -306,10 +300,28 @@ export default function AuroraBackground({ active = true, theme = 'dark' }) {
       }
     };
 
+    // Pause animation when tab is inactive to free 100% CPU/GPU
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        if (state.rafId) {
+          cancelAnimationFrame(state.rafId);
+          state.rafId = null;
+        }
+        state.isRunning = false;
+      } else if (active) {
+        if (!state.isRunning) {
+          state.isRunning = true;
+          lastFrameTimestamp = performance.now();
+          state.rafId = requestAnimationFrame(render);
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     if (active) {
       if (!state.isRunning) {
         state.isRunning = true;
-        state.lastFrameTime = performance.now();
+        lastFrameTimestamp = performance.now();
         state.rafId = requestAnimationFrame(render);
       }
     } else {
@@ -323,6 +335,7 @@ export default function AuroraBackground({ active = true, theme = 'dark' }) {
     }
 
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       resizeObserver.disconnect();
       if (stopTimeoutId) clearTimeout(stopTimeoutId);
       if (state.rafId) {
@@ -344,7 +357,7 @@ export default function AuroraBackground({ active = true, theme = 'dark' }) {
       {/* Radiant aura glow spread wide across the bottom horizon */}
       <div className="tryliner-aurora-bottom-boost" />
 
-      {/* Soft feather gradient transition overlay */}
+      {/* Soft feather gradient transition overlay fading into background */}
       <div className="tryliner-aurora-feather" />
     </div>
   );
