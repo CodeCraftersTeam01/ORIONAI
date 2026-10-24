@@ -31,7 +31,7 @@ export default function Sidebar({
           <div className="brand-header-left">
             <OrionLogo size="sm" showRings={false} />
             <div className="brand-text-block">
-              <span className="brand-name">Orion</span>
+              <span className="brand-name">Orion Agent</span>
             </div>
           </div>
 
@@ -104,7 +104,7 @@ export default function Sidebar({
 
         {/* Footer */}
         <div className="sidebar-footer">
-          <span className="footer-status-text">✦ Orion Online</span>
+          <span className="footer-status-text">✦ Orion Agent Online</span>
 
           <div className="footer-actions-row">
             <button

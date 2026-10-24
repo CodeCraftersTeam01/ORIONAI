@@ -14,8 +14,8 @@ const router = Router();
 const AVAILABLE_MODELS = [
   {
     id: 'orion',
-    name: 'Orion Agent',
-    displayName: 'Orion Agent',
+    name: 'Orion',
+    displayName: 'Orion',
     subtitle: 'Tugas kompleks & penalaran',
     supportsReasoning: true,
     status: 'active',
