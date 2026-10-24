@@ -219,23 +219,59 @@ function buildMessagesPayload({ message, history = [], attachments = [], modelId
 }
 
 /**
+ * Helper to prepare request targets for built-in or custom providers
+ */
+function resolveEndpointAndHeaders(customProvider, config) {
+  let targetUrl;
+  let targetApiKey;
+  let targetModel;
+  let temperature = 0.7;
+
+  if (customProvider && customProvider.baseUrl) {
+    const cleanBase = customProvider.baseUrl.trim().replace(/\/+$/, '');
+    targetUrl = cleanBase.endsWith('/chat/completions') ? cleanBase : `${cleanBase}/chat/completions`;
+    targetApiKey = customProvider.apiKey ? customProvider.apiKey.trim() : '';
+    targetModel = customProvider.modelId || 'default';
+  } else {
+    targetUrl = `${BASE_URL.replace(/\/+$/, '')}/chat/completions`;
+    targetApiKey = API_KEY;
+    targetModel = config.upstreamModel;
+    temperature = config.temperature;
+  }
+
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  if (targetApiKey) {
+    headers.Authorization = `Bearer ${targetApiKey}`;
+  }
+
+  return { targetUrl, headers, targetModel, temperature };
+}
+
+/**
  * Perform Non-Streaming Chat Completion
  */
-export async function getChatCompletion({ message, history = [], attachments = [], model = 'orion', reasoningTier = 'medium', signal }) {
-  const url = `${BASE_URL.replace(/\/+$/, '')}/chat/completions`;
+export async function getChatCompletion({
+  message,
+  history = [],
+  attachments = [],
+  model = 'orion',
+  reasoningTier = 'medium',
+  customProvider = null,
+  signal,
+}) {
   const { messages, config } = buildMessagesPayload({ message, history, attachments, modelId: model, reasoningTier });
+  const { targetUrl, headers, targetModel, temperature } = resolveEndpointAndHeaders(customProvider, config);
 
   try {
-    const response = await fetch(url, {
+    const response = await fetch(targetUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${API_KEY}`,
-      },
+      headers,
       body: JSON.stringify({
-        model: config.upstreamModel,
+        model: targetModel,
         messages: messages,
-        temperature: config.temperature,
+        temperature: temperature,
       }),
       signal,
     });
@@ -247,17 +283,19 @@ export async function getChatCompletion({ message, history = [], attachments = [
 
     const json = await response.json();
     let reply = json.choices?.[0]?.message?.content || 'Maaf, tidak ada respon yang diterima.';
-    reply = sanitizeOrionText(reply.trim(), model);
+    if (!customProvider) {
+      reply = sanitizeOrionText(reply.trim(), model);
+    }
 
     return {
-      reply: reply,
-      model: config.name,
-      source: 'openai-compatible',
+      reply: reply.trim(),
+      model: customProvider ? (customProvider.name || targetModel) : config.name,
+      source: customProvider ? 'custom-provider' : 'openai-compatible',
       usage: json.usage || null,
     };
   } catch (error) {
     if (error.name === 'AbortError') return;
-    console.error('Error calling Orion AI endpoint:', error.message);
+    console.error('Error calling AI endpoint:', error.message);
     throw error;
   }
 }
@@ -265,22 +303,30 @@ export async function getChatCompletion({ message, history = [], attachments = [
 /**
  * Perform Streaming Chat Completion (SSE)
  */
-export async function streamChatCompletion({ message, history = [], attachments = [], model = 'orion', reasoningTier = 'medium', onChunk, onDone, onError, signal }) {
-  const url = `${BASE_URL.replace(/\/+$/, '')}/chat/completions`;
+export async function streamChatCompletion({
+  message,
+  history = [],
+  attachments = [],
+  model = 'orion',
+  reasoningTier = 'medium',
+  customProvider = null,
+  onChunk,
+  onDone,
+  onError,
+  signal,
+}) {
   const { messages, config } = buildMessagesPayload({ message, history, attachments, modelId: model, reasoningTier });
+  const { targetUrl, headers, targetModel, temperature } = resolveEndpointAndHeaders(customProvider, config);
 
   try {
-    const response = await fetch(url, {
+    const response = await fetch(targetUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${API_KEY}`,
-      },
+      headers,
       body: JSON.stringify({
-        model: config.upstreamModel,
+        model: targetModel,
         messages: messages,
         stream: true,
-        temperature: config.temperature,
+        temperature: temperature,
       }),
       signal,
     });
@@ -316,7 +362,9 @@ export async function streamChatCompletion({ message, history = [], attachments 
           const parsed = JSON.parse(dataStr);
           let chunkContent = parsed.choices?.[0]?.delta?.content || '';
           if (chunkContent) {
-            chunkContent = sanitizeOrionText(chunkContent, model);
+            if (!customProvider) {
+              chunkContent = sanitizeOrionText(chunkContent, model);
+            }
             onChunk(chunkContent);
           }
         } catch {
@@ -329,5 +377,69 @@ export async function streamChatCompletion({ message, history = [], attachments 
   } catch (err) {
     if (err.name === 'AbortError') return;
     onError(err);
+  }
+}
+
+/**
+ * Test Custom Provider Connection
+ */
+export async function testCustomProviderConnection({ baseUrl, apiKey, modelId }) {
+  if (!baseUrl) {
+    throw new Error('Base URL wajib diisi.');
+  }
+
+  const cleanBase = baseUrl.trim().replace(/\/+$/, '');
+  const targetUrl = cleanBase.endsWith('/chat/completions') ? cleanBase : `${cleanBase}/chat/completions`;
+
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  if (apiKey && apiKey.trim()) {
+    headers.Authorization = `Bearer ${apiKey.trim()}`;
+  }
+
+  const targetModel = modelId && modelId.trim() ? modelId.trim() : 'gpt-3.5-turbo';
+
+  const payload = {
+    model: targetModel,
+    messages: [{ role: 'user', content: 'Hello, this is a test connection ping.' }],
+    max_tokens: 8,
+    temperature: 0.1,
+  };
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+  try {
+    const res = await fetch(targetUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      const errText = await res.text();
+      let parsedMsg = errText;
+      try {
+        const parsed = JSON.parse(errText);
+        parsedMsg = parsed.error?.message || parsed.message || errText;
+      } catch {}
+      throw new Error(`HTTP ${res.status}: ${parsedMsg}`);
+    }
+
+    const data = await res.json();
+    return {
+      success: true,
+      message: `Berhasil terhubung ke model "${targetModel}".`,
+      sampleReply: data.choices?.[0]?.message?.content || 'OK',
+    };
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      throw new Error('Timeout: Endpoint tidak merespons dalam 12 detik. Pastikan Base URL benar dan server AI aktif.');
+    }
+    throw err;
   }
 }

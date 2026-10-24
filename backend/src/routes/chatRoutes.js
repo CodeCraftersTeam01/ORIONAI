@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getChatCompletion, streamChatCompletion } from '../services/aiService.js';
+import { getChatCompletion, streamChatCompletion, testCustomProviderConnection } from '../services/aiService.js';
 import { chatRateLimiter, validateChatInput } from '../middleware/security.js';
 
 const router = Router();
@@ -69,7 +69,7 @@ const SUGGESTIONS = [
 // POST /api/chat/message (Standard JSON Response with Rate Limiting & Input Validation)
 router.post('/message', chatRateLimiter, validateChatInput, async (req, res, next) => {
   try {
-    const { message, history, attachments, model, reasoningTier } = req.body;
+    const { message, history, attachments, model, reasoningTier, customProvider } = req.body;
 
     const result = await getChatCompletion({
       message,
@@ -77,6 +77,7 @@ router.post('/message', chatRateLimiter, validateChatInput, async (req, res, nex
       attachments: attachments || [],
       model: model || 'orion',
       reasoningTier: reasoningTier || 'medium',
+      customProvider: customProvider || null,
     });
 
     res.json({
@@ -85,7 +86,7 @@ router.post('/message', chatRateLimiter, validateChatInput, async (req, res, nex
         role: 'assistant',
         content: result.reply,
         model: result.model,
-        source: 'orion-engine',
+        source: customProvider ? 'custom-provider' : 'orion-engine',
         timestamp: new Date().toISOString(),
       },
     });
@@ -93,14 +94,14 @@ router.post('/message', chatRateLimiter, validateChatInput, async (req, res, nex
     console.error('Error in /api/chat/message:', error.message);
     res.status(502).json({
       success: false,
-      message: 'Layanan AI sementara tidak dapat dihubungi. Silakan coba lagi beberapa saat lagi.',
+      message: error.message || 'Layanan AI sementara tidak dapat dihubungi. Silakan coba lagi beberapa saat lagi.',
     });
   }
 });
 
 // POST /api/chat/stream (Real-time SSE Streaming with Rate Limiting & Input Validation)
 router.post('/stream', chatRateLimiter, validateChatInput, (req, res) => {
-  const { message, history, attachments, model, reasoningTier } = req.body;
+  const { message, history, attachments, model, reasoningTier, customProvider } = req.body;
   const abortController = new AbortController();
 
   req.on('close', () => {
@@ -126,6 +127,7 @@ router.post('/stream', chatRateLimiter, validateChatInput, (req, res) => {
     attachments: attachments || [],
     model: model || 'orion',
     reasoningTier: reasoningTier || 'medium',
+    customProvider: customProvider || null,
     signal: abortController.signal,
     onChunk: (chunk) => {
       if (res.writableEnded) return;
@@ -142,10 +144,24 @@ router.post('/stream', chatRateLimiter, validateChatInput, (req, res) => {
     onError: (err) => {
       if (res.writableEnded) return;
       console.error('SSE Stream Error:', err.message);
-      res.write(`data: ${JSON.stringify({ error: 'Koneksi ke AI server terputus.' })}\n\n`);
+      res.write(`data: ${JSON.stringify({ error: err.message || 'Koneksi ke AI server terputus.' })}\n\n`);
       res.end();
     },
   });
+});
+
+// POST /api/chat/test-provider (Test connection ping for custom OpenAI-compatible providers)
+router.post('/test-provider', chatRateLimiter, async (req, res) => {
+  try {
+    const { baseUrl, apiKey, modelId } = req.body;
+    const result = await testCustomProviderConnection({ baseUrl, apiKey, modelId });
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      message: err.message || 'Gagal terhubung ke custom provider.',
+    });
+  }
 });
 
 // GET /api/chat/models (Sanitized public model info)

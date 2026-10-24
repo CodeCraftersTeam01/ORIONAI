@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, ChevronRight, Check } from 'lucide-react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { ChevronDown, ChevronRight, Check, SlidersHorizontal, Cpu } from 'lucide-react';
 import {
   AVAILABLE_MODELS,
   REASONING_TIERS,
@@ -10,8 +10,10 @@ import {
 export default function ModelSelector({
   selectedModel = 'orion',
   reasoningTier = 'medium',
+  customProviders = [],
   onSelectModel,
   onSelectReasoningTier,
+  onOpenManageProviders,
   disabled = false,
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -19,9 +21,17 @@ export default function ModelSelector({
   const containerRef = useRef(null);
   const flyoutTimeoutRef = useRef(null);
 
-  const currentModel = getModelById(selectedModel);
+  // Combine standard models with custom providers
+  const allModels = useMemo(() => {
+    return [...AVAILABLE_MODELS, ...customProviders];
+  }, [customProviders]);
+
+  const currentModel = useMemo(() => {
+    return allModels.find((m) => m.id === selectedModel) || AVAILABLE_MODELS[0];
+  }, [allModels, selectedModel]);
+
   const currentTier = getReasoningTierById(reasoningTier);
-  const canUseReasoning = currentModel.supportsReasoning;
+  const canUseReasoning = Boolean(currentModel.supportsReasoning);
 
   // Close when clicked outside
   useEffect(() => {
@@ -41,8 +51,7 @@ export default function ModelSelector({
 
   const handleModelClick = (modelId) => {
     onSelectModel(modelId);
-    // If selected model does not support reasoning, close immediately
-    const targetModel = getModelById(modelId);
+    const targetModel = allModels.find((m) => m.id === modelId) || getModelById(modelId);
     if (!targetModel.supportsReasoning) {
       setIsReasoningFlyoutOpen(false);
       setIsOpen(false);
@@ -70,7 +79,7 @@ export default function ModelSelector({
 
   return (
     <div ref={containerRef} className="gemini-model-selector-wrapper">
-      {/* Pill Button inside Input Bar (Image 2) */}
+      {/* Pill Button inside Input Bar */}
       <button
         type="button"
         className={`gemini-model-pill ${isOpen ? 'active' : ''}`}
@@ -87,18 +96,18 @@ export default function ModelSelector({
         aria-expanded={isOpen}
       >
         <span className="gemini-pill-text">
-          {currentModel.displayName}
+          {currentModel.displayName || currentModel.name}
           {currentModel.supportsReasoning && (
             <span className="gemini-pill-tier-tag"> • {currentTier.name}</span>
           )}
         </span>
-        <ChevronDown size={14} className={`gemini-pill-chevron ${isOpen ? 'rotated' : ''}`} />
+        <ChevronDown size={13} className={`gemini-pill-chevron ${isOpen ? 'rotated' : ''}`} />
       </button>
 
-      {/* Main Model Dropdown Menu (Image 3) */}
+      {/* Main Model Dropdown Menu */}
       {isOpen && (
         <div className="gemini-dropdown-menu" onClick={(e) => e.stopPropagation()}>
-          {/* Models List */}
+          {/* Built-in Models List */}
           <div className="gemini-menu-list">
             {AVAILABLE_MODELS.map((item) => {
               const isSelected = item.id === currentModel.id;
@@ -110,7 +119,7 @@ export default function ModelSelector({
                   onClick={() => handleModelClick(item.id)}
                 >
                   <div className="gemini-item-check-col">
-                    {isSelected ? <Check size={16} className="gemini-check-icon" /> : null}
+                    {isSelected ? <Check size={14} className="gemini-check-icon" /> : null}
                   </div>
                   <div className="gemini-item-text-col">
                     <span className="gemini-item-title">{item.displayName}</span>
@@ -121,9 +130,38 @@ export default function ModelSelector({
             })}
           </div>
 
+          {/* Custom Providers List if available */}
+          {customProviders.length > 0 && (
+            <>
+              <div className="gemini-menu-divider" />
+              <div className="gemini-section-tag">Custom Provider</div>
+              <div className="gemini-menu-list">
+                {customProviders.map((prov) => {
+                  const isSelected = prov.id === currentModel.id;
+                  return (
+                    <button
+                      key={prov.id}
+                      type="button"
+                      className={`gemini-menu-item ${isSelected ? 'selected' : ''}`}
+                      onClick={() => handleModelClick(prov.id)}
+                    >
+                      <div className="gemini-item-check-col">
+                        {isSelected ? <Check size={14} className="gemini-check-icon" /> : null}
+                      </div>
+                      <div className="gemini-item-text-col">
+                        <span className="gemini-item-title">{prov.name}</span>
+                        <span className="gemini-item-subtitle">{prov.modelId}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
           <div className="gemini-menu-divider" />
 
-          {/* Reasoning Level Trigger Row (Image 3) */}
+          {/* Reasoning Level Trigger Row */}
           <div
             className={`gemini-reasoning-row-wrapper ${!canUseReasoning ? 'disabled' : ''}`}
             onMouseEnter={handleFlyoutMouseEnter}
@@ -148,10 +186,10 @@ export default function ModelSelector({
                   <span className="gemini-item-subtitle disabled-text">Hanya untuk model Orion</span>
                 )}
               </div>
-              <ChevronRight size={15} className="gemini-reasoning-arrow" />
+              <ChevronRight size={13} className="gemini-reasoning-arrow" />
             </button>
 
-            {/* Submenu Popover Flyout (Image 1) */}
+            {/* Submenu Popover Flyout */}
             {canUseReasoning && isReasoningFlyoutOpen && (
               <div
                 className="gemini-reasoning-flyout"
@@ -172,7 +210,7 @@ export default function ModelSelector({
                         onClick={() => handleReasoningSelect(tier.id)}
                       >
                         <div className="gemini-flyout-check-col">
-                          {isTierSelected ? <Check size={16} className="gemini-check-icon" /> : null}
+                          {isTierSelected ? <Check size={14} className="gemini-check-icon" /> : null}
                         </div>
                         <div className="gemini-flyout-text-col">
                           <span className="gemini-flyout-title">{tier.name}</span>
@@ -185,6 +223,30 @@ export default function ModelSelector({
               </div>
             )}
           </div>
+
+          <div className="gemini-menu-divider" />
+
+          {/* Manage Provider Button at the bottom */}
+          <button
+            type="button"
+            className="gemini-menu-item gemini-manage-provider-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsOpen(false);
+              setIsReasoningFlyoutOpen(false);
+              if (typeof onOpenManageProviders === 'function') {
+                onOpenManageProviders();
+              }
+            }}
+          >
+            <div className="gemini-item-check-col">
+              <SlidersHorizontal size={13} className="gemini-provider-icon" />
+            </div>
+            <div className="gemini-item-text-col">
+              <span className="gemini-item-title">Kelola Provider...</span>
+              <span className="gemini-item-subtitle">Kustom OpenAI, Gemini, Claude, Ollama</span>
+            </div>
+          </button>
         </div>
       )}
     </div>

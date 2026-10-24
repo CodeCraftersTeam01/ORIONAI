@@ -25,6 +25,8 @@ export default function ChatInput({
   setSelectedModel,
   reasoningTier = 'medium',
   setReasoningTier,
+  customProviders = [],
+  onOpenManageProviders,
 }) {
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -237,8 +239,10 @@ export default function ChatInput({
             <ModelSelector
               selectedModel={selectedModel}
               reasoningTier={reasoningTier}
+              customProviders={customProviders}
               onSelectModel={setSelectedModel}
               onSelectReasoningTier={setReasoningTier}
+              onOpenManageProviders={onOpenManageProviders}
               disabled={isGenerating}
             />
           )}

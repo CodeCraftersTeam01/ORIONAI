@@ -57,6 +57,7 @@ import Sidebar from './components/Sidebar';
 import ChatInput from './components/ChatInput';
 import FormattedMessage from './components/FormattedMessage';
 import SettingsModal from './components/SettingsModal';
+import ManageProvidersModal from './components/ManageProvidersModal';
 import ThinkingIndicator from './components/ThinkingIndicator';
 import { soundEffects } from './utils/soundEffects';
 import { formatFileSize } from './utils/fileHelpers';
@@ -252,10 +253,21 @@ export default function App() {
   const [copiedMsgId, setCopiedMsgId] = useState(null);
   const [toast, setToast] = useState(null);
 
-  // Selected AI Model (Orion, Agnes 2.5 Flash, Nemotron 3) & Reasoning Tier (Low, Medium, High)
+  // Custom Providers State (OpenAI, Gemini, Claude, Ollama, etc.)
+  const [customProviders, setCustomProviders] = useState(() => {
+    try {
+      const saved = localStorage.getItem('orion_custom_providers');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [isManageProvidersOpen, setIsManageProvidersOpen] = useState(false);
+
+  // Selected AI Model (Orion, Agnes 2.5 Flash, Nemotron 3, or Custom Provider ID)
   const [selectedModel, setSelectedModel] = useState(() => {
     const saved = localStorage.getItem('orion_selected_model');
-    if (saved === 'agnes' || saved === 'nemotron-3') return saved;
+    if (saved) return saved;
     return 'orion';
   });
 
@@ -272,6 +284,39 @@ export default function App() {
     } catch {
       // storage quota fallback
     }
+  };
+
+  const handleSaveCustomProvider = (providerData) => {
+    setCustomProviders((prev) => {
+      const exists = prev.some((p) => p.id === providerData.id);
+      const next = exists
+        ? prev.map((p) => (p.id === providerData.id ? providerData : p))
+        : [...prev, providerData];
+      try {
+        localStorage.setItem('orion_custom_providers', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+    showToast(`Provider "${providerData.name}" berhasil disimpan.`);
+  };
+
+  const handleDeleteCustomProvider = (providerId) => {
+    setCustomProviders((prev) => {
+      const next = prev.filter((p) => p.id !== providerId);
+      try {
+        localStorage.setItem('orion_custom_providers', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+    if (selectedModel === providerId) {
+      handleModelChange('orion');
+    }
+    showToast('Provider berhasil dihapus.');
+  };
+
+  const handleSelectCustomProvider = (providerId) => {
+    handleModelChange(providerId);
+    showToast('Provider berhasil dipilih.');
   };
 
   const handleReasoningTierChange = (tierId) => {
@@ -409,6 +454,8 @@ export default function App() {
       timestamp: new Date().toISOString(),
     };
 
+    const activeCustomProvider = customProviders.find((p) => p.id === selectedModel) || null;
+
     const aiMessageId = `msg-ai-${Date.now()}`;
     const initialAiMessage = {
       id: aiMessageId,
@@ -416,6 +463,7 @@ export default function App() {
       content: '',
       model: selectedModel,
       reasoningTier: selectedModel === 'orion' ? reasoningTier : null,
+      customProvider: activeCustomProvider,
       timestamp: new Date().toISOString(),
     };
 
@@ -458,6 +506,7 @@ export default function App() {
           attachments: activeAttachments,
           model: selectedModel,
           reasoningTier: selectedModel === 'orion' ? reasoningTier : null,
+          customProvider: activeCustomProvider,
         }),
         signal: controller.signal,
       });
@@ -551,6 +600,7 @@ export default function App() {
             history: activeSession ? activeSession.messages : [],
             model: selectedModel,
             reasoningTier: selectedModel === 'orion' ? reasoningTier : null,
+            customProvider: activeCustomProvider,
           }),
         });
         if (fallbackRes.ok) {
@@ -895,6 +945,8 @@ export default function App() {
           setSelectedModel={handleModelChange}
           reasoningTier={reasoningTier}
           setReasoningTier={handleReasoningTierChange}
+          customProviders={customProviders}
+          onOpenManageProviders={() => setIsManageProvidersOpen(true)}
         />
       </main>
 
@@ -908,6 +960,17 @@ export default function App() {
         theme={theme}
         onSelectThemeMode={handleSelectThemeMode}
         onClearAllSessions={handleClearAllSessions}
+      />
+
+      {/* Manage Custom Providers Modal (OpenAI, Gemini, Claude, Ollama, etc.) */}
+      <ManageProvidersModal
+        isOpen={isManageProvidersOpen}
+        onClose={() => setIsManageProvidersOpen(false)}
+        customProviders={customProviders}
+        activeProviderId={selectedModel}
+        onSaveProvider={handleSaveCustomProvider}
+        onDeleteProvider={handleDeleteCustomProvider}
+        onSelectProvider={handleSelectCustomProvider}
       />
 
       {/* Image Lightbox Modal */}

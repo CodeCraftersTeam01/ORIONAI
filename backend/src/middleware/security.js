@@ -147,9 +147,27 @@ export const validateChatInput = (req, res, next) => {
     }
   }
 
-  // 4. Validate 'model' & 'reasoningTier' selection
+  // 4. Validate 'customProvider' if provided
+  if (req.body.customProvider && typeof req.body.customProvider === 'object') {
+    const { baseUrl, modelId, apiKey, name } = req.body.customProvider;
+    if (typeof baseUrl === 'string' && baseUrl.trim().length > 0) {
+      req.body.customProvider = {
+        baseUrl: baseUrl.trim(),
+        modelId: typeof modelId === 'string' && modelId.trim() ? modelId.trim() : 'default',
+        apiKey: typeof apiKey === 'string' ? apiKey.trim() : '',
+        name: typeof name === 'string' ? name.trim().slice(0, 100) : 'Custom Provider',
+      };
+      if (typeof req.body.model === 'string') {
+        req.body.model = req.body.model.slice(0, 100);
+      }
+    } else {
+      delete req.body.customProvider;
+    }
+  }
+
+  // 5. Validate 'model' & 'reasoningTier' selection
   const ALLOWED_MODELS = ['orion', 'agnes', 'nemotron-3', 'orion-low', 'orion-mid', 'orion-high'];
-  if (typeof req.body.model === 'string' && ALLOWED_MODELS.includes(req.body.model)) {
+  if (typeof req.body.model === 'string' && (ALLOWED_MODELS.includes(req.body.model) || req.body.customProvider)) {
     // Normalise backwards compatibility
     if (req.body.model === 'orion-low') {
       req.body.model = 'orion';
