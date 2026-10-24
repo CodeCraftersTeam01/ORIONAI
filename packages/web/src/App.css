@@ -4749,7 +4749,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 2rem 1.5rem 4rem;
+  padding: 1.5rem 1.5rem 14vh; /* Lift up optically away from the bottom aurora */
   text-align: center;
   position: relative;
   z-index: 2;
@@ -4757,21 +4757,37 @@
 }
 
 .dashboard-center-card {
-  max-width: 720px;
+  max-width: 760px;
   width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  transform: translateY(-6vh); /* Positioned higher up as requested */
 }
 
 .dashboard-logo-wrap {
-  margin-bottom: 2rem;
+  margin-bottom: 2.25rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  opacity: 0;
+  animation: logoSoftEntrance 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.05s forwards;
   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   filter: drop-shadow(0 0 35px rgba(59, 130, 246, 0.22));
+}
+
+@keyframes logoSoftEntrance {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.93);
+    filter: blur(8px) drop-shadow(0 0 10px rgba(59, 130, 246, 0.1));
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0) drop-shadow(0 0 35px rgba(59, 130, 246, 0.22));
+  }
 }
 
 .dashboard-logo-wrap:hover {
@@ -4780,18 +4796,48 @@
 
 .dashboard-greeting-title {
   font-family: 'Google Sans', 'Outfit', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', sans-serif;
-  font-size: clamp(2.1rem, 4.8vw, 3.4rem);
+  font-size: clamp(2.2rem, 5vw, 3.6rem);
   font-weight: 400;
   letter-spacing: -0.025em;
   color: var(--text-primary);
   margin-bottom: 0.65rem;
   line-height: 1.18;
   text-wrap: balance;
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 [data-theme='dark'] .dashboard-greeting-title {
   color: #f3f4f6;
   text-shadow: 0 2px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* Staggered per-character smooth blur-in entrance */
+.blur-char {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(12px) scale(0.96);
+  filter: blur(14px);
+  animation: charBlurFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity, filter;
+}
+
+@keyframes charBlurFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.95);
+    filter: blur(16px);
+  }
+  50% {
+    opacity: 0.75;
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
 }
 
 .dashboard-subtext {

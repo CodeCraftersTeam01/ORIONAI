@@ -940,14 +940,22 @@ export default function App() {
         {/* View Switching: Minimalist Dashboard vs Smooth Animated Chat View */}
         {currentView === 'dashboard' ? (
           /* ================= CLEAN DASHBOARD VIEW ================= */
-          <div className="dashboard-home-view animate-smooth-fade">
+          <div key="dashboard-view" className="dashboard-home-view animate-smooth-fade">
             <div className="dashboard-center-card">
               <div className="dashboard-logo-wrap">
                 <OrionLogo size="lg" isGenerating={false} />
               </div>
 
               <h1 className="dashboard-greeting-title">
-                Hi Arjuna, {getTimeGreeting()}
+                {`Hi Arjuna, ${getTimeGreeting()}`.split('').map((char, index) => (
+                  <span
+                    key={`${char}-${index}`}
+                    className="blur-char"
+                    style={{ animationDelay: `${0.12 + index * 0.032}s` }}
+                  >
+                    {char === ' ' ? '\u00A0' : char}
+                  </span>
+                ))}
               </h1>
             </div>
           </div>
