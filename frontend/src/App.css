@@ -450,9 +450,12 @@
   opacity: 0;
   visibility: hidden;
   transition:
+    height 0.85s cubic-bezier(0.16, 1, 0.3, 1),
+    max-height 0.85s cubic-bezier(0.16, 1, 0.3, 1),
+    min-height 0.85s cubic-bezier(0.16, 1, 0.3, 1),
     opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1),
     visibility 0.85s;
-  will-change: opacity, transform;
+  will-change: height, opacity, transform;
   transform: translateZ(0);
   contain: paint layout;
   /* Multi-stop ultra-soft feather mask for seamless borderless fade into background */
@@ -481,6 +484,37 @@
   visibility: visible;
 }
 
+/* In-Chat mode: Height 5%, subtle and subdued glow */
+.tryliner-aurora-wrapper.in-chat {
+  height: 5vh;
+  min-height: 32px;
+  max-height: 48px;
+  opacity: 0.30;
+}
+
+[data-theme='light'] .tryliner-aurora-wrapper.in-chat {
+  opacity: 0.24;
+}
+
+.tryliner-aurora-wrapper.in-chat .tryliner-aurora-canvas {
+  filter: blur(4px);
+  opacity: 0.80;
+}
+
+.tryliner-aurora-wrapper.in-chat .tryliner-aurora-bottom-boost {
+  opacity: 0.14;
+  filter: blur(20px);
+}
+
+[data-theme='light'] .tryliner-aurora-wrapper.in-chat .tryliner-aurora-bottom-boost {
+  opacity: 0.16;
+  filter: blur(20px);
+}
+
+.tryliner-aurora-wrapper.in-chat .tryliner-aurora-feather {
+  opacity: 0.96;
+}
+
 /* 106% bleed width so left/right canvas corners never clip */
 .tryliner-aurora-canvas {
   width: 106%;
@@ -491,6 +525,7 @@
   transform: translateZ(0);
   backface-visibility: hidden;
   will-change: transform;
+  transition: opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1), filter 0.85s;
 }
 
 /* Radiant aura glow spread wide across the bottom horizon */
@@ -511,6 +546,7 @@
   filter: blur(36px);
   opacity: 0.45;
   mix-blend-mode: normal;
+  transition: opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1), filter 0.85s;
 }
 
 [data-theme='light'] .tryliner-aurora-bottom-boost {
@@ -539,6 +575,7 @@
     transparent 70%
   );
   opacity: 0.92;
+  transition: opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* ==========================================================================

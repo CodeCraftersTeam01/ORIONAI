@@ -779,8 +779,8 @@ export default function App() {
 
   return (
     <div className="orion-layout">
-      {/* Dynamic WebGL Aurora Mesh Background (tryliner.fun style) */}
-      <AuroraBackground active={messages.length === 0} theme={theme} />
+      {/* Dynamic WebGL Aurora Mesh Background (Subdued 5% height in chat, full in home) */}
+      <AuroraBackground active={true} inChat={messages.length > 0} theme={theme} />
 
       {/* Minimal Toast */}
       {toast && (

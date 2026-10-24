@@ -143,7 +143,7 @@ function createProgram(gl, vsSrc, fsSrc) {
   return prog;
 }
 
-export default function AuroraBackground({ active = true, theme = 'dark' }) {
+export default function AuroraBackground({ active = true, inChat = false, theme = 'dark' }) {
   const canvasRef = useRef(null);
   const animStateRef = useRef({
     rafId: null,
@@ -233,7 +233,7 @@ export default function AuroraBackground({ active = true, theme = 'dark' }) {
 
       const scale = Math.min(1.0, 1000 / Math.max(w, 1));
       const targetW = Math.max(320, Math.round(w * scale));
-      const targetH = Math.max(160, Math.round(h * scale));
+      const targetH = Math.max(30, Math.round(h * scale));
 
       if (canvas.width !== targetW || canvas.height !== targetH) {
         canvas.width = targetW;
@@ -344,11 +344,11 @@ export default function AuroraBackground({ active = true, theme = 'dark' }) {
       }
       state.isRunning = false;
     };
-  }, [active, theme]);
+  }, [active, inChat, theme]);
 
   return (
     <div
-      className={`tryliner-aurora-wrapper ${active ? 'visible' : 'hidden'}`}
+      className={`tryliner-aurora-wrapper ${active ? 'visible' : 'hidden'} ${inChat ? 'in-chat' : 'in-home'}`}
       aria-hidden="true"
     >
       {/* Full Bleed Canvas */}
