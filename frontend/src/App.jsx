@@ -62,6 +62,7 @@ import ManageProvidersModal from './components/ManageProvidersModal';
 import ThinkingIndicator from './components/ThinkingIndicator';
 import { soundEffects } from './utils/soundEffects';
 import { formatFileSize } from './utils/fileHelpers';
+import { isReasoningSupported } from './utils/modelConfig';
 import './App.css';
 
 const DYNAMIC_RECOMMENDATIONS_POOL = [
@@ -488,13 +489,19 @@ export default function App() {
       activeCustomProvider = customProviders.find((p) => p.id === selectedModel) || null;
     }
 
+    const modelSupportsReasoning = isReasoningSupported(
+      selectedModel,
+      activeCustomProvider?.modelId || activeCustomProvider?.name || ''
+    );
+    const activeReasoningTier = modelSupportsReasoning ? reasoningTier : null;
+
     const aiMessageId = `msg-ai-${Date.now()}`;
     const initialAiMessage = {
       id: aiMessageId,
       role: 'assistant',
       content: '',
       model: selectedModel,
-      reasoningTier: selectedModel === 'orion' ? reasoningTier : null,
+      reasoningTier: activeReasoningTier,
       customProvider: activeCustomProvider,
       timestamp: new Date().toISOString(),
     };
@@ -556,7 +563,7 @@ export default function App() {
           history: activeSession ? activeSession.messages : [],
           attachments: activeAttachments,
           model: selectedModel,
-          reasoningTier: selectedModel === 'orion' ? reasoningTier : null,
+          reasoningTier: activeReasoningTier,
           customProvider: activeCustomProvider,
         }),
         signal: controller.signal,
@@ -641,7 +648,7 @@ export default function App() {
             message: userText,
             history: activeSession ? activeSession.messages : [],
             model: selectedModel,
-            reasoningTier: selectedModel === 'orion' ? reasoningTier : null,
+            reasoningTier: activeReasoningTier,
             customProvider: activeCustomProvider,
           }),
           signal: controller.signal,

@@ -5,6 +5,7 @@ import {
   REASONING_TIERS,
   getModelById,
   getReasoningTierById,
+  isReasoningSupported,
 } from '../utils/modelConfig';
 
 export default function ModelSelector({
@@ -28,6 +29,7 @@ export default function ModelSelector({
       const enabledModels = (prov.models || []).filter((m) => m.enabled);
       if (enabledModels.length > 0) {
         enabledModels.forEach((m) => {
+          const supportsReasoning = isReasoningSupported(m.id, m.name, m.supportsReasoning);
           items.push({
             id: `${prov.id}::${m.id}`,
             name: m.name || m.id,
@@ -37,10 +39,12 @@ export default function ModelSelector({
             providerId: prov.id,
             modelId: m.id,
             hasModel: true,
+            supportsReasoning,
           });
         });
       } else if (prov.modelId) {
         // Legacy fallback
+        const supportsReasoning = isReasoningSupported(prov.modelId, prov.displayName || prov.name);
         items.push({
           id: `${prov.id}::${prov.modelId}`,
           name: prov.displayName || prov.name,
@@ -50,6 +54,7 @@ export default function ModelSelector({
           providerId: prov.id,
           modelId: prov.modelId,
           hasModel: true,
+          supportsReasoning,
         });
       } else {
         // Provider exists but hasn't enabled any models yet
@@ -62,6 +67,7 @@ export default function ModelSelector({
           providerId: prov.id,
           modelId: null,
           hasModel: false,
+          supportsReasoning: false,
         });
       }
     });
@@ -81,7 +87,7 @@ export default function ModelSelector({
           isCustom: true,
           providerId: item.providerId,
           modelId: item.modelId,
-          supportsReasoning: false,
+          supportsReasoning: Boolean(item.supportsReasoning),
         });
       }
     });
@@ -94,6 +100,12 @@ export default function ModelSelector({
       const found = allModels.find((m) => m.id === selectedModel);
       if (found) return found;
       const prov = (customProviders || []).find((p) => p.id === provId);
+      const customModelObj = (prov?.models || []).find((m) => m.id === modId);
+      const supportsReasoning = isReasoningSupported(
+        modId,
+        customModelObj?.name || modId,
+        customModelObj?.supportsReasoning
+      );
       return {
         id: selectedModel,
         name: modId,
@@ -102,7 +114,7 @@ export default function ModelSelector({
         isCustom: true,
         providerId: provId,
         modelId: modId,
-        supportsReasoning: false,
+        supportsReasoning,
       };
     }
     return allModels.find((m) => m.id === selectedModel) || AVAILABLE_MODELS[0];
@@ -238,7 +250,12 @@ export default function ModelSelector({
                           {isSelected ? <Check size={14} className="gemini-check-icon" /> : null}
                         </div>
                         <div className="gemini-item-text-col">
-                          <span className="gemini-item-title">{item.displayName}</span>
+                          <span className="gemini-item-title">
+                            {item.displayName}
+                            {item.supportsReasoning && (
+                              <span className="gemini-thinking-badge">Thinking</span>
+                            )}
+                          </span>
                           <span className="gemini-item-subtitle">{item.subtitle}</span>
                         </div>
                       </button>
@@ -267,13 +284,23 @@ export default function ModelSelector({
                 }
               }}
               disabled={!canUseReasoning}
-              title={canUseReasoning ? 'Ubah tingkat penalaran Orion' : 'Penalaran hanya tersedia untuk Orion'}
+              title={
+                canUseReasoning
+                  ? `Ubah tingkat penalaran (${currentModel.displayName || currentModel.name})`
+                  : 'Model ini tidak mendukung fitur penalaran'
+              }
             >
               <div className="gemini-item-check-col" />
               <div className="gemini-item-text-col">
                 <span className="gemini-item-title">Tingkat penalaran</span>
-                {!canUseReasoning && (
-                  <span className="gemini-item-subtitle disabled-text">Hanya untuk model Orion</span>
+                {!canUseReasoning ? (
+                  <span className="gemini-item-subtitle disabled-text">
+                    Model tidak mendukung penalaran
+                  </span>
+                ) : (
+                  <span className="gemini-item-subtitle active-tier-text">
+                    {currentTier.name} • {currentTier.desc}
+                  </span>
                 )}
               </div>
               <ChevronRight size={13} className="gemini-reasoning-arrow" />

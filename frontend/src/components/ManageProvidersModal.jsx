@@ -26,6 +26,7 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { PROVIDER_TEMPLATES, getTemplateById } from '../utils/providerTemplates';
+import { isReasoningSupported } from '../utils/modelConfig';
 
 function getProviderIcon(templateId) {
   switch (templateId) {
@@ -365,6 +366,7 @@ export default function ManageProvidersModal({
               name: mId,
               enabled: false,
               tested: false,
+              supportsReasoning: isReasoningSupported(mId),
               lastTestStatus: 'untested',
               lastTestError: null,
             });
@@ -419,6 +421,7 @@ export default function ManageProvidersModal({
       name,
       enabled: false,
       tested: false,
+      supportsReasoning: isReasoningSupported(id, name),
       lastTestStatus: 'untested',
       lastTestError: null,
     };
@@ -1181,6 +1184,14 @@ export default function ManageProvidersModal({
                                     {m.name || m.id}
                                   </span>
                                   <code className="provider-model-id-pill">{m.id}</code>
+                                  {isReasoningSupported(m.id, m.name, m.supportsReasoning) && (
+                                    <span
+                                      className="provider-thinking-tag"
+                                      title="Model ini mendukung penalaran (thinking / deep reasoning)"
+                                    >
+                                      Thinking
+                                    </span>
+                                  )}
                                   {isTesting ? (
                                     <Loader2 size={13} className="provider-spinner" title="Menguji respon..." />
                                   ) : isVerified ? (

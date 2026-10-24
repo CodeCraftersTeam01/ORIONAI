@@ -294,6 +294,13 @@ export async function getChatCompletion({
 
     const json = await response.json();
     let reply = json.choices?.[0]?.message?.content || 'Maaf, tidak ada respon yang diterima.';
+    const reasoning =
+      json.choices?.[0]?.message?.reasoning_content ||
+      json.choices?.[0]?.message?.reasoning ||
+      json.choices?.[0]?.message?.thinking;
+    if (reasoning && !reply.includes('<think>')) {
+      reply = `<think>\n${reasoning.trim()}\n</think>\n\n${reply}`;
+    }
     if (!customProvider) {
       reply = sanitizeOrionText(reply.trim(), model);
     }
@@ -351,6 +358,7 @@ export async function streamChatCompletion({
     const reader = response.body.getReader();
     const decoder = new TextDecoder('utf-8');
     let buffer = '';
+    let inReasoningBlock = false;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -366,23 +374,47 @@ export async function streamChatCompletion({
 
         const dataStr = trimmed.replace(/^data:\s*/, '');
         if (dataStr === '[DONE]') {
+          if (inReasoningBlock) {
+            inReasoningBlock = false;
+            onChunk('\n</think>\n\n');
+          }
           onDone();
           return;
         }
 
         try {
           const parsed = JSON.parse(dataStr);
-          let chunkContent = parsed.choices?.[0]?.delta?.content || '';
-          if (chunkContent) {
-            if (!customProvider) {
-              chunkContent = sanitizeOrionText(chunkContent, model);
+          const delta = parsed.choices?.[0]?.delta || {};
+          let chunkContent = delta.content || '';
+          const reasoningChunk = delta.reasoning_content || delta.reasoning || delta.thinking || '';
+
+          if (reasoningChunk) {
+            if (!inReasoningBlock) {
+              inReasoningBlock = true;
+              onChunk('<think>\n');
             }
-            onChunk(chunkContent);
+            onChunk(reasoningChunk);
+          } else {
+            if (inReasoningBlock && chunkContent) {
+              inReasoningBlock = false;
+              onChunk('\n</think>\n\n');
+            }
+            if (chunkContent) {
+              if (!customProvider) {
+                chunkContent = sanitizeOrionText(chunkContent, model);
+              }
+              onChunk(chunkContent);
+            }
           }
         } catch {
           // ignore keep-alive or JSON parse fragments
         }
       }
+    }
+
+    if (inReasoningBlock) {
+      inReasoningBlock = false;
+      onChunk('\n</think>\n\n');
     }
 
     onDone();
