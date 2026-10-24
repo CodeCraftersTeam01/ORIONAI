@@ -3678,22 +3678,19 @@
 }
 
 .provider-badge-pill {
-  font-size: 0.63rem;
-  font-family: monospace;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  background: #f1f5f9;
-  color: #475569;
-  padding: 0.14rem 0.45rem;
-  border-radius: 4px;
-  border: 1px solid #e2e8f0;
+  font-size: 0.68rem;
+  font-weight: 500;
+  background: #eff6ff;
+  color: #2563eb;
+  padding: 0.15rem 0.55rem;
+  border-radius: 9999px;
+  border: 1px solid #bfdbfe;
 }
 
 [data-theme='dark'] .provider-badge-pill {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text-secondary);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(59, 130, 246, 0.1);
+  color: #60a5fa;
+  border-color: rgba(59, 130, 246, 0.25);
 }
 
 .provider-manage-subinfo {
@@ -3717,12 +3714,10 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.35rem 0.65rem;
-  font-size: 0.68rem;
-  font-weight: 600;
-  font-family: monospace;
-  letter-spacing: 0.03em;
-  border-radius: 5px;
+  padding: 0.36rem 0.68rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  border-radius: 6px;
   border: 1px solid #cbd5e1;
   background: #ffffff;
   color: #334155;
@@ -3787,22 +3782,21 @@
   color: var(--text-secondary);
 }
 
-.provider-topbar-mono {
-  font-family: monospace;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: #334155;
+.provider-section-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #0f172a;
+  letter-spacing: -0.01em;
 }
 
-[data-theme='dark'] .provider-topbar-mono {
-  color: var(--text-secondary);
+[data-theme='dark'] .provider-section-title {
+  color: var(--text-primary);
 }
 
 .provider-topbar-right-label {
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   color: #64748b;
-  font-family: monospace;
+  font-weight: 500;
 }
 
 [data-theme='dark'] .provider-topbar-right-label {
@@ -3820,52 +3814,51 @@
   align-items: center;
   gap: 0.25rem;
   font-size: 0.68rem;
-  font-family: monospace;
-  color: #2563eb;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  padding: 0.12rem 0.45rem;
-  border-radius: 4px;
+  color: #059669;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  padding: 0.12rem 0.5rem;
+  border-radius: 9999px;
   font-weight: 500;
 }
 
 [data-theme='dark'] .provider-round-robin-badge {
-  color: #3b82f6;
-  background: rgba(59, 130, 246, 0.08);
-  border-color: rgba(59, 130, 246, 0.2);
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.2);
 }
 
 .provider-btn-test-action {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  padding: 0.3rem 0.65rem;
-  border-radius: 4px;
-  border: 1px solid #bfdbfe;
+  padding: 0.32rem 0.65rem;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
   background: #ffffff;
-  color: #2563eb;
-  font-size: 0.68rem;
-  font-family: monospace;
-  font-weight: 600;
+  color: #0f172a;
+  font-size: 0.72rem;
+  font-weight: 500;
   cursor: pointer;
-  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.06);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
   transition: all 0.12s ease;
 }
 
 [data-theme='dark'] .provider-btn-test-action {
   background: transparent;
-  border-color: rgba(59, 130, 246, 0.35);
-  color: #3b82f6;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: var(--text-primary);
   box-shadow: none;
 }
 
 .provider-btn-test-action:hover:not(:disabled) {
-  background: #eff6ff;
-  border-color: #93c5fd;
+  background: #f8fafc;
+  border-color: #94a3b8;
 }
 
 [data-theme='dark'] .provider-btn-test-action:hover:not(:disabled) {
-  background: rgba(59, 130, 246, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--border-medium);
 }
 
 .provider-btn-test-action:disabled {
@@ -3891,9 +3884,8 @@
 }
 
 .provider-detail-label {
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   color: #64748b;
-  font-family: monospace;
   flex-shrink: 0;
   font-weight: 500;
 }
@@ -3921,13 +3913,12 @@
   align-items: center;
   gap: 0.35rem;
   padding: 0.32rem 0.65rem;
-  border-radius: 4px;
+  border-radius: 6px;
   border: 1px solid #cbd5e1;
   background: #ffffff;
   color: #334155;
-  font-size: 0.68rem;
-  font-family: monospace;
-  font-weight: 600;
+  font-size: 0.72rem;
+  font-weight: 500;
   cursor: pointer;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
   transition: all 0.12s ease;
@@ -3994,9 +3985,8 @@
 }
 
 .provider-key-title {
-  font-size: 0.76rem;
+  font-size: 0.78rem;
   font-weight: 600;
-  font-family: monospace;
   color: #1e293b;
   flex-shrink: 0;
 }
@@ -4026,14 +4016,13 @@
 }
 
 .provider-managed-tag {
-  font-size: 0.66rem;
-  font-family: monospace;
-  font-weight: 600;
+  font-size: 0.68rem;
+  font-weight: 500;
   color: #059669;
   background: #ecfdf5;
   border: 1px solid #a7f3d0;
-  padding: 0.1rem 0.4rem;
-  border-radius: 4px;
+  padding: 0.1rem 0.45rem;
+  border-radius: 9999px;
 }
 
 [data-theme='dark'] .provider-managed-tag {
@@ -4043,7 +4032,7 @@
 }
 
 .provider-keys-empty {
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   color: #64748b;
   padding: 0.5rem 0.2rem;
   line-height: 1.45;
@@ -4066,13 +4055,12 @@
   border-color: var(--border-subtle);
 }
 
-/* AVAILABLE MODELS (Screenshot 3 Matching) */
+/* Model Tersedia */
 .provider-models-desc {
-  font-size: 0.72rem;
+  font-size: 0.76rem;
   color: #64748b;
-  font-family: monospace;
-  margin: 0 0 0.65rem;
-  line-height: 1.35;
+  margin: 0 0 0.7rem;
+  line-height: 1.45;
 }
 
 [data-theme='dark'] .provider-models-desc {
@@ -4124,8 +4112,7 @@
   border: 1px solid #cbd5e1;
   background: #ffffff;
   color: #0f172a;
-  font-family: monospace;
-  font-size: 0.74rem;
+  font-size: 0.76rem;
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
@@ -4164,8 +4151,7 @@
   border: 1px solid #2563eb;
   background: #2563eb;
   color: #ffffff;
-  font-family: monospace;
-  font-size: 0.74rem;
+  font-size: 0.76rem;
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 1px 2px rgba(37, 99, 235, 0.2);
@@ -4227,8 +4213,7 @@
 }
 
 .provider-empty-main-text {
-  font-size: 0.76rem;
-  font-family: monospace;
+  font-size: 0.8rem;
   color: #1e293b;
   margin: 0;
   font-weight: 600;
@@ -4239,8 +4224,7 @@
 }
 
 .provider-empty-sub-text {
-  font-size: 0.7rem;
-  font-family: monospace;
+  font-size: 0.74rem;
   color: #64748b;
   margin: 0;
   max-width: 480px;
@@ -4461,13 +4445,12 @@
   align-items: center;
   gap: 0.3rem;
   padding: 0.28rem 0.55rem;
-  border-radius: 4px;
+  border-radius: 5px;
   border: 1px solid #cbd5e1;
   background: #ffffff;
   color: #334155;
-  font-size: 0.69rem;
-  font-family: monospace;
-  font-weight: 600;
+  font-size: 0.72rem;
+  font-weight: 500;
   cursor: pointer;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
   transition: all 0.12s ease;
