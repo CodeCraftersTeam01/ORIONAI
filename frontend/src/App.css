@@ -453,21 +453,23 @@
     opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1),
     visibility 0.85s;
   will-change: opacity;
-  /* Multi-stop ultra-soft feather mask for seamless borderless fade */
+  /* Multi-stop ultra-soft feather mask for seamless borderless fade into background */
   -webkit-mask-image: linear-gradient(
     to top,
     rgba(0, 0, 0, 1) 0%,
-    rgba(0, 0, 0, 1) 45%,
-    rgba(0, 0, 0, 0.9) 70%,
-    rgba(0, 0, 0, 0.4) 88%,
+    rgba(0, 0, 0, 0.95) 20%,
+    rgba(0, 0, 0, 0.70) 45%,
+    rgba(0, 0, 0, 0.32) 68%,
+    rgba(0, 0, 0, 0.08) 86%,
     transparent 100%
   );
   mask-image: linear-gradient(
     to top,
     rgba(0, 0, 0, 1) 0%,
-    rgba(0, 0, 0, 1) 45%,
-    rgba(0, 0, 0, 0.9) 70%,
-    rgba(0, 0, 0, 0.4) 88%,
+    rgba(0, 0, 0, 0.95) 20%,
+    rgba(0, 0, 0, 0.70) 45%,
+    rgba(0, 0, 0, 0.32) 68%,
+    rgba(0, 0, 0, 0.08) 86%,
     transparent 100%
   );
 }
@@ -483,7 +485,7 @@
   height: 100%;
   margin-left: -3%;
   display: block;
-  filter: blur(2px); /* Kept low so strong undulating wave crests stay sharp and vivid */
+  filter: blur(3.5px); /* Balanced sweetspot: waves undulate clearly while gradating softly into background */
 }
 
 /* Radiant aura glow spread wide across the bottom horizon */
@@ -496,29 +498,29 @@
   pointer-events: none;
   background: radial-gradient(
     ellipse 120% 90% at 50% 100%,
-    rgba(0, 75, 230, 0.45) 0%,
-    rgba(0, 110, 255, 0.28) 32%,
-    rgba(90, 210, 255, 0.12) 65%,
+    rgba(0, 75, 230, 0.40) 0%,
+    rgba(0, 110, 255, 0.24) 32%,
+    rgba(90, 210, 255, 0.10) 65%,
     transparent 100%
   );
   filter: blur(36px);
-  opacity: 0.50;
+  opacity: 0.45;
   mix-blend-mode: normal;
 }
 
 [data-theme='light'] .tryliner-aurora-bottom-boost {
   background: radial-gradient(
     ellipse 120% 90% at 50% 100%,
-    rgba(0, 95, 255, 0.50) 0%,
-    rgba(0, 140, 255, 0.32) 34%,
-    rgba(60, 205, 255, 0.15) 68%,
+    rgba(0, 95, 255, 0.45) 0%,
+    rgba(0, 140, 255, 0.28) 34%,
+    rgba(60, 205, 255, 0.12) 68%,
     transparent 100%
   );
   filter: blur(34px);
-  opacity: 0.55;
+  opacity: 0.50;
 }
 
-/* Ultra-soft feather gradient transition accent */
+/* Ultra-soft feather gradient transition overlay fading into background */
 .tryliner-aurora-feather {
   position: absolute;
   left: 0;
@@ -527,14 +529,11 @@
   bottom: 0;
   pointer-events: none;
   background: linear-gradient(
-    to top,
-    transparent 0%,
-    rgba(0, 85, 255, 0.03) 30%,
-    rgba(130, 220, 255, 0.12) 75%,
-    transparent 100%
+    to bottom,
+    var(--bg-app) 0%,
+    transparent 70%
   );
-  filter: blur(34px);
-  opacity: 0.85;
+  opacity: 0.92;
 }
 
 /* ==========================================================================

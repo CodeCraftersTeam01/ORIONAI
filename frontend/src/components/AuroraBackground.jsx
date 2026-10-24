@@ -79,15 +79,15 @@ void main() {
   float n1 = noise(flow_uv);
   float n2 = noise(flow_uv * 2.0 + vec2(-t * 0.35, t * 0.2));
 
-  // Volumetric wave body masks (smooth yet distinct curvature)
-  float mask1 = smoothstep(crest1 + 0.18, crest1 - 0.05, uv_orig.y);
-  float mask2 = smoothstep(crest2 + 0.14, crest2 - 0.04, uv_orig.y);
-  float mask3 = smoothstep(crest3 + 0.11, crest3 - 0.03, uv_orig.y);
+  // Volumetric wave body masks with soft feathered graduation into background
+  float mask1 = smoothstep(crest1 + 0.28, crest1 - 0.08, uv_orig.y);
+  float mask2 = smoothstep(crest2 + 0.24, crest2 - 0.06, uv_orig.y);
+  float mask3 = smoothstep(crest3 + 0.18, crest3 - 0.05, uv_orig.y);
 
-  // Radiant luminous rim lighting on the crest peaks
-  float rim1 = exp(-pow((uv_orig.y - crest1) / 0.065, 2.0)) * 0.45;
-  float rim2 = exp(-pow((uv_orig.y - crest2) / 0.052, 2.0)) * 0.90;
-  float rim3 = exp(-pow((uv_orig.y - crest3) / 0.040, 2.0)) * 1.15;
+  // Soft diffused ambient glowing crests for organic gradation into background
+  float rim1 = exp(-pow((uv_orig.y - crest1) / 0.095, 2.0)) * 0.35;
+  float rim2 = exp(-pow((uv_orig.y - crest2) / 0.085, 2.0)) * 0.50;
+  float rim3 = exp(-pow((uv_orig.y - crest3) / 0.070, 2.0)) * 0.60;
 
   // Coordinated color palette: Deep Sapphire, Electric Blue, Radiant Cyan, Luminous White-Cyan
   vec3 col_deep = u_color3.rgb * 0.90;
@@ -106,8 +106,8 @@ void main() {
   color += col_rim * rim3;
 
   // Vertical falloff: soft natural fade toward the top of the canvas
-  float top_falloff = smoothstep(0.96, 0.38, uv_orig.y);
-  float total_alpha = clamp(max(max(mask1 * 0.75, mask2 * 0.95), mask3) + rim1 * 0.5 + rim2 * 0.8 + rim3, 0.0, 1.0);
+  float top_falloff = smoothstep(0.88, 0.18, uv_orig.y);
+  float total_alpha = clamp(max(max(mask1 * 0.75, mask2 * 0.90), mask3 * 0.95) + rim1 * 0.35 + rim2 * 0.50 + rim3 * 0.60, 0.0, 1.0);
   total_alpha *= top_falloff;
 
   fragColor = vec4(color, total_alpha);
