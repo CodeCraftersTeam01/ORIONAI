@@ -34,7 +34,7 @@ export default function ModelSelector({
             id: `${prov.id}::${m.id}`,
             name: m.name || m.id,
             displayName: m.name || m.id,
-            subtitle: `${prov.name} • ${m.id}`,
+            subtitle: prov.name,
             providerName: prov.name,
             providerId: prov.id,
             modelId: m.id,
@@ -49,7 +49,7 @@ export default function ModelSelector({
           id: `${prov.id}::${prov.modelId}`,
           name: prov.displayName || prov.name,
           displayName: prov.displayName || prov.name,
-          subtitle: `${prov.name} • ${prov.modelId}`,
+          subtitle: prov.name,
           providerName: prov.name,
           providerId: prov.id,
           modelId: prov.modelId,
@@ -110,7 +110,7 @@ export default function ModelSelector({
         id: selectedModel,
         name: modId,
         displayName: modId,
-        subtitle: prov ? `${prov.name} • ${modId}` : modId,
+        subtitle: prov ? prov.name : modId,
         isCustom: true,
         providerId: provId,
         modelId: modId,
@@ -295,11 +295,11 @@ export default function ModelSelector({
                 <span className="gemini-item-title">Tingkat penalaran</span>
                 {!canUseReasoning ? (
                   <span className="gemini-item-subtitle disabled-text">
-                    Model tidak mendukung penalaran
+                    Tidak didukung
                   </span>
                 ) : (
                   <span className="gemini-item-subtitle active-tier-text">
-                    {currentTier.name} • {currentTier.desc}
+                    {currentTier.name}
                   </span>
                 )}
               </div>
@@ -361,7 +361,6 @@ export default function ModelSelector({
             </div>
             <div className="gemini-item-text-col">
               <span className="gemini-item-title">Kelola Provider...</span>
-              <span className="gemini-item-subtitle">Kustom OpenAI, Gemini, Claude, Ollama</span>
             </div>
           </button>
         </div>
