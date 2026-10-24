@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   ArrowLeft,
@@ -65,16 +65,38 @@ export default function ManageProvidersModal({
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
 
-  // Close on Escape key
+  // Track mousedown target to prevent accidental modal close when dragging text selection outside dialog
+  const backdropMouseDownRef = useRef(false);
+
+  const handleBackdropMouseDown = (e) => {
+    if (e.target === e.currentTarget) {
+      backdropMouseDownRef.current = true;
+    }
+  };
+
+  const handleBackdropMouseUp = (e) => {
+    if (backdropMouseDownRef.current && e.target === e.currentTarget) {
+      onClose();
+    }
+    backdropMouseDownRef.current = false;
+  };
+
+  // Close or go back on Escape key
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') {
+        if (view === 'config') {
+          handleBackToCatalog();
+        } else {
+          onClose();
+        }
+      }
     };
     if (isOpen) {
       window.addEventListener('keydown', handleKeyDown);
     }
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, view]);
 
   // Reset view to catalog whenever modal re-opens
   useEffect(() => {
@@ -188,9 +210,16 @@ export default function ManageProvidersModal({
   };
 
   return (
-    <div className="modal-backdrop" onClick={onClose} aria-modal="true" role="dialog">
+    <div
+      className="modal-backdrop"
+      onMouseDown={handleBackdropMouseDown}
+      onMouseUp={handleBackdropMouseUp}
+      aria-modal="true"
+      role="dialog"
+    >
       <div
         className="modal-dialog provider-modal-dialog"
+        onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -337,7 +366,16 @@ export default function ManageProvidersModal({
             </div>
           ) : (
             /* ================= VIEW 2: PROVIDER CONFIGURATION FORM ================= */
-            <form onSubmit={handleSubmit} className="provider-config-form">
+            <form
+              onSubmit={handleSubmit}
+              className="provider-config-form"
+              onKeyDown={(e) => {
+                // Prevent premature form submit when user presses Enter inside an input field
+                if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+                  e.preventDefault();
+                }
+              }}
+            >
               <div className="provider-config-banner">
                 <div className="provider-config-icon">{getProviderIcon(currentTemplate.id)}</div>
                 <div>
