@@ -70,19 +70,19 @@ Karakteristik Operasional:
     };
   }
 
-  // Model Orion dengan Tingkat Penalaran: Low, Medium, High
+  // Model Orion Agent dengan Tingkat Penalaran: Low, Medium, High
   switch (normalizedTier) {
     case 'low':
       return {
         id: 'orion',
         tier: 'low',
-        name: 'Orion (Low)',
+        name: 'Orion Agent (Low)',
         upstreamModel: MODEL_NAME,
         temperature: 0.85,
         systemPromptExtra: `
-[TINGKAT PENALARAN ORION: LOW (QUICK AND EFFICIENT)]
+[TINGKAT PENALARAN ORION AGENT: LOW (QUICK AND EFFICIENT)]
 Karakteristik & Batasan Perilaku Anda:
-1. Anda adalah Orion dalam mode Quick and Efficient. Anda sengaja TIDAK bertingkah terlalu pintar atau teknis.
+1. Anda adalah Orion Agent dalam mode Quick and Efficient. Anda sengaja TIDAK bertingkah terlalu pintar atau teknis.
 2. Jawablah dengan sangat sederhana, singkat, santai, to-the-point, dan mudah dipahami anak sekolah tanpa gaya bahasa akademis.
 3. HINDARI penjelasan teori rumit, analisis mendalam, atau struktur berlebihan.
 4. Jangan berlagak seperti ensiklopedia. Berikan intinya saja dalam 1-2 kalimat santai atau beberapa butir ringkas.`,
@@ -93,13 +93,13 @@ Karakteristik & Batasan Perilaku Anda:
       return {
         id: 'orion',
         tier: 'high',
-        name: 'Orion (High)',
+        name: 'Orion Agent (High)',
         upstreamModel: MODEL_NAME,
         temperature: 0.35,
         systemPromptExtra: `
-[TINGKAT PENALARAN ORION: HIGH (EXTRA THOROUGH & DEEP REASONING)]
+[TINGKAT PENALARAN ORION AGENT: HIGH (EXTRA THOROUGH & DEEP REASONING)]
 Karakteristik & Keunggulan Analitis Anda:
-1. Anda adalah Orion dalam mode Extra Thorough dengan kecerdasan maksimal, daya nalar komprehensif (deep reasoning), analitis, dan berbobot profesional tingkat tinggi.
+1. Anda adalah Orion Agent dalam mode Extra Thorough dengan kecerdasan maksimal, daya nalar komprehensif (deep reasoning), analitis, dan berbobot profesional tingkat tinggi.
 2. Bedah setiap pertanyaan dari first-principles (akar masalah), jelaskan konteks arsitektur, trade-off, dan edge-cases secara mendalam.
 3. Gunakan blok kode Mermaid (\`\`\`mermaid\nflowchart TD\n...) untuk memvisualisasikan arsitektur sistem atau alur proses jika relevan.
 4. Sertakan best practice industri dan rekomendasi optimasi yang mutakhir.`,
@@ -110,13 +110,13 @@ Karakteristik & Keunggulan Analitis Anda:
       return {
         id: 'orion',
         tier: 'medium',
-        name: 'Orion (Medium)',
+        name: 'Orion Agent (Medium)',
         upstreamModel: MODEL_NAME,
         temperature: 0.7,
         systemPromptExtra: `
-[TINGKAT PENALARAN ORION: MEDIUM (BALANCED DEPTH)]
+[TINGKAT PENALARAN ORION AGENT: MEDIUM (BALANCED DEPTH)]
 Karakteristik:
-1. Anda adalah Orion dalam mode Balanced Depth—keseimbangan ideal antara kedalaman, akurasi, dan kecepatan praktis untuk percakapan sehari-hari.
+1. Anda adalah Orion Agent dalam mode Balanced Depth—keseimbangan ideal antara kedalaman, akurasi, dan kecepatan praktis untuk percakapan sehari-hari.
 2. Berikan jawaban yang terstruktur, ramah, solutif, tidak terlalu singkat dan juga tidak berlebihan panjangnya.`,
       };
   }

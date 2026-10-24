@@ -1,8 +1,8 @@
 export const AVAILABLE_MODELS = [
   {
     id: 'orion',
-    name: 'Orion',
-    displayName: 'Orion',
+    name: 'Orion Agent',
+    displayName: 'Orion Agent',
     subtitle: 'Tugas kompleks & penalaran',
     supportsReasoning: true,
   },
@@ -63,8 +63,8 @@ export function isReasoningSupported(modelId = '', modelName = '', customFlag = 
 
   if (!modelId) return false;
 
-  // Local built-in models: ONLY Orion supports reasoning
-  if (modelId === 'orion' || modelId === 'orion-auto') return true;
+  // Local built-in models: ONLY Orion Agent supports reasoning
+  if (modelId === 'orion' || modelId === 'orion-agent' || modelId === 'orion-auto') return true;
   if (modelId === 'agnes' || modelId === 'nemotron-3') return false;
 
   const target = `${modelId} ${modelName}`.toLowerCase();
