@@ -223,13 +223,16 @@ export default function MermaidBlock({ code, title = 'Flowchart' }) {
     }
   };
 
-  // Re-render when theme or code changes
+  const [retryCount, setRetryCount] = useState(0);
+
+  // Re-render when theme, retry, or code changes
   useEffect(() => {
     let isMounted = true;
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     ensureMermaidInit(isDark);
 
-    const renderId = `mermaid_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    // Clean alpha-only prefix ID for safe SVG DOM generation
+    const renderId = 'mmd_' + Math.random().toString(36).substring(2, 10);
     const sanitizedCode = autoRepairMermaid(code.trim());
 
     try {
@@ -245,13 +248,13 @@ export default function MermaidBlock({ code, title = 'Flowchart' }) {
         .catch((err) => {
           console.warn('Mermaid render error:', err);
           if (isMounted) {
-            setError(err.message || 'Gagal memproses diagram');
+            setError(err.message || 'Format diagram tidak dikenali');
             cleanupMermaidArtifacts(renderId);
           }
         });
     } catch (err) {
       if (isMounted) {
-        setError(err.message || 'Gagal memproses diagram');
+        setError(err.message || 'Format diagram tidak dikenali');
         cleanupMermaidArtifacts(renderId);
       }
     }
@@ -260,7 +263,7 @@ export default function MermaidBlock({ code, title = 'Flowchart' }) {
       isMounted = false;
       cleanupMermaidArtifacts(renderId);
     };
-  }, [code]);
+  }, [code, retryCount]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(code);
@@ -279,6 +282,11 @@ export default function MermaidBlock({ code, title = 'Flowchart' }) {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const handleRetry = () => {
+    setError(null);
+    setRetryCount((prev) => prev + 1);
   };
 
   return (
@@ -313,8 +321,21 @@ export default function MermaidBlock({ code, title = 'Flowchart' }) {
             </button>
           </div>
 
+          {/* Retry render button if error */}
+          {error && (
+            <button
+              type="button"
+              className="mermaid-action-btn"
+              onClick={handleRetry}
+              title="Coba proses ulang diagram"
+              aria-label="Coba lagi"
+            >
+              <RefreshCw size={13} />
+            </button>
+          )}
+
           {/* Download SVG */}
-          {svgHtml && (
+          {svgHtml && !error && (
             <button
               type="button"
               className="mermaid-action-btn"
@@ -356,7 +377,7 @@ export default function MermaidBlock({ code, title = 'Flowchart' }) {
 
       {error && (
         <div className="mermaid-error-banner">
-          <span>⚠️ Diagram tidak dapat dirender secara visual. Menampilkan kode teks.</span>
+          <span>⚠️ {error}. Menampilkan kode teks di atas.</span>
         </div>
       )}
     </div>
