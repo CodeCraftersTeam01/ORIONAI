@@ -1181,31 +1181,13 @@ export default function ManageProvidersModal({
                                     {m.name || m.id}
                                   </span>
                                   <code className="provider-model-id-pill">{m.id}</code>
-                                </div>
-
-                                {/* Status indicators */}
-                                <div className="provider-model-status-row">
                                   {isTesting ? (
-                                    <span className="provider-model-status is-testing">
-                                      <Loader2 size={11} className="provider-spinner" />
-                                      Menguji respon...
-                                    </span>
+                                    <Loader2 size={13} className="provider-spinner" title="Menguji respon..." />
                                   ) : isVerified ? (
-                                    <span className="provider-model-status is-ok">
-                                      <CheckCircle2 size={11} />
-                                      Berfungsi &amp; Siap Dipakai
-                                    </span>
+                                    <Check size={16} className="provider-status-check-only" strokeWidth={2.8} title="Model terverifikasi &amp; siap dipakai" />
                                   ) : isFailed ? (
-                                    <span className="provider-model-status is-fail">
-                                      <AlertCircle size={11} />
-                                      {m.lastTestError || 'Uji koneksi gagal (HTTP Error)'}
-                                    </span>
-                                  ) : (
-                                    <span className="provider-model-status is-untested">
-                                      <HelpCircle size={11} />
-                                      Belum diuji (klik Tes Model untuk verifikasi)
-                                    </span>
-                                  )}
+                                    <X size={16} className="provider-status-fail-only" strokeWidth={2.8} title={m.lastTestError || 'Uji koneksi gagal'} />
+                                  ) : null}
                                 </div>
                               </div>
                             </div>
