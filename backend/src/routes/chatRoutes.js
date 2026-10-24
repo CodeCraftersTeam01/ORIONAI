@@ -1,5 +1,11 @@
 import { Router } from 'express';
-import { getChatCompletion, streamChatCompletion, testCustomProviderConnection } from '../services/aiService.js';
+import {
+  getChatCompletion,
+  streamChatCompletion,
+  testCustomProviderConnection,
+  fetchProviderModels,
+  testSpecificModel,
+} from '../services/aiService.js';
 import { chatRateLimiter, validateChatInput } from '../middleware/security.js';
 
 const router = Router();
@@ -150,16 +156,44 @@ router.post('/stream', chatRateLimiter, validateChatInput, (req, res) => {
   });
 });
 
-// POST /api/chat/test-provider (Test connection ping for custom OpenAI-compatible providers)
+// POST /api/chat/test-provider (Dynamic connection ping using /models without hardcoded model)
 router.post('/test-provider', chatRateLimiter, async (req, res) => {
   try {
-    const { baseUrl, apiKey, modelId } = req.body;
-    const result = await testCustomProviderConnection({ baseUrl, apiKey, modelId });
+    const { baseUrl, apiKey } = req.body;
+    const result = await testCustomProviderConnection({ baseUrl, apiKey });
     res.json(result);
   } catch (err) {
     res.status(400).json({
       success: false,
       message: err.message || 'Gagal terhubung ke custom provider.',
+    });
+  }
+});
+
+// POST /api/chat/fetch-models (Fetch available models from /models or /api/tags)
+router.post('/fetch-models', chatRateLimiter, async (req, res) => {
+  try {
+    const { baseUrl, apiKey } = req.body;
+    const result = await fetchProviderModels({ baseUrl, apiKey });
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      message: err.message || 'Gagal mengambil daftar model dari endpoint /models.',
+    });
+  }
+});
+
+// POST /api/chat/test-model (Verify specific model completion before allowing checklist)
+router.post('/test-model', chatRateLimiter, async (req, res) => {
+  try {
+    const { baseUrl, apiKey, modelId } = req.body;
+    const result = await testSpecificModel({ baseUrl, apiKey, modelId });
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      message: err.message || `Gagal memverifikasi model "${req.body.modelId}".`,
     });
   }
 });

@@ -21,9 +21,40 @@ export default function ModelSelector({
   const containerRef = useRef(null);
   const flyoutTimeoutRef = useRef(null);
 
-  // Combine standard models with custom providers
+  // Combine standard models with enabled custom provider models
   const allModels = useMemo(() => {
-    return [...AVAILABLE_MODELS, ...customProviders];
+    const list = [...AVAILABLE_MODELS];
+    (customProviders || []).forEach((prov) => {
+      if (Array.isArray(prov.models) && prov.models.length > 0) {
+        prov.models
+          .filter((m) => m.enabled)
+          .forEach((m) => {
+            list.push({
+              id: `${prov.id}::${m.id}`,
+              name: m.name || m.id,
+              displayName: m.name || m.id,
+              subtitle: `${prov.name} • ${m.id}`,
+              isCustom: true,
+              providerId: prov.id,
+              modelId: m.id,
+              supportsReasoning: false,
+            });
+          });
+      } else if (prov.modelId) {
+        // Legacy fallback
+        list.push({
+          id: prov.id,
+          name: prov.name,
+          displayName: prov.displayName || prov.name,
+          subtitle: prov.subtitle || `${prov.name} • ${prov.modelId}`,
+          isCustom: true,
+          providerId: prov.id,
+          modelId: prov.modelId,
+          supportsReasoning: false,
+        });
+      }
+    });
+    return list;
   }, [customProviders]);
 
   const currentModel = useMemo(() => {

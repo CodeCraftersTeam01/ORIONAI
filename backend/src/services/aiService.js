@@ -381,15 +381,17 @@ export async function streamChatCompletion({
 }
 
 /**
- * Test Custom Provider Connection
+ * Fetch available models dynamically from provider endpoint (/models or Ollama /api/tags)
  */
-export async function testCustomProviderConnection({ baseUrl, apiKey, modelId }) {
+export async function fetchProviderModels({ baseUrl, apiKey }) {
   if (!baseUrl) {
     throw new Error('Base URL wajib diisi.');
   }
 
-  const cleanBase = baseUrl.trim().replace(/\/+$/, '');
-  const targetUrl = cleanBase.endsWith('/chat/completions') ? cleanBase : `${cleanBase}/chat/completions`;
+  let cleanBase = baseUrl.trim().replace(/\/+$/, '');
+  if (cleanBase.endsWith('/chat/completions')) {
+    cleanBase = cleanBase.replace(/\/chat\/completions$/, '');
+  }
 
   const headers = {
     'Content-Type': 'application/json',
@@ -398,17 +400,117 @@ export async function testCustomProviderConnection({ baseUrl, apiKey, modelId })
     headers.Authorization = `Bearer ${apiKey.trim()}`;
   }
 
-  const targetModel = modelId && modelId.trim() ? modelId.trim() : 'gpt-3.5-turbo';
+  const endpointsToTry = [];
+  if (cleanBase.endsWith('/v1')) {
+    endpointsToTry.push(`${cleanBase}/models`);
+    endpointsToTry.push(`${cleanBase.slice(0, -3)}/api/tags`);
+  } else {
+    endpointsToTry.push(`${cleanBase}/models`);
+    endpointsToTry.push(`${cleanBase}/v1/models`);
+    endpointsToTry.push(`${cleanBase}/api/tags`);
+  }
+
+  let lastError = null;
+  for (const url of endpointsToTry) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    try {
+      const res = await fetch(url, {
+        method: 'GET',
+        headers,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const data = await res.json();
+        let models = [];
+
+        if (Array.isArray(data.data)) {
+          models = data.data.map((m) => (typeof m === 'string' ? m : m.id || m.name)).filter(Boolean);
+        } else if (Array.isArray(data.models)) {
+          models = data.models.map((m) => (typeof m === 'string' ? m : m.name || m.model || m.id)).filter(Boolean);
+        } else if (Array.isArray(data)) {
+          models = data.map((m) => (typeof m === 'string' ? m : m.id || m.name)).filter(Boolean);
+        }
+
+        if (models.length > 0) {
+          const uniqueModels = Array.from(new Set(models));
+          return {
+            success: true,
+            endpoint: url,
+            models: uniqueModels,
+            message: `Berhasil mendeteksi ${uniqueModels.length} model dari ${url}.`,
+          };
+        }
+      } else {
+        const errText = await res.text();
+        lastError = new Error(`HTTP ${res.status}: ${errText.slice(0, 100)}`);
+      }
+    } catch (err) {
+      clearTimeout(timeoutId);
+      lastError = err;
+    }
+  }
+
+  throw lastError || new Error('Tidak dapat mengambil daftar model dari endpoint /models. Pastikan server AI aktif.');
+}
+
+/**
+ * Test Custom Provider Connection (without needing a manual modelId)
+ * Dynamically pings /models
+ */
+export async function testCustomProviderConnection({ baseUrl, apiKey }) {
+  if (!baseUrl) {
+    throw new Error('Base URL wajib diisi.');
+  }
+
+  try {
+    const result = await fetchProviderModels({ baseUrl, apiKey });
+    return {
+      success: true,
+      message: `Koneksi berhasil! Terhubung ke server (${result.models.length} model terdeteksi).`,
+      models: result.models,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      message: err.message || 'Gagal terhubung ke endpoint provider.',
+    };
+  }
+}
+
+/**
+ * Test Specific Model Completion before allowing checklist
+ */
+export async function testSpecificModel({ baseUrl, apiKey, modelId }) {
+  if (!baseUrl || !modelId) {
+    throw new Error('Base URL dan Model ID wajib diisi.');
+  }
+
+  let cleanBase = baseUrl.trim().replace(/\/+$/, '');
+  if (cleanBase.endsWith('/chat/completions')) {
+    cleanBase = cleanBase.replace(/\/chat\/completions$/, '');
+  }
+  const targetUrl = `${cleanBase}/chat/completions`;
+
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  if (apiKey && apiKey.trim()) {
+    headers.Authorization = `Bearer ${apiKey.trim()}`;
+  }
 
   const payload = {
-    model: targetModel,
-    messages: [{ role: 'user', content: 'Hello, this is a test connection ping.' }],
-    max_tokens: 8,
+    model: modelId.trim(),
+    messages: [{ role: 'user', content: 'hi' }],
+    max_tokens: 5,
     temperature: 0.1,
   };
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 12000);
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
 
   try {
     const res = await fetch(targetUrl, {
@@ -432,13 +534,13 @@ export async function testCustomProviderConnection({ baseUrl, apiKey, modelId })
     const data = await res.json();
     return {
       success: true,
-      message: `Berhasil terhubung ke model "${targetModel}".`,
+      message: `Model "${modelId}" berfungsi normal dan siap dipakai.`,
       sampleReply: data.choices?.[0]?.message?.content || 'OK',
     };
   } catch (err) {
     clearTimeout(timeoutId);
     if (err.name === 'AbortError') {
-      throw new Error('Timeout: Endpoint tidak merespons dalam 12 detik. Pastikan Base URL benar dan server AI aktif.');
+      throw new Error('Timeout: Model tidak merespons dalam 15 detik.');
     }
     throw err;
   }

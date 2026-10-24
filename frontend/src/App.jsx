@@ -454,7 +454,22 @@ export default function App() {
       timestamp: new Date().toISOString(),
     };
 
-    const activeCustomProvider = customProviders.find((p) => p.id === selectedModel) || null;
+    let activeCustomProvider = null;
+    if (selectedModel && selectedModel.includes('::')) {
+      const [provId, modId] = selectedModel.split('::');
+      const parentProv = customProviders.find((p) => p.id === provId);
+      if (parentProv) {
+        const activeKey = parentProv.apiKeys?.find((k) => k.active)?.key || parentProv.apiKey || '';
+        activeCustomProvider = {
+          baseUrl: parentProv.baseUrl,
+          apiKey: activeKey,
+          modelId: modId,
+          name: parentProv.name,
+        };
+      }
+    } else {
+      activeCustomProvider = customProviders.find((p) => p.id === selectedModel) || null;
+    }
 
     const aiMessageId = `msg-ai-${Date.now()}`;
     const initialAiMessage = {
