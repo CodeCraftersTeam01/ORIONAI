@@ -37,6 +37,76 @@ function MathInline({ formula }) {
   }
 }
 
+function formatHtmlPrettier(html) {
+  if (!html) return '';
+  let clean = html.trim();
+
+  // 1. Basic syntax repairs
+  clean = clean.replace(/<!DOCTYPE\s*([a-zA-Z0-9]+)>/gi, '<!DOCTYPE $1>');
+  clean = clean.replace(
+    /(<[a-zA-Z1-6]+)(id|class|href|src|type|name|content|rel|style|title|alt|width|height|value|placeholder|target|method|action|lang|charset)=/gi,
+    '$1 $2='
+  );
+  clean = clean.replace(/<title([A-Za-z0-9\s]+)<\/title>/gi, '<title>$1</title>');
+  clean = clean.replace(/<!--([^\s-][\s\S]*?[^\s-])-->/g, '<!-- $1 -->');
+
+  // 2. Put newline between consecutive tags: "><" -> ">\n<"
+  clean = clean.replace(/>\s*(?=<)/g, '>\n');
+
+  const voidTags = /^(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr|!doctype)$/i;
+
+  const rawLines = clean.split('\n');
+  const lines = [];
+  for (let l of rawLines) {
+    let t = l.trim();
+    if (!t) continue;
+    // Merge inline closing tags like </p>, </li>, </a> with opening tag on same line if single line element
+    if (/^<\/([a-zA-Z1-6]+)>/i.test(t) && lines.length > 0) {
+      const tag = RegExp.$1.toLowerCase();
+      const prev = lines[lines.length - 1];
+      if (new RegExp('^<' + tag + '\\b', 'i').test(prev) && !prev.includes('</' + tag + '>')) {
+        lines[lines.length - 1] += t;
+        continue;
+      }
+    }
+    lines.push(t);
+  }
+
+  let indentLevel = 0;
+  const result = [];
+
+  for (let trimmed of lines) {
+    // Comments stay at current indent
+    if (trimmed.startsWith('<!--')) {
+      result.push('  '.repeat(indentLevel) + trimmed);
+      continue;
+    }
+
+    const isClosing = /^<\/[a-zA-Z0-9_-]+>/i.test(trimmed);
+    const isSingleLinePair = /^<([a-zA-Z0-9_-]+)[^>]*>[\s\S]*<\/\1>$/i.test(trimmed);
+    const isOpening =
+      /^<([a-zA-Z0-9_-]+)[^>]*>/i.test(trimmed) &&
+      !trimmed.endsWith('/>') &&
+      !isSingleLinePair &&
+      !isClosing;
+
+    const openingMatch = trimmed.match(/^<([a-zA-Z0-9_-]+)/i);
+    const isVoid = openingMatch && voidTags.test(openingMatch[1]);
+
+    if (isClosing) {
+      indentLevel = Math.max(0, indentLevel - 1);
+    }
+
+    result.push('  '.repeat(indentLevel) + trimmed);
+
+    if (isOpening && !isVoid) {
+      indentLevel++;
+    }
+  }
+
+  return result.join('\n');
+}
+
 function formatCodeContent(rawCode, language) {
   if (!rawCode) return '';
   let cleaned = rawCode;
@@ -50,28 +120,7 @@ function formatCodeContent(rawCode, language) {
     (!isHtml && /([.#a-zA-Z0-9_\-:* >+~]+\s*\{[\s\S]*?\})/i.test(cleaned));
 
   if (isHtml) {
-    // 1. Fix <!DOCTYPEhtml> -> <!DOCTYPE html>
-    cleaned = cleaned.replace(/<!DOCTYPE\s*([a-zA-Z0-9]+)>/gi, '<!DOCTYPE $1>');
-    // 2. Fix merged tag and attribute like <sectionid="kontak"> -> <section id="kontak"> or <ahref= -> <a href=
-    cleaned = cleaned.replace(
-      /(<[a-zA-Z1-6]+)(id|class|href|src|type|name|content|rel|style|title|alt|width|height|value|placeholder|target|method|action|lang|charset)=/gi,
-      '$1 $2='
-    );
-    // 3. Fix missing closing tag bracket on title like <titleHalaman HTML Saya</title> -> <title>Halaman HTML Saya</title>
-    cleaned = cleaned.replace(/<title([A-Za-z0-9\s]+)<\/title>/gi, '<title>$1</title>');
-    // 4. Fix HTML comments merged like <!--BagianHeader--> -> <!-- Bagian Header -->
-    cleaned = cleaned.replace(/<!--([^\s-][\s\S]*?[^\s-])-->/g, '<!-- $1 -->');
-    // 5. Line breaks between block elements
-    cleaned = cleaned.replace(/(<!--[\s\S]*?-->)\s*(<[a-zA-Z1-6]+)/g, '$1\n$2');
-    cleaned = cleaned.replace(/(<\/[a-zA-Z1-6]+>)\s*(<!--)/g, '$1\n\n$2');
-    cleaned = cleaned.replace(
-      /(<\/(h[1-6]|header|footer|nav|main|section|article|aside|p|div|ul|ol|li|table|thead|tbody|tr|td|th)>)\s*(<(h[1-6]|header|footer|nav|main|section|article|aside|p|div|ul|ol|li|table|thead|tbody|tr|td|th)[^>]*>)/gi,
-      '$1\n$3'
-    );
-    cleaned = cleaned.replace(
-      /(<\/(section|article|header|footer|main)>)\s*(<(section|article|header|footer|main)[^>]*>)/gi,
-      '$1\n\n$3'
-    );
+    return formatHtmlPrettier(cleaned);
   }
 
   if (isCss) {
@@ -110,7 +159,7 @@ function formatCodeContent(rawCode, language) {
       }
       return trimmed;
     });
-    cleaned = formatted.join('\n');
+    return formatted.join('\n');
   }
 
   return cleaned;
@@ -129,10 +178,22 @@ function CodeBlock({ code, language }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const lines = useMemo(() => {
+    const text = formattedCode || code || '';
+    return text.split('\n');
+  }, [formattedCode, code]);
+
   return (
     <div className="code-block-container">
       <div className="code-block-header">
-        <span className="code-block-lang">{language || 'code'}</span>
+        <div className="code-block-header-left">
+          <div className="code-window-dots" aria-hidden="true">
+            <span className="code-window-dot dot-red" />
+            <span className="code-window-dot dot-yellow" />
+            <span className="code-window-dot dot-green" />
+          </div>
+          <span className="code-block-lang">{language || 'code'}</span>
+        </div>
         <button
           type="button"
           className="code-copy-btn"
@@ -152,9 +213,18 @@ function CodeBlock({ code, language }) {
           )}
         </button>
       </div>
-      <pre className="code-block-content">
-        <code>{formattedCode || code}</code>
-      </pre>
+      <div className="code-block-body">
+        <div className="code-block-gutter" aria-hidden="true">
+          {lines.map((_, idx) => (
+            <span key={idx} className="code-line-number">
+              {idx + 1}
+            </span>
+          ))}
+        </div>
+        <pre className="code-block-content">
+          <code>{formattedCode || code}</code>
+        </pre>
+      </div>
     </div>
   );
 }
