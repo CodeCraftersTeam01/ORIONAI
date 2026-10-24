@@ -292,6 +292,25 @@ export default function App() {
     return 'good night';
   };
 
+  // Rotating dynamic subtitles for dashboard to keep it fresh and inspiring
+  const [subtitleIndex, setSubtitleIndex] = useState(0);
+
+  const rotatingSubtitles = [
+    'Welcome To Orion Agents',
+    `What would you like to explore ${new Date().getHours() >= 17 || new Date().getHours() < 5 ? 'tonight' : 'today'}?`,
+    'Your cosmic intelligence companion',
+    'Siap membantu setiap pertanyaan dan kreativitasmu',
+    'Let’s build something extraordinary together',
+  ];
+
+  useEffect(() => {
+    if (currentView !== 'dashboard') return;
+    const interval = setInterval(() => {
+      setSubtitleIndex((prev) => (prev + 1) % rotatingSubtitles.length);
+    }, 4500);
+    return () => clearInterval(interval);
+  }, [currentView, rotatingSubtitles.length]);
+
   const handleNavigateView = (view) => {
     soundEffects.click?.();
     setCurrentView(view);
@@ -949,14 +968,26 @@ export default function App() {
               <h1 className="dashboard-greeting-title">
                 {`Hi Arjuna, ${getTimeGreeting()}`.split('').map((char, index) => (
                   <span
-                    key={`${char}-${index}`}
+                    key={`greet-${char}-${index}`}
                     className="blur-char"
-                    style={{ animationDelay: `${0.12 + index * 0.032}s` }}
+                    style={{ animationDelay: `${0.1 + index * 0.028}s` }}
                   >
                     {char === ' ' ? '\u00A0' : char}
                   </span>
                 ))}
               </h1>
+
+              <div className="dashboard-rotating-subtitle" key={subtitleIndex}>
+                {rotatingSubtitles[subtitleIndex].split('').map((char, index) => (
+                  <span
+                    key={`sub-${subtitleIndex}-${char}-${index}`}
+                    className="blur-subtitle-char"
+                    style={{ animationDelay: `${0.05 + index * 0.022}s` }}
+                  >
+                    {char === ' ' ? '\u00A0' : char}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
         ) : (
