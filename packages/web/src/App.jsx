@@ -369,6 +369,56 @@ export default function App() {
     setCurrentView('chat');
   };
 
+  const syncProvidersToServer = (providersList, model = selectedModel, tier = reasoningTier) => {
+    fetch('/api/chat/providers-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        providers: providersList,
+        selectedModel: model,
+        reasoningTier: tier,
+      }),
+    }).catch(() => {});
+  };
+
+  // Sync custom providers with server / filesystem (~/.orion/providers.json) on mount
+  useEffect(() => {
+    let isMounted = true;
+    fetch('/api/chat/providers-config')
+      .then((res) => res.json())
+      .then((data) => {
+        if (!isMounted || !data.success) return;
+        if (data.providers && data.providers.length > 0) {
+          setCustomProviders(data.providers);
+          localStorage.setItem('orion_custom_providers', JSON.stringify(data.providers));
+          if (data.selectedModel) {
+            setSelectedModel(data.selectedModel);
+            localStorage.setItem('orion_selected_model', data.selectedModel);
+          }
+          if (data.reasoningTier) {
+            setReasoningTier(data.reasoningTier);
+            localStorage.setItem('orion_reasoning_tier', data.reasoningTier);
+          }
+        } else {
+          // If server config is empty but localStorage has providers, push local providers to server
+          const localSaved = localStorage.getItem('orion_custom_providers');
+          if (localSaved) {
+            try {
+              const parsed = JSON.parse(localSaved);
+              if (parsed.length > 0) {
+                syncProvidersToServer(parsed);
+              }
+            } catch {}
+          }
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const handleModelChange = (modelId) => {
     setSelectedModel(modelId);
     try {
@@ -376,6 +426,7 @@ export default function App() {
     } catch {
       // storage quota fallback
     }
+    syncProvidersToServer(customProviders, modelId, reasoningTier);
   };
 
   const handleSaveCustomProvider = (providerData) => {
@@ -387,6 +438,7 @@ export default function App() {
       try {
         localStorage.setItem('orion_custom_providers', JSON.stringify(next));
       } catch {}
+      syncProvidersToServer(next);
       return next;
     });
     showToast(`Provider "${providerData.name}" berhasil disimpan.`);
@@ -398,6 +450,7 @@ export default function App() {
       try {
         localStorage.setItem('orion_custom_providers', JSON.stringify(next));
       } catch {}
+      syncProvidersToServer(next);
       return next;
     });
     if (selectedModel === providerId) {
@@ -418,6 +471,7 @@ export default function App() {
     } catch {
       // storage quota fallback
     }
+    syncProvidersToServer(customProviders, selectedModel, tierId);
   };
 
   // Dynamic recommendations: automatically randomized on each page reload / new session
