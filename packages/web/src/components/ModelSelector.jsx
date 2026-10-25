@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { ChevronDown, ChevronRight, Check, SlidersHorizontal, Cpu } from 'lucide-react';
+import { ChevronDown, ChevronRight, Check, SlidersHorizontal } from 'lucide-react';
 import {
-  DEFAULT_OFFICIAL_MODELS,
   REASONING_TIERS,
   getModelById,
   getReasoningTierById,
@@ -9,7 +8,7 @@ import {
 } from '../utils/modelConfig';
 
 export default function ModelSelector({
-  selectedModel = 'orion::orion',
+  selectedModel = null,
   reasoningTier = 'medium',
   customProviders = [],
   onSelectModel,
@@ -22,152 +21,79 @@ export default function ModelSelector({
   const containerRef = useRef(null);
   const flyoutTimeoutRef = useRef(null);
 
-  // 1. Extract Official Provider Models
-  const { officialModelItems, officialProviderName } = useMemo(() => {
-    const prov = (customProviders || []).find(
-      (p) => p.id === 'orion' || p.templateId === 'orion' || p?.name?.toLowerCase().includes('official')
-    );
-    const provName = prov?.name || 'Orion AI (Official)';
-
-    const sourceModels =
-      prov && Array.isArray(prov.models) && prov.models.length > 0
-        ? prov.models.filter((m) => m.enabled !== false)
-        : DEFAULT_OFFICIAL_MODELS;
-
-    const items = sourceModels.map((m) => {
-      const modId = m.id;
-      const modName = m.name || m.displayName || modId;
-      const defaultMeta = DEFAULT_OFFICIAL_MODELS.find((dm) => dm.id === modId);
-      const subtitle = defaultMeta?.subtitle || provName;
-      const supportsReasoning = isReasoningSupported(modId, modName, m.supportsReasoning);
-      return {
-        id: `orion::${modId}`,
-        name: modName,
-        displayName: modName,
-        subtitle,
-        providerName: provName,
-        providerId: 'orion',
-        modelId: modId,
-        isOfficial: true,
-        hasModel: true,
-        supportsReasoning,
-      };
-    });
-
-    return { officialModelItems: items, officialProviderName: provName };
-  }, [customProviders]);
-
-  // 2. Extract Custom Providers Sections
-  const customProviderSections = useMemo(() => {
-    const sections = [];
+  // 1. Extract ONLY scanned & checked (enabled) models across all providers
+  const providerGroups = useMemo(() => {
+    const groups = [];
     (customProviders || []).forEach((prov) => {
-      // Skip the official provider as it is rendered in its own official section
-      if (prov.id === 'orion' || prov.templateId === 'orion' || prov?.name?.toLowerCase().includes('official')) {
-        return;
-      }
-
-      const enabledModels = (prov.models || []).filter((m) => m.enabled);
-      const provName = prov.name || prov.displayName || 'Custom Provider';
-
+      const enabledModels = (prov.models || []).filter((m) => Boolean(m && m.enabled));
       if (enabledModels.length > 0) {
+        const provName = prov.displayName || prov.name || 'Provider';
         const items = enabledModels.map((m) => {
-          const supportsReasoning = isReasoningSupported(m.id, m.name, m.supportsReasoning);
+          const modId = typeof m === 'string' ? m : m.id;
+          const modName = typeof m === 'string' ? m : m.displayName || m.name || modId;
+          const supportsReasoning = isReasoningSupported(modId, modName, m.supportsReasoning);
           return {
-            id: `${prov.id}::${m.id}`,
-            name: m.name || m.id,
-            displayName: m.name || m.id,
+            id: `${prov.id}::${modId}`,
+            name: modName,
+            displayName: modName,
             subtitle: provName,
             providerName: provName,
             providerId: prov.id,
-            modelId: m.id,
-            hasModel: true,
+            modelId: modId,
             supportsReasoning,
+            hasModel: true,
           };
         });
-        sections.push({
+
+        groups.push({
           providerId: prov.id,
           providerName: provName,
           items,
         });
-      } else if (prov.modelId) {
-        const supportsReasoning = isReasoningSupported(prov.modelId, prov.displayName || provName);
-        sections.push({
-          providerId: prov.id,
-          providerName: provName,
-          items: [
-            {
-              id: `${prov.id}::${prov.modelId}`,
-              name: prov.displayName || provName,
-              displayName: prov.displayName || provName,
-              subtitle: provName,
-              providerName: provName,
-              providerId: prov.id,
-              modelId: prov.modelId,
-              hasModel: true,
-              supportsReasoning,
-            },
-          ],
-        });
-      } else {
-        sections.push({
-          providerId: prov.id,
-          providerName: provName,
-          items: [
-            {
-              id: prov.id,
-              name: provName,
-              displayName: provName,
-              subtitle: 'Belum ada model aktif (klik untuk kelola)',
-              providerName: provName,
-              providerId: prov.id,
-              modelId: null,
-              hasModel: false,
-              supportsReasoning: false,
-            },
-          ],
-        });
       }
     });
-    return sections;
+    return groups;
   }, [customProviders]);
 
-  // 3. Combined flattened model list for fast lookup
+  // 2. Flattened list of strictly active models
   const allModels = useMemo(() => {
-    const list = [...officialModelItems];
-    customProviderSections.forEach((sec) => {
-      sec.items.forEach((item) => {
-        if (item.hasModel) {
-          list.push(item);
-        }
-      });
-    });
-    return list;
-  }, [officialModelItems, customProviderSections]);
+    return providerGroups.flatMap((g) => g.items);
+  }, [providerGroups]);
 
-  // 4. Resolve currently active model
+  // 3. Resolve currently active model
   const currentModel = useMemo(() => {
-    let normalizedSelected = selectedModel;
-    if (normalizedSelected === 'orion') normalizedSelected = 'orion::orion';
-    else if (normalizedSelected === 'agnes' || normalizedSelected === 'agnes-2.5-flash') normalizedSelected = 'orion::agnes-2.5-flash';
-    else if (normalizedSelected === 'nemotron-3') normalizedSelected = 'orion::nemotron-3';
+    if (allModels.length === 0) return null;
 
-    if (normalizedSelected && normalizedSelected.includes('::')) {
-      const [provId, modId] = normalizedSelected.split('::');
-      const found = allModels.find(
-        (m) => m.id === normalizedSelected || (m.providerId === provId && m.modelId === modId)
-      );
-      if (found) return found;
-      return getModelById(normalizedSelected, customProviders);
+    if (selectedModel) {
+      // Direct ID match (e.g. 'custom-123::orion')
+      const exact = allModels.find((m) => m.id === selectedModel);
+      if (exact) return exact;
+
+      // Model ID match (e.g. 'orion' or 'orion::orion' maps to active provider's 'orion')
+      const targetModId = selectedModel.includes('::') ? selectedModel.split('::')[1] : selectedModel;
+      const modMatch = allModels.find((m) => m.modelId === targetModId);
+      if (modMatch) return modMatch;
     }
 
-    const found = allModels.find((m) => m.id === normalizedSelected || m.modelId === normalizedSelected);
-    if (found) return found;
-
-    return allModels[0] || getModelById('orion::orion', customProviders);
-  }, [allModels, selectedModel, customProviders]);
+    // Default to the first enabled model
+    return allModels[0];
+  }, [allModels, selectedModel]);
 
   const currentTier = getReasoningTierById(reasoningTier);
-  const canUseReasoning = Boolean(currentModel.supportsReasoning);
+  const canUseReasoning = Boolean(currentModel && currentModel.supportsReasoning);
+
+  // Auto-sync selected model if previous model is no longer enabled
+  useEffect(() => {
+    if (allModels.length > 0) {
+      const hasActive = allModels.some((m) => m.id === selectedModel);
+      if (!hasActive && typeof onSelectModel === 'function') {
+        const fallback = currentModel || allModels[0];
+        if (fallback) {
+          onSelectModel(fallback.id);
+        }
+      }
+    }
+  }, [allModels, selectedModel, currentModel, onSelectModel]);
 
   // Close when clicked outside
   useEffect(() => {
@@ -186,16 +112,20 @@ export default function ModelSelector({
   }, []);
 
   const handleModelClick = (modelId) => {
-    onSelectModel(modelId);
+    if (typeof onSelectModel === 'function') {
+      onSelectModel(modelId);
+    }
     const targetModel = allModels.find((m) => m.id === modelId) || getModelById(modelId, customProviders);
-    if (!targetModel.supportsReasoning) {
+    if (!targetModel || !targetModel.supportsReasoning) {
       setIsReasoningFlyoutOpen(false);
       setIsOpen(false);
     }
   };
 
   const handleReasoningSelect = (tierId) => {
-    onSelectReasoningTier(tierId);
+    if (typeof onSelectReasoningTier === 'function') {
+      onSelectReasoningTier(tierId);
+    }
     setIsReasoningFlyoutOpen(false);
     setIsOpen(false);
   };
@@ -232,9 +162,15 @@ export default function ModelSelector({
         aria-expanded={isOpen}
       >
         <span className="gemini-pill-text">
-          {currentModel.displayName || currentModel.name}
-          {currentModel.supportsReasoning && (
-            <span className="gemini-pill-tier-tag"> • {currentTier.name}</span>
+          {currentModel ? (
+            <>
+              {currentModel.displayName || currentModel.name}
+              {currentModel.supportsReasoning && (
+                <span className="gemini-pill-tier-tag"> • {currentTier.name}</span>
+              )}
+            </>
+          ) : (
+            'Pilih Model'
           )}
         </span>
         <ChevronDown size={13} className={`gemini-pill-chevron ${isOpen ? 'rotated' : ''}`} />
@@ -245,85 +181,66 @@ export default function ModelSelector({
         <div className="gemini-dropdown-menu" onClick={(e) => e.stopPropagation()}>
           {/* Scrollable Model List Area */}
           <div className="gemini-models-scroll-container">
-            {/* Official Provider Models */}
-            {officialModelItems.length > 0 && (
-              <div className="gemini-provider-section">
-                <div className="gemini-section-tag">{officialProviderName}</div>
-                <div className="gemini-menu-list">
-                  {officialModelItems.map((item) => {
-                    const isSelected =
-                      item.id === currentModel.id ||
-                      (currentModel.providerId === item.providerId && currentModel.modelId === item.modelId);
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        className={`gemini-menu-item ${isSelected ? 'selected' : ''}`}
-                        onClick={() => handleModelClick(item.id)}
-                      >
-                        <div className="gemini-item-check-col">
-                          {isSelected ? <Check size={14} className="gemini-check-icon" /> : null}
-                        </div>
-                        <div className="gemini-item-text-col">
-                          <span className="gemini-item-title">
-                            {item.displayName}
-                            {item.supportsReasoning && (
-                              <span className="gemini-thinking-badge">Thinking</span>
-                            )}
-                          </span>
-                          <span className="gemini-item-subtitle">{item.subtitle}</span>
-                        </div>
-                      </button>
-                    );
-                  })}
+            {providerGroups.length === 0 ? (
+              <div
+                style={{
+                  padding: '1rem 0.9rem',
+                  textAlign: 'center',
+                  color: 'var(--text-muted)',
+                  fontSize: '0.78rem',
+                }}
+              >
+                <div
+                  style={{
+                    fontWeight: 600,
+                    marginBottom: '0.3rem',
+                    color: 'var(--text-primary)',
+                  }}
+                >
+                  Belum ada model aktif
+                </div>
+                <div style={{ lineHeight: 1.4 }}>
+                  Buka menu Provider untuk memindai dan mencentang model yang ingin digunakan.
                 </div>
               </div>
+            ) : (
+              providerGroups.map((group, idx) => (
+                <div key={group.providerId} className="gemini-provider-section">
+                  {idx > 0 && <div className="gemini-menu-divider" />}
+                  <div className="gemini-section-tag">{group.providerName}</div>
+                  <div className="gemini-menu-list">
+                    {group.items.map((item) => {
+                      const isSelected =
+                        currentModel &&
+                        (item.id === currentModel.id ||
+                          (item.providerId === currentModel.providerId &&
+                            item.modelId === currentModel.modelId));
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className={`gemini-menu-item ${isSelected ? 'selected' : ''}`}
+                          onClick={() => handleModelClick(item.id)}
+                        >
+                          <div className="gemini-item-check-col">
+                            {isSelected ? <Check size={14} className="gemini-check-icon" /> : null}
+                          </div>
+                          <div className="gemini-item-text-col">
+                            <span className="gemini-item-title">
+                              {item.displayName}
+                              {item.supportsReasoning && (
+                                <span className="gemini-thinking-badge">Thinking</span>
+                              )}
+                            </span>
+                            <span className="gemini-item-subtitle">{item.subtitle}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))
             )}
-
-            {/* Custom Providers Sections */}
-            {customProviderSections.map((sec) => (
-              <div key={sec.providerId} className="gemini-provider-section">
-                <div className="gemini-menu-divider" />
-                <div className="gemini-section-tag">{sec.providerName}</div>
-                <div className="gemini-menu-list">
-                  {sec.items.map((item) => {
-                    const isSelected =
-                      item.id === currentModel.id ||
-                      (currentModel.providerId === item.providerId && currentModel.modelId === item.modelId);
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        className={`gemini-menu-item ${isSelected ? 'selected' : ''}`}
-                        onClick={() => {
-                          if (item.hasModel) {
-                            handleModelClick(item.id);
-                          } else {
-                            setIsOpen(false);
-                            if (typeof onOpenManageProviders === 'function') {
-                              onOpenManageProviders();
-                            }
-                          }
-                        }}
-                      >
-                        <div className="gemini-item-check-col">
-                          {isSelected ? <Check size={14} className="gemini-check-icon" /> : null}
-                        </div>
-                        <div className="gemini-item-text-col">
-                          <span className="gemini-item-title">
-                            {item.displayName}
-                            {item.supportsReasoning && (
-                              <span className="gemini-thinking-badge">Thinking</span>
-                            )}
-                          </span>
-                          <span className="gemini-item-subtitle">{item.subtitle}</span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
           </div>
 
           <div className="gemini-menu-divider" />
@@ -346,7 +263,7 @@ export default function ModelSelector({
               disabled={!canUseReasoning}
               title={
                 canUseReasoning
-                  ? `Ubah tingkat penalaran (${currentModel.displayName || currentModel.name})`
+                  ? `Ubah tingkat penalaran (${currentModel?.displayName || currentModel?.name})`
                   : 'Model ini tidak mendukung fitur penalaran'
               }
             >
@@ -373,9 +290,7 @@ export default function ModelSelector({
                 onMouseEnter={handleFlyoutMouseEnter}
                 onMouseLeave={handleFlyoutMouseLeave}
               >
-                {/* Pointer Arrow on right edge */}
                 <div className="gemini-flyout-pointer" />
-
                 <div className="gemini-flyout-content">
                   {REASONING_TIERS.map((tier) => {
                     const isTierSelected = tier.id === currentTier.id;

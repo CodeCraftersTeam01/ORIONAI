@@ -1,4 +1,3 @@
-// Legacy AVAILABLE_MODELS is emptied: models are now 100% dynamic from providers
 export const AVAILABLE_MODELS = [];
 
 export const REASONING_TIERS = [
@@ -19,79 +18,12 @@ export const REASONING_TIERS = [
   },
 ];
 
-export const DEFAULT_MODEL_ID = 'orion::orion';
+export const DEFAULT_MODEL_ID = null;
 export const DEFAULT_REASONING_TIER = 'medium';
-
-export const DEFAULT_OFFICIAL_MODELS = [
-  {
-    id: 'orion',
-    name: 'Orion',
-    displayName: 'Orion',
-    subtitle: 'Tugas kompleks & penalaran',
-    supportsReasoning: true,
-  },
-  {
-    id: 'orion-auto',
-    name: 'Orion Auto Router',
-    displayName: 'Orion Auto Router',
-    subtitle: 'Router otomatis multi-model cerdas',
-    supportsReasoning: true,
-  },
-  {
-    id: 'agnes-2.5-flash',
-    name: 'Agnes 2.5 Flash',
-    displayName: 'Agnes 2.5 Flash',
-    subtitle: 'Bantuan serbaguna & kreatif',
-    supportsReasoning: false,
-  },
-  {
-    id: 'agnes-2.5-pro',
-    name: 'Agnes 2.5 Pro',
-    displayName: 'Agnes 2.5 Pro',
-    subtitle: 'Performa tinggi untuk tugas mendalam',
-    supportsReasoning: false,
-  },
-  {
-    id: 'agnes-3.0-flash',
-    name: 'Agnes 3.0 Flash',
-    displayName: 'Agnes 3.0 Flash',
-    subtitle: 'Generasi baru berkecepatan tinggi',
-    supportsReasoning: false,
-  },
-  {
-    id: 'gemini-3.7-flash',
-    name: 'Gemini 3.7 Flash',
-    displayName: 'Gemini 3.7 Flash',
-    subtitle: 'Multimodal mutakhir penalaran cepat',
-    supportsReasoning: true,
-  },
-  {
-    id: 'gemini-3.5-flash-lite',
-    name: 'Gemini 3.5 Flash Lite',
-    displayName: 'Gemini 3.5 Flash Lite',
-    subtitle: 'Ringan, efisien & responsif',
-    supportsReasoning: false,
-  },
-  {
-    id: 'nemotron-3',
-    name: 'Nemotron 3',
-    displayName: 'Nemotron 3',
-    subtitle: 'Jawaban tercepat bebas biaya',
-    supportsReasoning: false,
-  },
-];
 
 export function getModelById(modelId, customProviders = []) {
   if (!modelId) {
-    return {
-      id: 'orion::orion',
-      name: 'Orion',
-      displayName: 'Orion',
-      subtitle: 'Orion AI (Official)',
-      providerId: 'orion',
-      modelId: 'orion',
-      supportsReasoning: true,
-    };
+    return null;
   }
 
   // Parse providerId::modelId
@@ -99,9 +31,8 @@ export function getModelById(modelId, customProviders = []) {
     const [provId, modId] = modelId.split('::');
     const prov = (customProviders || []).find((p) => p.id === provId);
     const mod = (prov?.models || []).find((m) => (typeof m === 'string' ? m === modId : m.id === modId));
-    const name = mod?.name || modId;
-    const defaultMeta = DEFAULT_OFFICIAL_MODELS.find((dm) => dm.id === modId);
-    const subtitle = defaultMeta?.subtitle || prov?.name || 'Model Provider';
+    const name = mod?.displayName || mod?.name || modId;
+    const subtitle = prov?.displayName || prov?.name || 'Provider';
     const supportsReasoning = isReasoningSupported(modId, name, mod?.supportsReasoning);
     return {
       id: modelId,
@@ -114,50 +45,34 @@ export function getModelById(modelId, customProviders = []) {
     };
   }
 
-  // Legacy fallback for plain model IDs
-  if (modelId === 'orion') {
-    return {
-      id: 'orion::orion',
-      name: 'Orion',
-      displayName: 'Orion',
-      subtitle: 'Tugas kompleks & penalaran',
-      providerId: 'orion',
-      modelId: 'orion',
-      supportsReasoning: true,
-    };
-  }
-  if (modelId === 'agnes' || modelId === 'agnes-2.5-flash') {
-    return {
-      id: 'orion::agnes-2.5-flash',
-      name: 'Agnes 2.5 Flash',
-      displayName: 'Agnes 2.5 Flash',
-      subtitle: 'Bantuan serbaguna & kreatif',
-      providerId: 'orion',
-      modelId: 'agnes-2.5-flash',
-      supportsReasoning: false,
-    };
-  }
-  if (modelId === 'nemotron-3') {
-    return {
-      id: 'orion::nemotron-3',
-      name: 'Nemotron 3',
-      displayName: 'Nemotron 3',
-      subtitle: 'Jawaban tercepat bebas biaya',
-      providerId: 'orion',
-      modelId: 'nemotron-3',
-      supportsReasoning: false,
-    };
+  // Fallback for plain model IDs: search across providers
+  for (const prov of customProviders || []) {
+    const mod = (prov?.models || []).find((m) => (typeof m === 'string' ? m === modelId : m.id === modelId));
+    if (mod) {
+      const name = mod.displayName || mod.name || modelId;
+      const subtitle = prov.displayName || prov.name || 'Provider';
+      const supportsReasoning = isReasoningSupported(modelId, name, mod.supportsReasoning);
+      return {
+        id: `${prov.id}::${modelId}`,
+        name,
+        displayName: name,
+        subtitle,
+        providerId: prov.id,
+        modelId,
+        supportsReasoning,
+      };
+    }
   }
 
-  const defaultMeta = DEFAULT_OFFICIAL_MODELS.find((dm) => dm.id === modelId);
+  const cleanId = typeof modelId === 'string' && modelId.includes('::') ? modelId.split('::')[1] : modelId;
   return {
-    id: `orion::${modelId}`,
-    name: defaultMeta?.name || modelId,
-    displayName: defaultMeta?.displayName || modelId,
-    subtitle: defaultMeta?.subtitle || 'Model Kustom',
-    providerId: 'orion',
-    modelId,
-    supportsReasoning: isReasoningSupported(modelId),
+    id: modelId,
+    name: cleanId,
+    displayName: cleanId,
+    subtitle: 'Provider',
+    providerId: null,
+    modelId: cleanId,
+    supportsReasoning: isReasoningSupported(cleanId),
   };
 }
 

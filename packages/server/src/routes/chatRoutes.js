@@ -30,17 +30,6 @@ const REASONING_TIERS = [
   { id: 'high', name: 'High', desc: 'Extra thorough' },
 ];
 
-const DEFAULT_OFFICIAL_MODELS = [
-  { id: 'orion::orion', name: 'Orion', displayName: 'Orion', subtitle: 'Tugas kompleks & penalaran', supportsReasoning: true, status: 'active' },
-  { id: 'orion::orion-auto', name: 'Orion Auto Router', displayName: 'Orion Auto Router', subtitle: 'Router otomatis multi-model cerdas', supportsReasoning: true, status: 'active' },
-  { id: 'orion::agnes-2.5-flash', name: 'Agnes 2.5 Flash', displayName: 'Agnes 2.5 Flash', subtitle: 'Bantuan serbaguna & kreatif', supportsReasoning: false, status: 'active' },
-  { id: 'orion::agnes-2.5-pro', name: 'Agnes 2.5 Pro', displayName: 'Agnes 2.5 Pro', subtitle: 'Performa tinggi untuk tugas mendalam', supportsReasoning: false, status: 'active' },
-  { id: 'orion::agnes-3.0-flash', name: 'Agnes 3.0 Flash', displayName: 'Agnes 3.0 Flash', subtitle: 'Generasi baru berkecepatan tinggi', supportsReasoning: false, status: 'active' },
-  { id: 'orion::gemini-3.7-flash', name: 'Gemini 3.7 Flash', displayName: 'Gemini 3.7 Flash', subtitle: 'Multimodal mutakhir penalaran cepat', supportsReasoning: true, status: 'active' },
-  { id: 'orion::gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash Lite', displayName: 'Gemini 3.5 Flash Lite', subtitle: 'Ringan, efisien & responsif', supportsReasoning: false, status: 'active' },
-  { id: 'orion::nemotron-3', name: 'Nemotron 3', displayName: 'Nemotron 3', subtitle: 'Jawaban tercepat bebas biaya', supportsReasoning: false, status: 'active' },
-];
-
 // Inspirational prompt suggestions
 const SUGGESTIONS = [
   {
@@ -210,14 +199,41 @@ router.post('/test-model', chatRateLimiter, async (req, res) => {
   }
 });
 
-// GET /api/chat/models (Dynamic official & recommended model info)
+// GET /api/chat/models (Dynamic enabled models from active provider configuration)
 router.get('/models', (req, res) => {
-  res.json({
-    success: true,
-    models: DEFAULT_OFFICIAL_MODELS,
-    reasoningTiers: REASONING_TIERS,
-    status: 'online',
-  });
+  try {
+    ensureConfigDir();
+    let providers = [];
+    if (fs.existsSync(providersConfigFile)) {
+      try {
+        const data = JSON.parse(fs.readFileSync(providersConfigFile, 'utf8'));
+        providers = data.providers || [];
+      } catch {}
+    }
+    const enabledModels = [];
+    providers.forEach((prov) => {
+      (prov.models || []).forEach((m) => {
+        if (m && m.enabled) {
+          enabledModels.push({
+            id: `${prov.id}::${m.id}`,
+            name: m.name || m.id,
+            displayName: m.name || m.id,
+            providerName: prov.name,
+            supportsReasoning: Boolean(m.supportsReasoning),
+            status: 'active',
+          });
+        }
+      });
+    });
+    res.json({
+      success: true,
+      models: enabledModels,
+      reasoningTiers: REASONING_TIERS,
+      status: 'online',
+    });
+  } catch (err) {
+    res.json({ success: true, models: [], reasoningTiers: REASONING_TIERS, status: 'online' });
+  }
 });
 
 // GET /api/chat/providers-config (Sync providers from ~/.orion/providers.json)
@@ -262,7 +278,7 @@ router.get('/providers-config', (req, res) => {
       }
     }
 
-    // Default fallback provider configuration
+    // Default fallback provider configuration (polosan awal tanpa model sebelum di-scan / diimpor)
     const defaultProviders = [
       {
         id: 'orion',
@@ -272,16 +288,7 @@ router.get('/providers-config', (req, res) => {
         apiKey: savedApiKey,
         requiresApiKey: true,
         hideBaseUrl: true,
-        models: [
-          { id: 'orion', name: 'Orion', enabled: true, tested: true, lastTestStatus: 'success' },
-          { id: 'orion-auto', name: 'Orion Auto Router', enabled: true, tested: true, lastTestStatus: 'success' },
-          { id: 'agnes-2.5-flash', name: 'Agnes 2.5 Flash', enabled: true, tested: true, lastTestStatus: 'success' },
-          { id: 'agnes-2.5-pro', name: 'Agnes 2.5 Pro', enabled: true, tested: true, lastTestStatus: 'success' },
-          { id: 'agnes-3.0-flash', name: 'Agnes 3.0 Flash', enabled: true, tested: true, lastTestStatus: 'success' },
-          { id: 'gemini-3.7-flash', name: 'Gemini 3.7 Flash', enabled: true, tested: true, lastTestStatus: 'success' },
-          { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash Lite', enabled: true, tested: true, lastTestStatus: 'success' },
-          { id: 'nemotron-3', name: 'Nemotron 3', enabled: true, tested: true, lastTestStatus: 'success' },
-        ],
+        models: [],
       },
     ];
 

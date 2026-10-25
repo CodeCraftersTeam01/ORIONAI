@@ -659,6 +659,8 @@ export default function App() {
       orionProvider?.apiKeys?.find((k) => k.active)?.key || orionProvider?.apiKey || '';
 
     let activeCustomProvider = null;
+    let effectiveModel = selectedModel;
+
     if (selectedModel && selectedModel.includes('::')) {
       const [provId, modId] = selectedModel.split('::');
       const parentProv = customProviders.find((p) => p.id === provId);
@@ -676,8 +678,50 @@ export default function App() {
           requiresApiKey: parentProv.requiresApiKey,
         };
       }
-    } else {
-      activeCustomProvider = customProviders.find((p) => p.id === selectedModel) || null;
+    } else if (selectedModel) {
+      for (const p of customProviders) {
+        const foundMod = (p.models || []).find((m) => (typeof m === 'string' ? m === selectedModel : m.id === selectedModel && m.enabled));
+        if (foundMod) {
+          const modId = typeof foundMod === 'string' ? foundMod : foundMod.id;
+          effectiveModel = `${p.id}::${modId}`;
+          let activeKey = p.apiKeys?.find((k) => k.active)?.key || p.apiKey || '';
+          if (!activeKey && (p.id === 'orion' || p.templateId === 'orion' || p.name?.toLowerCase().includes('official'))) {
+            activeKey = userOrionApiKey;
+          }
+          activeCustomProvider = {
+            id: p.id,
+            baseUrl: p.baseUrl,
+            apiKey: activeKey,
+            modelId: modId,
+            name: p.name,
+            requiresApiKey: p.requiresApiKey,
+          };
+          break;
+        }
+      }
+    }
+
+    if (!activeCustomProvider && customProviders.length > 0) {
+      for (const p of customProviders) {
+        const firstEnabled = (p.models || []).find((m) => m && m.enabled);
+        if (firstEnabled) {
+          const modId = firstEnabled.id;
+          effectiveModel = `${p.id}::${modId}`;
+          let activeKey = p.apiKeys?.find((k) => k.active)?.key || p.apiKey || '';
+          if (!activeKey && (p.id === 'orion' || p.templateId === 'orion' || p.name?.toLowerCase().includes('official'))) {
+            activeKey = userOrionApiKey;
+          }
+          activeCustomProvider = {
+            id: p.id,
+            baseUrl: p.baseUrl,
+            apiKey: activeKey,
+            modelId: modId,
+            name: p.name,
+            requiresApiKey: p.requiresApiKey,
+          };
+          break;
+        }
+      }
     }
 
     const modelSupportsReasoning = isReasoningSupported(
@@ -691,7 +735,7 @@ export default function App() {
       id: aiMessageId,
       role: 'assistant',
       content: '',
-      model: selectedModel,
+      model: effectiveModel || selectedModel,
       reasoningTier: activeReasoningTier,
       customProvider: activeCustomProvider,
       timestamp: new Date().toISOString(),
@@ -753,7 +797,7 @@ export default function App() {
           message: displayPrompt,
           history: activeSession ? activeSession.messages : [],
           attachments: activeAttachments,
-          model: selectedModel,
+          model: effectiveModel || selectedModel,
           reasoningTier: activeReasoningTier,
           customProvider: activeCustomProvider,
           orionApiKey: userOrionApiKey,
