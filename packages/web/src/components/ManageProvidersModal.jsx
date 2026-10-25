@@ -444,6 +444,24 @@ export default function ManageProvidersModal({
     if (!currentProvider || !currentProvider.baseUrl) return;
     const activeKey = currentProvider.apiKeys?.find((k) => k.active)?.key || currentProvider.apiKey || '';
 
+    // If provider requires API key but none is stored, warn immediately
+    if (!activeKey && (currentProvider.requiresApiKey || currentProvider.id === 'orion' || currentProvider.templateId === 'orion')) {
+      const errMsg = 'API Key belum dimasukkan. Masukkan API Key pada bagian "Koneksi & API Key" di atas sebelum menguji model.';
+      const existingModels = currentProvider.models || [];
+      const updatedModels = existingModels.map((m) =>
+        m.id === modelItem.id
+          ? { ...m, tested: true, lastTestStatus: 'failed', lastTestError: errMsg, enabled: false }
+          : m
+      );
+      onSaveProvider({ ...currentProvider, models: updatedModels });
+      setImportNotice({
+        success: false,
+        message: `⚠️ Gagal menguji "${modelItem.name || modelItem.id}": ${errMsg}`,
+      });
+      setIsAddingApiKey(true);
+      return;
+    }
+
     setTestingModelMap((prev) => ({ ...prev, [modelItem.id]: true }));
 
     try {
@@ -468,6 +486,10 @@ export default function ManageProvidersModal({
             : m
         );
         onSaveProvider({ ...currentProvider, models: updatedModels });
+        setImportNotice({
+          success: true,
+          message: `✓ Model "${modelItem.name || modelItem.id}" berhasil diverifikasi dan siap digunakan!`,
+        });
       } else {
         // Model failed verification -> Cannot be checked
         const errMsg = data.message || 'Verifikasi model gagal.';
@@ -477,6 +499,10 @@ export default function ManageProvidersModal({
             : m
         );
         onSaveProvider({ ...currentProvider, models: updatedModels });
+        setImportNotice({
+          success: false,
+          message: `⚠️ Gagal menguji "${modelItem.name || modelItem.id}": ${errMsg}`,
+        });
       }
     } catch (err) {
       const existingModels = currentProvider.models || [];
@@ -486,6 +512,10 @@ export default function ManageProvidersModal({
           : m
       );
       onSaveProvider({ ...currentProvider, models: updatedModels });
+      setImportNotice({
+        success: false,
+        message: `⚠️ Gagal menguji "${modelItem.name || modelItem.id}": ${err.message}`,
+      });
     } finally {
       setTestingModelMap((prev) => ({ ...prev, [modelItem.id]: false }));
     }
@@ -1207,7 +1237,14 @@ export default function ManageProvidersModal({
                                   ) : isVerified ? (
                                     <Check size={16} className="provider-status-check-only" strokeWidth={2.8} title="Model terverifikasi &amp; siap dipakai" />
                                   ) : isFailed ? (
-                                    <X size={16} className="provider-status-fail-only" strokeWidth={2.8} title={m.lastTestError || 'Uji koneksi gagal'} />
+                                    <>
+                                      <X size={16} className="provider-status-fail-only" strokeWidth={2.8} title={m.lastTestError || 'Uji koneksi gagal'} />
+                                      {m.lastTestError && (
+                                        <span className="provider-model-error-badge" title={m.lastTestError}>
+                                          {m.lastTestError}
+                                        </span>
+                                      )}
+                                    </>
                                   ) : null}
                                 </div>
                               </div>
