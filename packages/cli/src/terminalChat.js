@@ -1,5 +1,28 @@
 import readline from 'readline';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { streamChatCompletion } from '../../server/src/services/aiService.js';
+
+const credPath = path.join(os.homedir(), '.orion', 'credentials.json');
+
+function loadSavedApiKey() {
+  try {
+    if (fs.existsSync(credPath)) {
+      const data = JSON.parse(fs.readFileSync(credPath, 'utf8'));
+      return data.apiKey || '';
+    }
+  } catch {}
+  return '';
+}
+
+function saveApiKey(apiKey) {
+  try {
+    const dir = path.dirname(credPath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(credPath, JSON.stringify({ apiKey, updatedAt: Date.now() }));
+  } catch {}
+}
 
 // ANSI Styling Helper
 export const c = {
@@ -101,14 +124,18 @@ export async function showSplashScreen() {
 }
 
 // Print minimalist chat header
-export function printHeader(modelId, tier) {
+export function printHeader(modelId, tier, hasKey = false) {
   const cols = Math.min(process.stdout.columns || 80, 72);
   const divider = '─'.repeat(cols);
+  const keyStatus = hasKey
+    ? `${c.green}● Key Aktif${c.reset}`
+    : `${c.yellow}○ Key Kosong (/key)${c.reset}`;
+
   console.log(`${c.brightCyan}${c.bold}🌌 ORION AGENT TERMINAL CHAT${c.reset} ${c.dim}(v1.0.0)${c.reset}`);
   console.log(
     `${c.gray}Model:${c.reset} ${c.cyan}${modelId}${c.reset}${
       modelId === 'orion' ? ` ${c.dim}(tier: ${tier})${c.reset}` : ''
-    } · ${c.gray}Ketik ${c.yellow}/help${c.gray} atau ${c.yellow}/model${c.gray} untuk opsi${c.reset}`
+    } · ${keyStatus} · ${c.gray}Ketik ${c.yellow}/help${c.gray} untuk opsi${c.reset}`
   );
   console.log(`${c.gray}${divider}${c.reset}\n`);
 }
@@ -119,11 +146,12 @@ export async function startTerminalChat() {
 
   let currentModel = 'orion';
   let reasoningTier = 'medium';
+  let userApiKey = loadSavedApiKey() || process.env.AI_API_KEY || '';
   let history = [];
   let isGenerating = false;
   let activeAbortController = null;
 
-  printHeader(currentModel, reasoningTier);
+  printHeader(currentModel, reasoningTier, !!userApiKey);
 
   const rl = readline.createInterface({
     input: process.stdin,
@@ -148,6 +176,14 @@ export async function startTerminalChat() {
       return;
     }
 
+    // Validate API Key before sending request
+    if (!userApiKey) {
+      console.log(`\n${c.yellow}⚠️  API Key Orion belum dimasukkan.${c.reset}`);
+      console.log(`${c.gray}Ketik ${c.yellow}/key <api_key_anda>${c.gray} untuk memasukkan API Key sebelum mengobrol.${c.reset}\n`);
+      rl.prompt();
+      return;
+    }
+
     // Process chat prompt
     isGenerating = true;
     activeAbortController = new AbortController();
@@ -167,6 +203,7 @@ export async function startTerminalChat() {
           history: history.slice(0, -1),
           model: currentModel,
           reasoningTier: reasoningTier,
+          orionApiKey: userApiKey,
           signal: activeAbortController.signal,
           onChunk: (chunk) => {
             assistantReply += chunk;
@@ -267,8 +304,27 @@ export async function startTerminalChat() {
       return;
     }
 
+    if (action === '/key' || action === '/apikey') {
+      if (!arg) {
+        if (userApiKey) {
+          const masked = userApiKey.length > 8 ? `${userApiKey.slice(0, 4)}••••${userApiKey.slice(-4)}` : '••••••••';
+          console.log(`\n${c.bold}Orion API Key Aktif:${c.reset} ${c.cyan}${masked}${c.reset}`);
+          console.log(`${c.gray}Untuk memperbarui: ${c.yellow}/key <api_key_baru>${c.reset}\n`);
+        } else {
+          console.log(`\n${c.yellow}⚠️  Belum ada API Key yang tersimpan.${c.reset}`);
+          console.log(`${c.gray}Ketik: ${c.yellow}/key <api_key_anda>${c.gray} untuk menyimpan API Key.${c.reset}\n`);
+        }
+        return;
+      }
+      userApiKey = arg.trim();
+      saveApiKey(userApiKey);
+      console.log(`\n${c.green}✓ API Key Orion berhasil disimpan ke kredensial terminal.${c.reset}\n`);
+      return;
+    }
+
     if (action === '/help' || action === '/h' || action === '/?') {
       console.log(`\n${c.bold}${c.brightCyan}✦ Daftar Perintah Orion Terminal Chat:${c.reset}`);
+      console.log(`  ${c.yellow}/key${c.reset} [api_key]        Masukkan atau perbarui Orion API Key Anda`);
       console.log(`  ${c.yellow}/model${c.reset} [nama|nomor]   Lihat katalog atau beralih model AI`);
       console.log(`  ${c.yellow}/tier${c.reset} [level]        Atur tingkat penalaran (${c.dim}low, medium, high${c.reset})`);
       console.log(`  ${c.yellow}/clear${c.reset}               Bersihkan layar terminal`);
@@ -280,7 +336,7 @@ export async function startTerminalChat() {
 
     if (action === '/clear') {
       console.clear();
-      printHeader(currentModel, reasoningTier);
+      printHeader(currentModel, reasoningTier, !!userApiKey);
       return;
     }
 
