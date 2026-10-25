@@ -573,14 +573,16 @@ export default function ManageProvidersModal({
             </p>
           </div>
         )}
-        <button
-          type="button"
-          className="modal-close-btn"
-          onClick={onClose}
-          aria-label="Tutup jendela"
-        >
-          <X size={16} />
-        </button>
+        {!isPage && (
+          <button
+            type="button"
+            className="modal-close-btn"
+            onClick={onClose}
+            aria-label="Tutup jendela"
+          >
+            <X size={16} />
+          </button>
+        )}
       </div>
 
         {/* Modal Body */}
