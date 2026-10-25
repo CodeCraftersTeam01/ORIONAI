@@ -55,6 +55,28 @@ function loadSyncedConfig() {
     apiKey = process.env.AI_API_KEY.trim();
   }
 
+  // Ensure default official provider exists if providers list is empty
+  if (!Array.isArray(providers) || providers.length === 0) {
+    providers = [
+      {
+        id: 'orion',
+        name: 'Orion AI (Official)',
+        category: 'Rekomendasi',
+        baseUrl: process.env.AI_BASE_URL || 'https://pi.leopard-gila.ts.net/v1',
+        apiKey: apiKey,
+        requiresApiKey: true,
+        hideBaseUrl: true,
+        models: OFFICIAL_MODELS.map((m) => ({
+          id: m.id,
+          name: m.name,
+          enabled: true,
+          tested: true,
+          supportsReasoning: m.supportsReasoning,
+        })),
+      },
+    ];
+  }
+
   return { providers, selectedModel, reasoningTier, apiKey };
 }
 
@@ -101,56 +123,94 @@ export const c = {
   white: '\x1b[37m',
 };
 
-// Default Built-in Models Catalog
-const DEFAULT_MODELS = [
-  {
-    id: 'orion',
-    name: 'Orion',
-    desc: 'Tugas kompleks & penalaran mendalam',
-    supportsReasoning: true,
-  },
-  {
-    id: 'agnes',
-    name: 'Agnes 2.5 Flash',
-    desc: 'Bantuan serbaguna, ekspresif & cepat',
-    supportsReasoning: false,
-  },
-  {
-    id: 'nemotron-3',
-    name: 'Nemotron 3',
-    desc: 'Jawaban instan tercepat tanpa kuota',
-    supportsReasoning: false,
-  },
+// Official Built-in & Recommended Models
+const OFFICIAL_MODELS = [
+  { id: 'orion', name: 'Orion', desc: 'Tugas kompleks & penalaran mendalam', supportsReasoning: true },
+  { id: 'orion-auto', name: 'Orion Auto Router', desc: 'Pemilihan model otomatis multi-jalur', supportsReasoning: true },
+  { id: 'agnes-2.5-flash', name: 'Agnes 2.5 Flash', desc: 'Bantuan serbaguna, ekspresif & cepat', supportsReasoning: false },
+  { id: 'agnes-2.5-pro', name: 'Agnes 2.5 Pro', desc: 'Kapasitas penalaran tinggi Agnes AI', supportsReasoning: true },
+  { id: 'agnes-3.0-flash', name: 'Agnes 3.0 Flash', desc: 'Generasi terbaru Agnes Flash', supportsReasoning: false },
+  { id: 'gemini-3.7-flash', name: 'Gemini 3.7 Flash', desc: 'Google Gemini via Orion Router', supportsReasoning: true },
+  { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash Lite', desc: 'Google Gemini ultra-cepat', supportsReasoning: false },
+  { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash Lite', desc: 'Google Gemini responsif & ringan', supportsReasoning: false },
+  { id: 'nemotron-3', name: 'Nemotron 3', desc: 'Jawaban instan tercepat bebas biaya', supportsReasoning: false },
 ];
 
-// Combine custom provider models and defaults into a unified model list
-function getAvailableModels(syncedConfig) {
+// Extract ALL models from custom providers and merge with defaults
+export function getAvailableModels(syncedConfig) {
   const modelList = [];
+  const providers = syncedConfig.providers || [];
 
-  // Add models from custom providers
-  if (syncedConfig.providers && syncedConfig.providers.length > 0) {
-    syncedConfig.providers.forEach((prov) => {
-      const models = prov.models || [];
-      models.forEach((m) => {
-        const modelId = typeof m === 'string' ? m : m.id;
-        const modelName = typeof m === 'string' ? m : m.name || m.id;
-        const isEnabled = typeof m === 'object' ? (m.enabled ?? true) : true;
-        if (modelId && isEnabled && !modelList.some((existing) => existing.id === modelId)) {
+  providers.forEach((prov) => {
+    const provName = prov.name || prov.displayName || 'Custom';
+
+    // 1. Models array
+    if (Array.isArray(prov.models)) {
+      prov.models.forEach((m) => {
+        const id = typeof m === 'string' ? m : m?.id;
+        const name = typeof m === 'string' ? m : m?.name || m?.displayName || m?.id;
+        if (id && !modelList.some((existing) => existing.id === id)) {
           modelList.push({
-            id: modelId,
-            name: modelName,
-            desc: `Provider: ${prov.name || 'Custom'}`,
-            supportsReasoning: /orion|deepseek|r1|reason/i.test(modelId),
+            id,
+            name: name || id,
+            desc: `Provider: ${provName}`,
+            provider: prov,
+            supportsReasoning: /orion|deepseek|r1|reason/i.test(id),
           });
         }
       });
-    });
-  }
+    }
 
-  // Add default models if not present
-  DEFAULT_MODELS.forEach((dm) => {
-    if (!modelList.some((existing) => existing.id === dm.id)) {
-      modelList.push(dm);
+    // 2. Default model
+    if (prov.defaultModel && !modelList.some((existing) => existing.id === prov.defaultModel)) {
+      modelList.push({
+        id: prov.defaultModel,
+        name: prov.defaultModel,
+        desc: `Provider: ${provName}`,
+        provider: prov,
+        supportsReasoning: /orion|deepseek|r1|reason/i.test(prov.defaultModel),
+      });
+    }
+
+    // 3. Suggested models
+    if (Array.isArray(prov.suggestedModels)) {
+      prov.suggestedModels.forEach((sm) => {
+        if (sm && !modelList.some((existing) => existing.id === sm)) {
+          modelList.push({
+            id: sm,
+            name: sm,
+            desc: `Provider: ${provName}`,
+            provider: prov,
+            supportsReasoning: /orion|deepseek|r1|reason/i.test(sm),
+          });
+        }
+      });
+    }
+
+    // 4. Model ID if specified on provider
+    if (prov.modelId && !modelList.some((existing) => existing.id === prov.modelId)) {
+      modelList.push({
+        id: prov.modelId,
+        name: prov.modelId,
+        desc: `Provider: ${provName}`,
+        provider: prov,
+        supportsReasoning: /orion|deepseek|r1|reason/i.test(prov.modelId),
+      });
+    }
+  });
+
+  // Always ensure official models are included
+  OFFICIAL_MODELS.forEach((om) => {
+    if (!modelList.some((existing) => existing.id === om.id)) {
+      modelList.push({
+        ...om,
+        desc: om.desc || 'Model Resmi Orion',
+        provider: {
+          id: 'orion',
+          name: 'Orion AI (Official)',
+          baseUrl: process.env.AI_BASE_URL || 'https://pi.leopard-gila.ts.net/v1',
+        },
+      });
     }
   });
 
@@ -225,113 +285,290 @@ export function printHeader(modelId, tier, hasKey = false) {
   console.log(
     `${c.gray}Model:${c.reset} ${c.cyan}${modelId}${c.reset}${
       modelId === 'orion' ? ` ${c.dim}(tier: ${tier})${c.reset}` : ''
-    } · ${keyStatus} · ${c.gray}Ketik ${c.yellow}/${c.gray} untuk menu perintah${c.reset}`
+    } · ${keyStatus} · ${c.gray}Ketik ${c.yellow}/${c.gray} untuk saran perintah${c.reset}`
   );
   console.log(`${c.gray}${divider}${c.reset}\n`);
 }
 
+const COMMAND_ITEMS = [
+  { label: '/model', detail: 'Pilih & beralih model AI aktif (Gunakan panah ↑ / ↓)', action: 'model' },
+  { label: '/tier', detail: 'Atur tingkat penalaran (low / medium / high)', action: 'tier' },
+  { label: '/key', detail: 'Masukkan atau perbarui Orion API Key Anda', action: 'key' },
+  { label: '/clear', detail: 'Bersihkan layar terminal obrolan', action: 'clear' },
+  { label: '/reset', detail: 'Mulai percakapan baru & reset riwayat', action: 'reset' },
+  { label: '/help', detail: 'Tampilkan panduan bantuan perintah', action: 'help' },
+  { label: '/exit', detail: 'Keluar dari sesi terminal obrolan (/q)', action: 'exit' },
+];
+
 /**
- * Interactive Arrow-Key Menu Selector (↑ / ↓ to navigate, Enter to select, Esc to cancel)
+ * Interactive Input Reader:
+ * As soon as the user types '/', suggestions pop up IMMEDIATELY (no Enter needed).
+ * The user can navigate suggestions with ↑ / ↓ arrow keys, press Enter to select,
+ * or press Backspace / Esc to cancel.
  */
-export async function interactiveSelect({ promptText, items, initialIndex = 0 }) {
-  if (!items || items.length === 0) return null;
-  if (!process.stdin.isTTY) {
-    return items[0];
-  }
-
-  let selectedIndex = Math.max(0, Math.min(initialIndex, items.length - 1));
-  let linesRendered = 0;
-
-  function render(isFirst = false) {
-    let out = '';
-    if (!isFirst && linesRendered > 0) {
-      out += `\x1b[${linesRendered}A\r`;
-    }
-
-    out += `\x1b[1m\x1b[36m✦ ${promptText}\x1b[0m \x1b[90m(Gunakan ↑ / ↓ lalu Enter, Esc untuk batal)\x1b[0m\x1b[K\n`;
-
-    items.forEach((item, idx) => {
-      const isSelected = idx === selectedIndex;
-      const cursor = isSelected ? `\x1b[36m\x1b[1m❯\x1b[0m` : ` `;
-      const label = isSelected
-        ? `\x1b[1m\x1b[37m${item.label.padEnd(18)}\x1b[0m`
-        : `\x1b[90m${item.label.padEnd(18)}\x1b[0m`;
-      const detail = item.detail
-        ? (isSelected ? `\x1b[36m${item.detail}\x1b[0m` : `\x1b[90m${item.detail}\x1b[0m`)
-        : '';
-      const badge = item.badge ? ` \x1b[32m[${item.badge}]\x1b[0m` : '';
-
-      out += `${cursor} ${label} ${detail}${badge}\x1b[K\n`;
-    });
-
-    linesRendered = items.length + 1;
-    process.stdout.write(out);
-  }
-
-  function clearMenu() {
-    if (linesRendered > 0) {
-      let out = `\x1b[${linesRendered}A\r`;
-      for (let i = 0; i < linesRendered; i++) {
-        out += '\x1b[K\n';
-      }
-      out += `\x1b[${linesRendered}A\r`;
-      process.stdout.write(out);
-      linesRendered = 0;
-    }
-  }
-
-  render(true);
-
+function readInteractivePrompt({ promptPrefix, syncedConfig, currentModel, reasoningTier }) {
   return new Promise((resolve) => {
+    let buffer = '';
+    let menuOpen = false;
+    let menuType = null; // 'command' | 'model' | 'tier'
+    let menuIndex = 0;
+    let menuLinesRendered = 0;
+    let menuItems = [];
+    let menuTitle = '';
+
     const wasRaw = process.stdin.isRaw;
-    process.stdin.setRawMode(true);
-    process.stdin.resume();
+    if (process.stdin.isTTY) {
+      process.stdin.setRawMode(true);
+      process.stdin.resume();
+    }
 
-    const onData = (buffer) => {
-      const key = buffer.toString();
+    function renderPrompt() {
+      process.stdout.write(`\r\x1b[K${promptPrefix}${buffer}`);
+    }
 
-      // Ctrl+C
+    function clearMenu() {
+      if (menuLinesRendered > 0) {
+        process.stdout.write(`\x1b[${menuLinesRendered}A\r\x1b[J`);
+        menuLinesRendered = 0;
+      }
+    }
+
+    function renderMenu() {
+      clearMenu();
+      if (!menuOpen || menuItems.length === 0) return;
+
+      const visiblePromptLen = promptPrefix.replace(/\x1b\[[0-9;]*m/g, '').length;
+      let out = `\n\x1b[1m\x1b[36m${menuTitle}\x1b[0m \x1b[90m(Gunakan ↑ / ↓ lalu Enter, Esc untuk batal)\x1b[0m\x1b[K\n`;
+
+      menuItems.forEach((item, idx) => {
+        const isSelected = idx === menuIndex;
+        const cursor = isSelected ? `\x1b[36m\x1b[1m❯\x1b[0m` : ` `;
+        const label = isSelected
+          ? `\x1b[1m\x1b[37m${item.label.padEnd(20)}\x1b[0m`
+          : `\x1b[90m${item.label.padEnd(20)}\x1b[0m`;
+        const detail = item.detail
+          ? (isSelected ? `\x1b[36m${item.detail}\x1b[0m` : `\x1b[90m${item.detail}\x1b[0m`)
+          : '';
+        const badge = item.badge ? ` \x1b[32m[${item.badge}]\x1b[0m` : '';
+
+        out += `${cursor} ${label} ${detail}${badge}\x1b[K\n`;
+      });
+
+      menuLinesRendered = menuItems.length + 2;
+      process.stdout.write(out);
+
+      // Restore cursor position to prompt line
+      process.stdout.write(`\x1b[${menuLinesRendered}A\r\x1b[${visiblePromptLen + buffer.length}C`);
+    }
+
+    function openCommandMenu() {
+      menuOpen = true;
+      menuType = 'command';
+      menuTitle = '✦ Rekomendasi Perintah:';
+      menuItems = COMMAND_ITEMS;
+      menuIndex = 0;
+      renderMenu();
+    }
+
+    function openModelMenu() {
+      const freshConfig = loadSyncedConfig();
+      const models = getAvailableModels(freshConfig);
+      menuItems = models.map((m) => ({
+        label: m.id,
+        detail: m.name !== m.id ? `${m.name} — ${m.desc}` : m.desc,
+        id: m.id,
+        name: m.name,
+        badge: m.id === currentModel ? 'Aktif' : '',
+      }));
+      menuOpen = true;
+      menuType = 'model';
+      menuTitle = '✦ Pilih Model AI Aktif:';
+      menuIndex = Math.max(0, menuItems.findIndex((m) => m.id === currentModel));
+      renderMenu();
+    }
+
+    function openTierMenu() {
+      menuItems = [
+        { label: 'low', detail: 'Penalaran ringkas & respon instan tercepat', value: 'low', badge: reasoningTier === 'low' ? 'Aktif' : '' },
+        { label: 'medium', detail: 'Keseimbangan optimal kecepatan & penalaran', value: 'medium', badge: reasoningTier === 'medium' ? 'Aktif' : '' },
+        { label: 'high', detail: 'Penalaran mendalam untuk masalah kompleks', value: 'high', badge: reasoningTier === 'high' ? 'Aktif' : '' },
+      ];
+      menuOpen = true;
+      menuType = 'tier';
+      menuTitle = '✦ Pilih Tingkat Penalaran (Reasoning Tier):';
+      menuIndex = Math.max(0, menuItems.findIndex((t) => t.value === reasoningTier));
+      renderMenu();
+    }
+
+    renderPrompt();
+
+    const onData = (chunk) => {
+      const key = chunk.toString();
+
+      // 1. Ctrl+C
       if (key === '\u0003') {
         clearMenu();
         cleanup();
+        console.log(`\n${c.brightCyan}✦ Sesi terminal selesai. Sampai jumpa!${c.reset}\n`);
         process.exit(0);
       }
 
-      // Enter / Return (\r or \n)
+      // 2. Menu Navigation when menu is open
+      if (menuOpen) {
+        // Arrow Up (\u001b[A, \u001bOA, k)
+        if (key === '\u001b[A' || key === '\u001bOA' || key === 'k') {
+          menuIndex = (menuIndex - 1 + menuItems.length) % menuItems.length;
+          renderMenu();
+          return;
+        }
+
+        // Arrow Down (\u001b[B, \u001bOB, j)
+        if (key === '\u001b[B' || key === '\u001bOB' || key === 'j') {
+          menuIndex = (menuIndex + 1) % menuItems.length;
+          renderMenu();
+          return;
+        }
+
+        // Escape (\u001b)
+        if (key === '\u001b') {
+          clearMenu();
+          menuOpen = false;
+          buffer = '';
+          renderPrompt();
+          return;
+        }
+
+        // Backspace in menu
+        if (key === '\u007f' || key === '\b') {
+          clearMenu();
+          menuOpen = false;
+          buffer = '';
+          renderPrompt();
+          return;
+        }
+
+        // Enter in menu: Select option!
+        if (key === '\r' || key === '\n') {
+          const selected = menuItems[menuIndex];
+          clearMenu();
+          menuOpen = false;
+
+          if (menuType === 'command') {
+            if (selected.action === 'model') {
+              buffer = '/model';
+              renderPrompt();
+              openModelMenu();
+              return;
+            }
+            if (selected.action === 'tier') {
+              buffer = '/tier';
+              renderPrompt();
+              openTierMenu();
+              return;
+            }
+            // For other commands (clear, reset, key, help, exit)
+            cleanup();
+            process.stdout.write('\n');
+            resolve({ type: 'command', action: selected.action, raw: `/${selected.action}` });
+            return;
+          }
+
+          if (menuType === 'model') {
+            cleanup();
+            process.stdout.write('\n');
+            resolve({ type: 'switch_model', model: selected });
+            return;
+          }
+
+          if (menuType === 'tier') {
+            cleanup();
+            process.stdout.write('\n');
+            resolve({ type: 'switch_tier', tier: selected.value });
+            return;
+          }
+        }
+
+        // Quick letter matching in command menu (e.g. typing 'm' selects /model)
+        if (menuType === 'command' && key.length === 1 && /[a-z]/i.test(key)) {
+          const char = key.toLowerCase();
+          const foundIdx = menuItems.findIndex((it) => it.label.slice(1).startsWith(char));
+          if (foundIdx !== -1) {
+            menuIndex = foundIdx;
+            renderMenu();
+            return;
+          }
+        }
+
+        return;
+      }
+
+      // 3. Normal Prompt Input (Menu closed)
+      // Enter
       if (key === '\r' || key === '\n') {
-        clearMenu();
+        const text = buffer.trim();
         cleanup();
-        resolve(items[selectedIndex]);
+        process.stdout.write('\n');
+
+        if (text === '/' || text === '/menu') {
+          resolve({ type: 'open_command_menu' });
+          return;
+        }
+        if (text === '/model' || text === '/models') {
+          resolve({ type: 'open_model_menu' });
+          return;
+        }
+        if (text === '/tier' || text === '/reasoning') {
+          resolve({ type: 'open_tier_menu' });
+          return;
+        }
+        if (text.startsWith('/')) {
+          resolve({ type: 'command_line', text });
+          return;
+        }
+        if (text.length > 0) {
+          resolve({ type: 'chat', text });
+          return;
+        }
+        resolve({ type: 'empty' });
         return;
       }
 
-      // Escape
-      if (key === '\u001b') {
-        clearMenu();
-        cleanup();
-        resolve(null);
+      // Backspace
+      if (key === '\u007f' || key === '\b') {
+        if (buffer.length > 0) {
+          buffer = buffer.slice(0, -1);
+          renderPrompt();
+        }
         return;
       }
 
-      // Up Arrow (\u001b[A) or 'k'
-      if (key === '\u001b[A' || key === 'k') {
-        selectedIndex = (selectedIndex - 1 + items.length) % items.length;
-        render(false);
+      // Instant slash detection: When user types '/' on an empty prompt, pop up suggestions immediately!
+      if (key === '/' && buffer === '') {
+        buffer = '/';
+        renderPrompt();
+        openCommandMenu();
         return;
       }
 
-      // Down Arrow (\u001b[B) or 'j'
-      if (key === '\u001b[B' || key === 'j') {
-        selectedIndex = (selectedIndex + 1) % items.length;
-        render(false);
-        return;
+      // Regular characters
+      if (key.length === 1 && key >= ' ') {
+        buffer += key;
+        renderPrompt();
+
+        // If user typed '/model' exactly without enter, we can also suggest models
+        if (buffer === '/model') {
+          openModelMenu();
+        } else if (buffer === '/tier') {
+          openTierMenu();
+        }
       }
     };
 
     function cleanup() {
       process.stdin.removeListener('data', onData);
-      process.stdin.setRawMode(wasRaw);
-      process.stdin.pause();
+      if (process.stdin.isTTY) {
+        process.stdin.setRawMode(wasRaw);
+      }
     }
 
     process.stdin.on('data', onData);
@@ -349,67 +586,132 @@ export async function startTerminalChat() {
   let userApiKey = syncedConfig.apiKey || '';
   let history = [];
   let isGenerating = false;
-  let isMenuOpen = false;
   let activeAbortController = null;
 
   printHeader(currentModel, reasoningTier, !!userApiKey);
 
-  return new Promise((resolve) => {
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-      prompt: `${c.brightBlue}${c.bold}You ›${c.reset} `,
+  const promptPrefix = `${c.brightBlue}${c.bold}You ›${c.reset} `;
+
+  while (true) {
+    // Re-check synced config on each prompt turn to capture any new providers added via web
+    const freshConfig = loadSyncedConfig();
+    if (freshConfig.apiKey && !userApiKey) {
+      userApiKey = freshConfig.apiKey;
+    }
+
+    const inputResult = await readInteractivePrompt({
+      promptPrefix,
+      syncedConfig: freshConfig,
+      currentModel,
+      reasoningTier,
     });
 
-    readline.emitKeypressEvents(process.stdin, rl);
+    if (inputResult.type === 'empty') {
+      continue;
+    }
 
-    rl.prompt();
+    // Switched model via arrow keys & Enter
+    if (inputResult.type === 'switch_model') {
+      currentModel = inputResult.model.id;
+      saveSyncedConfig({ selectedModel: currentModel });
+      console.log(
+        `\n${c.green}✓ Model AI dialihkan ke: ${c.bold}${inputResult.model.name || inputResult.model.id}${c.reset} ${c.dim}(${inputResult.model.id})${c.reset}\n`
+      );
+      continue;
+    }
 
-    // Listen to real-time keypress: If user presses '/' on an empty prompt, open Command Menu immediately!
-    process.stdin.on('keypress', (char, key) => {
-      if (isGenerating || isMenuOpen) return;
-      if (char === '/' && rl.line === '') {
-        // Clear slash from prompt and open menu
-        rl.line = '';
-        process.stdout.write('\r\x1b[K');
-        handleTriggerCommandMenu();
+    // Switched tier via arrow keys & Enter
+    if (inputResult.type === 'switch_tier') {
+      reasoningTier = inputResult.tier;
+      saveSyncedConfig({ reasoningTier });
+      console.log(`\n${c.green}✓ Tingkat penalaran diatur ke: ${c.bold}${reasoningTier}${c.reset}\n`);
+      continue;
+    }
+
+    // Triggered model menu explicitly
+    if (inputResult.type === 'open_model_menu') {
+      const models = getAvailableModels(freshConfig);
+      const modelItems = models.map((m) => ({
+        label: m.id,
+        detail: m.name !== m.id ? `${m.name} — ${m.desc}` : m.desc,
+        id: m.id,
+        name: m.name,
+        badge: m.id === currentModel ? 'Aktif' : '',
+      }));
+      const activeIdx = Math.max(0, modelItems.findIndex((m) => m.id === currentModel));
+
+      const picked = await selectModelInteractive({
+        title: '✦ Pilih Model AI Aktif:',
+        items: modelItems,
+        initialIndex: activeIdx,
+      });
+
+      if (picked) {
+        currentModel = picked.id;
+        saveSyncedConfig({ selectedModel: currentModel });
+        console.log(
+          `\n${c.green}✓ Model AI dialihkan ke: ${c.bold}${picked.name || picked.id}${c.reset} ${c.dim}(${picked.id})${c.reset}\n`
+        );
       }
-    });
+      continue;
+    }
 
-    rl.on('line', async (line) => {
-      if (isMenuOpen) return;
-      const input = line.trim();
+    // Triggered tier menu explicitly
+    if (inputResult.type === 'open_tier_menu') {
+      const tierItems = [
+        { label: 'low', detail: 'Penalaran ringkas & respon instan tercepat', value: 'low', badge: reasoningTier === 'low' ? 'Aktif' : '' },
+        { label: 'medium', detail: 'Keseimbangan optimal kecepatan & penalaran', value: 'medium', badge: reasoningTier === 'medium' ? 'Aktif' : '' },
+        { label: 'high', detail: 'Penalaran mendalam untuk masalah kompleks', value: 'high', badge: reasoningTier === 'high' ? 'Aktif' : '' },
+      ];
+      const activeIdx = Math.max(0, tierItems.findIndex((t) => t.value === reasoningTier));
 
-      if (!input) {
-        rl.prompt();
-        return;
+      const picked = await selectModelInteractive({
+        title: '✦ Pilih Tingkat Penalaran (Reasoning Tier):',
+        items: tierItems,
+        initialIndex: activeIdx,
+      });
+
+      if (picked) {
+        reasoningTier = picked.value;
+        saveSyncedConfig({ reasoningTier });
+        console.log(`\n${c.green}✓ Tingkat penalaran diatur ke: ${c.bold}${reasoningTier}${c.reset}\n`);
       }
+      continue;
+    }
 
-      // If user typed '/' alone or commands
-      if (input === '/' || input === '/menu') {
-        await handleTriggerCommandMenu();
-        return;
-      }
+    // Command execution from menu or line
+    if (inputResult.type === 'command' || inputResult.type === 'command_line') {
+      const cmdText = inputResult.raw || inputResult.text || `/${inputResult.action}`;
+      const shouldExit = await handleExecuteCommand(cmdText);
+      if (shouldExit) break;
+      continue;
+    }
 
-      if (input.startsWith('/')) {
-        await handleCommand(input);
-        rl.prompt();
-        return;
-      }
+    // Regular Chat message
+    if (inputResult.type === 'chat') {
+      const availableModels = getAvailableModels(freshConfig);
+      const matchedModel = availableModels.find((m) => m.id === currentModel);
+      const activeCustomProvider = matchedModel?.provider && matchedModel.provider.id !== 'orion'
+        ? {
+            baseUrl: matchedModel.provider.baseUrl,
+            apiKey: matchedModel.provider.apiKeys?.find((k) => k.active)?.key || matchedModel.provider.apiKey || '',
+            modelId: matchedModel.id,
+            name: matchedModel.provider.name,
+          }
+        : null;
 
-      // Validate API Key before sending request
-      if (!userApiKey) {
+      // Validate API Key before sending request if provider requires key
+      const requiresKey = !activeCustomProvider && (!matchedModel?.provider || matchedModel.provider.requiresApiKey !== false);
+      if (requiresKey && !userApiKey) {
         console.log(`\n${c.yellow}⚠️  API Key Orion belum dimasukkan.${c.reset}`);
-        console.log(`${c.gray}Ketik ${c.yellow}/key <api_key_anda>${c.gray} atau pilih ${c.yellow}/key${c.gray} di menu untuk memasukkan API Key.${c.reset}\n`);
-        rl.prompt();
-        return;
+        console.log(`${c.gray}Ketik ${c.yellow}/key <api_key_anda>${c.gray} untuk memasukkan API Key sebelum mengobrol.${c.reset}\n`);
+        continue;
       }
 
-      // Process chat prompt
       isGenerating = true;
       activeAbortController = new AbortController();
 
-      const userMessage = input;
+      const userMessage = inputResult.text;
       history.push({ role: 'user', content: userMessage });
 
       process.stdout.write(`\n${c.brightCyan}${c.bold}Orion ›${c.reset} `);
@@ -424,6 +726,7 @@ export async function startTerminalChat() {
             history: history.slice(0, -1),
             model: currentModel,
             reasoningTier: reasoningTier,
+            customProvider: activeCustomProvider,
             orionApiKey: userApiKey,
             signal: activeAbortController.signal,
             onChunk: (chunk) => {
@@ -460,237 +763,173 @@ export async function startTerminalChat() {
         if (err.name === 'AbortError') {
           process.stdout.write(`\n${c.yellow}⚠️  Respon dihentikan oleh pengguna.${c.reset}\n\n`);
         } else if (/api\s*key/i.test(err.message)) {
-          process.stdout.write(`\n${c.yellow}⚠️  ${err.message}${c.reset}\n${c.gray}Pilih ${c.cyan}/key${c.gray} di menu untuk memasukkan API Key Orion.${c.reset}\n\n`);
+          process.stdout.write(`\n${c.yellow}⚠️  ${err.message}${c.reset}\n${c.gray}Ketik ${c.cyan}/key <api_key_anda>${c.gray} untuk memasukkan API Key Orion.${c.reset}\n\n`);
         } else {
           process.stdout.write(`\n${c.red}❌ Terjadi kesalahan: ${err.message}${c.reset}\n\n`);
         }
       } finally {
         isGenerating = false;
         activeAbortController = null;
-        rl.prompt();
-      }
-    });
-
-    rl.on('close', () => {
-      resolve();
-    });
-
-    // Handle Ctrl+C gracefully
-    rl.on('SIGINT', () => {
-      if (isGenerating && activeAbortController) {
-        activeAbortController.abort();
-      } else {
-        console.log(`\n${c.brightCyan}✦ Sesi terminal selesai. Sampai jumpa!${c.reset}\n`);
-        rl.close();
-      }
-    });
-
-    // Trigger Command Menu (when typing /)
-    async function handleTriggerCommandMenu() {
-      isMenuOpen = true;
-      rl.pause();
-
-      const commandItems = [
-        { label: '/model', detail: 'Pilih model AI aktif (Gunakan ↑ / ↓)', action: 'model' },
-        { label: '/tier', detail: 'Atur tingkat penalaran (low/medium/high)', action: 'tier' },
-        { label: '/key', detail: 'Masukkan atau perbarui Orion API Key', action: 'key' },
-        { label: '/clear', detail: 'Bersihkan layar terminal obrolan', action: 'clear' },
-        { label: '/reset', detail: 'Mulai obrolan baru (reset riwayat)', action: 'reset' },
-        { label: '/help', detail: 'Tampilkan panduan bantuan perintah', action: 'help' },
-        { label: '/exit', detail: 'Keluar dari obrolan terminal (/q)', action: 'exit' },
-      ];
-
-      const selected = await interactiveSelect({
-        promptText: 'Pilih Perintah Obrolan:',
-        items: commandItems,
-        initialIndex: 0,
-      });
-
-      isMenuOpen = false;
-      rl.resume();
-
-      if (selected) {
-        await handleCommand(`/${selected.action}`);
-      }
-      rl.prompt();
-    }
-
-    // Interactive Model Selector (when typing /model or selecting /model)
-    async function handleTriggerModelMenu() {
-      isMenuOpen = true;
-      rl.pause();
-
-      const freshConfig = loadSyncedConfig();
-      const availableModels = getAvailableModels(freshConfig);
-
-      const modelItems = availableModels.map((m) => ({
-        label: m.id,
-        detail: m.name !== m.id ? `${m.name} — ${m.desc}` : m.desc,
-        id: m.id,
-        name: m.name,
-        badge: m.id === currentModel ? 'Aktif' : '',
-      }));
-
-      const activeIdx = Math.max(0, modelItems.findIndex((m) => m.id === currentModel));
-
-      const selected = await interactiveSelect({
-        promptText: 'Pilih Model AI Aktif:',
-        items: modelItems,
-        initialIndex: activeIdx,
-      });
-
-      isMenuOpen = false;
-      rl.resume();
-
-      if (selected) {
-        currentModel = selected.id;
-        saveSyncedConfig({ selectedModel: currentModel });
-        console.log(
-          `\n${c.green}✓ Model AI dialihkan ke: ${c.bold}${selected.name || selected.id}${c.reset} ${c.dim}(${selected.id})${c.reset}\n`
-        );
       }
     }
+  }
 
-    // Interactive Tier Selector (when typing /tier or selecting /tier)
-    async function handleTriggerTierMenu() {
-      isMenuOpen = true;
-      rl.pause();
+  // Helper function to handle commands
+  async function handleExecuteCommand(cmd) {
+    const parts = cmd.split(/\s+/);
+    const action = parts[0].toLowerCase();
+    const arg = parts.slice(1).join(' ').trim();
 
-      const tierItems = [
-        { label: 'low', detail: 'Penalaran ringkas & respon instan tercepat', value: 'low', badge: reasoningTier === 'low' ? 'Aktif' : '' },
-        { label: 'medium', detail: 'Keseimbangan optimal kecepatan dan penalaran', value: 'medium', badge: reasoningTier === 'medium' ? 'Aktif' : '' },
-        { label: 'high', detail: 'Penalaran mendalam untuk masalah kompleks/arsitektur', value: 'high', badge: reasoningTier === 'high' ? 'Aktif' : '' },
-      ];
-
-      const activeIdx = Math.max(0, tierItems.findIndex((t) => t.value === reasoningTier));
-
-      const selected = await interactiveSelect({
-        promptText: 'Pilih Tingkat Penalaran (Reasoning Tier):',
-        items: tierItems,
-        initialIndex: activeIdx,
-      });
-
-      isMenuOpen = false;
-      rl.resume();
-
-      if (selected) {
-        reasoningTier = selected.value;
-        saveSyncedConfig({ reasoningTier });
-        console.log(`\n${c.green}✓ Tingkat penalaran diatur ke: ${c.bold}${reasoningTier}${c.reset}\n`);
-      }
+    if (action === '/exit' || action === '/quit' || action === '/q') {
+      console.log(`\n${c.brightCyan}✦ Terima kasih telah menggunakan Orion Agent. Sampai jumpa!${c.reset}\n`);
+      return true; // exit loop
     }
 
-    async function handleCommand(cmd) {
-      const parts = cmd.split(/\s+/);
-      const action = parts[0].toLowerCase();
-      const arg = parts.slice(1).join(' ').trim();
+    if (action === '/clear') {
+      console.clear();
+      printHeader(currentModel, reasoningTier, !!userApiKey);
+      return false;
+    }
 
-      if (action === '/' || action === '/menu') {
-        await handleTriggerCommandMenu();
-        return;
-      }
+    if (action === '/reset' || action === '/new') {
+      history = [];
+      console.log(`\n${c.green}✓ Riwayat percakapan telah direset.${c.reset}\n`);
+      return false;
+    }
 
-      if (action === '/exit' || action === '/quit' || action === '/q') {
-        console.log(`\n${c.brightCyan}✦ Terima kasih telah menggunakan Orion Agent. Sampai jumpa!${c.reset}\n`);
-        rl.close();
-        return;
-      }
-
-      if (action === '/model' || action === '/models') {
-        if (!arg) {
-          // Open interactive arrow-key selector!
-          await handleTriggerModelMenu();
-          return;
-        }
-
-        // Direct argument supplied: /model <id|number>
-        const freshConfig = loadSyncedConfig();
-        const availableModels = getAvailableModels(freshConfig);
-
-        let targetModel = null;
-        const numIdx = parseInt(arg, 10);
-        if (!isNaN(numIdx) && numIdx >= 1 && numIdx <= availableModels.length) {
-          targetModel = availableModels[numIdx - 1];
+    if (action === '/key' || action === '/apikey') {
+      if (!arg) {
+        if (userApiKey) {
+          const masked = userApiKey.length > 8 ? `${userApiKey.slice(0, 4)}••••${userApiKey.slice(-4)}` : '••••••••';
+          console.log(`\n${c.bold}Orion API Key Aktif:${c.reset} ${c.cyan}${masked}${c.reset}`);
+          console.log(`${c.gray}Untuk memperbarui: ${c.yellow}/key <api_key_baru>${c.reset}\n`);
         } else {
-          targetModel = availableModels.find((m) => m.id.toLowerCase() === arg.toLowerCase());
+          console.log(`\n${c.yellow}⚠️  Belum ada API Key yang tersimpan.${c.reset}`);
+          console.log(`${c.gray}Ketik: ${c.yellow}/key <api_key_anda>${c.gray} untuk menyimpan API Key.${c.reset}\n`);
         }
-
-        if (targetModel) {
-          currentModel = targetModel.id;
-          saveSyncedConfig({ selectedModel: currentModel });
-          console.log(
-            `\n${c.green}✓ Model AI dialihkan ke: ${c.bold}${targetModel.name}${c.reset} ${c.dim}(${targetModel.id})${c.reset}\n`
-          );
-        } else {
-          console.log(
-            `\n${c.red}⚠️  Model '${arg}' tidak ditemukan.${c.reset} Ketik ${c.yellow}/model${c.reset} untuk memilih dari daftar.\n`
-          );
-        }
-        return;
+        return false;
       }
-
-      if (action === '/tier' || action === '/reasoning') {
-        if (!arg) {
-          await handleTriggerTierMenu();
-          return;
-        }
-
-        const validTiers = ['low', 'medium', 'high'];
-        if (!validTiers.includes(arg.toLowerCase())) {
-          console.log(`\n${c.bold}Tingkat Penalaran (Reasoning Tier):${c.reset} ${c.cyan}${reasoningTier}${c.reset}`);
-          console.log(`${c.gray}Pilihan: ${c.yellow}/tier low${c.gray} | ${c.yellow}/tier medium${c.gray} | ${c.yellow}/tier high${c.reset}\n`);
-          return;
-        }
-        reasoningTier = arg.toLowerCase();
-        saveSyncedConfig({ reasoningTier });
-        console.log(`\n${c.green}✓ Tingkat penalaran diatur ke: ${c.bold}${reasoningTier}${c.reset}\n`);
-        return;
-      }
-
-      if (action === '/key' || action === '/apikey') {
-        if (!arg) {
-          if (userApiKey) {
-            const masked = userApiKey.length > 8 ? `${userApiKey.slice(0, 4)}••••${userApiKey.slice(-4)}` : '••••••••';
-            console.log(`\n${c.bold}Orion API Key Aktif:${c.reset} ${c.cyan}${masked}${c.reset}`);
-            console.log(`${c.gray}Untuk memperbarui: ${c.yellow}/key <api_key_baru>${c.reset}\n`);
-          } else {
-            console.log(`\n${c.yellow}⚠️  Belum ada API Key yang tersimpan.${c.reset}`);
-            console.log(`${c.gray}Ketik: ${c.yellow}/key <api_key_anda>${c.gray} untuk menyimpan API Key.${c.reset}\n`);
-          }
-          return;
-        }
-        userApiKey = arg.trim();
-        saveSyncedConfig({ apiKey: userApiKey });
-        console.log(`\n${c.green}✓ API Key Orion berhasil disimpan dan disinkronkan ke seluruh sistem.${c.reset}\n`);
-        return;
-      }
-
-      if (action === '/help' || action === '/h' || action === '/?') {
-        console.log(`\n${c.bold}${c.brightCyan}✦ Daftar Perintah Orion Terminal Chat:${c.reset}`);
-        console.log(`  ${c.yellow}/${c.reset}                   Buka menu perintah interaktif (Gunakan panah ↑ / ↓)`);
-        console.log(`  ${c.yellow}/model${c.reset}                Buka pemilih model interaktif (Gunakan panah ↑ / ↓)`);
-        console.log(`  ${c.yellow}/tier${c.reset}                 Buka pemilih penalaran interaktif (low, medium, high)`);
-        console.log(`  ${c.yellow}/key${c.reset} [api_key]        Masukkan atau perbarui Orion API Key Anda`);
-        console.log(`  ${c.yellow}/clear${c.reset}               Bersihkan layar terminal`);
-        console.log(`  ${c.yellow}/reset${c.reset}               Mulai percakapan baru (reset riwayat)`);
-        console.log(`  ${c.yellow}/help${c.reset}                Tampilkan bantuan perintah`);
-        console.log(`  ${c.yellow}/exit, /q${c.reset}            Keluar dari sesi terminal chat\n`);
-        return;
-      }
-
-      if (action === '/clear') {
-        console.clear();
-        printHeader(currentModel, reasoningTier, !!userApiKey);
-        return;
-      }
-
-      if (action === '/reset' || action === '/new') {
-        history = [];
-        console.log(`\n${c.green}✓ Riwayat percakapan telah direset.${c.reset}\n`);
-        return;
-      }
-
-      console.log(`\n${c.yellow}⚠️  Perintah '${action}' tidak dikenal.${c.reset} Ketik ${c.yellow}/${c.reset} untuk menu interaktif.\n`);
+      userApiKey = arg.trim();
+      saveSyncedConfig({ apiKey: userApiKey });
+      console.log(`\n${c.green}✓ API Key Orion berhasil disimpan dan disinkronkan ke seluruh sistem.${c.reset}\n`);
+      return false;
     }
+
+    if (action === '/help' || action === '/h' || action === '/?') {
+      console.log(`\n${c.bold}${c.brightCyan}✦ Daftar Perintah Orion Terminal Chat:${c.reset}`);
+      console.log(`  ${c.yellow}/${c.reset}                   Buka saran perintah interaktif langsung saat mengetik`);
+      console.log(`  ${c.yellow}/model${c.reset}                Buka pemilih model AI interaktif (panah ↑ / ↓)`);
+      console.log(`  ${c.yellow}/tier${c.reset}                 Buka pemilih tingkat penalaran (low, medium, high)`);
+      console.log(`  ${c.yellow}/key${c.reset} [api_key]        Masukkan atau perbarui Orion API Key`);
+      console.log(`  ${c.yellow}/clear${c.reset}               Bersihkan layar terminal obrolan`);
+      console.log(`  ${c.yellow}/reset${c.reset}               Mulai percakapan baru (reset riwayat)`);
+      console.log(`  ${c.yellow}/help${c.reset}                Tampilkan bantuan perintah`);
+      console.log(`  ${c.yellow}/exit, /q${c.reset}            Keluar dari sesi terminal chat\n`);
+      return false;
+    }
+
+    console.log(`\n${c.yellow}⚠️  Perintah '${action}' tidak dikenal.${c.reset} Ketik ${c.yellow}/${c.reset} untuk saran perintah.\n`);
+    return false;
+  }
+}
+
+/**
+ * Dedicated interactive selector helper for standalone selection menus
+ */
+async function selectModelInteractive({ title, items, initialIndex = 0 }) {
+  if (!items || items.length === 0) return null;
+  if (!process.stdin.isTTY) return items[0];
+
+  let selectedIndex = Math.max(0, Math.min(initialIndex, items.length - 1));
+  let linesRendered = 0;
+
+  function render(isFirst = false) {
+    let out = '';
+    if (!isFirst && linesRendered > 0) {
+      out += `\x1b[${linesRendered}A\r`;
+    }
+
+    out += `\x1b[1m\x1b[36m${title}\x1b[0m \x1b[90m(Gunakan ↑ / ↓ lalu Enter, Esc untuk batal)\x1b[0m\x1b[K\n`;
+
+    items.forEach((item, idx) => {
+      const isSelected = idx === selectedIndex;
+      const cursor = isSelected ? `\x1b[36m\x1b[1m❯\x1b[0m` : ` `;
+      const label = isSelected
+        ? `\x1b[1m\x1b[37m${item.label.padEnd(22)}\x1b[0m`
+        : `\x1b[90m${item.label.padEnd(22)}\x1b[0m`;
+      const detail = item.detail
+        ? (isSelected ? `\x1b[36m${item.detail}\x1b[0m` : `\x1b[90m${item.detail}\x1b[0m`)
+        : '';
+      const badge = item.badge ? ` \x1b[32m[${item.badge}]\x1b[0m` : '';
+
+      out += `${cursor} ${label} ${detail}${badge}\x1b[K\n`;
+    });
+
+    linesRendered = items.length + 1;
+    process.stdout.write(out);
+  }
+
+  function clear() {
+    if (linesRendered > 0) {
+      let out = `\x1b[${linesRendered}A\r`;
+      for (let i = 0; i < linesRendered; i++) {
+        out += '\x1b[2K\n';
+      }
+      out += `\x1b[${linesRendered}A\r`;
+      process.stdout.write(out);
+      linesRendered = 0;
+    }
+  }
+
+  render(true);
+
+  return new Promise((resolve) => {
+    const wasRaw = process.stdin.isRaw;
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+
+    const onData = (buffer) => {
+      const key = buffer.toString();
+
+      if (key === '\u0003') {
+        clear();
+        cleanup();
+        process.exit(0);
+      }
+
+      if (key === '\r' || key === '\n') {
+        clear();
+        cleanup();
+        resolve(items[selectedIndex]);
+        return;
+      }
+
+      if (key === '\u001b') {
+        clear();
+        cleanup();
+        resolve(null);
+        return;
+      }
+
+      if (key === '\u001b[A' || key === 'k') {
+        selectedIndex = (selectedIndex - 1 + items.length) % items.length;
+        render(false);
+        return;
+      }
+
+      if (key === '\u001b[B' || key === 'j') {
+        selectedIndex = (selectedIndex + 1) % items.length;
+        render(false);
+        return;
+      }
+    };
+
+    function cleanup() {
+      process.stdin.removeListener('data', onData);
+      process.stdin.setRawMode(wasRaw);
+      process.stdin.pause();
+    }
+
+    process.stdin.on('data', onData);
   });
 }
