@@ -461,9 +461,8 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
       out += `\x1b[90m${leftTokens}${' '.repeat(gap2)}${keyColor}${keyLabel}\x1b[0m\x1b[K\n`;
       linesBelow++;
 
-      // Pi Status Footer Line 3: agent status indicator
-      out += `\x1b[90m● 🌌 orion-core: \x1b[33m⚡ READY\x1b[0m\x1b[K\n`;
-      linesBelow++;
+      // Pi Status Footer Line 3: agent status indicator (no trailing newline so cursor stays on footer row)
+      out += `\x1b[90m● 🌌 orion-core: \x1b[33m⚡ READY\x1b[0m\x1b[K`;
 
       process.stdout.write(out);
 
@@ -706,6 +705,13 @@ export async function startTerminalChat() {
   let activeAbortController = null;
 
   printHeader(currentModel, reasoningTier, !!userApiKey);
+
+  // Push prompt area to the bottom of the terminal window
+  const termRows = process.stdout.rows || 24;
+  const padLines = Math.max(0, termRows - 10);
+  if (padLines > 0) {
+    process.stdout.write('\n'.repeat(padLines));
+  }
 
   while (true) {
     // Re-check synced config on each prompt turn to capture any new providers / keys / models added via web
