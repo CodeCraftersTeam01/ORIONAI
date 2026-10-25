@@ -256,6 +256,7 @@ export const c = {
   red: '\x1b[31m',
   gray: '\x1b[90m',
   white: '\x1b[37m',
+  brightWhite: '\x1b[97m',
 };
 
 // Official Built-in & Recommended Models
@@ -364,49 +365,34 @@ export function centerLines(text, cols) {
     .join('\n');
 }
 
-// Show centered Orion Constellation ASCII Splash Screen
+// Show centered minimalist ORION AGENT Splash Screen (Bold, Italic, White)
 export async function showSplashScreen() {
   const cols = process.stdout.columns || 80;
   const rows = process.stdout.rows || 24;
 
-  const logoAscii = [
-    `${c.brightCyan}                 ✦${c.reset}`,
-    `${c.blue}           * ─── • ─── *${c.reset}`,
-    `${c.cyan}         /  \\   / \\   /  \\${c.reset}`,
-    `${c.cyan}        •──── • ─── • ────•${c.reset}`,
-    `${c.blue}       / \\   /       \\   / \\${c.reset}`,
-    `${c.brightCyan}     ✦────• (    ✦    ) •────✦${c.reset}`,
-    `${c.blue}       \\ /   \\       /   \\ /${c.reset}`,
-    `${c.cyan}        •──── • ─── • ────•${c.reset}`,
-    `${c.cyan}         \\  /   \\ /   \\  /${c.reset}`,
-    `${c.blue}           * ─── • ─── *${c.reset}`,
-    `${c.brightCyan}                 ✦${c.reset}`,
-    '',
-    `${c.bold}${c.brightCyan}          O R I O N   A I${c.reset}`,
-    `${c.dim}${c.white}       Intelligent Cosmic Agent${c.reset}`,
-  ].join('\n');
+  // Title: "ORION AGENT" - White, Bold, Italic (per user request)
+  const titleText = `${c.bold}${c.italic}${c.brightWhite}ORION AGENT${c.reset}`;
 
-  const logoLines = logoAscii.split('\n').length + 3;
-  const topPad = Math.max(1, Math.floor((rows - logoLines) / 2));
+  // Content has 3 vertical lines: Title + empty line + status line
+  const topPad = Math.max(1, Math.floor((rows - 4) / 2));
 
   console.clear();
   process.stdout.write('\n'.repeat(topPad));
-  process.stdout.write(centerLines(logoAscii, cols) + '\n\n');
+  process.stdout.write(centerLines(titleText, cols) + '\n\n');
 
   const steps = [
-    '✦ Menginisialisasi modul kosmik...',
-    '✦ Menghubungkan ke konfigurasi model...',
-    '✦ Menyiapkan sesi terminal chat...',
-    '✦ Sistem siap! Membuka antarmuka...',
+    'Menghubungkan ke konfigurasi model...',
+    'Menyiapkan sesi terminal chat...',
+    'Sistem siap...',
   ];
 
   for (let i = 0; i < steps.length; i++) {
-    const statusText = `${c.gray}${steps[i]}${c.reset}`;
+    const statusText = `${c.dim}${c.white}${steps[i]}${c.reset}`;
     process.stdout.write('\r\x1b[K' + centerLines(statusText, cols));
-    await new Promise((res) => setTimeout(res, 220));
+    await new Promise((res) => setTimeout(res, 200));
   }
 
-  await new Promise((res) => setTimeout(res, 250));
+  await new Promise((res) => setTimeout(res, 220));
   console.clear();
 }
 
