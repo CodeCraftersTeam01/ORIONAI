@@ -236,6 +236,8 @@ export async function startTerminalChat() {
     } catch (err) {
       if (err.name === 'AbortError') {
         process.stdout.write(`\n${c.yellow}⚠️  Respon dihentikan oleh pengguna.${c.reset}\n\n`);
+      } else if (/api\s*key/i.test(err.message)) {
+        process.stdout.write(`\n${c.yellow}⚠️  ${err.message}${c.reset}\n${c.gray}Ketik ${c.cyan}/key <api_key_anda>${c.gray} untuk memasukkan API Key Orion.${c.reset}\n\n`);
       } else {
         process.stdout.write(`\n${c.red}❌ Terjadi kesalahan: ${err.message}${c.reset}\n\n`);
       }
