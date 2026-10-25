@@ -28,6 +28,7 @@ uniform vec4 u_color1; // Electric Blue
 uniform vec4 u_color2; // Radiant Cyan
 uniform vec4 u_color3; // Deep Sapphire
 uniform float u_distortion;
+uniform float u_wave_strength; // Wave power (1.0 normal, 0.03 when receding in voice mode)
 
 out vec4 fragColor;
 
@@ -54,17 +55,17 @@ void main() {
   vec2 uv_orig = gl_FragCoord.xy / u_resolution.xy;
   float t = u_time * 0.85;
 
-  // Wave Layer 1: Deep rolling oceanic swell
-  float w1 = sin(uv_orig.x * 2.8 + t * 0.75) * 0.16 + cos(uv_orig.x * 5.6 - t * 0.55 + 1.2) * 0.09;
-  float crest1 = 0.58 + w1 * (1.1 + u_distortion * 3.5);
+  // Wave Layer 1: Deep rolling oceanic swell (scaled by u_wave_strength for receding tide)
+  float w1 = (sin(uv_orig.x * 2.8 + t * 0.75) * 0.16 + cos(uv_orig.x * 5.6 - t * 0.55 + 1.2) * 0.09) * u_wave_strength;
+  float crest1 = 0.58 - (1.0 - u_wave_strength) * 0.16 + w1 * (1.1 + u_distortion * 3.5);
 
   // Wave Layer 2: Main electric blue surging wave
-  float w2 = sin(uv_orig.x * 3.8 + t * 1.15 + 1.8) * 0.20 + cos(uv_orig.x * 7.4 - t * 0.90 + 2.4) * 0.10;
-  float crest2 = 0.46 + w2 * (1.2 + u_distortion * 4.2);
+  float w2 = (sin(uv_orig.x * 3.8 + t * 1.15 + 1.8) * 0.20 + cos(uv_orig.x * 7.4 - t * 0.90 + 2.4) * 0.10) * u_wave_strength;
+  float crest2 = 0.46 - (1.0 - u_wave_strength) * 0.14 + w2 * (1.2 + u_distortion * 4.2);
 
   // Wave Layer 3: Foreground luminous cyan rippling crest
-  float w3 = sin(uv_orig.x * 4.4 + t * 1.40 + 3.4) * 0.17 + cos(uv_orig.x * 8.8 - t * 1.05 + 0.8) * 0.08;
-  float crest3 = 0.36 + w3 * (1.1 + u_distortion * 3.6);
+  float w3 = (sin(uv_orig.x * 4.4 + t * 1.40 + 3.4) * 0.17 + cos(uv_orig.x * 8.8 - t * 1.05 + 0.8) * 0.08) * u_wave_strength;
+  float crest3 = 0.36 - (1.0 - u_wave_strength) * 0.12 + w3 * (1.1 + u_distortion * 3.6);
 
   // Fluid noise flow
   vec2 flow_uv = uv_orig * vec2(2.6, 3.8) + vec2(t * 0.28, -t * 0.14);
@@ -146,6 +147,7 @@ function createProgram(gl, vsSrc, fsSrc) {
 export default function AuroraBackground({
   active = true,
   inChat = false,
+  calmWave = false,
   freezeWave = false,
   theme = 'dark',
 }) {
@@ -220,6 +222,7 @@ export default function AuroraBackground({
         'u_color2',
         'u_color3',
         'u_distortion',
+        'u_wave_strength',
       ];
       const locations = {};
       uniforms.forEach((u) => {
@@ -264,14 +267,18 @@ export default function AuroraBackground({
         return;
       }
 
-      // Delta time capped to 50ms to prevent huge jumps when tab switches
-      const delta = Math.min(elapsed / 1000, 0.05);
-      lastFrameTimestamp = now;
-
-      // Stop wave animation in Voice Mode (per user request: "auroranya udah tidak beranimasi wavenya")
-      if (!freezeWave) {
-        state.totalAnimationTime += delta * 0.52;
+      // Target wave strength: 0.03 (3% power, receding tide) in Voice Mode, 1.0 normally
+      const isCalm = calmWave || freezeWave;
+      const targetWaveStrength = isCalm ? 0.03 : 1.0;
+      if (typeof state.currentWaveStrength === 'undefined') {
+        state.currentWaveStrength = targetWaveStrength;
+      } else {
+        state.currentWaveStrength += (targetWaveStrength - state.currentWaveStrength) * Math.min(delta * 2.8, 1.0);
       }
+
+      // Time advances at 3% rate when calm wave is active, so waves don't freeze but gently recede and undulate
+      const speedMultiplier = 0.03 + 0.97 * state.currentWaveStrength;
+      state.totalAnimationTime += delta * 0.52 * speedMultiplier;
 
       gl.useProgram(state.program);
       gl.clear(gl.COLOR_BUFFER_BIT);
@@ -286,7 +293,7 @@ export default function AuroraBackground({
       const waveIntensity = Math.min(Math.max(rawWave, 0.0), 1.0);
 
       const currentScale = 0.35 + 0.12 * waveIntensity;
-      const currentDistortion = 0.15 + 0.12 * waveIntensity;
+      const currentDistortion = (0.15 + 0.12 * waveIntensity) * (0.05 + 0.95 * state.currentWaveStrength);
       const currentRotation = 0.015 * Math.sin(animTime * 0.15);
 
       gl.uniform1f(state.locations.u_scale, currentScale);
@@ -300,6 +307,9 @@ export default function AuroraBackground({
       gl.uniform4f(state.locations.u_color3, 0.0, 0.22, 0.88, 1.0);
 
       gl.uniform1f(state.locations.u_distortion, currentDistortion);
+      if (state.locations.u_wave_strength) {
+        gl.uniform1f(state.locations.u_wave_strength, state.currentWaveStrength);
+      }
 
       gl.drawArrays(gl.TRIANGLES, 0, 6);
 
@@ -352,7 +362,7 @@ export default function AuroraBackground({
       }
       state.isRunning = false;
     };
-  }, [active, theme, freezeWave]);
+  }, [active, theme, calmWave, freezeWave]);
 
   return (
     <div

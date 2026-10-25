@@ -965,11 +965,11 @@ export default function App() {
 
   return (
     <div className={`orion-layout ${isVoiceMode ? 'is-voice-mode' : ''}`}>
-      {/* Dynamic WebGL Aurora Mesh Background (Wave animation freezes during Voice Mode) */}
+      {/* Dynamic WebGL Aurora Mesh Background (Wave recedes to 3% calm tide during Voice Mode) */}
       <AuroraBackground
         active={currentView === 'chat' || currentView === 'dashboard' || isVoiceMode}
         inChat={!isVoiceMode && currentView === 'chat' && messages.length > 0}
-        freezeWave={isVoiceMode}
+        calmWave={isVoiceMode}
         theme={theme}
       />
 
@@ -1025,35 +1025,56 @@ export default function App() {
           </div>
 
           <div className="header-simple-center">
-            {currentView === 'chat' && messages.length > 0 && (
-              <span className="session-active-title">
-                {activeSession ? activeSession.title : 'Orion'}
-              </span>
-            )}
-            {currentView === 'providers' && (
-              <span className="session-active-title">Kelola Provider AI</span>
-            )}
-            {currentView === 'settings' && (
-              <span className="session-active-title">Pengaturan</span>
-            )}
-            {currentView === 'logs' && (
-              <span className="session-active-title">System & Gateway Logs</span>
+            {isVoiceMode ? (
+              <div className="voice-mode-badge-nav">
+                <Sparkles size={13} className="text-cyan" />
+                <span>Mode Suara AI</span>
+              </div>
+            ) : (
+              <>
+                {currentView === 'chat' && messages.length > 0 && (
+                  <span className="session-active-title">
+                    {activeSession ? activeSession.title : 'Orion'}
+                  </span>
+                )}
+                {currentView === 'providers' && (
+                  <span className="session-active-title">Kelola Provider AI</span>
+                )}
+                {currentView === 'settings' && (
+                  <span className="session-active-title">Pengaturan</span>
+                )}
+                {currentView === 'logs' && (
+                  <span className="session-active-title">System & Gateway Logs</span>
+                )}
+              </>
             )}
           </div>
 
           <div className="header-simple-right">
-            <button
-              type="button"
-              className="btn-simple-new-chat"
-              onClick={() => {
-                handleNewSession();
-                setCurrentView('chat');
-              }}
-              title="Mulai Obrolan Baru"
-            >
-              <Plus size={14} />
-              <span>Chat Baru</span>
-            </button>
+            {isVoiceMode ? (
+              <button
+                type="button"
+                className="btn-exit-voice-mode"
+                onClick={() => setIsVoiceMode(false)}
+                title="Keluar dari mode suara (Esc)"
+              >
+                <X size={15} />
+                <span>Keluar</span>
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="btn-simple-new-chat"
+                  onClick={() => {
+                    handleNewSession();
+                    setCurrentView('chat');
+                  }}
+                  title="Mulai Obrolan Baru"
+                >
+                  <Plus size={14} />
+                  <span>Chat Baru</span>
+                </button>
 
             {currentView === 'chat' && messages.length > 0 && (
               <>
@@ -1104,6 +1125,8 @@ export default function App() {
             >
               <Settings size={15} />
             </button>
+              </>
+            )}
           </div>
         </header>
 
@@ -1357,6 +1380,19 @@ export default function App() {
         />
           </>
         )}
+
+        {/* Immersive AI Voice Mode Overlay (Inside chat-main so Navbar and Sidebar remain intact) */}
+        {isVoiceMode && (
+          <VoiceModeOverlay
+            onClose={() => setIsVoiceMode(false)}
+            onSendPrompt={(prompt) => handleSendMessage(prompt)}
+            isGenerating={isGenerating}
+            lastAiResponse={
+              [...messages].reverse().find((m) => m.role === 'assistant')?.content || ''
+            }
+            theme={theme}
+          />
+        )}
       </main>
 
       {/* Image Lightbox Modal */}
@@ -1400,19 +1436,6 @@ export default function App() {
             </div>
           </div>
         </div>
-      )}
-
-      {/* Immersive AI Voice Mode Overlay */}
-      {isVoiceMode && (
-        <VoiceModeOverlay
-          onClose={() => setIsVoiceMode(false)}
-          onSendPrompt={(prompt) => handleSendMessage(prompt)}
-          isGenerating={isGenerating}
-          lastAiResponse={
-            [...messages].reverse().find((m) => m.role === 'assistant')?.content || ''
-          }
-          theme={theme}
-        />
       )}
     </div>
   );

@@ -6283,49 +6283,73 @@ svg[aria-roledescription="error"] {
   100% { height: 11px; }
 }
 
-/* Voice Mode Active State: Hide chat UI, leave only ambient stationary Aurora */
-.orion-layout.is-voice-mode .chat-sidebar,
-.orion-layout.is-voice-mode .chat-header-simple,
-.orion-layout.is-voice-mode .chat-main-content-scroll,
+/* Voice Mode Active State: Only hide content text/messages, content logo, and input bar */
+.orion-layout.is-voice-mode .messages-container,
+.orion-layout.is-voice-mode .welcome-logo-badge,
+.orion-layout.is-voice-mode .welcome-titles-wrapper,
+.orion-layout.is-voice-mode .quick-prompts-carousel,
 .orion-layout.is-voice-mode .chat-input-sticky-footer,
-.orion-layout.is-voice-mode .orion-dashboard-fullscreen,
-.orion-layout.is-voice-mode .logs-view-container,
-.orion-layout.is-voice-mode .orion-toast {
+.orion-layout.is-voice-mode .input-keyboard-hint {
   opacity: 0 !important;
   pointer-events: none !important;
   visibility: hidden !important;
   transform: translateY(14px);
-  transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
-              visibility 0.45s;
+  transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              visibility 0.4s;
 }
 
-/* Stationary Aurora during Voice Mode */
+/* Aurora during Voice Mode: Calmed and receded (surut) at 3% wave strength */
 .orion-layout.is-voice-mode .tryliner-aurora-wrapper {
-  height: 48vh;
-  max-height: 520px;
-  min-height: 320px;
-  opacity: 0.95;
+  height: 32vh;
+  max-height: 340px;
+  min-height: 200px;
+  opacity: 0.85;
   transition: height 0.6s cubic-bezier(0.16, 1, 0.3, 1),
               opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Fullscreen AI Voice Mode Overlay */
+/* AI Voice Mode Overlay: Positioned inside chat-main below the navbar (sidebar & navbar stay visible) */
 .voice-mode-overlay {
-  position: fixed;
-  inset: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: 100;
+  position: absolute;
+  top: 52px;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 30;
   background: transparent;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
-  padding: 1.5rem 2rem 2.5rem;
+  padding: 1.5rem 2rem 3rem;
   box-sizing: border-box;
   pointer-events: auto;
-  animation: voice-fade-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  gap: 2.2rem;
+  animation: voice-fade-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Voice Mode Badge in Navbar */
+.voice-mode-badge-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.32rem 0.85rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--text-primary);
+}
+
+[data-theme='light'] .voice-mode-badge-nav {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.1);
 }
 
 @keyframes voice-fade-in {

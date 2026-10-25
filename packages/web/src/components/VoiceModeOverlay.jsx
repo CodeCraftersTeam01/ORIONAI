@@ -215,28 +215,6 @@ export default function VoiceModeOverlay({
 
   return (
     <div className="voice-mode-overlay animate-fade-in" role="dialog" aria-label="Mode Suara Orion AI">
-      {/* Top Header with minimal controls */}
-      <div className="voice-mode-header">
-        <div className="voice-mode-badge">
-          <Sparkles size={13} className="text-cyan" />
-          <span>ORION VOICE</span>
-        </div>
-
-        <button
-          type="button"
-          className="btn-exit-voice-mode"
-          onClick={() => {
-            stopSpeaking();
-            onClose();
-          }}
-          title="Keluar dari mode suara (Esc)"
-          aria-label="Tutup mode suara"
-        >
-          <X size={18} />
-          <span>Keluar</span>
-        </button>
-      </div>
-
       {/* Main Center Content: Equalizer Orb & Speech Feedback */}
       <div className="voice-mode-center-content">
         {/* Pulsating Voice Equalizer Orb */}
