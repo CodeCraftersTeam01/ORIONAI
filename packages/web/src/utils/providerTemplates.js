@@ -4,6 +4,18 @@
  */
 export const PROVIDER_TEMPLATES = [
   {
+    id: 'orion',
+    name: 'Orion AI (Official)',
+    category: 'Rekomendasi',
+    defaultBaseUrl: 'https://pi.leopard-gila.ts.net/v1',
+    defaultModel: 'orion',
+    suggestedModels: ['orion', 'agnes-2.5-flash', 'nvidia/nemotron-3-ultra-550b-a55b:free'],
+    requiresApiKey: true,
+    hideBaseUrl: true,
+    placeholderKey: 'Masukkan API Key Orion Anda (sk-orion-...)',
+    description: 'Akses resmi model Orion Engine, Agnes 2.5 Flash, dan Nemotron.',
+  },
+  {
     id: 'ollama',
     name: 'Ollama (Lokal)',
     category: 'Lokal',
