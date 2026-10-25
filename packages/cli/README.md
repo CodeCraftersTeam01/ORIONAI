@@ -26,9 +26,9 @@ orion --stop
 ## Perintah Obrolan Terminal (Interactive Chat)
 
 Saat berada dalam sesi terminal chat:
-- Tekan tombol `/` langsung atau ketik `/` lalu Enter untuk membuka **Menu Rekomendasi Perintah Interaktif**. Gunakan panah atas (↑) dan bawah (↓) untuk memilih, lalu tekan Enter.
-- `/model` — Buka pemilih model AI interaktif dengan panah keyboard (↑ / ↓) dan Enter. Daftar model otomatis tersinkronisasi dengan provider yang Anda tambahkan di antarmuka web.
-- `/tier` — Buka pemilih tingkat penalaran interaktif (low, medium, high) dengan panah keyboard (↑ / ↓) dan Enter.
+- Tekan tombol `/` langsung pada prompt kosong — rekomendasi perintah akan **langsung muncul secara instan tanpa perlu menekan tombol Enter**. Gunakan panah atas (↑) dan bawah (↓) untuk bernavigasi dan tekan **Enter** untuk memilih rekomendasi. Tekan **Backspace** atau **Esc** untuk membatalkan.
+- `/model` — Buka pemilih model AI interaktif dengan panah keyboard (↑ / ↓) dan Enter. Semua model dari custom provider yang Anda tambahkan di antarmuka web (seperti Ollama, OpenAI, Google Gemini, Agnes, dll.) otomatis muncul dan tersinkronisasi di daftar ini.
+- `/tier` — Buka pemilih tingkat penalaran interaktif (`low`, `medium`, `high`) dengan panah keyboard (↑ / ↓) dan Enter.
 - `/key <api_key>` — Masukkan atau perbarui Orion API Key Anda (otomatis tersinkronisasi ke seluruh sistem).
 - `/clear` — Bersihkan layar terminal obrolan.
 - `/reset` — Mulai percakapan baru (reset riwayat obrolan).
