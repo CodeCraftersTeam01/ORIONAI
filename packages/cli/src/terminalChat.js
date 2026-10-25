@@ -2,7 +2,48 @@ import readline from 'readline';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { execSync } from 'child_process';
 import { streamChatCompletion } from '../../server/src/services/aiService.js';
+
+function copyToClipboard(text) {
+  try {
+    if (process.platform === 'darwin') {
+      execSync('pbcopy', { input: text, timeout: 5000 });
+      return true;
+    } else if (process.platform === 'win32') {
+      execSync('clip', { input: text, timeout: 5000 });
+      return true;
+    } else {
+      execSync('xclip -selection clipboard || wl-copy', { input: text, timeout: 5000 });
+      return true;
+    }
+  } catch {
+    return false;
+  }
+}
+
+function runShellCommand(cmdStr, isSilent = false) {
+  process.stdout.write(`\n\x1b[90m\x1b[36m$ ${cmdStr}\x1b[0m\n`);
+  try {
+    const output = execSync(cmdStr, {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+      timeout: 60000,
+      maxBuffer: 10 * 1024 * 1024,
+    });
+    if (output) {
+      process.stdout.write(output);
+      if (!output.endsWith('\n')) process.stdout.write('\n');
+    }
+    return { success: true, output: output || '' };
+  } catch (err) {
+    const out = err.stdout ? err.stdout.toString() : '';
+    const errOut = err.stderr ? err.stderr.toString() : err.message;
+    if (out) process.stdout.write(out);
+    if (errOut) process.stdout.write(`\x1b[31m${errOut}\x1b[0m\n`);
+    return { success: false, output: (out ? out + '\n' : '') + errOut };
+  }
+}
 
 const configDir = path.join(os.homedir(), '.orion');
 const providersPath = path.join(configDir, 'providers.json');
