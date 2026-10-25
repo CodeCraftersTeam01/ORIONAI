@@ -675,7 +675,7 @@
 
 /* Symmetric balanced padding when on welcome empty hero state */
 .messages-container.is-empty {
-  padding: 2rem 1.25rem 2.5rem;
+  padding: 2rem 1.25rem 4.5rem;
   justify-content: center;
   align-items: center;
   overflow-y: auto;
