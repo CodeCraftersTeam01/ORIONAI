@@ -59,6 +59,61 @@ function broadcastToSubscribers(logEntry) {
   });
 }
 
+function loadInitialLogsFromDisk() {
+  try {
+    ensureLogsDir();
+    const filePath = path.join(logsDir, 'agent.log');
+    if (!fs.existsSync(filePath)) return;
+    const content = fs.readFileSync(filePath, 'utf8');
+    const lines = content.split('\n').filter(Boolean);
+    const recentLines = lines.slice(-400);
+
+    recentLines.forEach((line) => {
+      const m = line.match(/^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+([A-Z]+)\s+([a-zA-Z0-9_-]+):\s*(.*)$/);
+      if (m) {
+        const [, timestamp, level, component, message] = m;
+        const normalizedLevel = level.toUpperCase();
+        const normalizedComponent = component.toUpperCase();
+        const isError = normalizedLevel === 'ERROR' || normalizedLevel === 'WARN';
+        inMemoryLogs.push({
+          id: `disk-${++logCounter}`,
+          timestamp,
+          level: normalizedLevel,
+          component: normalizedComponent,
+          file: isError ? 'errors' : (normalizedComponent === 'GATEWAY' ? 'gateway' : 'agent'),
+          message,
+          meta: {},
+        });
+      }
+    });
+  } catch {}
+}
+
+loadInitialLogsFromDisk();
+
+if (inMemoryLogs.length === 0) {
+  const ts = formatTimestamp();
+  inMemoryLogs.push({
+    id: `init-${++logCounter}`,
+    timestamp: ts,
+    level: 'INFO',
+    component: 'GATEWAY',
+    file: 'gateway',
+    message: 'Orion Gateway Engine v1.0.0 initialized successfully.',
+    meta: {},
+  });
+  inMemoryLogs.push({
+    id: `init-${++logCounter}`,
+    timestamp: ts,
+    level: 'INFO',
+    component: 'AGENT',
+    file: 'agent',
+    message: 'Orion Agent core services online. Listening for model and tool requests.',
+    meta: {},
+  });
+}
+
+
 export const logger = {
   log({
     level = 'INFO',
@@ -127,7 +182,7 @@ export const logger = {
   // Morgan HTTP log parser
   logMorgan(text) {
     if (!text || typeof text !== 'string') return;
-    const clean = text.trim();
+    const clean = text.replace(/\x1b\[[0-9;]*m/g, '').trim();
     if (!clean) return;
 
     // Pattern: METHOD URL STATUS TIME ms - SIZE

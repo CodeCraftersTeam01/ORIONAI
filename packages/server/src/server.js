@@ -153,6 +153,12 @@ export function startServer({ port = PORT, openBrowser = false } = {}) {
       console.log(`\n🌌 Orion Agent aktif di ${url}`);
       console.log(`🛡️  Security Headers & CORS: Aktif`);
       console.log(`📡 Mode: ${hasDist ? 'Fullstack CLI (Web UI + API)' : 'API Service Only'}`);
+
+      // Internal structured logging for /logs dashboard
+      logger.info(`Orion Agent service listening on ${url}`, { port: actualPort }, 'GATEWAY', 'gateway');
+      logger.info(`Fullstack mode: Serving web UI from ${distPath}`, { hasDist }, 'AGENT', 'agent');
+      logger.info('Gateway connection established. Ready for agent operations.', {}, 'GATEWAY', 'gateway');
+
       if (openBrowser) {
         console.log(`🌐 Membuka browser: ${url}`);
         openUrl(url);
