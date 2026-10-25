@@ -40,9 +40,9 @@ Aturan Format & Estetika Jawaban:
    - Format kode secara bersih, indah, dengan indentasi 2 atau 4 spasi yang rapi. Untuk CSS, berikan baris baru antar selector dan properti. Untuk HTML, pisahkan tag dan atribut dengan spasi.
    - Jaga spasi alami antar kata dalam penjelasan teks bahasa Indonesia (jangan menggabungkan kata atau membuat CamelCase seperti "Kenalijenis", "diBrowser", "SiapDipakai", selalu pisahkan dengan spasi: "Kenali jenis", "di browser", "siap dipakai").
 8. Kerapihan Bahasa Indonesia & Spasi:
-   - WAJIB selalu berikan spasi antar kata secara alami dan benar. JANGAN PERNAH menyatukan kata-kata seperti 'Senangbertemudengan', 'SayaORION', 'asistenkecerdasan', 'buatanyang'.
-   - Selalu berikan spasi satu ketukan setelah tanda baca (titik, koma, tanda tanya, tanda seru, titik dua), contoh: 'hari ini? Jangan ragu...' (BUKAN 'hari ini?Jangan').
-   - Jangan menyatukan kata pembuka dengan tanda formatting tebal (contoh: 'Saya **Agnes**' BUKAN 'Saya**Agnes**').`;
+   - WAJIB selalu gunakan spasi alami yang tepat antar setiap kata dalam bahasa Indonesia baku.
+   - Selalu berikan tepat satu spasi setelah setiap tanda baca (titik, koma, tanda tanya, tanda seru, titik dua, titik koma). Contoh: 'Halo! Senang bertemu dengan Anda. Ada yang bisa saya bantu hari ini?'
+   - Selalu pisahkan kata dengan penegasan tebal menggunakan spasi. Contoh: 'Saya **Orion AI**, siap membantu...'.`;
 
 /**
  * Configure behavior, temperature, and system prompt according to selected model & reasoning tier
@@ -80,7 +80,7 @@ export function getModelConfig(modelId = 'orion', reasoningTier = 'medium') {
 Karakteristik & Perilaku:
 1. Identitas Anda adalah AGNES 2.5 FLASH, asisten AI yang cerdas, lincah, ekspresif, hangat, dan kreatif.
 2. Anda berfokus pada jawaban cepat, ramah, dan solutif tanpa penalaran bertingkat yang rumit. Jangan sebut diri Anda Orion; perkenalkan dan posisikan diri Anda sebagai Agnes.
-3. Selalu gunakan tanda spasi yang benar antar kata dalam bahasa Indonesia. Selalu berikan spasi satu ketukan setelah tanda baca (contoh: 'hari ini? Jangan ragu'). JANGAN PERNAH menggabungkan kata seperti 'Senangbertemu' atau 'buatanyang'.`,
+3. Selalu gunakan tanda spasi yang benar antar kata dalam bahasa Indonesia. Selalu berikan spasi satu ketukan setelah tanda baca (contoh: 'hari ini? Ada yang bisa saya bantu?'). Tulislah setiap kata dan kalimat secara terpisah dan rapi.`,
     };
   }
 
@@ -154,27 +154,75 @@ Karakteristik:
 export function cleanIndonesianText(text) {
   if (!text) return text;
   let res = text;
-  // 1. Lowercase directly followed by Uppercase (e.g. "membantuAnda" -> "membantu Anda", "SayaORION" -> "Saya ORION")
-  res = res.replace(/([a-z\u00C0-\u017F])([A-Z])/g, '$1 $2');
-  // 2. Punctuation followed by letter/number (e.g. "ini?Jangan" -> "ini? Jangan")
+
+  // 1. Punctuation followed by letter/number without space
   res = res.replace(/([?!.,;:])([a-zA-Z0-9\u00C0-\u017F])/g, '$1 $2');
+
+  // 2. Dash/Em-dash spacing
+  res = res.replace(/([—–])(?=[^\s])/g, '$1 ').replace(/(?<=[^\s])([—–])/g, ' $1');
+
+  // 3. Lowercase followed immediately by Uppercase (CamelCase squish)
+  res = res.replace(/([a-z\u00C0-\u017F])([A-Z])/g, '$1 $2');
+
+  // 4. Space around markdown bold if glued
+  res = res.replace(/([a-zA-Z0-9\u00C0-\u017F])(\*\*[^\*\n]+\*\*)/g, '$1 $2');
+  res = res.replace(/(\*\*[^\*\n]+\*\*)([a-zA-Z0-9\u00C0-\u017F])/g, '$1 $2');
+
+  // 5. Prepositions squished with words
+  res = res.replace(/\b(dari|ke|di|pada|untuk|dengan|tanpa|dalam|hingga|sampai|mulai|serta)(penjelasan|perencanaan|kebutuhan|analisis|pemecahan|pertanyaan|pembuatan|pengembangan|pembelajaran|penggunaan|pelaksanaan|pekerjaan)\b/gi, '$1 $2');
+
+  // 6. Modal verbs squished with verbs
+  res = res.replace(/\b(siap|dapat|bisa|akan|telah|sudah|sedang|ingin)(membantu|menjawab|menjelaskan|menganalisis|merancang|menyelesaikan|memberikan|menemukan|melakukan)\b/gi, '$1 $2');
+
+  // 7. Word squished with "yang"
+  res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,})(yang|ini|itu|tersebut)\b/gi, (match, p1, p2) => {
+    if (/^(go|sa|la|wa|ba|pe|se)yang$/i.test(match)) return match;
+    return `${p1} ${p2}`;
+  });
 
   const SQUISHED_MAP = [
     [/\bSenangbertemudengan\b/gi, 'Senang bertemu dengan'],
     [/\bbertemudengan\b/gi, 'bertemu dengan'],
     [/\bSenangbertemu\b/gi, 'Senang bertemu'],
-    [/\bsiapmembantu\b/gi, 'siap membantu'],
+    [/\bselamatpagi\b/gi, 'Selamat pagi'],
+    [/\bselamatsiang\b/gi, 'Selamat siang'],
+    [/\bselamatsore\b/gi, 'Selamat sore'],
+    [/\bselamatmalam\b/gi, 'Selamat malam'],
+    [/\bselamatdatang\b/gi, 'Selamat datang'],
+    [/\bterimakasih\b/gi, 'terima kasih'],
+    [/\bsamadengan\b/gi, 'sama dengan'],
     [/\basistenkecerdasan\b/gi, 'asisten kecerdasan'],
     [/\bkecerdasanbuatan\b/gi, 'kecerdasan buatan'],
     [/\bbuatanyang\b/gi, 'buatan yang'],
     [/\byangsiap\b/gi, 'yang siap'],
+    [/\bsiapmembantu\b/gi, 'siap membantu'],
     [/\badalahasisten\b/gi, 'adalah asisten'],
-    [/\bterimakasih\b/gi, 'terima kasih'],
+    [/\bberbagaikebutuhan\b/gi, 'berbagai kebutuhan'],
+    [/\bdaripenjelasan\b/gi, 'dari penjelasan'],
+    [/\bmulaidaripenjelasan\b/gi, 'mulai dari penjelasan'],
+    [/\bmulaidari\b/gi, 'mulai dari'],
+    [/\bhinggaperencanaan\b/gi, 'hingga perencanaan'],
+    [/\bhinggasaat\b/gi, 'hingga saat'],
+    [/\bsampaidengan\b/gi, 'sampai dengan'],
+    [/\buntuktugas\b/gi, 'untuk tugas'],
+    [/\buntukmembantu\b/gi, 'untuk membantu'],
+    [/\bdengancara\b/gi, 'dengan cara'],
+    [/\bdenganberbagai\b/gi, 'dengan berbagai'],
+    [/\bpadadasarnya\b/gi, 'pada dasarnya'],
+    [/\bolehkarenaitu\b/gi, 'oleh karena itu'],
+    [/\bolehsebabitu\b/gi, 'oleh sebab itu'],
+    [/\bdandapat\b/gi, 'dan dapat'],
+    [/\bdapatmembantu\b/gi, 'dapat membantu'],
+    [/\bbisabantu\b/gi, 'bisa bantu'],
+    [/\bsayabantu\b/gi, 'saya bantu'],
+    [/\bhariini\b/gi, 'hari ini'],
   ];
 
   for (const [re, repl] of SQUISHED_MAP) {
     res = res.replace(re, repl);
   }
+
+  res = res.replace(/[ \t]{2,}/g, ' ');
   return res;
 }
 
