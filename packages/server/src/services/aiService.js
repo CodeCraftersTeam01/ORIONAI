@@ -51,6 +51,11 @@ export function getModelConfig(modelId = 'orion', reasoningTier = 'medium') {
   let normalizedModel = modelId || 'orion';
   let normalizedTier = reasoningTier || 'medium';
 
+  // Strip provider prefix if present (e.g. orion::orion -> orion)
+  if (typeof normalizedModel === 'string' && normalizedModel.includes('::')) {
+    normalizedModel = normalizedModel.split('::')[1];
+  }
+
   // Normalize legacy IDs
   if (normalizedModel === 'orion-low') {
     normalizedModel = 'orion';
@@ -298,7 +303,24 @@ function resolveEndpointAndHeaders(customProvider, config, userOrionApiKey) {
     const cleanBase = customProvider.baseUrl.trim().replace(/\/+$/, '');
     targetUrl = cleanBase.endsWith('/chat/completions') ? cleanBase : `${cleanBase}/chat/completions`;
     targetApiKey = customProvider.apiKey ? customProvider.apiKey.trim() : '';
-    targetModel = customProvider.modelId || 'default';
+
+    // Fallback to server env or userOrionApiKey for official provider
+    if (!targetApiKey && (customProvider.id === 'orion' || customProvider.name?.toLowerCase().includes('orion') || customProvider.templateId === 'orion')) {
+      targetApiKey = (userOrionApiKey && userOrionApiKey.trim()) || (API_KEY && API_KEY.trim()) || '';
+    }
+
+    targetModel = customProvider.modelId || config.upstreamModel || 'default';
+    if (customProvider.temperature !== undefined && customProvider.temperature !== null) {
+      temperature = Number(customProvider.temperature);
+    } else {
+      temperature = config.temperature;
+    }
+
+    if (!targetApiKey && (customProvider.requiresApiKey || customProvider.id === 'orion' || customProvider.name?.toLowerCase().includes('orion'))) {
+      throw new Error(
+        '⚠️ API Key untuk provider ini belum dimasukkan atau tidak valid. Silakan buka menu Provider dan periksa kembali API Key Anda.'
+      );
+    }
   } else {
     targetUrl = `${BASE_URL.replace(/\/+$/, '')}/chat/completions`;
     targetApiKey = (userOrionApiKey && userOrionApiKey.trim()) || (API_KEY && API_KEY.trim()) || '';

@@ -24,38 +24,21 @@ function ensureConfigDir() {
 
 const router = Router();
 
-// Available Models List matching Gemini-style Model Selector
-const AVAILABLE_MODELS = [
-  {
-    id: 'orion',
-    name: 'Orion',
-    displayName: 'Orion',
-    subtitle: 'Tugas kompleks & penalaran',
-    supportsReasoning: true,
-    status: 'active',
-  },
-  {
-    id: 'agnes',
-    name: 'Agnes 2.5 Flash',
-    displayName: 'Agnes 2.5 Flash',
-    subtitle: 'Bantuan serbaguna & kreatif',
-    supportsReasoning: false,
-    status: 'active',
-  },
-  {
-    id: 'nemotron-3',
-    name: 'Nemotron 3',
-    displayName: 'Nemotron 3',
-    subtitle: 'Jawaban tercepat bebas biaya',
-    supportsReasoning: false,
-    status: 'active',
-  },
-];
-
 const REASONING_TIERS = [
   { id: 'low', name: 'Low', desc: 'Quick and efficient' },
   { id: 'medium', name: 'Medium', desc: 'Balanced depth' },
   { id: 'high', name: 'High', desc: 'Extra thorough' },
+];
+
+const DEFAULT_OFFICIAL_MODELS = [
+  { id: 'orion::orion', name: 'Orion', displayName: 'Orion', subtitle: 'Tugas kompleks & penalaran', supportsReasoning: true, status: 'active' },
+  { id: 'orion::orion-auto', name: 'Orion Auto Router', displayName: 'Orion Auto Router', subtitle: 'Router otomatis multi-model cerdas', supportsReasoning: true, status: 'active' },
+  { id: 'orion::agnes-2.5-flash', name: 'Agnes 2.5 Flash', displayName: 'Agnes 2.5 Flash', subtitle: 'Bantuan serbaguna & kreatif', supportsReasoning: false, status: 'active' },
+  { id: 'orion::agnes-2.5-pro', name: 'Agnes 2.5 Pro', displayName: 'Agnes 2.5 Pro', subtitle: 'Performa tinggi untuk tugas mendalam', supportsReasoning: false, status: 'active' },
+  { id: 'orion::agnes-3.0-flash', name: 'Agnes 3.0 Flash', displayName: 'Agnes 3.0 Flash', subtitle: 'Generasi baru berkecepatan tinggi', supportsReasoning: false, status: 'active' },
+  { id: 'orion::gemini-3.7-flash', name: 'Gemini 3.7 Flash', displayName: 'Gemini 3.7 Flash', subtitle: 'Multimodal mutakhir penalaran cepat', supportsReasoning: true, status: 'active' },
+  { id: 'orion::gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash Lite', displayName: 'Gemini 3.5 Flash Lite', subtitle: 'Ringan, efisien & responsif', supportsReasoning: false, status: 'active' },
+  { id: 'orion::nemotron-3', name: 'Nemotron 3', displayName: 'Nemotron 3', subtitle: 'Jawaban tercepat bebas biaya', supportsReasoning: false, status: 'active' },
 ];
 
 // Inspirational prompt suggestions
@@ -95,7 +78,7 @@ router.post('/message', chatRateLimiter, validateChatInput, async (req, res, nex
       message,
       history: history || [],
       attachments: attachments || [],
-      model: model || 'orion',
+      model: model || 'orion::orion',
       reasoningTier: reasoningTier || 'medium',
       customProvider: customProvider || null,
       orionApiKey: orionApiKey || null,
@@ -147,7 +130,7 @@ router.post('/stream', chatRateLimiter, validateChatInput, (req, res) => {
       message,
       history: history || [],
       attachments: attachments || [],
-      model: model || 'orion',
+      model: model || 'orion::orion',
       reasoningTier: reasoningTier || 'medium',
       customProvider: customProvider || null,
       orionApiKey: orionApiKey || null,
@@ -227,11 +210,11 @@ router.post('/test-model', chatRateLimiter, async (req, res) => {
   }
 });
 
-// GET /api/chat/models (Sanitized public model info)
+// GET /api/chat/models (Dynamic official & recommended model info)
 router.get('/models', (req, res) => {
   res.json({
     success: true,
-    models: AVAILABLE_MODELS,
+    models: DEFAULT_OFFICIAL_MODELS,
     reasoningTiers: REASONING_TIERS,
     status: 'online',
   });
@@ -309,7 +292,7 @@ router.get('/providers-config', (req, res) => {
         JSON.stringify(
           {
             providers: defaultProviders,
-            selectedModel: 'orion',
+            selectedModel: 'orion::orion',
             reasoningTier: 'medium',
             updatedAt: Date.now(),
           },
@@ -323,7 +306,7 @@ router.get('/providers-config', (req, res) => {
     return res.json({
       success: true,
       providers: defaultProviders,
-      selectedModel: 'orion',
+      selectedModel: 'orion::orion',
       reasoningTier: 'medium',
     });
   } catch (err) {

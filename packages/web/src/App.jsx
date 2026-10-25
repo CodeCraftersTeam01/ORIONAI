@@ -317,11 +317,14 @@ export default function App() {
   });
   const [isManageProvidersOpen, setIsManageProvidersOpen] = useState(false);
 
-  // Selected AI Model (Orion, Agnes 2.5 Flash, Nemotron 3, or Custom Provider ID)
+  // Selected AI Model (Dynamic format: providerId::modelId, e.g. orion::orion)
   const [selectedModel, setSelectedModel] = useState(() => {
     const saved = localStorage.getItem('orion_selected_model');
+    if (saved === 'orion') return 'orion::orion';
+    if (saved === 'agnes' || saved === 'agnes-2.5-flash') return 'orion::agnes-2.5-flash';
+    if (saved === 'nemotron-3') return 'orion::nemotron-3';
     if (saved) return saved;
-    return 'orion';
+    return 'orion::orion';
   });
 
   const [reasoningTier, setReasoningTier] = useState(() => {
@@ -427,8 +430,12 @@ export default function App() {
         }
 
         if (data.selectedModel) {
-          setSelectedModel(data.selectedModel);
-          localStorage.setItem('orion_selected_model', data.selectedModel);
+          let resolved = data.selectedModel;
+          if (resolved === 'orion') resolved = 'orion::orion';
+          else if (resolved === 'agnes' || resolved === 'agnes-2.5-flash') resolved = 'orion::agnes-2.5-flash';
+          else if (resolved === 'nemotron-3') resolved = 'orion::nemotron-3';
+          setSelectedModel(resolved);
+          localStorage.setItem('orion_selected_model', resolved);
         }
         if (data.reasoningTier) {
           setReasoningTier(data.reasoningTier);
@@ -645,17 +652,28 @@ export default function App() {
       timestamp: new Date().toISOString(),
     };
 
+    const orionProvider = (customProviders || []).find(
+      (p) => p.id === 'orion' || p.templateId === 'orion' || p.name?.toLowerCase().includes('official')
+    );
+    const userOrionApiKey =
+      orionProvider?.apiKeys?.find((k) => k.active)?.key || orionProvider?.apiKey || '';
+
     let activeCustomProvider = null;
     if (selectedModel && selectedModel.includes('::')) {
       const [provId, modId] = selectedModel.split('::');
       const parentProv = customProviders.find((p) => p.id === provId);
       if (parentProv) {
-        const activeKey = parentProv.apiKeys?.find((k) => k.active)?.key || parentProv.apiKey || '';
+        let activeKey = parentProv.apiKeys?.find((k) => k.active)?.key || parentProv.apiKey || '';
+        if (!activeKey && (provId === 'orion' || parentProv.templateId === 'orion' || parentProv.name?.toLowerCase().includes('official'))) {
+          activeKey = userOrionApiKey;
+        }
         activeCustomProvider = {
+          id: parentProv.id,
           baseUrl: parentProv.baseUrl,
           apiKey: activeKey,
           modelId: modId,
           name: parentProv.name,
+          requiresApiKey: parentProv.requiresApiKey,
         };
       }
     } else {
@@ -726,12 +744,6 @@ export default function App() {
         })
       );
     };
-
-    const orionProvider = (customProviders || []).find(
-      (p) => p.id === 'orion' || p.templateId === 'orion'
-    );
-    const userOrionApiKey =
-      orionProvider?.apiKeys?.find((k) => k.active)?.key || orionProvider?.apiKey || '';
 
     try {
       const res = await fetch('/api/chat/stream', {
