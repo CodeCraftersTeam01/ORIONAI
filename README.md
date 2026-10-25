@@ -115,7 +115,7 @@ Buat file `packages/server/.env` (atau `.env` di root direktori):
 PORT=5001
 NODE_ENV=development
 CLIENT_URL=http://localhost:5173
-AI_BASE_URL=https://pi.leopard-gila.ts.net/v1
+AI_BASE_URL=
 AI_API_KEY=your_orion_api_key_here
 AI_MODEL=orion
 ```
