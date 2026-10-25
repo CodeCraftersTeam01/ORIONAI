@@ -471,6 +471,7 @@ export default function App() {
   const [voiceAudioLevel, setVoiceAudioLevel] = useState(0);
   const [isVoiceMuted, setIsVoiceMuted] = useState(false);
   const [voiceAgentStatus, setVoiceAgentStatus] = useState('listening'); // 'listening' | 'thinking' | 'speaking'
+  const [voiceUserTranscript, setVoiceUserTranscript] = useState('');
   const [voiceAgentResponse, setVoiceAgentResponse] = useState('');
   const [voiceResponseTurn, setVoiceResponseTurn] = useState(0);
 
