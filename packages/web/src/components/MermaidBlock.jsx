@@ -14,6 +14,34 @@ if (typeof window !== 'undefined' && mermaid) {
   } catch {}
 }
 
+// Global defensive MutationObserver to instantly destroy any stray Mermaid error elements attached to body
+if (typeof window !== 'undefined' && typeof MutationObserver !== 'undefined') {
+  try {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+          if (node.nodeType === 1) {
+            const id = node.id || '';
+            const className = typeof node.className === 'string' ? node.className : '';
+            if (
+              id.startsWith('dmermaid') ||
+              id.startsWith('mermaid-') ||
+              className.includes('error-icon') ||
+              className.includes('error-text') ||
+              (node.tagName === 'svg' && node.getAttribute('aria-roledescription') === 'error')
+            ) {
+              if (node.parentElement === document.body) {
+                node.remove();
+              }
+            }
+          }
+        });
+      });
+    });
+    observer.observe(document.body, { childList: true });
+  } catch {}
+}
+
 function ensureMermaidInit(isDark) {
   try {
     mermaid.initialize({
