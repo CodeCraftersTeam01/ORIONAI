@@ -299,7 +299,9 @@ export default function MermaidBlock({ code, title = 'Flowchart' }) {
   // Helper to remove any Mermaid error artifacts injected into body
   const cleanupMermaidArtifacts = (renderId) => {
     try {
-      const stray = document.querySelectorAll(`[id^="${renderId}"], [id^="dmermaid"], svg[aria-roledescription="error"]`);
+      const stray = document.querySelectorAll(
+        `[id^="${renderId}"], [id^="dmermaid"], [id^="mermaid-"], svg[aria-roledescription="error"], .error-icon, .error-text, div.mermaid, [class*="error-icon"]`
+      );
       stray.forEach((el) => {
         // If element is not inside container, remove it from document body
         if (!containerRef.current || !containerRef.current.contains(el)) {
@@ -309,6 +311,12 @@ export default function MermaidBlock({ code, title = 'Flowchart' }) {
     } catch {
       // ignore
     }
+  };
+
+  const scheduleCleanup = (renderId) => {
+    cleanupMermaidArtifacts(renderId);
+    setTimeout(() => cleanupMermaidArtifacts(renderId), 40);
+    setTimeout(() => cleanupMermaidArtifacts(renderId), 200);
   };
 
   const [retryCount, setRetryCount] = useState(0);
@@ -337,20 +345,21 @@ export default function MermaidBlock({ code, title = 'Flowchart' }) {
           if (isMounted) {
             setSvgHtml(svg);
             setError(null);
-            cleanupMermaidArtifacts(renderId);
+            scheduleCleanup(renderId);
           }
         })
         .catch((err) => {
-          console.warn('Mermaid render error:', err);
+          console.warn('[Mermaid Render Caught]:', err.message || err);
           if (isMounted) {
             setError(err.message || 'Format diagram tidak dikenali');
-            cleanupMermaidArtifacts(renderId);
+            scheduleCleanup(renderId);
           }
         });
     } catch (err) {
+      console.warn('[Mermaid Render Caught]:', err.message || err);
       if (isMounted) {
         setError(err.message || 'Format diagram tidak dikenali');
-        cleanupMermaidArtifacts(renderId);
+        scheduleCleanup(renderId);
       }
     }
 
