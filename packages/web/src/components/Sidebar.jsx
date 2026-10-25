@@ -9,7 +9,6 @@ import {
   X,
   ArrowLeft,
   Cpu,
-  ChevronRight,
   Sparkles,
   LayoutDashboard,
 } from 'lucide-react';
@@ -76,20 +75,14 @@ export default function Sidebar({
             <nav className="sidebar-nav-menu">
               <button
                 type="button"
-                className="sidebar-nav-item primary-chat-item"
+                className={`sidebar-nav-item ${currentView === 'chat' ? 'active' : ''}`}
                 onClick={() => {
                   onNavigate?.('chat');
                   if (window.innerWidth < 768) onCloseMobile();
                 }}
               >
-                <div className="nav-item-icon-wrap chat-accent">
-                  <MessageSquare size={16} />
-                </div>
-                <div className="nav-item-text">
-                  <span className="nav-item-label">Chat</span>
-                  <span className="nav-item-desc">Mulai Percakapan</span>
-                </div>
-                <ChevronRight size={14} className="nav-item-arrow" />
+                <MessageSquare size={16} className="nav-item-icon" />
+                <span className="nav-item-label">Chat</span>
               </button>
 
               <button
@@ -100,14 +93,8 @@ export default function Sidebar({
                   if (window.innerWidth < 768) onCloseMobile();
                 }}
               >
-                <div className="nav-item-icon-wrap">
-                  <Cpu size={16} />
-                </div>
-                <div className="nav-item-text">
-                  <span className="nav-item-label">Provider</span>
-                  <span className="nav-item-desc">Kelola Model AI</span>
-                </div>
-                <ChevronRight size={14} className="nav-item-arrow" />
+                <Cpu size={16} className="nav-item-icon" />
+                <span className="nav-item-label">Provider</span>
               </button>
             </nav>
           </div>
