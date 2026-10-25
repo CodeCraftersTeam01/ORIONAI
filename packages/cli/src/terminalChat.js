@@ -330,31 +330,45 @@ export async function showSplashScreen() {
   console.clear();
 }
 
-// Print minimalist chat header
+// Print minimalist chat header (Pi style)
 export function printHeader(modelId, tier, hasKey = false) {
-  const cols = Math.min(process.stdout.columns || 80, 72);
+  const cols = Math.min(process.stdout.columns || 80, 80);
   const divider = '─'.repeat(cols);
+  const cwd = process.cwd();
+  const folderName = path.basename(cwd) || cwd;
   const keyStatus = hasKey
-    ? `${c.green}● Key Aktif (Tersinkron)${c.reset}`
-    : `${c.yellow}○ Key Kosong (/key)${c.reset}`;
+    ? `${c.green}● Key Tersambung${c.reset}`
+    : `${c.yellow}○ Key Belum Diatur (/login)${c.reset}`;
 
-  console.log(`${c.brightCyan}${c.bold}🌌 ORION AGENT TERMINAL CHAT${c.reset} ${c.dim}(v1.0.0)${c.reset}`);
+  console.log(`${c.brightCyan}${c.bold}🌌 ORION AGENT TERMINAL CHAT${c.reset} ${c.dim}(Pi-Engine v1.1.0)${c.reset}`);
   console.log(
-    `${c.gray}Model:${c.reset} ${c.cyan}${modelId}${c.reset}${
+    `${c.gray}Folder:${c.reset} ${c.white}${folderName}${c.reset} · ${c.gray}Model:${c.reset} ${c.cyan}${modelId}${c.reset}${
       modelId === 'orion' ? ` ${c.dim}(tier: ${tier})${c.reset}` : ''
-    } · ${keyStatus} · ${c.gray}Ketik ${c.yellow}/${c.gray} untuk saran perintah${c.reset}`
+    } · ${keyStatus}`
+  );
+  console.log(
+    `${c.gray}Pintasan:${c.reset} ${c.yellow}Ctrl+L${c.reset} ${c.dim}(Model)${c.reset} · ${c.yellow}Shift+Tab${c.reset} ${c.dim}(Thinking)${c.reset} · ${c.yellow}!cmd${c.reset} ${c.dim}(Shell)${c.reset} · ${c.yellow}/${c.reset} ${c.dim}(Commands)${c.reset}`
   );
   console.log(`${c.gray}${divider}${c.reset}\n`);
 }
 
 const COMMAND_ITEMS = [
-  { label: '/model', detail: 'Pilih & beralih model AI aktif (Gunakan panah ↑ / ↓)', action: 'model' },
-  { label: '/tier', detail: 'Atur tingkat penalaran (low / medium / high)', action: 'tier' },
-  { label: '/key', detail: 'Masukkan atau perbarui Orion API Key Anda', action: 'key' },
+  { label: '/model', detail: 'Pilih & beralih model AI aktif (Ctrl+L)', action: 'model' },
+  { label: '/thinking', detail: 'Atur tingkat penalaran (low/medium/high, Shift+Tab)', action: 'thinking' },
+  { label: '/tier', detail: 'Alias /thinking untuk tingkat penalaran', action: 'tier' },
+  { label: '/session', detail: 'Lihat info sesi, pesan riwayat & estimasi token', action: 'session' },
+  { label: '/copy', detail: 'Salin respon asisten terakhir ke clipboard', action: 'copy' },
+  { label: '/compact', detail: 'Kompak riwayat percakapan untuk menghemat token', action: 'compact' },
+  { label: '/hotkeys', detail: 'Daftar pintasan keyboard (Ctrl+L, Shift+Tab, !cmd)', action: 'hotkeys' },
+  { label: '/settings', detail: 'Tampilkan preferensi & konfigurasi aktif', action: 'settings' },
+  { label: '/login', detail: 'Sambungkan / perbarui API Key Orion', action: 'login' },
+  { label: '/logout', detail: 'Hapus kredensial API Key yang tersimpan', action: 'logout' },
+  { label: '/key', detail: 'Alias /login untuk memasukkan API Key', action: 'key' },
   { label: '/clear', detail: 'Bersihkan layar terminal obrolan', action: 'clear' },
-  { label: '/reset', detail: 'Mulai percakapan baru & reset riwayat', action: 'reset' },
-  { label: '/help', detail: 'Tampilkan panduan bantuan perintah', action: 'help' },
-  { label: '/exit', detail: 'Keluar dari sesi terminal obrolan (/q)', action: 'exit' },
+  { label: '/new', detail: 'Mulai sesi obrolan baru & reset riwayat', action: 'new' },
+  { label: '/reset', detail: 'Reset riwayat percakapan sesi', action: 'reset' },
+  { label: '/help', detail: 'Tampilkan panduan bantuan semua perintah', action: 'help' },
+  { label: '/exit', detail: 'Keluar dari sesi terminal obrolan (/quit, /q)', action: 'exit' },
 ];
 
 /**
@@ -561,7 +575,7 @@ function readInteractivePrompt({ promptPrefix, syncedConfig, currentModel, reaso
         return;
       }
 
-      // 2. Arrow Up
+      // 5. Arrow Up
       if (key === '\u001b[A' || key === '\u001bOA') {
         if (menuOpen && filteredItems.length > 0) {
           menuIndex = (menuIndex - 1 + filteredItems.length) % filteredItems.length;
@@ -570,7 +584,7 @@ function readInteractivePrompt({ promptPrefix, syncedConfig, currentModel, reaso
         }
       }
 
-      // 3. Arrow Down
+      // 6. Arrow Down
       if (key === '\u001b[B' || key === '\u001bOB') {
         if (menuOpen && filteredItems.length > 0) {
           menuIndex = (menuIndex + 1) % filteredItems.length;
@@ -579,7 +593,7 @@ function readInteractivePrompt({ promptPrefix, syncedConfig, currentModel, reaso
         }
       }
 
-      // 4. Escape
+      // 7. Escape
       if (key === '\u001b') {
         if (menuOpen) {
           clearMenu();
@@ -590,7 +604,7 @@ function readInteractivePrompt({ promptPrefix, syncedConfig, currentModel, reaso
         }
       }
 
-      // 5. Enter: Auto-selects the top/highlighted suggestion or executes typed prompt
+      // 8. Enter: Auto-selects the top/highlighted suggestion or executes typed prompt
       if (key === '\r' || key === '\n') {
         if (menuOpen && filteredItems.length > 0) {
           const selected = filteredItems[menuIndex];
@@ -604,13 +618,13 @@ function readInteractivePrompt({ promptPrefix, syncedConfig, currentModel, reaso
               openModelMenu();
               return;
             }
-            if (selected.action === 'tier') {
-              buffer = '/tier';
+            if (selected.action === 'tier' || selected.action === 'thinking') {
+              buffer = `/${selected.action}`;
               renderPrompt();
               openTierMenu();
               return;
             }
-            // For other commands (clear, reset, key, help, exit)
+            // For other commands (clear, reset, key, help, exit, session, copy, etc.)
             cleanup();
             process.stdout.write('\n');
             resolve({ type: 'command', action: selected.action, raw: `/${selected.action}` });
@@ -662,7 +676,7 @@ function readInteractivePrompt({ promptPrefix, syncedConfig, currentModel, reaso
               resolve({ type: 'open_model_menu' });
               return;
             }
-            if (matchedCmd.action === 'tier' && !arg) {
+            if ((matchedCmd.action === 'tier' || matchedCmd.action === 'thinking') && !arg) {
               resolve({ type: 'open_tier_menu' });
               return;
             }
@@ -916,7 +930,7 @@ export async function startTerminalChat() {
       const requiresKey = !activeCustomProvider && (!matchedModel?.provider || matchedModel.provider.requiresApiKey !== false);
       if (requiresKey && !userApiKey) {
         console.log(`\n${c.yellow}⚠️  API Key Orion belum dimasukkan.${c.reset}`);
-        console.log(`${c.gray}Ketik ${c.yellow}/key <api_key_anda>${c.gray} untuk memasukkan API Key sebelum mengobrol.${c.reset}\n`);
+        console.log(`${c.gray}Ketik ${c.yellow}/login <api_key_anda>${c.gray} untuk memasukkan API Key sebelum mengobrol.${c.reset}\n`);
         continue;
       }
 
@@ -946,7 +960,7 @@ export async function startTerminalChat() {
 
               if (chunk.includes('<think>')) {
                 inThinking = true;
-                process.stdout.write(`\n${c.dim}${c.cyan}✦ Penalaran Internal:${c.reset}\n${c.gray}`);
+                process.stdout.write(`\n${c.dim}${c.cyan}✦ Penalaran Internal (Thinking):${c.reset}\n${c.gray}`);
                 const afterTag = chunk.replace('<think>', '');
                 if (afterTag) process.stdout.write(afterTag);
               } else if (chunk.includes('</think>')) {
@@ -975,7 +989,7 @@ export async function startTerminalChat() {
         if (err.name === 'AbortError') {
           process.stdout.write(`\n${c.yellow}⚠️  Respon dihentikan oleh pengguna.${c.reset}\n\n`);
         } else if (/api\s*key/i.test(err.message)) {
-          process.stdout.write(`\n${c.yellow}⚠️  ${err.message}${c.reset}\n${c.gray}Ketik ${c.cyan}/key <api_key_anda>${c.gray} untuk memasukkan API Key Orion.${c.reset}\n\n`);
+          process.stdout.write(`\n${c.yellow}⚠️  ${err.message}${c.reset}\n${c.gray}Ketik ${c.cyan}/login <api_key_anda>${c.gray} untuk memasukkan API Key Orion.${c.reset}\n\n`);
         } else {
           process.stdout.write(`\n${c.red}❌ Terjadi kesalahan: ${err.message}${c.reset}\n\n`);
         }
@@ -1003,6 +1017,85 @@ export async function startTerminalChat() {
       return false;
     }
 
+    if (action === '/session') {
+      const userCount = history.filter((m) => m.role === 'user').length;
+      const asstCount = history.filter((m) => m.role === 'assistant').length;
+      const estTokens = Math.round(
+        history.reduce((acc, m) => acc + (m.content ? m.content.length / 4 : 0), 0)
+      );
+      console.log(`\n${c.bold}${c.brightCyan}✦ Informasi Sesi Obrolan Aktif (Pi Style):${c.reset}`);
+      console.log(`  ${c.gray}Folder Kerja:${c.reset}    ${c.white}${process.cwd()}${c.reset}`);
+      console.log(`  ${c.gray}Model Aktif:${c.reset}     ${c.cyan}${currentModel}${c.reset}`);
+      console.log(`  ${c.gray}Reasoning/Tier:${c.reset}  ${c.yellow}${reasoningTier}${c.reset}`);
+      console.log(`  ${c.gray}Total Pesan:${c.reset}     ${c.white}${history.length}${c.reset} (${userCount} user, ${asstCount} asisten)`);
+      console.log(`  ${c.gray}Estimasi Konteks:${c.reset} ~${c.green}${estTokens}${c.reset} token`);
+      console.log(
+        `  ${c.gray}Status API Key:${c.reset}   ${userApiKey ? `${c.green}● Tersambung${c.reset}` : `${c.yellow}○ Belum diatur (/login)${c.reset}`}\n`
+      );
+      return false;
+    }
+
+    if (action === '/copy') {
+      const lastAsst = [...history].reverse().find((m) => m.role === 'assistant');
+      if (!lastAsst || !lastAsst.content) {
+        console.log(`\n${c.yellow}⚠️  Belum ada respon asisten untuk disalin.${c.reset}\n`);
+      } else {
+        const ok = copyToClipboard(lastAsst.content);
+        if (ok) {
+          console.log(`\n${c.green}✓ Respon terakhir asisten berhasil disalin ke clipboard!${c.reset}\n`);
+        } else {
+          console.log(`\n${c.yellow}⚠️  Gagal menyalin ke clipboard sistem.${c.reset}\n`);
+        }
+      }
+      return false;
+    }
+
+    if (action === '/compact') {
+      if (history.length <= 4) {
+        console.log(`\n${c.cyan}✦ Riwayat masih ringkas (${history.length} pesan), belum perlu dikompak.${c.reset}\n`);
+      } else {
+        const kept = history.slice(-4);
+        const removed = history.length - 4;
+        history = [
+          { role: 'system', content: '[Konteks percakapan sebelumnya telah dikompak/diarsipkan]' },
+          ...kept,
+        ];
+        console.log(`\n${c.green}✓ Riwayat dikompak: ${removed} pesan lama diarsipkan, 4 pesan terakhir dipertahankan.${c.reset}\n`);
+      }
+      return false;
+    }
+
+    if (action === '/hotkeys') {
+      console.log(`\n${c.bold}${c.brightCyan}✦ Daftar Pintasan Keyboard (Pi Shortcuts):${c.reset}`);
+      console.log(`  ${c.yellow}Ctrl+L${c.reset}         Buka langsung pemilih model AI`);
+      console.log(`  ${c.yellow}Shift+Tab${c.reset}      Ganti tingkat penalaran (low → medium → high)`);
+      console.log(`  ${c.yellow}!perintah${c.reset}      Jalankan perintah shell terminal (hasil masuk konteks AI)`);
+      console.log(`  ${c.yellow}!!perintah${c.reset}     Jalankan perintah shell diam-diam`);
+      console.log(`  ${c.yellow}/${c.reset}              Saran perintah otomatis saat mengetik`);
+      console.log(`  ${c.yellow}Tab${c.reset}            Auto-complete saran perintah atau model`);
+      console.log(`  ${c.yellow}Esc${c.reset}            Tutup menu saran`);
+      console.log(`  ${c.yellow}Ctrl+C${c.reset}         Bersihkan baris prompt / hentikan respon berjalan`);
+      console.log(`  ${c.yellow}Ctrl+D${c.reset}         Keluar dari sesi terminal\n`);
+      return false;
+    }
+
+    if (action === '/settings') {
+      console.log(`\n${c.bold}${c.brightCyan}✦ Pengaturan Orion Agent:${c.reset}`);
+      console.log(`  ${c.gray}Model Default:${c.reset}   ${c.cyan}${currentModel}${c.reset}`);
+      console.log(`  ${c.gray}Reasoning Tier:${c.reset}  ${c.yellow}${reasoningTier}${c.reset}`);
+      console.log(`  ${c.gray}API Key:${c.reset}         ${userApiKey ? `${c.green}Tersimpan (${userApiKey.slice(0, 4)}••••)${c.reset}` : `${c.yellow}Kosong (/login)${c.reset}`}`);
+      console.log(`  ${c.gray}Service API:${c.reset}     ${c.blue}http://localhost:5001${c.reset}`);
+      console.log(`  ${c.gray}Web UI Browser:${c.reset}  ${c.dim}Jalankan 'orion --view'${c.reset}\n`);
+      return false;
+    }
+
+    if (action === '/logout') {
+      userApiKey = '';
+      saveSyncedConfig({ apiKey: '' });
+      console.log(`\n${c.green}✓ API Key Orion telah dihapus / logout dari sesi ini.${c.reset}\n`);
+      return false;
+    }
+
     if (action === '/model' || action.startsWith('/mod')) {
       if (arg) {
         const freshConfig = loadSyncedConfig();
@@ -1023,7 +1116,7 @@ export async function startTerminalChat() {
       return false;
     }
 
-    if (action === '/tier' || action.startsWith('/tie')) {
+    if (action === '/tier' || action === '/thinking' || action.startsWith('/tie') || action.startsWith('/thin')) {
       if (arg && ['low', 'medium', 'high'].includes(arg.toLowerCase())) {
         reasoningTier = arg.toLowerCase();
         saveSyncedConfig({ reasoningTier });
@@ -1041,15 +1134,15 @@ export async function startTerminalChat() {
       return false;
     }
 
-    if (action === '/key' || action === '/apikey') {
+    if (action === '/key' || action === '/apikey' || action === '/login') {
       if (!arg) {
         if (userApiKey) {
           const masked = userApiKey.length > 8 ? `${userApiKey.slice(0, 4)}••••${userApiKey.slice(-4)}` : '••••••••';
           console.log(`\n${c.bold}Orion API Key Aktif:${c.reset} ${c.cyan}${masked}${c.reset}`);
-          console.log(`${c.gray}Untuk memperbarui: ${c.yellow}/key <api_key_baru>${c.reset}\n`);
+          console.log(`${c.gray}Untuk memperbarui: ${c.yellow}/login <api_key_baru>${c.reset}\n`);
         } else {
           console.log(`\n${c.yellow}⚠️  Belum ada API Key yang tersimpan.${c.reset}`);
-          console.log(`${c.gray}Ketik: ${c.yellow}/key <api_key_anda>${c.gray} untuk menyimpan API Key.${c.reset}\n`);
+          console.log(`${c.gray}Ketik: ${c.yellow}/login <api_key_anda>${c.gray} untuk menyimpan API Key.${c.reset}\n`);
         }
         return false;
       }
@@ -1060,15 +1153,22 @@ export async function startTerminalChat() {
     }
 
     if (action === '/help' || action === '/h' || action === '/?') {
-      console.log(`\n${c.bold}${c.brightCyan}✦ Daftar Perintah Orion Terminal Chat:${c.reset}`);
-      console.log(`  ${c.yellow}/${c.reset}                   Buka saran perintah interaktif langsung saat mengetik`);
-      console.log(`  ${c.yellow}/model${c.reset}                Buka pemilih model AI interaktif (panah ↑ / ↓)`);
-      console.log(`  ${c.yellow}/tier${c.reset}                 Buka pemilih tingkat penalaran (low, medium, high)`);
-      console.log(`  ${c.yellow}/key${c.reset} [api_key]        Masukkan atau perbarui Orion API Key`);
-      console.log(`  ${c.yellow}/clear${c.reset}               Bersihkan layar terminal obrolan`);
-      console.log(`  ${c.yellow}/reset${c.reset}               Mulai percakapan baru (reset riwayat)`);
-      console.log(`  ${c.yellow}/help${c.reset}                Tampilkan bantuan perintah`);
-      console.log(`  ${c.yellow}/exit, /q${c.reset}            Keluar dari sesi terminal chat\n`);
+      console.log(`\n${c.bold}${c.brightCyan}✦ Panduan Perintah Orion Terminal Chat (Pi Style):${c.reset}`);
+      console.log(`  ${c.yellow}/model${c.reset} [nama]            Pilih model AI interaktif (atau gunakan Ctrl+L)`);
+      console.log(`  ${c.yellow}/thinking, /tier${c.reset} [level]  Atur penalaran (low/medium/high, atau Shift+Tab)`);
+      console.log(`  ${c.yellow}!perintah${c.reset}                Jalankan perintah shell terminal (hasil masuk konteks)`);
+      console.log(`  ${c.yellow}!!perintah${c.reset}               Jalankan perintah shell diam-diam`);
+      console.log(`  ${c.yellow}/session${c.reset}                Lihat info sesi, pesan riwayat & estimasi token`);
+      console.log(`  ${c.yellow}/copy${c.reset}                   Salin respon asisten terakhir ke clipboard`);
+      console.log(`  ${c.yellow}/compact${c.reset}                Kompak riwayat percakapan untuk menghemat token`);
+      console.log(`  ${c.yellow}/hotkeys${c.reset}                Tampilkan daftar pintasan keyboard`);
+      console.log(`  ${c.yellow}/settings${c.reset}               Tampilkan preferensi & konfigurasi aktif`);
+      console.log(`  ${c.yellow}/login, /key${c.reset} [key]      Sambungkan / masukkan API Key Orion`);
+      console.log(`  ${c.yellow}/logout${c.reset}                 Hapus kredensial API Key yang tersimpan`);
+      console.log(`  ${c.yellow}/clear${c.reset}                  Bersihkan layar terminal obrolan`);
+      console.log(`  ${c.yellow}/new, /reset${c.reset}            Mulai sesi obrolan baru (reset riwayat)`);
+      console.log(`  ${c.yellow}/help${c.reset}                   Tampilkan panduan bantuan perintah`);
+      console.log(`  ${c.yellow}/exit, /quit, /q${c.reset}        Keluar dari sesi terminal obrolan\n`);
       return false;
     }
 
