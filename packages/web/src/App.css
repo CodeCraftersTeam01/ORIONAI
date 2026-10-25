@@ -4906,6 +4906,22 @@
   flex-shrink: 0;
 }
 
+.provider-model-error-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.68rem;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.22);
+  border-radius: 4px;
+  padding: 0.1rem 0.45rem;
+  max-width: 300px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
 .provider-model-right-actions {
   display: flex;
   align-items: center;
