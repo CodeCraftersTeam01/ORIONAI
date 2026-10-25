@@ -388,28 +388,51 @@ export default function App() {
       .then((res) => res.json())
       .then((data) => {
         if (!isMounted || !data.success) return;
-        if (data.providers && data.providers.length > 0) {
-          setCustomProviders(data.providers);
-          localStorage.setItem('orion_custom_providers', JSON.stringify(data.providers));
-          if (data.selectedModel) {
-            setSelectedModel(data.selectedModel);
-            localStorage.setItem('orion_selected_model', data.selectedModel);
+        // Merge providers bidirectionally: preserve local custom providers and server providers
+        const localSaved = localStorage.getItem('orion_custom_providers');
+        let localProviders = [];
+        try {
+          if (localSaved) localProviders = JSON.parse(localSaved);
+        } catch {}
+
+        const providerMap = new Map();
+        (data.providers || []).forEach((p) => {
+          if (p && p.id) providerMap.set(p.id, p);
+        });
+        (localProviders || []).forEach((p) => {
+          if (p && p.id) {
+            if (providerMap.has(p.id)) {
+              const existing = providerMap.get(p.id);
+              const existingModelIds = new Set((existing.models || []).map((m) => (typeof m === 'string' ? m : m.id)));
+              const mergedModels = [...(existing.models || [])];
+              (p.models || []).forEach((m) => {
+                const mId = typeof m === 'string' ? m : m.id;
+                if (!existingModelIds.has(mId)) {
+                  mergedModels.push(m);
+                  existingModelIds.add(mId);
+                }
+              });
+              providerMap.set(p.id, { ...existing, ...p, models: mergedModels });
+            } else {
+              providerMap.set(p.id, p);
+            }
           }
-          if (data.reasoningTier) {
-            setReasoningTier(data.reasoningTier);
-            localStorage.setItem('orion_reasoning_tier', data.reasoningTier);
-          }
-        } else {
-          // If server config is empty but localStorage has providers, push local providers to server
-          const localSaved = localStorage.getItem('orion_custom_providers');
-          if (localSaved) {
-            try {
-              const parsed = JSON.parse(localSaved);
-              if (parsed.length > 0) {
-                syncProvidersToServer(parsed);
-              }
-            } catch {}
-          }
+        });
+
+        const mergedProviders = Array.from(providerMap.values());
+        if (mergedProviders.length > 0) {
+          setCustomProviders(mergedProviders);
+          localStorage.setItem('orion_custom_providers', JSON.stringify(mergedProviders));
+          syncProvidersToServer(mergedProviders, data.selectedModel || selectedModel, data.reasoningTier || reasoningTier);
+        }
+
+        if (data.selectedModel) {
+          setSelectedModel(data.selectedModel);
+          localStorage.setItem('orion_selected_model', data.selectedModel);
+        }
+        if (data.reasoningTier) {
+          setReasoningTier(data.reasoningTier);
+          localStorage.setItem('orion_reasoning_tier', data.reasoningTier);
         }
       })
       .catch(() => {});
