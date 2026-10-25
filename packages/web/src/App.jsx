@@ -824,8 +824,12 @@ export default function App() {
 
   return (
     <div className="orion-layout">
-      {/* Dynamic WebGL Aurora Mesh Background (Subdued 5% height in chat, full in home) */}
-      <AuroraBackground active={true} inChat={messages.length > 0} theme={theme} />
+      {/* Dynamic WebGL Aurora Mesh Background (Only in Chat & Dashboard, completely inactive in Settings & Providers) */}
+      <AuroraBackground
+        active={currentView === 'chat' || currentView === 'dashboard'}
+        inChat={currentView === 'chat' && messages.length > 0}
+        theme={theme}
+      />
 
       {/* Minimal Toast */}
       {toast && (
