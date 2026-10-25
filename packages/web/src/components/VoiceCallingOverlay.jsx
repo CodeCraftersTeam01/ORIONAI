@@ -1,5 +1,6 @@
 import React from 'react';
 import { Mic, MicOff, PhoneOff } from 'lucide-react';
+import { cleanIndonesianText } from '../utils/textCleaner';
 
 export default function VoiceCallingOverlay({
   isActive = false,
@@ -12,6 +13,8 @@ export default function VoiceCallingOverlay({
 }) {
   if (!isActive) return null;
 
+  const formattedAgentResponse = cleanIndonesianText(agentResponse);
+
   return (
     <div className="voice-calling-overlay" aria-live="polite">
       <div className="voice-calling-container">
@@ -20,19 +23,14 @@ export default function VoiceCallingOverlay({
           {/* User Spoken Transcript (During speech & while agent thinks) */}
           {userTranscript && (agentStatus === 'listening' || agentStatus === 'thinking') && (
             <div className="voice-user-transcript">
-              <p className="voice-user-text">“{userTranscript}”</p>
+              <p className="voice-user-text">“{cleanIndonesianText(userTranscript)}”</p>
             </div>
           )}
 
-          {/* Explicit, Reassuring Thinking Indicator */}
+          {/* Anti-Slop Typographic Thinking Indicator (Dignified, frameless, breathing text) */}
           {agentStatus === 'thinking' && (
-            <div className="voice-thinking-indicator-card" aria-label="Orion sedang berpikir">
-              <div className="voice-thinking-dots">
-                <span className="thinking-dot dot-1" />
-                <span className="thinking-dot dot-2" />
-                <span className="thinking-dot dot-3" />
-              </div>
-              <span className="voice-thinking-label">Orion sedang berpikir...</span>
+            <div className="voice-thinking-stage" aria-live="assertive">
+              <p className="voice-thinking-text">Memikirkan respons...</p>
             </div>
           )}
 
@@ -44,10 +42,10 @@ export default function VoiceCallingOverlay({
             </div>
           )}
 
-          {/* Spoken AI Response (Cozy blur reveal with elegant typography) */}
-          {agentResponse && agentStatus === 'speaking' && (
+          {/* Spoken AI Response (Cozy blur reveal with elegant typography & clean Indonesian spacing) */}
+          {formattedAgentResponse && agentStatus === 'speaking' && (
             <div className="voice-agent-speech cozy-blur-reveal">
-              <p className="voice-agent-text">{agentResponse}</p>
+              <p className="voice-agent-text">{formattedAgentResponse}</p>
             </div>
           )}
         </div>

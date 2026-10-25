@@ -6394,75 +6394,34 @@ svg[aria-roledescription="error"] {
   50% { opacity: 1; transform: scale(1.15); }
 }
 
-/* Explicit Thinking Indicator with Animated Wave Dots */
-.voice-thinking-indicator-card {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.85rem;
-  padding: 0.75rem 1.45rem;
-  border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
-  animation: cozyBlurReveal 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  margin-top: 0.5rem;
-}
-
-.voice-thinking-dots {
+/* Anti-Slop Dignified Thinking Indicator (Frameless, peaceful typography) */
+.voice-thinking-stage {
   display: flex;
   align-items: center;
-  gap: 0.38rem;
+  justify-content: center;
+  margin-top: 0.75rem;
+  animation: voiceFadeIn 0.35s ease-out;
 }
 
-.thinking-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #38bdf8;
-  box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
-  animation: thinkingWave 1.4s ease-in-out infinite;
+.voice-thinking-text {
+  font-size: 1.25rem;
+  font-weight: 450;
+  color: var(--text-secondary);
+  letter-spacing: -0.01em;
+  margin: 0;
+  animation: voiceThinkingBreathe 2.4s ease-in-out infinite;
+  user-select: none;
 }
 
-.thinking-dot.dot-1 {
-  animation-delay: 0s;
-}
-
-.thinking-dot.dot-2 {
-  animation-delay: 0.22s;
-}
-
-.thinking-dot.dot-3 {
-  animation-delay: 0.44s;
-}
-
-@keyframes thinkingWave {
+@keyframes voiceThinkingBreathe {
   0%, 100% {
-    transform: translateY(0) scale(0.85);
     opacity: 0.45;
+    transform: translateY(0);
   }
   50% {
-    transform: translateY(-5px) scale(1.2);
-    opacity: 1;
+    opacity: 0.95;
+    transform: translateY(-2px);
   }
-}
-
-.voice-thinking-label {
-  font-size: 0.95rem;
-  font-weight: 500;
-  color: #f1f5f9;
-  letter-spacing: -0.01em;
-}
-
-[data-theme='light'] .voice-thinking-indicator-card {
-  background: rgba(0, 0, 0, 0.05);
-  border-color: rgba(0, 0, 0, 0.12);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
-}
-
-[data-theme='light'] .voice-thinking-label {
-  color: #0f172a;
 }
 
 /* User Spoken Transcript (Subtle, calm preview) */

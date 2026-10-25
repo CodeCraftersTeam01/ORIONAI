@@ -69,6 +69,7 @@ import { formatFileSize } from './utils/fileHelpers';
 import { isReasoningSupported } from './utils/modelConfig';
 import VoiceCallingOverlay from './components/VoiceCallingOverlay';
 import { playCosmicHumSound, playCosmicEndCallSound } from './utils/audioEffects';
+import { cleanIndonesianText } from './utils/textCleaner';
 import './App.css';
 
 function formatUserFacingError(errMessage) {
@@ -302,28 +303,6 @@ function resolveModelAndProvider(targetModel, providersList) {
   }
 
   return { effectiveModel, activeCustomProvider, userOrionApiKey };
-}
-
-/**
- * Ensures clean Indonesian typography spacing, splitting squished words and punctuation.
- */
-function formatCleanSpokenText(text) {
-  if (!text) return '';
-  return text
-    .replace(/([?!.,;:])/g, '$1 ')
-    .replace(/([a-z\u00C0-\u017F])([A-Z])/g, '$1 $2')
-    .replace(/\bSenangbertemudengan\b/gi, 'Senang bertemu dengan')
-    .replace(/\bSenangbertemu\b/gi, 'Senang bertemu')
-    .replace(/\bbertemudengan\b/gi, 'bertemu dengan')
-    .replace(/\bdenganAnda\b/gi, 'dengan Anda')
-    .replace(/\bAda(yang|apa)\b/gi, 'Ada $1')
-    .replace(/\bbisasaya\b/gi, 'bisa saya')
-    .replace(/\bsayabantu\b/gi, 'saya bantu')
-    .replace(/\bhariini\b/gi, 'hari ini')
-    .replace(/\bterimakasih\b/gi, 'terima kasih')
-    .replace(/\bselamat(pagi|siang|sore|malam|datang)\b/gi, 'selamat $1')
-    .replace(/\s+/g, ' ')
-    .trim();
 }
 
 export default function App() {
@@ -683,7 +662,7 @@ export default function App() {
                 .replace(/<think>[\s\S]*?<\/think>/gi, '')
                 .replace(/<think>[\s\S]*$/gi, '')
                 .replace(/[*#_`~]/g, '');
-              const cleanText = formatCleanSpokenText(rawClean);
+              const cleanText = cleanIndonesianText(rawClean);
               if (cleanText) {
                 if (!hasStartedSpeaking) {
                   hasStartedSpeaking = true;
@@ -704,7 +683,7 @@ export default function App() {
         setVoiceAgentStatus('speaking');
       }
 
-      let finalAnswer = formatCleanSpokenText(
+      let finalAnswer = cleanIndonesianText(
         accumulatedReply
           .replace(/<think>[\s\S]*?<\/think>/gi, '')
           .replace(/<think>[\s\S]*$/gi, '')
@@ -1594,6 +1573,7 @@ export default function App() {
         theme={theme}
         isVoiceCalling={isVoiceCalling}
         audioLevel={voiceAudioLevel}
+        isThinking={isVoiceCalling && voiceAgentStatus === 'thinking'}
       />
 
       {/* Minimal Toast */}

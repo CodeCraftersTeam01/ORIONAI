@@ -150,12 +150,13 @@ export default function AuroraBackground({
   theme = 'dark',
   isVoiceCalling = false,
   audioLevel = 0,
+  isThinking = false,
 }) {
   const canvasRef = useRef(null);
-  const propsRef = useRef({ isVoiceCalling, audioLevel });
+  const propsRef = useRef({ isVoiceCalling, audioLevel, isThinking });
   useEffect(() => {
-    propsRef.current = { isVoiceCalling, audioLevel };
-  }, [isVoiceCalling, audioLevel]);
+    propsRef.current = { isVoiceCalling, audioLevel, isThinking };
+  }, [isVoiceCalling, audioLevel, isThinking]);
 
   const animStateRef = useRef({
     rafId: null,
@@ -273,10 +274,13 @@ export default function AuroraBackground({
         return;
       }
 
-      // Delta time capped to 50ms to prevent huge jumps when tab switches
+      const { isVoiceCalling: calling, audioLevel: level, isThinking: thinking } = propsRef.current;
+
+      // Delta time: slightly faster cadence during thinking to visualize dynamic brainstorming
       const delta = Math.min(elapsed / 1000, 0.05);
       lastFrameTimestamp = now;
-      state.totalAnimationTime += delta * 0.52;
+      const speedMult = (calling && thinking) ? 1.35 : 0.52;
+      state.totalAnimationTime += delta * speedMult;
 
       gl.useProgram(state.program);
       gl.clear(gl.COLOR_BUFFER_BIT);
@@ -291,28 +295,44 @@ export default function AuroraBackground({
       const waveIntensity = Math.min(Math.max(rawWave, 0.0), 1.0);
 
       // Smooth wave strength interpolation:
-      // When quiet, rests calmly at 5% (0.05).
-      // Controlled, natural voice modulation (up to 0.82x height) that avoids huge screen-flooding surges
-      const { isVoiceCalling: calling, audioLevel: level } = propsRef.current;
+      // When thinking/brainstorming: undulating celestial waves that ripple dynamically!
+      // When listening: quiet resting level at 5% (0.05) modulated by user speech level.
       const boost = Math.min(0.80, Math.pow(Math.max(0, level || 0), 1.15) * 0.82);
-      const targetStrength = calling ? 0.05 + boost : 1.0;
+      let targetStrength = 1.0;
+      if (calling) {
+        if (thinking) {
+          // Brainstorming waves: multi-harmonic undulating flow
+          const brainWave = 0.26 + 0.14 * Math.sin(animTime * 2.4) + 0.08 * Math.cos(animTime * 3.8);
+          targetStrength = Math.max(0.18, Math.min(0.50, brainWave));
+        } else {
+          targetStrength = 0.05 + boost;
+        }
+      }
+
       const factor = targetStrength > state.currentWaveStrength ? 0.22 : 0.10;
       state.currentWaveStrength += (targetStrength - state.currentWaveStrength) * factor;
       gl.uniform1f(state.locations.u_wave_strength, state.currentWaveStrength);
 
       const currentScale = 0.35 + 0.12 * waveIntensity;
-      const currentDistortion = 0.15 + 0.12 * waveIntensity;
+      const currentDistortion = (calling && thinking)
+        ? 0.35 + 0.14 * Math.sin(animTime * 2.6)
+        : (0.15 + 0.12 * waveIntensity);
       const currentRotation = 0.015 * Math.sin(animTime * 0.15);
 
       gl.uniform1f(state.locations.u_scale, currentScale);
       gl.uniform1f(state.locations.u_rotation, currentRotation);
 
-      // Electric Blue rgb(0, 107, 255)
-      gl.uniform4f(state.locations.u_color1, 0.0, 0.42, 1.0, 1.0);
-      // Radiant Sky Cyan rgb(97, 224, 255)
-      gl.uniform4f(state.locations.u_color2, 0.38, 0.88, 1.0, 1.0);
-      // Deep Royal Sapphire rgb(0, 56, 224)
-      gl.uniform4f(state.locations.u_color3, 0.0, 0.22, 0.88, 1.0);
+      if (calling && thinking) {
+        // Celestial Brainstorming Colors: Luminous Cyan & Electric Sapphire
+        gl.uniform4f(state.locations.u_color1, 0.12, 0.44, 1.0, 1.0);
+        gl.uniform4f(state.locations.u_color2, 0.42, 0.90, 1.0, 1.0);
+        gl.uniform4f(state.locations.u_color3, 0.05, 0.18, 0.82, 1.0);
+      } else {
+        // Standard Electric Blue, Radiant Cyan, Deep Sapphire
+        gl.uniform4f(state.locations.u_color1, 0.0, 0.42, 1.0, 1.0);
+        gl.uniform4f(state.locations.u_color2, 0.38, 0.88, 1.0, 1.0);
+        gl.uniform4f(state.locations.u_color3, 0.0, 0.22, 0.88, 1.0);
+      }
 
       gl.uniform1f(state.locations.u_distortion, currentDistortion);
 
