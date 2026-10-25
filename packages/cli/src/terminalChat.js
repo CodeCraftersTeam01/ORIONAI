@@ -99,3 +99,133 @@ export async function showSplashScreen() {
   await new Promise((res) => setTimeout(res, 350));
   console.clear();
 }
+
+// Print minimalist chat header
+export function printHeader(modelId, tier) {
+  const cols = Math.min(process.stdout.columns || 80, 72);
+  const divider = '─'.repeat(cols);
+  console.log(`${c.brightCyan}${c.bold}🌌 ORION AGENT TERMINAL CHAT${c.reset} ${c.dim}(v1.0.0)${c.reset}`);
+  console.log(
+    `${c.gray}Model:${c.reset} ${c.cyan}${modelId}${c.reset}${
+      modelId === 'orion' ? ` ${c.dim}(tier: ${tier})${c.reset}` : ''
+    } · ${c.gray}Ketik ${c.yellow}/help${c.gray} atau ${c.yellow}/model${c.gray} untuk opsi${c.reset}`
+  );
+  console.log(`${c.gray}${divider}${c.reset}\n`);
+}
+
+// Main Interactive Terminal Chat Launcher
+export async function startTerminalChat() {
+  await showSplashScreen();
+
+  let currentModel = 'orion';
+  let reasoningTier = 'medium';
+  let history = [];
+  let isGenerating = false;
+  let activeAbortController = null;
+
+  printHeader(currentModel, reasoningTier);
+
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    prompt: `${c.brightBlue}${c.bold}You ›${c.reset} `,
+  });
+
+  rl.prompt();
+
+  rl.on('line', async (line) => {
+    const input = line.trim();
+
+    if (!input) {
+      rl.prompt();
+      return;
+    }
+
+    // Handle commands
+    if (input.startsWith('/')) {
+      handleCommand(input);
+      rl.prompt();
+      return;
+    }
+
+    // Process chat prompt
+    isGenerating = true;
+    activeAbortController = new AbortController();
+
+    const userMessage = input;
+    history.push({ role: 'user', content: userMessage });
+
+    process.stdout.write(`\n${c.brightCyan}${c.bold}Orion ›${c.reset} `);
+
+    let assistantReply = '';
+
+    try {
+      await new Promise((resolve, reject) => {
+        streamChatCompletion({
+          message: userMessage,
+          history: history.slice(0, -1),
+          model: currentModel,
+          reasoningTier: reasoningTier,
+          signal: activeAbortController.signal,
+          onChunk: (chunk) => {
+            assistantReply += chunk;
+            process.stdout.write(chunk);
+          },
+          onDone: () => {
+            resolve();
+          },
+          onError: (err) => {
+            reject(err);
+          },
+        });
+      });
+
+      history.push({ role: 'assistant', content: assistantReply });
+      process.stdout.write('\n\n');
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        process.stdout.write(`\n${c.yellow}⚠️  Respon dihentikan oleh pengguna.${c.reset}\n\n`);
+      } else {
+        process.stdout.write(`\n${c.red}❌ Terjadi kesalahan: ${err.message}${c.reset}\n\n`);
+      }
+    } finally {
+      isGenerating = false;
+      activeAbortController = null;
+      rl.prompt();
+    }
+  });
+
+  function handleCommand(cmd) {
+    const parts = cmd.split(/\s+/);
+    const action = parts[0].toLowerCase();
+    const arg = parts.slice(1).join(' ').trim();
+
+    if (action === '/exit' || action === '/quit') {
+      console.log(`\n${c.brightCyan}✦ Terima kasih telah menggunakan Orion Agent. Sampai jumpa!${c.reset}\n`);
+      process.exit(0);
+    }
+
+    if (action === '/clear') {
+      console.clear();
+      printHeader(currentModel, reasoningTier);
+      return;
+    }
+
+    if (action === '/reset' || action === '/new') {
+      history = [];
+      console.log(`${c.green}✓ Riwayat percakapan telah direset.${c.reset}\n`);
+      return;
+    }
+  }
+
+  // Handle Ctrl+C gracefully
+  rl.on('SIGINT', () => {
+    if (isGenerating && activeAbortController) {
+      activeAbortController.abort();
+    } else {
+      console.log(`\n${c.brightCyan}✦ Sesi terminal selesai. Sampai jumpa!${c.reset}\n`);
+      process.exit(0);
+    }
+  });
+}
+
