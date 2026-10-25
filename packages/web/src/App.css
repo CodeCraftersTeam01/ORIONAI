@@ -5281,27 +5281,28 @@
   width: 100%;
   height: 100%;
   overflow-y: auto;
-  padding: 2.25rem 1.5rem 6.5rem;
+  padding: 2.25rem 2rem 6.5rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   position: relative;
   z-index: 10;
   scroll-behavior: smooth;
+  background: var(--bg-app);
 }
 
 .animate-page-enter {
-  animation: pageFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: pageFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes pageFadeIn {
   from {
     opacity: 0;
-    transform: translateY(12px) scale(0.985);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
 }
 
@@ -5310,8 +5311,8 @@
   align-items: flex-start;
   justify-content: space-between;
   width: 100%;
-  padding-bottom: 1.5rem;
-  margin-bottom: 1.75rem;
+  padding-bottom: 1.25rem;
+  margin-bottom: 2rem;
   border-bottom: 1px solid var(--border-subtle);
   gap: 1.25rem;
 }
@@ -5373,23 +5374,26 @@
   line-height: 1.5;
 }
 
-/* Page Card for Settings */
-.settings-card-wrapper.is-page-mode {
-  max-width: 820px;
+/* Page Card for Settings & Providers — Borderless, Full-Content & Clean */
+.settings-card-wrapper.is-page-mode,
+.provider-page-content.is-page-mode {
+  max-width: 900px;
   width: 100%;
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(32px) saturate(190%);
-  -webkit-backdrop-filter: blur(32px) saturate(190%);
-  border: 1px solid var(--border-medium);
-  border-radius: 20px;
-  padding: 2.25rem 2.5rem;
-  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.08);
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  max-height: none !important;
 }
 
-[data-theme='dark'] .settings-card-wrapper.is-page-mode {
-  background: rgba(18, 20, 29, 0.65);
-  border-color: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 20px 48px -12px rgba(0, 0, 0, 0.5);
+[data-theme='dark'] .settings-card-wrapper.is-page-mode,
+[data-theme='dark'] .provider-page-content.is-page-mode {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 .settings-card-wrapper.is-page-mode .settings-row {
@@ -5418,46 +5422,10 @@
   border: 1px solid rgba(16, 185, 129, 0.25);
 }
 
-/* Page Card for Providers */
-.provider-page-content.is-page-mode {
-  max-width: 1040px;
-  width: 100%;
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(32px) saturate(190%);
-  -webkit-backdrop-filter: blur(32px) saturate(190%);
-  border: 1px solid var(--border-medium);
-  border-radius: 20px;
-  padding: 2.25rem 2.5rem;
-  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.08);
-  max-height: none !important;
-}
-
-[data-theme='dark'] .provider-page-content.is-page-mode {
-  background: rgba(18, 20, 29, 0.65);
-  border-color: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 20px 48px -12px rgba(0, 0, 0, 0.5);
-}
-
 .provider-page-content.is-page-mode .provider-modal-body {
   max-height: none !important;
   overflow: visible !important;
   padding: 0 !important;
-}
-
-/* Active states for sidebar navigation */
-.sidebar-nav-item.active {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.14);
-}
-
-[data-theme='light'] .sidebar-nav-item.active {
-  background: rgba(0, 0, 0, 0.06);
-  border-color: rgba(0, 0, 0, 0.1);
-}
-
-.sidebar-nav-item.active .nav-item-icon-wrap {
-  color: var(--text-primary);
-  background: rgba(59, 130, 246, 0.22);
 }
 
 .footer-icon-btn.active {
