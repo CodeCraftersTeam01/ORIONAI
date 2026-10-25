@@ -30,6 +30,8 @@ import { isReasoningSupported } from '../utils/modelConfig';
 
 function getProviderIcon(templateId) {
   switch (templateId) {
+    case 'orion':
+      return <Bot size={17} />;
     case 'ollama':
       return <Terminal size={17} />;
     case 'openai':
@@ -607,8 +609,8 @@ export default function ManageProvidersModal({
                             </div>
                             <div className="provider-saved-meta">
                               <code className="provider-code-chip">{keyCount} koneksi</code>
-                              <span className="provider-url-truncate" title={prov.baseUrl}>
-                                {prov.baseUrl}
+                              <span className="provider-url-truncate" title={prov.hideBaseUrl || prov.templateId === 'orion' ? 'Orion Official Gateway' : prov.baseUrl}>
+                                {prov.hideBaseUrl || prov.templateId === 'orion' ? 'Orion Official Gateway' : prov.baseUrl}
                               </span>
                             </div>
                           </div>
@@ -662,7 +664,11 @@ export default function ManageProvidersModal({
                         </div>
                         <p className="provider-card-desc">{tmpl.description}</p>
                         <span className="provider-card-url-hint">
-                          Default: <code>{tmpl.defaultBaseUrl}</code>
+                          {tmpl.hideBaseUrl ? (
+                            <span>Endpoint Resmi Terintegrasi (Otomatis)</span>
+                          ) : (
+                            <>Default: <code>{tmpl.defaultBaseUrl}</code></>
+                          )}
                         </span>
                       </div>
                       <div className="provider-card-right-arrow">
@@ -714,24 +720,26 @@ export default function ManageProvidersModal({
                 />
               </div>
 
-              {/* Base URL */}
-              <div className="provider-form-row">
-                <label className="provider-label" htmlFor="add-url-input">
-                  Base URL (Endpoint API)
-                </label>
-                <input
-                  id="add-url-input"
-                  type="text"
-                  className="provider-text-field provider-mono"
-                  placeholder="http://100.104.200.89:11434/v1"
-                  value={addBaseUrl}
-                  onChange={(e) => setAddBaseUrl(e.target.value)}
-                  required
-                />
-                <span className="provider-field-help">
-                  Endpoint otomatis diarahkan ke <code>/chat/completions</code> untuk pesan dan <code>/models</code> untuk impor model.
-                </span>
-              </div>
+              {/* Base URL (Hidden for official Orion provider) */}
+              {!currentTemplate.hideBaseUrl && (
+                <div className="provider-form-row">
+                  <label className="provider-label" htmlFor="add-url-input">
+                    Base URL (Endpoint API)
+                  </label>
+                  <input
+                    id="add-url-input"
+                    type="text"
+                    className="provider-text-field provider-mono"
+                    placeholder="http://100.104.200.89:11434/v1"
+                    value={addBaseUrl}
+                    onChange={(e) => setAddBaseUrl(e.target.value)}
+                    required
+                  />
+                  <span className="provider-field-help">
+                    Endpoint otomatis diarahkan ke <code>/chat/completions</code> untuk pesan dan <code>/models</code> untuk impor model.
+                  </span>
+                </div>
+              )}
 
               {/* Optional Initial API Key */}
               <div className="provider-form-row">
@@ -916,26 +924,30 @@ export default function ManageProvidersModal({
                   <div className="provider-detail-url-box">
                     <span className="provider-detail-label">Endpoint Chat:</span>
                     <span className="provider-detail-url">
-                      {cleanChatCompletionsUrl(currentProvider.baseUrl)}
+                      {currentProvider.hideBaseUrl || currentProvider.templateId === 'orion'
+                        ? 'Orion Official Gateway (Terintegrasi & Terlindungi)'
+                        : cleanChatCompletionsUrl(currentProvider.baseUrl)}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    className="provider-copy-btn"
-                    onClick={() => handleCopyUrl(cleanChatCompletionsUrl(currentProvider.baseUrl))}
-                  >
-                    {copiedUrl ? (
-                      <>
-                        <Check size={13} />
-                        <span>Tersalin!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy size={13} />
-                        <span>Salin URL</span>
-                      </>
-                    )}
-                  </button>
+                  {!(currentProvider.hideBaseUrl || currentProvider.templateId === 'orion') && (
+                    <button
+                      type="button"
+                      className="provider-copy-btn"
+                      onClick={() => handleCopyUrl(cleanChatCompletionsUrl(currentProvider.baseUrl))}
+                    >
+                      {copiedUrl ? (
+                        <>
+                          <Check size={13} />
+                          <span>Tersalin!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy size={13} />
+                          <span>Salin URL</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
 
