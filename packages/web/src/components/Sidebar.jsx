@@ -187,32 +187,53 @@ export default function Sidebar({
           </div>
         )}
 
-        {/* Footer */}
+        {/* Footer with User Profile & Quick Actions */}
         <div className="sidebar-footer">
-          <span className="footer-status-text">✦ Orion Agent Online</span>
+          <div
+            className="sidebar-user-card"
+            onClick={() => {
+              onNavigate?.('settings');
+              if (window.innerWidth < 768) onCloseMobile?.();
+            }}
+            title="Arjuna (wardilanang46@gmail.com) — Buka Pengaturan"
+          >
+            <div className="sidebar-user-avatar">
+              <span className="user-initials">A</span>
+              <span className="user-online-pip" title="Online" />
+            </div>
+
+            <div className="sidebar-user-meta">
+              <span className="sidebar-user-name">Arjuna</span>
+              <span className="sidebar-user-email">wardilanang46@gmail.com</span>
+            </div>
+          </div>
 
           <div className="footer-actions-row">
             <button
               type="button"
               className={`footer-icon-btn ${soundEnabled ? 'active' : ''}`}
-              onClick={onToggleSound}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleSound();
+              }}
               title={soundEnabled ? 'Matikan Suara' : 'Nyalakan Suara'}
               aria-label="Toggle Sound"
             >
-              {soundEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
+              {soundEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
             </button>
 
             <button
               type="button"
               className={`footer-icon-btn ${currentView === 'settings' ? 'active' : ''}`}
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 onNavigate?.('settings');
                 if (window.innerWidth < 768) onCloseMobile?.();
               }}
               title="Pengaturan"
               aria-label="Settings"
             >
-              <Settings size={15} />
+              <Settings size={14} />
             </button>
           </div>
         </div>
