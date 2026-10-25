@@ -298,10 +298,10 @@ export async function getChatCompletion({
   orionApiKey = null,
   signal,
 }) {
-  const { messages, config } = buildMessagesPayload({ message, history, attachments, modelId: model, reasoningTier });
-  const { targetUrl, headers, targetModel, temperature } = resolveEndpointAndHeaders(customProvider, config, orionApiKey);
-
   try {
+    const { messages, config } = buildMessagesPayload({ message, history, attachments, modelId: model, reasoningTier });
+    const { targetUrl, headers, targetModel, temperature } = resolveEndpointAndHeaders(customProvider, config, orionApiKey);
+
     const response = await fetch(targetUrl, {
       method: 'POST',
       headers,
