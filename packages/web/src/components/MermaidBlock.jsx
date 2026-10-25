@@ -302,12 +302,19 @@ export default function MermaidBlock({ code, title = 'Flowchart' }) {
   // Re-render when theme, retry, or code changes
   useEffect(() => {
     let isMounted = true;
+    const trimmed = (code || '').trim();
+    if (!trimmed) {
+      setSvgHtml('');
+      setError(null);
+      return;
+    }
+
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     ensureMermaidInit(isDark);
 
     // Clean alpha-only prefix ID for safe SVG DOM generation
     const renderId = 'mmd_' + Math.random().toString(36).substring(2, 10);
-    const sanitizedCode = autoRepairMermaid(code.trim());
+    const sanitizedCode = autoRepairMermaid(trimmed);
 
     try {
       mermaid
