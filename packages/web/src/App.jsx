@@ -304,6 +304,28 @@ function resolveModelAndProvider(targetModel, providersList) {
   return { effectiveModel, activeCustomProvider, userOrionApiKey };
 }
 
+/**
+ * Ensures clean Indonesian typography spacing, splitting squished words and punctuation.
+ */
+function formatCleanSpokenText(text) {
+  if (!text) return '';
+  return text
+    .replace(/([?!.,;:])/g, '$1 ')
+    .replace(/([a-z\u00C0-\u017F])([A-Z])/g, '$1 $2')
+    .replace(/\bSenangbertemudengan\b/gi, 'Senang bertemu dengan')
+    .replace(/\bSenangbertemu\b/gi, 'Senang bertemu')
+    .replace(/\bbertemudengan\b/gi, 'bertemu dengan')
+    .replace(/\bdenganAnda\b/gi, 'dengan Anda')
+    .replace(/\bAda(yang|apa)\b/gi, 'Ada $1')
+    .replace(/\bbisasaya\b/gi, 'bisa saya')
+    .replace(/\bsayabantu\b/gi, 'saya bantu')
+    .replace(/\bhariini\b/gi, 'hari ini')
+    .replace(/\bterimakasih\b/gi, 'terima kasih')
+    .replace(/\bselamat(pagi|siang|sore|malam|datang)\b/gi, 'selamat $1')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export default function App() {
   // Theme mode state: 'system' (auto detect browser/OS), 'light' (default white), 'dark' (optional black)
   const [themeMode, setThemeMode] = useState(() => {
@@ -629,7 +651,8 @@ export default function App() {
         throw new Error('Gagal menghubungi AI');
       }
 
-      setVoiceAgentStatus('speaking');
+      // Hold agent status as 'thinking' so the animated thinking cue is clearly visible until first token
+      let hasStartedSpeaking = false;
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder('utf-8');
@@ -655,13 +678,17 @@ export default function App() {
             const token = parsed.chunk || parsed.token || parsed.delta || parsed.content || '';
             if (token) {
               accumulatedReply += token;
-              // Clean out think tags and markdown
-              const cleanText = accumulatedReply
+              // Clean out think tags, markdown, and fix glued spacing
+              const rawClean = accumulatedReply
                 .replace(/<think>[\s\S]*?<\/think>/gi, '')
                 .replace(/<think>[\s\S]*$/gi, '')
-                .replace(/[*#_`~]/g, '')
-                .trim();
+                .replace(/[*#_`~]/g, '');
+              const cleanText = formatCleanSpokenText(rawClean);
               if (cleanText) {
+                if (!hasStartedSpeaking) {
+                  hasStartedSpeaking = true;
+                  setVoiceAgentStatus('speaking');
+                }
                 setVoiceAgentResponse(cleanText);
               }
             }
@@ -673,11 +700,16 @@ export default function App() {
         }
       }
 
-      let finalAnswer = accumulatedReply
-        .replace(/<think>[\s\S]*?<\/think>/gi, '')
-        .replace(/<think>[\s\S]*$/gi, '')
-        .replace(/[*#_`~]/g, '')
-        .trim();
+      if (!hasStartedSpeaking) {
+        setVoiceAgentStatus('speaking');
+      }
+
+      let finalAnswer = formatCleanSpokenText(
+        accumulatedReply
+          .replace(/<think>[\s\S]*?<\/think>/gi, '')
+          .replace(/<think>[\s\S]*$/gi, '')
+          .replace(/[*#_`~]/g, '')
+      );
 
       // Fallback if stream was empty
       if (!finalAnswer) {

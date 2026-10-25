@@ -17,14 +17,26 @@ export default function VoiceCallingOverlay({
       <div className="voice-calling-container">
         {/* Typographic Voice Dialogue Stage */}
         <div className="voice-dialogue-stage">
-          {/* Status Indicator (Subtle, purposeful, non-slop) */}
-          {agentStatus === 'thinking' && (
-            <div className="voice-thinking-status">
-              <span className="voice-thinking-pulse" />
-              <span>Memproses jawaban...</span>
+          {/* User Spoken Transcript (During speech & while agent thinks) */}
+          {userTranscript && (agentStatus === 'listening' || agentStatus === 'thinking') && (
+            <div className="voice-user-transcript">
+              <p className="voice-user-text">“{userTranscript}”</p>
             </div>
           )}
 
+          {/* Explicit, Reassuring Thinking Indicator */}
+          {agentStatus === 'thinking' && (
+            <div className="voice-thinking-indicator-card" aria-label="Orion sedang berpikir">
+              <div className="voice-thinking-dots">
+                <span className="thinking-dot dot-1" />
+                <span className="thinking-dot dot-2" />
+                <span className="thinking-dot dot-3" />
+              </div>
+              <span className="voice-thinking-label">Orion sedang berpikir...</span>
+            </div>
+          )}
+
+          {/* Listening State Hint when user is silent */}
           {agentStatus === 'listening' && !userTranscript && (
             <div className={`voice-listening-hint ${isMuted ? 'is-muted' : ''}`}>
               <span className="voice-listening-dot" />
@@ -32,16 +44,9 @@ export default function VoiceCallingOverlay({
             </div>
           )}
 
-          {/* User Spoken Transcript (Clean, understated typography) */}
-          {userTranscript && (agentStatus === 'listening' || agentStatus === 'thinking') && (
-            <div className="voice-user-transcript">
-              <p className="voice-user-text">“{userTranscript}”</p>
-            </div>
-          )}
-
-          {/* Spoken AI Response (Frameless, high-legibility clean typography) */}
+          {/* Spoken AI Response (Cozy blur reveal with elegant typography) */}
           {agentResponse && agentStatus === 'speaking' && (
-            <div className="voice-agent-speech">
+            <div className="voice-agent-speech cozy-blur-reveal">
               <p className="voice-agent-text">{agentResponse}</p>
             </div>
           )}
