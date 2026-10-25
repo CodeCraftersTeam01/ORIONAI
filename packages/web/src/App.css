@@ -2915,6 +2915,27 @@
   border-top: 1px solid rgba(220, 38, 38, 0.25);
 }
 
+/* Suppress any rogue mermaid error popups or injected divs at the bottom of the page */
+body > [id^="dmermaid"],
+body > [id*="mermaid-error"],
+body > [id^="mermaid-"],
+body > svg[aria-roledescription="error"],
+body > .error-icon,
+body > .error-text,
+[id^="dmermaid"],
+svg[aria-roledescription="error"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+  position: absolute !important;
+  left: -9999px !important;
+  top: -9999px !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}
+
 /* ==========================================================================
    GEMINI-STYLE MODEL SELECTOR & REASONING TIER FLYOUT (Images 1, 2, 3)
    ========================================================================== */
