@@ -380,17 +380,269 @@ export default function App() {
   const [isVoiceCalling, setIsVoiceCalling] = useState(false);
   const [voiceAudioLevel, setVoiceAudioLevel] = useState(0);
   const [isVoiceMuted, setIsVoiceMuted] = useState(false);
+  const [voiceAgentStatus, setVoiceAgentStatus] = useState('listening'); // 'listening' | 'thinking' | 'speaking'
+  const [voiceUserTranscript, setVoiceUserTranscript] = useState('');
+  const [voiceAgentResponse, setVoiceAgentResponse] = useState('');
 
   const voiceMediaStreamRef = useRef(null);
   const voiceAudioContextRef = useRef(null);
   const voiceAnalyserRef = useRef(null);
   const voiceRafIdRef = useRef(null);
+  const voiceSpeechRecRef = useRef(null);
+  const voiceSilenceTimerRef = useRef(null);
+  const voiceTranscriptAccumulatorRef = useRef('');
+  const voiceIsProcessingQueryRef = useRef(false);
+  const voiceAbortControllerRef = useRef(null);
+
+  const isVoiceCallingRef = useRef(false);
+  isVoiceCallingRef.current = isVoiceCalling;
+
+  const isVoiceMutedRef = useRef(false);
+  isVoiceMutedRef.current = isVoiceMuted;
+
+  // Real-time Speech-to-Text Recognition Setup
+  const startVoiceSpeechRecognition = () => {
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRec) {
+      console.warn('SpeechRecognition API not available in this browser');
+      return;
+    }
+
+    try {
+      if (voiceSpeechRecRef.current) {
+        try { voiceSpeechRecRef.current.stop(); } catch {}
+      }
+
+      const recognition = new SpeechRec();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'id-ID';
+      recognition.maxAlternatives = 1;
+
+      recognition.onresult = (event) => {
+        if (voiceIsProcessingQueryRef.current || isVoiceMutedRef.current) return;
+
+        let interim = '';
+        let final = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            final += event.results[i][0].transcript;
+          } else {
+            interim += event.results[i][0].transcript;
+          }
+        }
+
+        const currentSpeech = (final || interim).trim();
+        if (currentSpeech) {
+          voiceTranscriptAccumulatorRef.current = currentSpeech;
+          setVoiceUserTranscript(currentSpeech);
+
+          // Reset silence timer on new utterance
+          if (voiceSilenceTimerRef.current) {
+            clearTimeout(voiceSilenceTimerRef.current);
+          }
+
+          // User stops talking: 1500ms silence threshold triggers agent thinking & response
+          voiceSilenceTimerRef.current = setTimeout(() => {
+            const query = voiceTranscriptAccumulatorRef.current.trim();
+            if (query.length >= 2 && !voiceIsProcessingQueryRef.current && isVoiceCallingRef.current) {
+              handleTriggerVoiceAgentResponse(query);
+            }
+          }, 1500);
+        }
+      };
+
+      recognition.onerror = (e) => {
+        // no-speech is normal during pauses
+        if (e.error === 'no-speech' && isVoiceCallingRef.current && !voiceIsProcessingQueryRef.current) {
+          // ignore
+        }
+      };
+
+      recognition.onend = () => {
+        // Keep listening alive unless muted or processing agent reply
+        if (isVoiceCallingRef.current && !voiceIsProcessingQueryRef.current && !isVoiceMutedRef.current) {
+          try {
+            recognition.start();
+          } catch {}
+        }
+      };
+
+      recognition.start();
+      voiceSpeechRecRef.current = recognition;
+    } catch (err) {
+      console.warn('Speech recognition start error:', err);
+    }
+  };
+
+  const handleTriggerVoiceAgentResponse = async (queryText) => {
+    if (!queryText || voiceIsProcessingQueryRef.current || !isVoiceCallingRef.current) return;
+    voiceIsProcessingQueryRef.current = true;
+    if (voiceSilenceTimerRef.current) {
+      clearTimeout(voiceSilenceTimerRef.current);
+      voiceSilenceTimerRef.current = null;
+    }
+
+    // 1. Temporarily mute user mic so background noise doesn't interfere while agent thinks & speaks
+    if (voiceMediaStreamRef.current) {
+      voiceMediaStreamRef.current.getAudioTracks().forEach((t) => { t.enabled = false; });
+    }
+    if (voiceSpeechRecRef.current) {
+      try { voiceSpeechRecRef.current.stop(); } catch {}
+    }
+    setVoiceAudioLevel(0);
+
+    // 2. Set Agent Status to Thinking
+    setVoiceAgentStatus('thinking');
+    setVoiceUserTranscript(queryText);
+    setVoiceAgentResponse('');
+
+    const controller = new AbortController();
+    voiceAbortControllerRef.current = controller;
+
+    let accumulatedReply = '';
+
+    try {
+      // Find active provider and model
+      const orionProvider = (customProviders || []).find(
+        (p) => p.id === 'orion' || p.templateId === 'orion' || p.name?.toLowerCase().includes('official')
+      );
+      const userOrionApiKey =
+        orionProvider?.apiKeys?.find((k) => k.active)?.key || orionProvider?.apiKey || '';
+
+      let activeCustomProvider = null;
+      let effectiveModel = selectedModel;
+      if (selectedModel && selectedModel.includes('::')) {
+        const [provId, modId] = selectedModel.split('::');
+        const parentProv = (customProviders || []).find((p) => p.id === provId);
+        if (parentProv) {
+          let activeKey = parentProv.apiKeys?.find((k) => k.active)?.key || parentProv.apiKey || '';
+          if (!activeKey && (provId === 'orion' || parentProv.templateId === 'orion')) {
+            activeKey = userOrionApiKey;
+          }
+          activeCustomProvider = {
+            id: parentProv.id,
+            baseUrl: parentProv.baseUrl,
+            apiKey: activeKey,
+            modelId: modId,
+            name: parentProv.name,
+            requiresApiKey: parentProv.requiresApiKey,
+          };
+        }
+      }
+
+      // Voice prompt: explicit instruction for short, punchy, conversational spoken reply
+      const voicePrompt = `${queryText}\n\n[Instruksi Panggilan Suara]: Jawablah secara SINGKAT, PADAT, BERBOBOT, dan natural seperti berbicara di telepon (maksimal 1-2 kalimat saja). DILARANG menggunakan markdown, bullet points, atau kode.`;
+
+      const res = await fetch('/api/chat/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: voicePrompt,
+          history: activeSession ? activeSession.messages : [],
+          attachments: [],
+          model: effectiveModel || selectedModel,
+          reasoningTier: 'low',
+          customProvider: activeCustomProvider,
+          orionApiKey: userOrionApiKey,
+        }),
+        signal: controller.signal,
+      });
+
+      if (!res.ok) {
+        throw new Error('Gagal menghubungi AI');
+      }
+
+      setVoiceAgentStatus('speaking');
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith('data:')) continue;
+          const jsonStr = trimmed.slice(5).trim();
+          if (jsonStr === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const token = parsed.token || parsed.delta || parsed.content || '';
+            if (token) {
+              accumulatedReply += token;
+              const cleanText = accumulatedReply.replace(/[*#_`]/g, '').trim();
+              setVoiceAgentResponse(cleanText);
+            }
+          } catch {}
+        }
+      }
+
+      // Record this exchange in active session messages so it's not lost
+      const finalAnswer = accumulatedReply.replace(/[*#_`]/g, '').trim();
+      const userMsg = {
+        id: `msg-v-user-${Date.now()}`,
+        role: 'user',
+        content: queryText,
+        timestamp: new Date().toISOString(),
+      };
+      const aiMsg = {
+        id: `msg-v-ai-${Date.now()}`,
+        role: 'assistant',
+        content: finalAnswer,
+        model: effectiveModel || selectedModel,
+        timestamp: new Date().toISOString(),
+      };
+      setSessions((prev) =>
+        prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [...s.messages, userMsg, aiMsg] } : s))
+      );
+
+      // 4. Reading pause so the user comfortably reads the concise answer before mic re-opens
+      const readingDelay = Math.max(3000, Math.min(5500, finalAnswer.length * 60));
+      await new Promise((resolve) => setTimeout(resolve, readingDelay));
+
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        setVoiceAgentResponse('Maaf, suara kurang jelas. Bisa tolong diulangi?');
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+      }
+    } finally {
+      // 5. Re-open microphone and restart listening for the next user utterance!
+      if (isVoiceCallingRef.current) {
+        voiceIsProcessingQueryRef.current = false;
+        voiceTranscriptAccumulatorRef.current = '';
+        setVoiceUserTranscript('');
+        setVoiceAgentResponse('');
+        setVoiceAgentStatus('listening');
+
+        // Unmute audio tracks if not manually muted by user
+        if (voiceMediaStreamRef.current && !isVoiceMutedRef.current) {
+          voiceMediaStreamRef.current.getAudioTracks().forEach((t) => { t.enabled = true; });
+        }
+
+        // Restart Speech Recognition
+        if (!isVoiceMutedRef.current) {
+          startVoiceSpeechRecognition();
+        }
+      }
+    }
+  };
 
   const handleStartVoiceCalling = async () => {
     try {
       playCosmicHumSound();
       setIsVoiceCalling(true);
       setIsVoiceMuted(false);
+      setVoiceAgentStatus('listening');
+      setVoiceUserTranscript('');
+      setVoiceAgentResponse('');
+      voiceTranscriptAccumulatorRef.current = '';
+      voiceIsProcessingQueryRef.current = false;
 
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         showToast('Akses mikrofon tidak didukung di browser ini');
@@ -466,6 +718,9 @@ export default function App() {
       };
 
       voiceRafIdRef.current = requestAnimationFrame(analyzeAudio);
+
+      // Start Real-time Speech-to-Text Transcription
+      startVoiceSpeechRecognition();
     } catch (err) {
       console.warn('Microphone access error:', err);
       showToast('Gagal mengakses mikrofon: ' + (err.message || 'Izin ditolak'));
@@ -478,6 +733,26 @@ export default function App() {
     setIsVoiceCalling(false);
     setVoiceAudioLevel(0);
     setIsVoiceMuted(false);
+    setVoiceAgentStatus('listening');
+    setVoiceUserTranscript('');
+    setVoiceAgentResponse('');
+    voiceTranscriptAccumulatorRef.current = '';
+    voiceIsProcessingQueryRef.current = false;
+
+    if (voiceAbortControllerRef.current) {
+      voiceAbortControllerRef.current.abort();
+      voiceAbortControllerRef.current = null;
+    }
+
+    if (voiceSilenceTimerRef.current) {
+      clearTimeout(voiceSilenceTimerRef.current);
+      voiceSilenceTimerRef.current = null;
+    }
+
+    if (voiceSpeechRecRef.current) {
+      try { voiceSpeechRecRef.current.stop(); } catch {}
+      voiceSpeechRecRef.current = null;
+    }
 
     if (voiceRafIdRef.current) {
       cancelAnimationFrame(voiceRafIdRef.current);
@@ -497,15 +772,24 @@ export default function App() {
   };
 
   const handleToggleVoiceMute = () => {
+    const newMuted = !isVoiceMuted;
+    setIsVoiceMuted(newMuted);
+
     if (voiceMediaStreamRef.current) {
       const audioTracks = voiceMediaStreamRef.current.getAudioTracks();
-      const newMuted = !isVoiceMuted;
       audioTracks.forEach((t) => {
         t.enabled = !newMuted;
       });
-      setIsVoiceMuted(newMuted);
-      if (newMuted) {
-        setVoiceAudioLevel(0);
+    }
+
+    if (newMuted) {
+      setVoiceAudioLevel(0);
+      if (voiceSpeechRecRef.current) {
+        try { voiceSpeechRecRef.current.stop(); } catch {}
+      }
+    } else {
+      if (!voiceIsProcessingQueryRef.current) {
+        startVoiceSpeechRecognition();
       }
     }
   };
@@ -1603,8 +1887,10 @@ export default function App() {
         {/* Ambient Voice Calling Overlay with Equalizer Wave Visualizer */}
         <VoiceCallingOverlay
           isActive={isVoiceCalling}
-          audioLevel={voiceAudioLevel}
           isMuted={isVoiceMuted}
+          agentStatus={voiceAgentStatus}
+          userTranscript={voiceUserTranscript}
+          agentResponse={voiceAgentResponse}
           onToggleMute={handleToggleVoiceMute}
           onEndCall={handleEndVoiceCalling}
         />
