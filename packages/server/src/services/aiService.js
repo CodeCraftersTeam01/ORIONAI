@@ -38,7 +38,11 @@ Aturan Format & Estetika Jawaban:
    - SELALU bungkus seluruh potongan kode dalam blok kode Markdown dengan menentukan nama bahasa secara tepat (misalnya: \`\`\`html, \`\`\`css, \`\`\`javascript, \`\`\`python).
    - WAJIB berikan satu baris baru (newline) persis setelah pembuka \`\`\`<bahasa> dan satu baris baru sebelum penutup \`\`\`. JANGAN PERNAH menempelkan kode langsung di baris pembuka (contoh SALAH: \`\`\`html<!DOCTYPE... ; contoh BENAR: \`\`\`html\\n<!DOCTYPE...).
    - Format kode secara bersih, indah, dengan indentasi 2 atau 4 spasi yang rapi. Untuk CSS, berikan baris baru antar selector dan properti. Untuk HTML, pisahkan tag dan atribut dengan spasi.
-   - Jaga spasi alami antar kata dalam penjelasan teks bahasa Indonesia (jangan menggabungkan kata atau membuat CamelCase seperti "Kenalijenis", "diBrowser", "SiapDipakai", selalu pisahkan dengan spasi: "Kenali jenis", "di browser", "siap dipakai").`;
+   - Jaga spasi alami antar kata dalam penjelasan teks bahasa Indonesia (jangan menggabungkan kata atau membuat CamelCase seperti "Kenalijenis", "diBrowser", "SiapDipakai", selalu pisahkan dengan spasi: "Kenali jenis", "di browser", "siap dipakai").
+8. Kerapihan Bahasa Indonesia & Spasi:
+   - WAJIB selalu berikan spasi antar kata secara alami dan benar. JANGAN PERNAH menyatukan kata-kata seperti 'Senangbertemudengan', 'SayaORION', 'asistenkecerdasan', 'buatanyang'.
+   - Selalu berikan spasi satu ketukan setelah tanda baca (titik, koma, tanda tanya, tanda seru, titik dua), contoh: 'hari ini? Jangan ragu...' (BUKAN 'hari ini?Jangan').
+   - Jangan menyatukan kata pembuka dengan tanda formatting tebal (contoh: 'Saya **Agnes**' BUKAN 'Saya**Agnes**').`;
 
 /**
  * Configure behavior, temperature, and system prompt according to selected model & reasoning tier
@@ -60,9 +64,9 @@ export function getModelConfig(modelId = 'orion', reasoningTier = 'medium') {
   }
 
   // Model Agnes 2.5 Flash (tidak bisa pakai penalaran)
-  if (normalizedModel === 'agnes') {
+  if (normalizedModel === 'agnes' || normalizedModel === 'agnes-2.5-flash' || (typeof normalizedModel === 'string' && normalizedModel.startsWith('agnes'))) {
     return {
-      id: 'agnes',
+      id: 'agnes-2.5-flash',
       name: 'Agnes 2.5 Flash',
       upstreamModel: AGNES_MODEL,
       temperature: 0.7,
@@ -70,7 +74,8 @@ export function getModelConfig(modelId = 'orion', reasoningTier = 'medium') {
 [IDENTITAS: AGNES 2.5 FLASH]
 Karakteristik & Perilaku:
 1. Identitas Anda adalah AGNES 2.5 FLASH, asisten AI yang cerdas, lincah, ekspresif, hangat, dan kreatif.
-2. Anda berfokus pada jawaban cepat, ramah, dan solutif tanpa penalaran bertingkat yang rumit. Jangan sebut diri Anda Orion; perkenalkan dan posisikan diri Anda sebagai Agnes.`,
+2. Anda berfokus pada jawaban cepat, ramah, dan solutif tanpa penalaran bertingkat yang rumit. Jangan sebut diri Anda Orion; perkenalkan dan posisikan diri Anda sebagai Agnes.
+3. Selalu gunakan tanda spasi yang benar antar kata dalam bahasa Indonesia. Selalu berikan spasi satu ketukan setelah tanda baca (contoh: 'hari ini? Jangan ragu'). JANGAN PERNAH menggabungkan kata seperti 'Senangbertemu' atau 'buatanyang'.`,
     };
   }
 
@@ -148,7 +153,7 @@ export function sanitizeOrionText(text, modelId) {
   if (!text) return text;
 
   // Bila model Agnes yang dipilih, pertahankan identitas Agnes!
-  if (modelId === 'agnes') {
+  if (modelId === 'agnes' || modelId === 'agnes-2.5-flash' || (typeof modelId === 'string' && modelId.startsWith('agnes'))) {
     return text
       .replace(/\bSapiens AI\b/gi, 'Agnes AI')
       .replace(/developed by Sapiens AI/gi, 'powered by Agnes')
@@ -157,7 +162,7 @@ export function sanitizeOrionText(text, modelId) {
   }
 
   // Bila model Nemotron yang dipilih, pertahankan identitas Nemotron!
-  if (modelId === 'nemotron-3') {
+  if (modelId === 'nemotron-3' || (typeof modelId === 'string' && modelId.includes('nemotron'))) {
     return text
       .replace(/\bSapiens AI\b/gi, 'Nemotron')
       .replace(/developed by Sapiens AI/gi, 'powered by Nemotron')

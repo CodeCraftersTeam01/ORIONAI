@@ -55,6 +55,84 @@ function ensureConfigDir() {
   }
 }
 
+// Lightweight env parser for /reload and startup
+function loadEnvFile(filePath) {
+  try {
+    if (fs.existsSync(filePath)) {
+      const content = fs.readFileSync(filePath, 'utf8');
+      content.split('\n').forEach((line) => {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) return;
+        const eqIdx = trimmed.indexOf('=');
+        if (eqIdx !== -1) {
+          const key = trimmed.slice(0, eqIdx).trim();
+          let val = trimmed.slice(eqIdx + 1).trim();
+          if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+            val = val.slice(1, -1);
+          }
+          process.env[key] = val;
+        }
+      });
+      return true;
+    }
+  } catch {
+    // ignore
+  }
+  return false;
+}
+
+// Wrap text cleanly at word boundaries to fit nicely inside container cards
+function wrapText(text, maxWidth) {
+  if (!text) return [''];
+  const lines = [];
+  const rawParagraphs = text.split('\n');
+
+  for (const rawParagraph of rawParagraphs) {
+    if (!rawParagraph.trim()) {
+      lines.push('');
+      continue;
+    }
+
+    const words = rawParagraph.split(' ');
+    let currentLine = '';
+
+    for (const word of words) {
+      if (!currentLine) {
+        if (word.length > maxWidth) {
+          let remaining = word;
+          while (remaining.length > maxWidth) {
+            lines.push(remaining.slice(0, maxWidth));
+            remaining = remaining.slice(maxWidth);
+          }
+          currentLine = remaining;
+        } else {
+          currentLine = word;
+        }
+      } else if (currentLine.length + 1 + word.length <= maxWidth) {
+        currentLine += ' ' + word;
+      } else {
+        lines.push(currentLine);
+        if (word.length > maxWidth) {
+          let remaining = word;
+          while (remaining.length > maxWidth) {
+            lines.push(remaining.slice(0, maxWidth));
+            remaining = remaining.slice(maxWidth);
+          }
+          currentLine = remaining;
+        } else {
+          currentLine = word;
+        }
+      }
+    }
+
+    if (currentLine) {
+      lines.push(currentLine);
+    }
+  }
+
+  return lines.length > 0 ? lines : [''];
+}
+
 // Load synchronized configuration from ~/.orion/providers.json, credentials.json & process.env
 function loadSyncedConfig() {
   ensureConfigDir();
@@ -339,6 +417,7 @@ export function printHeader(modelId, tier, hasKey = false) {
 }
 
 const COMMAND_ITEMS = [
+  { label: 'reload', detail: 'Muat ulang konfigurasi, provider & environment (/reload)', action: 'reload' },
   { label: 'settings', detail: 'Buka menu pengaturan & preferensi aktif', action: 'settings' },
   { label: 'model', detail: '<provider/model> — Pilih & beralih model AI (Ctrl+L)', action: 'model' },
   { label: 'thinking', detail: 'Atur tingkat penalaran (low/medium/high, Shift+Tab)', action: 'thinking' },
@@ -392,12 +471,12 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
       isFirstRender = false;
 
       let out = '';
-      // Top divider
-      out += `\x1b[90m${divider}\x1b[0m\n`;
-      // Input line
-      out += `${buffer}\n`;
+      // Top divider (sleek muted slate)
+      out += `\x1b[38;5;239m${divider}\x1b[0m\n`;
+      // Input line (indented 2 spaces to align with container card)
+      out += `  ${buffer}\n`;
       // Bottom divider
-      out += `\x1b[90m${divider}\x1b[0m\n`;
+      out += `\x1b[38;5;239m${divider}\x1b[0m\n`;
 
       let linesBelow = 1;
 
@@ -443,8 +522,9 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
       const rawProvName = matchedModel?.provider?.name || matchedModel?.provider?.id || 'orion';
       const provName = rawProvName.replace(/::.*/, '').replace(/\s*\(Official\)/, '');
       const displayModel = currentModel.replace(/^orion::/, '');
-      const rightModel = `(${provName}) ${displayModel} • ${reasoningTier}`;
-      const gap1 = Math.max(2, width - leftCwd.length - rightModel.length);
+      const rightModel = `\x1b[38;5;244m(${provName})\x1b[0m \x1b[1m\x1b[37m${displayModel}\x1b[0m \x1b[90m•\x1b[0m \x1b[36m${reasoningTier}\x1b[0m`;
+      const cleanRight = `(${provName}) ${displayModel} • ${reasoningTier}`;
+      const gap1 = Math.max(2, width - leftCwd.length - cleanRight.length);
       out += `\x1b[90m${leftCwd}${' '.repeat(gap1)}${rightModel}\x1b[0m\x1b[K\n`;
       linesBelow++;
 
@@ -471,7 +551,7 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
       process.stdout.write(out);
 
       // Restore cursor position to the input line
-      process.stdout.write(`\x1b[${linesToInput}A\r\x1b[${buffer.length}C`);
+      process.stdout.write(`\x1b[${linesToInput}A\r\x1b[${2 + buffer.length}C`);
     }
 
     function clearUI() {
@@ -868,12 +948,28 @@ export async function startTerminalChat() {
       const userMessage = inputResult.text;
       history.push({ role: 'user', content: userMessage });
 
-      // Pi Chat UI: Print user message in padded dark-gray block (Screenshot 4 & 5)
-      const paddedMsg = userMessage
-        .split('\n')
-        .map((line) => `  ${line}  `)
-        .join('\n');
-      process.stdout.write(`\n\x1b[48;5;236m\x1b[1m\x1b[37m${paddedMsg}\x1b[0m\n\n`);
+      // Pi Chat UI: Full-width, vertically padded container card (Screenshot exact match)
+      const termCols = Math.max(30, (process.stdout.columns || 80) - 2);
+      const bgBox = '\x1b[48;5;236m\x1b[48;2;46;49;61m';
+      const textLight = '\x1b[38;5;253m\x1b[38;2;230;233;240m';
+      const reset = '\x1b[0m';
+      const maxTextWidth = Math.max(20, termCols - 4);
+
+      const wrappedLines = wrapText(userMessage, maxTextWidth);
+
+      let userBox = '\n';
+      // Top padding row
+      userBox += `${bgBox}${' '.repeat(termCols)}${reset}\n`;
+      // User message line(s)
+      wrappedLines.forEach((line) => {
+        const content = '  ' + line;
+        const padLen = Math.max(0, termCols - content.length);
+        userBox += `${bgBox}${textLight}${content}${' '.repeat(padLen)}${reset}\n`;
+      });
+      // Bottom padding row
+      userBox += `${bgBox}${' '.repeat(termCols)}${reset}\n\n`;
+
+      process.stdout.write(userBox);
 
       // Pi Working Spinner (Screenshot 4)
       const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
@@ -881,13 +977,167 @@ export async function startTerminalChat() {
       let hasReceivedFirstChunk = false;
       const spinnerTimer = setInterval(() => {
         if (!hasReceivedFirstChunk) {
-          process.stdout.write(`\r\x1b[K\x1b[36m${spinnerFrames[spinnerIdx]}\x1b[0m \x1b[90mWorking...\x1b[0m`);
+          process.stdout.write(`\r\x1b[K\x1b[38;5;39m${spinnerFrames[spinnerIdx]}\x1b[0m \x1b[38;5;244mWorking...\x1b[0m`);
           spinnerIdx = (spinnerIdx + 1) % spinnerFrames.length;
         }
       }, 80);
 
       let assistantReply = '';
       let inThinking = false;
+      let isAtLineStart = true;
+      let headingLevel = 0;
+      let isBold = false;
+      let isInlineCode = false;
+      let inCodeBlock = false;
+      let pendingSurrogate = '';
+      let lastChar = '';
+
+      const SQUISHED_WORDS = [
+        [/Senangbertemudengan/gi, 'Senang bertemu dengan'],
+        [/bertemudengan/gi, 'bertemu dengan'],
+        [/asistenkecerdasan/gi, 'asisten kecerdasan'],
+        [/buatanyang/gi, 'buatan yang'],
+        [/kecerdasanbuatan/gi, 'kecerdasan buatan'],
+        [/siapmembantu/gi, 'siap membantu'],
+      ];
+
+      function formatStreamChunk(rawChunk) {
+        let chunk = pendingSurrogate + rawChunk;
+        pendingSurrogate = '';
+
+        if (chunk.length > 0) {
+          const lastCode = chunk.charCodeAt(chunk.length - 1);
+          if (lastCode >= 0xd800 && lastCode <= 0xdbff) {
+            pendingSurrogate = chunk.slice(-1);
+            chunk = chunk.slice(0, -1);
+          }
+        }
+
+        // Clean common squished words from upstream models
+        for (const [re, repl] of SQUISHED_WORDS) {
+          chunk = chunk.replace(re, repl);
+        }
+
+        let out = '';
+        let i = 0;
+
+        while (i < chunk.length) {
+          const ch = chunk[i];
+
+          // Check line-start markdown elements
+          if (isAtLineStart) {
+            // Code block fence
+            if (ch === '`' && chunk.slice(i, i + 3) === '```') {
+              const newlineIdx = chunk.indexOf('\n', i);
+              if (newlineIdx !== -1) {
+                const lang = chunk.slice(i + 3, newlineIdx).trim() || 'code';
+                if (!inCodeBlock) {
+                  inCodeBlock = true;
+                  out += `\n\x1b[38;5;240m╭── \x1b[38;5;75m${lang}\x1b[38;5;240m ────────────────────────\x1b[0m\n`;
+                } else {
+                  inCodeBlock = false;
+                  out += `\x1b[38;5;240m╰────────────────────────────────────\x1b[0m\n`;
+                }
+                i = newlineIdx + 1;
+                isAtLineStart = true;
+                continue;
+              }
+            }
+
+            // Headers: #, ##, ###
+            if (ch === '#') {
+              let hashCount = 0;
+              let j = i;
+              while (j < chunk.length && chunk[j] === '#') {
+                hashCount++;
+                j++;
+              }
+              if (j < chunk.length && chunk[j] === ' ') {
+                if (hashCount === 1) {
+                  out += '\x1b[1m\x1b[38;5;81m━━ ';
+                  headingLevel = 1;
+                } else if (hashCount === 2) {
+                  out += '\x1b[1m\x1b[38;5;75m✦ ';
+                  headingLevel = 2;
+                } else {
+                  out += '\x1b[1m\x1b[38;5;141m● ';
+                  headingLevel = 3;
+                }
+                i = j + 1;
+                isAtLineStart = false;
+                continue;
+              }
+            }
+
+            // Bullet points (- or *)
+            if ((ch === '-' || ch === '*') && chunk[i + 1] === ' ') {
+              out += '  \x1b[38;5;75m•\x1b[0m ';
+              i += 2;
+              isAtLineStart = false;
+              continue;
+            }
+
+            // Blockquote (> )
+            if (ch === '>' && chunk[i + 1] === ' ') {
+              out += '\x1b[38;5;242m│\x1b[0m ';
+              i += 2;
+              isAtLineStart = false;
+              continue;
+            }
+
+            if (ch !== '\n') {
+              isAtLineStart = false;
+            }
+          }
+
+          // Newline handling
+          if (ch === '\n') {
+            if (headingLevel > 0) {
+              out += '\x1b[0m';
+              headingLevel = 0;
+            }
+            if (isBold) out += '\x1b[0m';
+            if (isInlineCode) out += '\x1b[0m';
+            out += '\n';
+            isAtLineStart = true;
+            lastChar = '\n';
+            i++;
+            continue;
+          }
+
+          // Bold: **text**
+          if (ch === '*' && chunk[i + 1] === '*') {
+            if (!isBold && lastChar && /[a-zA-Z0-9\u00C0-\u017F]/.test(lastChar)) {
+              out += ' ';
+            }
+            isBold = !isBold;
+            out += isBold ? '\x1b[1m\x1b[37m' : '\x1b[0m';
+            lastChar = '*';
+            i += 2;
+            continue;
+          }
+
+          // Inline code: `code`
+          if (ch === '`' && !inCodeBlock) {
+            isInlineCode = !isInlineCode;
+            out += isInlineCode ? '\x1b[38;5;215m' : '\x1b[0m';
+            lastChar = '`';
+            i++;
+            continue;
+          }
+
+          // Space after punctuation if stuck to next word (e.g. ?Jangan -> ? Jangan)
+          if (lastChar && /[?!.,;:]/.test(lastChar) && /[a-zA-Z\u00C0-\u017F]/.test(ch)) {
+            out += ' ';
+          }
+
+          out += ch;
+          lastChar = ch;
+          i++;
+        }
+
+        return out;
+      }
 
       try {
         await new Promise((resolveStream, rejectStream) => {
@@ -912,14 +1162,15 @@ export async function startTerminalChat() {
                 inThinking = true;
                 process.stdout.write(`\n${c.dim}${c.cyan}✦ Penalaran Internal (Thinking):${c.reset}\n${c.gray}`);
                 const afterTag = chunk.replace('<think>', '');
-                if (afterTag) process.stdout.write(afterTag);
+                if (afterTag) process.stdout.write(formatStreamChunk(afterTag));
               } else if (chunk.includes('</think>')) {
                 inThinking = false;
                 process.stdout.write(`${c.reset}\n\n`);
                 const afterClose = chunk.replace('</think>', '');
-                if (afterClose) process.stdout.write(afterClose);
+                if (afterClose) process.stdout.write(formatStreamChunk(afterClose));
               } else {
-                process.stdout.write(inThinking ? `${c.gray}${chunk}${c.reset}` : chunk);
+                const formatted = formatStreamChunk(chunk);
+                process.stdout.write(inThinking ? `${c.gray}${formatted}${c.reset}` : formatted);
               }
             },
             onDone: () => {
@@ -928,6 +1179,16 @@ export async function startTerminalChat() {
                 clearInterval(spinnerTimer);
                 process.stdout.write('\r\x1b[K');
               }
+              if (pendingSurrogate) {
+                process.stdout.write(pendingSurrogate);
+                pendingSurrogate = '';
+              }
+              if (headingLevel > 0 || isBold || isInlineCode) {
+                process.stdout.write('\x1b[0m');
+                headingLevel = 0;
+                isBold = false;
+                isInlineCode = false;
+              }
               resolveStream();
             },
             onError: (err) => {
@@ -935,6 +1196,10 @@ export async function startTerminalChat() {
                 hasReceivedFirstChunk = true;
                 clearInterval(spinnerTimer);
                 process.stdout.write('\r\x1b[K');
+              }
+              if (isBold) {
+                process.stdout.write('\x1b[0m');
+                isBold = false;
               }
               rejectStream(err);
             },
@@ -975,6 +1240,30 @@ export async function startTerminalChat() {
     if (action === '/exit' || action === '/quit' || action === '/q') {
       console.log(`\n${c.brightCyan}✦ Terima kasih telah menggunakan Orion Agent. Sampai jumpa!${c.reset}\n`);
       return true; // exit loop
+    }
+
+    if (action === '/reload' || action === '/rel') {
+      try {
+        const rootEnv = path.resolve(process.cwd(), '.env');
+        loadEnvFile(rootEnv);
+      } catch {}
+
+      const freshConfig = loadSyncedConfig();
+      if (freshConfig.apiKey) userApiKey = freshConfig.apiKey;
+      if (freshConfig.selectedModel) currentModel = freshConfig.selectedModel;
+      if (freshConfig.reasoningTier) reasoningTier = freshConfig.reasoningTier;
+
+      const availableModels = getAvailableModels(freshConfig);
+      const activeModelObj = availableModels.find((m) => m.id === currentModel) || { name: currentModel, id: currentModel };
+      const provCount = freshConfig.providers?.length || 0;
+
+      console.log(`\n${c.bold}${c.brightCyan}✦ Konfigurasi Orion Agent Berhasil Dimuat Ulang (/reload):${c.reset}`);
+      console.log(`  ${c.gray}Providers Terdaftar:${c.reset}  ${c.white}${provCount} provider${c.reset}`);
+      console.log(`  ${c.gray}Total Model AI:${c.reset}       ${c.white}${availableModels.length} model terdeteksi${c.reset}`);
+      console.log(`  ${c.gray}Model Aktif:${c.reset}          ${c.green}${activeModelObj.name || activeModelObj.id}${c.reset} ${c.dim}(${activeModelObj.id})${c.reset}`);
+      console.log(`  ${c.gray}Reasoning Tier:${c.reset}       ${c.yellow}${reasoningTier}${c.reset}`);
+      console.log(`  ${c.gray}Status API Key:${c.reset}       ${userApiKey ? `${c.green}● Tersambung (${userApiKey.slice(0, 4)}••••)` : `${c.yellow}○ Belum diatur (/login)`}${c.reset}\n`);
+      return false;
     }
 
     if (action === '/clear') {
@@ -1143,6 +1432,7 @@ export async function startTerminalChat() {
       console.log(`  ${c.yellow}/export${c.reset}                 Ekspor sesi percakapan ke file JSONL`);
       console.log(`  ${c.yellow}/hotkeys${c.reset}                Tampilkan daftar pintasan keyboard`);
       console.log(`  ${c.yellow}/settings${c.reset}               Tampilkan preferensi & konfigurasi aktif`);
+      console.log(`  ${c.yellow}/reload${c.reset}                 Muat ulang semua konfigurasi, provider & env`);
       console.log(`  ${c.yellow}/login, /key${c.reset} [key]      Sambungkan / masukkan API Key Orion`);
       console.log(`  ${c.yellow}/logout${c.reset}                 Hapus kredensial API Key yang tersimpan`);
       console.log(`  ${c.yellow}/clear${c.reset}                  Bersihkan layar terminal obrolan`);
