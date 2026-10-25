@@ -515,12 +515,50 @@ function readInteractivePrompt({ promptPrefix, syncedConfig, currentModel, reaso
     const onData = (chunk) => {
       const key = chunk.toString();
 
-      // 1. Ctrl+C (Clean termination)
+      // 1. Ctrl+C (Interrupt / Clear line or exit)
       if (key === '\u0003') {
+        if (buffer.length > 0) {
+          clearMenu();
+          menuOpen = false;
+          buffer = '';
+          process.stdout.write('^C\n');
+          renderPrompt();
+          return;
+        }
         clearMenu();
         cleanup();
         console.log(`\n${c.brightCyan}✦ Sesi terminal selesai. Sampai jumpa!${c.reset}\n`);
         process.exit(0);
+      }
+
+      // 2. Ctrl+D (EOF / Exit when buffer is empty)
+      if (key === '\u0004') {
+        if (buffer.length === 0) {
+          clearMenu();
+          cleanup();
+          console.log(`\n${c.brightCyan}✦ Sesi terminal selesai. Sampai jumpa!${c.reset}\n`);
+          process.exit(0);
+        }
+      }
+
+      // 3. Ctrl+L (Pi Shortcut: Instantly open Model Selector)
+      if (key === '\u000c') {
+        clearMenu();
+        cleanup();
+        process.stdout.write('\n');
+        resolve({ type: 'open_model_menu' });
+        return;
+      }
+
+      // 4. Shift+Tab (Pi Shortcut: Instantly cycle Thinking / Reasoning Tier)
+      if (key === '\u001b[Z') {
+        clearMenu();
+        const tiers = ['low', 'medium', 'high'];
+        const nextIdx = (tiers.indexOf(reasoningTier) + 1) % tiers.length;
+        cleanup();
+        process.stdout.write('\n');
+        resolve({ type: 'switch_tier', tier: tiers[nextIdx] });
+        return;
       }
 
       // 2. Arrow Up
