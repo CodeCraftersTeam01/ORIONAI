@@ -1,4 +1,7 @@
 import { Router } from 'express';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import {
   getChatCompletion,
   streamChatCompletion,
@@ -7,6 +10,16 @@ import {
   testSpecificModel,
 } from '../services/aiService.js';
 import { chatRateLimiter, validateChatInput } from '../middleware/security.js';
+
+const orionConfigDir = path.join(os.homedir(), '.orion');
+const providersConfigFile = path.join(orionConfigDir, 'providers.json');
+const credentialsFile = path.join(orionConfigDir, 'credentials.json');
+
+function ensureConfigDir() {
+  if (!fs.existsSync(orionConfigDir)) {
+    fs.mkdirSync(orionConfigDir, { recursive: true });
+  }
+}
 
 const router = Router();
 
@@ -221,6 +234,65 @@ router.get('/models', (req, res) => {
     reasoningTiers: REASONING_TIERS,
     status: 'online',
   });
+});
+
+// GET /api/chat/providers-config (Sync providers from ~/.orion/providers.json)
+router.get('/providers-config', (req, res) => {
+  try {
+    ensureConfigDir();
+    if (fs.existsSync(providersConfigFile)) {
+      const raw = fs.readFileSync(providersConfigFile, 'utf8');
+      const data = JSON.parse(raw);
+      return res.json({
+        success: true,
+        providers: data.providers || [],
+        selectedModel: data.selectedModel || null,
+        reasoningTier: data.reasoningTier || null,
+      });
+    }
+  } catch (err) {
+    console.error('Error reading providers-config:', err.message);
+  }
+  res.json({
+    success: true,
+    providers: [],
+    selectedModel: null,
+    reasoningTier: null,
+  });
+});
+
+// POST /api/chat/providers-config (Save & sync providers to ~/.orion/providers.json)
+router.post('/providers-config', (req, res) => {
+  try {
+    ensureConfigDir();
+    const { providers = [], selectedModel = null, reasoningTier = null } = req.body;
+    const configData = {
+      providers,
+      selectedModel,
+      reasoningTier,
+      updatedAt: Date.now(),
+    };
+    fs.writeFileSync(providersConfigFile, JSON.stringify(configData, null, 2), 'utf8');
+
+    // Extract any active API key from providers and sync to credentials.json & process.env
+    for (const p of providers) {
+      const activeKey = p.apiKeys?.find((k) => k.active)?.key || p.apiKey;
+      if (activeKey && activeKey.trim()) {
+        fs.writeFileSync(
+          credentialsFile,
+          JSON.stringify({ apiKey: activeKey.trim(), updatedAt: Date.now() }, null, 2),
+          'utf8'
+        );
+        process.env.AI_API_KEY = activeKey.trim();
+        break;
+      }
+    }
+
+    res.json({ success: true, message: 'Provider config tersinkronisasi ke sistem.' });
+  } catch (err) {
+    console.error('Error saving providers-config:', err.message);
+    res.status(500).json({ success: false, message: err.message || 'Gagal menyimpan konfigurasi provider.' });
+  }
 });
 
 // GET /api/chat/suggestions
