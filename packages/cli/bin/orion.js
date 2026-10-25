@@ -4,8 +4,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import os from 'os';
-import { execSync } from 'child_process';
-import { startServer } from '../../server/src/server.js';
+import { execSync, spawn } from 'child_process';
+import { startServer, openUrl } from '../../server/src/server.js';
 import { startTerminalChat } from '../src/terminalChat.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -202,6 +202,8 @@ Penggunaan:
   orion                 Mulai obrolan AI interaktif langsung di terminal (Default)
   orion chat, -c        Mulai obrolan AI interaktif di terminal
   orion --view          Jalankan service dan buka antarmuka web di browser
+  orion --view --bg     Jalankan service di latar belakang dan buka di browser (Rekomendasi)
+  orion --bg, -b        Jalankan service server di latar belakang (daemon)
   orion start           Jalankan service server di foreground
   orion --stop          Hentikan service Orion Agent yang sedang berjalan
   orion --restart       Muat ulang / restart service Orion Agent
@@ -211,6 +213,7 @@ Penggunaan:
 
 Opsi Tambahan:
   --view, -o, --open    Otomatis membuka browser default ke antarmuka web
+  --bg, -b, --daemon    Jalankan service di latar belakang (bebas dari terminal)
   --port, -p <nomor>    Tentukan port server (default: 5001)
   --stop, stop          Hentikan proses yang berjalan di port target
   --restart, restart    Restart service server
@@ -220,12 +223,24 @@ Opsi Tambahan:
 
 Contoh Penggunaan:
   orion                         # Langsung masuk ke chat interaktif di terminal
-  orion --view                  # Buka di browser di port 5001
-  orion --restart --view        # Restart service dan buka ulang di browser
+  orion --view                  # Buka di browser di port 5001 (foreground)
+  orion --view --bg             # Jalankan di latar belakang & langsung buka di browser
+  orion --restart --view --bg   # Restart service & buka ulang di latar belakang
+  orion --status                # Cek status service yang sedang berjalan
   orion --stop                  # Matikan service di port 5001
 `);
   process.exit(0);
 }
+
+// Background mode detection
+const isBackgroundMode =
+  args.includes('--bg') ||
+  args.includes('-b') ||
+  args.includes('--background') ||
+  args.includes('-d') ||
+  args.includes('--daemon');
+
+const isDaemonInternal = args.includes('--daemon-internal');
 
 // Handle --stop or stop
 if (args.includes('--stop') || args[0] === 'stop') {
@@ -241,7 +256,7 @@ if (args.includes('--status') || args[0] === 'status') {
     console.log(`🌐 URL: http://localhost:${targetPort}`);
   } else {
     console.log(`⚪ Orion Agent TIDAK AKTIF di port ${targetPort}.`);
-    console.log(`💡 Jalankan "orion --view" untuk menyalakan.`);
+    console.log(`💡 Jalankan "orion --view --bg" untuk menyalakan.`);
   }
   process.exit(0);
 }
@@ -264,7 +279,9 @@ const isServerCommand =
   args.includes('--view') ||
   args.includes('-o') ||
   args.includes('--open') ||
-  args.includes('view');
+  args.includes('view') ||
+  isBackgroundMode ||
+  isDaemonInternal;
 
 // If no server-specific command is passed, default to interactive terminal chat!
 const isChatMode =
@@ -286,10 +303,65 @@ const shouldView =
   args.includes('--open') ||
   args.includes('view');
 
-async function main() {
-  console.log('✦ Memulai Orion Agent Service...');
+// Background execution launcher (--bg, --view --bg)
+if (isBackgroundMode && !isDaemonInternal) {
+  const pids = getRunningPids(targetPort);
+  const url = `http://localhost:${targetPort}`;
 
-  if (!fs.existsSync(distPath)) {
+  if (pids.length > 0 && !isRestart) {
+    console.log(`\n🟢 Orion Agent sudah aktif di latar belakang (PID: ${pids.join(', ')})`);
+    console.log(`🌐 URL: ${url}`);
+    if (shouldView) {
+      console.log(`🌐 Membuka antarmuka web di browser default...`);
+      openUrl(url);
+    }
+    console.log(`💡 Untuk cek status: orion --status | Hentikan: orion --stop\n`);
+    process.exit(0);
+  }
+
+  ensureRuntimeDir();
+  const logDir = path.join(runtimeDir, 'logs');
+  if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
+  const daemonLogFile = path.join(logDir, 'daemon.log');
+  const outStream = fs.openSync(daemonLogFile, 'a');
+
+  // Strip background flags and pass internal daemon flag
+  const forwardArgs = args.filter(
+    (a) => !['--bg', '-b', '--background', '-d', '--daemon'].includes(a)
+  );
+  forwardArgs.push('--daemon-internal');
+
+  const child = spawn(process.execPath, [__filename, ...forwardArgs], {
+    detached: true,
+    stdio: ['ignore', outStream, outStream],
+    env: process.env,
+    cwd: process.cwd(),
+  });
+
+  child.unref();
+
+  console.log(`\n🌌 Orion Agent berhasil dijalankan di latar belakang!`);
+  console.log(`├── PID:         ${child.pid}`);
+  console.log(`├── Port:        ${targetPort}`);
+  console.log(`├── URL:         ${url}`);
+  console.log(`├── Log:         ~/.orion/logs/agent.log`);
+  if (shouldView) {
+    console.log(`├── Antarmuka:   Membuka antarmuka web di browser default...`);
+    openUrl(url);
+  }
+  console.log(`└── Kontrol:`);
+  console.log(`    ├── Cek status:  orion --status`);
+  console.log(`    ├── Buka web:    orion --view`);
+  console.log(`    └── Hentikan:    orion --stop\n`);
+  process.exit(0);
+}
+
+async function main() {
+  if (!isDaemonInternal) {
+    console.log('✦ Memulai Orion Agent Service...');
+  }
+
+  if (!fs.existsSync(distPath) && !isDaemonInternal) {
     console.warn('⚠️  Folder packages/web/dist belum ditemukan. Menjalankan mode API Service.');
     console.warn('💡 Tip: Jalankan "npm run build" untuk mengompilasi antarmuka web.');
   }
@@ -297,7 +369,7 @@ async function main() {
   try {
     const { url } = await startServer({
       port: targetPort,
-      openBrowser: shouldView,
+      openBrowser: shouldView && !isDaemonInternal,
     });
 
     savePid(targetPort);
@@ -314,14 +386,16 @@ async function main() {
       cleanPid();
     });
 
-    console.log(`\n🌌 Orion Agent siap digunakan di ${url}`);
-    if (shouldView) {
-      console.log(`🌐 Membuka antarmuka web di browser default...`);
-    } else {
-      console.log(`💡 Tip: Jalankan "orion --view" untuk langsung membuka browser.`);
+    if (!isDaemonInternal) {
+      console.log(`\n🌌 Orion Agent siap digunakan di ${url}`);
+      if (shouldView) {
+        console.log(`🌐 Membuka antarmuka web di browser default...`);
+      } else {
+        console.log(`💡 Tip: Jalankan "orion --view" untuk langsung membuka browser.`);
+      }
+      console.log(`💡 Untuk mematikan sewaktu-waktu: orion --stop`);
+      console.log(`🛑 Tekan Ctrl+C untuk menghentikan service.\n`);
     }
-    console.log(`💡 Untuk mematikan sewaktu-waktu: orion --stop`);
-    console.log(`🛑 Tekan Ctrl+C untuk menghentikan service.\n`);
   } catch (err) {
     if (err.code === 'EADDRINUSE') {
       console.error(`\n⚠️  Port ${targetPort} sedang digunakan.`);

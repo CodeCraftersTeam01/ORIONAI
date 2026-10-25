@@ -10,8 +10,14 @@ Jalankan perintah `orion` langsung dari terminal Anda:
 # Mulai obrolan AI interaktif langsung di terminal (Default)
 orion
 
-# Buka antarmuka web di browser default (Port 5001)
+# Jalankan service di latar belakang & buka antarmuka web di browser (Rekomendasi)
+orion --view --bg
+
+# Buka antarmuka web di browser (foreground)
 orion --view
+
+# Jalankan service di latar belakang tanpa membuka browser (daemon)
+orion --bg
 
 # Periksa status service Orion Agent
 orion --status
