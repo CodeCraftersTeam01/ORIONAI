@@ -69,8 +69,8 @@ export default function Sidebar({
         </div>
 
         {/* Content depending on currentView */}
-        {currentView === 'dashboard' ? (
-          /* ================= DASHBOARD NAVIGATION MENU ================= */
+        {currentView !== 'chat' ? (
+          /* ================= DASHBOARD & GENERAL NAVIGATION MENU ================= */
           <div className="sidebar-nav-section animate-sidebar-nav">
             <div className="section-label">Navigasi</div>
             <nav className="sidebar-nav-menu">
@@ -94,9 +94,9 @@ export default function Sidebar({
 
               <button
                 type="button"
-                className="sidebar-nav-item"
+                className={`sidebar-nav-item ${currentView === 'providers' ? 'active' : ''}`}
                 onClick={() => {
-                  onOpenProviders?.();
+                  onNavigate?.('providers');
                   if (window.innerWidth < 768) onCloseMobile();
                 }}
               >
@@ -106,24 +106,6 @@ export default function Sidebar({
                 <div className="nav-item-text">
                   <span className="nav-item-label">Provider</span>
                   <span className="nav-item-desc">Kelola Model AI</span>
-                </div>
-                <ChevronRight size={14} className="nav-item-arrow" />
-              </button>
-
-              <button
-                type="button"
-                className="sidebar-nav-item"
-                onClick={() => {
-                  onOpenSettings?.();
-                  if (window.innerWidth < 768) onCloseMobile();
-                }}
-              >
-                <div className="nav-item-icon-wrap">
-                  <Settings size={16} />
-                </div>
-                <div className="nav-item-text">
-                  <span className="nav-item-label">Settings</span>
-                  <span className="nav-item-desc">Preferensi & Suara</span>
                 </div>
                 <ChevronRight size={14} className="nav-item-arrow" />
               </button>
@@ -222,8 +204,11 @@ export default function Sidebar({
 
             <button
               type="button"
-              className="footer-icon-btn"
-              onClick={onOpenSettings}
+              className={`footer-icon-btn ${currentView === 'settings' ? 'active' : ''}`}
+              onClick={() => {
+                onNavigate?.('settings');
+                if (window.innerWidth < 768) onCloseMobile?.();
+              }}
               title="Pengaturan"
               aria-label="Settings"
             >

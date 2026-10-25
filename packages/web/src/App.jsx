@@ -865,7 +865,7 @@ export default function App() {
             >
               <Menu size={18} />
             </button>
-            {currentView === 'chat' && (
+            {currentView !== 'dashboard' && (
               <button
                 type="button"
                 className="btn-header-back-home"
@@ -884,70 +884,62 @@ export default function App() {
                 {activeSession ? activeSession.title : 'Orion'}
               </span>
             )}
+            {currentView === 'providers' && (
+              <span className="session-active-title">Kelola Provider AI</span>
+            )}
+            {currentView === 'settings' && (
+              <span className="session-active-title">Pengaturan</span>
+            )}
           </div>
 
           <div className="header-simple-right">
-            {currentView === 'dashboard' ? (
-              <button
-                type="button"
-                className="btn-simple-new-chat"
-                onClick={() => {
-                  handleNewSession();
-                  setCurrentView('chat');
-                }}
-                title="Mulai Obrolan Baru"
-              >
-                <Plus size={14} />
-                <span>Chat Baru</span>
-              </button>
-            ) : (
+            <button
+              type="button"
+              className="btn-simple-new-chat"
+              onClick={() => {
+                handleNewSession();
+                setCurrentView('chat');
+              }}
+              title="Mulai Obrolan Baru"
+            >
+              <Plus size={14} />
+              <span>Chat Baru</span>
+            </button>
+
+            {currentView === 'chat' && messages.length > 0 && (
               <>
                 <button
                   type="button"
-                  className="btn-simple-new-chat"
-                  onClick={handleNewSession}
-                  title="Obrolan Baru"
+                  className="nav-icon-simple"
+                  onClick={handleExportChat}
+                  title="Ekspor obrolan (.md)"
+                  aria-label="Ekspor obrolan"
                 >
-                  <Plus size={14} />
-                  <span>Chat Baru</span>
+                  <Download size={15} />
                 </button>
 
-                {messages.length > 0 && (
-                  <>
-                    <button
-                      type="button"
-                      className="nav-icon-simple"
-                      onClick={handleExportChat}
-                      title="Ekspor obrolan (.md)"
-                      aria-label="Ekspor obrolan"
-                    >
-                      <Download size={15} />
-                    </button>
-
-                    <button
-                      type="button"
-                      className="nav-icon-simple"
-                      onClick={() => {
-                        if (confirm('Bersihkan percakapan ini?')) {
-                          setSessions((prev) =>
-                            prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [] } : s))
-                          );
-                        }
-                      }}
-                      title="Bersihkan obrolan"
-                      aria-label="Bersihkan obrolan"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </>
-                )}
+                <button
+                  type="button"
+                  className="nav-icon-simple"
+                  onClick={() => {
+                    if (confirm('Bersihkan percakapan ini?')) {
+                      setSessions((prev) =>
+                        prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [] } : s))
+                      );
+                    }
+                  }}
+                  title="Bersihkan obrolan"
+                  aria-label="Bersihkan obrolan"
+                >
+                  <Trash2 size={15} />
+                </button>
               </>
             )}
 
             <button
               type="button"
-              className="nav-icon-simple"
-              onClick={() => setIsSettingsOpen(true)}
+              className={`nav-icon-simple ${currentView === 'settings' ? 'active' : ''}`}
+              onClick={() => setCurrentView(currentView === 'settings' ? 'dashboard' : 'settings')}
               title="Pengaturan"
               aria-label="Pengaturan"
             >
@@ -956,14 +948,43 @@ export default function App() {
           </div>
         </header>
 
-        {/* Message Stream or Unified Spatial Hero (Seamless shared elements) */}
-        <div className={`messages-container ${(messages.length === 0 || currentView === 'dashboard') ? 'is-empty' : ''}`}>
-          {(messages.length === 0 || currentView === 'dashboard') ? (
-            /* Unified Hero Container (Persists seamlessly across Dashboard & Chat) */
-            <div className={`welcome-hero-container ${currentView === 'dashboard' ? 'is-dashboard-mode' : 'is-chat-mode'}`}>
-              <div className="welcome-logo-badge">
-                <OrionLogo size="lg" isGenerating={isGenerating} />
-              </div>
+        {/* Dynamic Page Views: Providers, Settings, or Chat/Dashboard */}
+        {currentView === 'providers' ? (
+          <ManageProvidersModal
+            isOpen={true}
+            isPage={true}
+            onClose={() => setCurrentView('dashboard')}
+            customProviders={customProviders}
+            activeProviderId={selectedModel}
+            onSaveProvider={handleSaveCustomProvider}
+            onDeleteProvider={handleDeleteCustomProvider}
+            onSelectProvider={(provId) => {
+              handleModelChange(provId);
+              setCurrentView('chat');
+            }}
+          />
+        ) : currentView === 'settings' ? (
+          <SettingsModal
+            isOpen={true}
+            isPage={true}
+            onClose={() => setCurrentView('dashboard')}
+            soundEnabled={soundEnabled}
+            onToggleSound={() => setSoundEnabled((prev) => !prev)}
+            themeMode={themeMode}
+            theme={theme}
+            onSelectThemeMode={handleSelectThemeMode}
+            onClearAllSessions={handleClearAllSessions}
+          />
+        ) : (
+          <>
+            {/* Message Stream or Unified Spatial Hero (Seamless shared elements) */}
+            <div className={`messages-container ${(messages.length === 0 || currentView === 'dashboard') ? 'is-empty' : ''}`}>
+              {(messages.length === 0 || currentView === 'dashboard') ? (
+                /* Unified Hero Container (Persists seamlessly across Dashboard & Chat) */
+                <div className={`welcome-hero-container ${currentView === 'dashboard' ? 'is-dashboard-mode' : 'is-chat-mode'}`}>
+                  <div className="welcome-logo-badge">
+                    <OrionLogo size="lg" isGenerating={isGenerating} />
+                  </div>
 
               {/* Seamless Text Morph */}
               <div className="welcome-titles-wrapper">
@@ -1170,32 +1191,11 @@ export default function App() {
           reasoningTier={reasoningTier}
           setReasoningTier={handleReasoningTierChange}
           customProviders={customProviders}
-          onOpenManageProviders={() => setIsManageProvidersOpen(true)}
+          onOpenManageProviders={() => setCurrentView('providers')}
         />
+          </>
+        )}
       </main>
-
-      {/* Settings Modal */}
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        soundEnabled={soundEnabled}
-        onToggleSound={() => setSoundEnabled((prev) => !prev)}
-        themeMode={themeMode}
-        theme={theme}
-        onSelectThemeMode={handleSelectThemeMode}
-        onClearAllSessions={handleClearAllSessions}
-      />
-
-      {/* Manage Custom Providers Modal (OpenAI, Gemini, Claude, Ollama, etc.) */}
-      <ManageProvidersModal
-        isOpen={isManageProvidersOpen}
-        onClose={() => setIsManageProvidersOpen(false)}
-        customProviders={customProviders}
-        activeProviderId={selectedModel}
-        onSaveProvider={handleSaveCustomProvider}
-        onDeleteProvider={handleDeleteCustomProvider}
-        onSelectProvider={handleSelectCustomProvider}
-      />
 
       {/* Image Lightbox Modal */}
       {previewImage && (

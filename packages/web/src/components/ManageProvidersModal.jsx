@@ -57,13 +57,14 @@ function maskApiKey(key) {
 }
 
 export default function ManageProvidersModal({
-  isOpen,
+  isOpen = false,
   onClose,
   customProviders = [],
   activeProviderId = null,
   onSaveProvider,
   onDeleteProvider,
   onSelectProvider,
+  isPage = false,
 }) {
   // Views: 'catalog' | 'add' | 'manage'
   const [view, setView] = useState('catalog');
@@ -125,15 +126,15 @@ export default function ManageProvidersModal({
         }
       }
     };
-    if (isOpen) {
+    if (isOpen || isPage) {
       window.addEventListener('keydown', handleKeyDown);
     }
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose, view]);
+  }, [isOpen, isPage, onClose, view]);
 
   // Reset view to catalog whenever modal re-opens
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen || isPage) {
       setView('catalog');
       setManagingProviderId(null);
       setAddTestResult(null);
@@ -517,64 +518,70 @@ export default function ManageProvidersModal({
     return clean.endsWith('/chat/completions') ? clean : `${clean}/chat/completions`;
   };
 
-  return (
+  if (!isOpen && !isPage) return null;
+
+  const modalContent = (
     <div
-      className="modal-backdrop"
-      onMouseDown={handleBackdropMouseDown}
-      onMouseUp={handleBackdropMouseUp}
-      aria-modal="true"
-      role="dialog"
+      className={isPage ? "provider-page-content is-page-mode" : "modal-dialog provider-modal-dialog provider-modal-large"}
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
     >
-      <div
-        className="modal-dialog provider-modal-dialog provider-modal-large"
-        onMouseDown={(e) => e.stopPropagation()}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="modal-header">
-          {view === 'add' ? (
-            <div className="provider-header-nav">
+      {/* Header */}
+      <div className={isPage ? "page-view-header modal-header" : "modal-header"}>
+        {view === 'add' ? (
+          <div className="provider-header-nav">
+            <button
+              type="button"
+              className={isPage ? "page-back-nav-btn" : "provider-back-btn"}
+              onClick={() => setView('catalog')}
+              title="Kembali ke katalog provider"
+            >
+              <ArrowLeft size={16} />
+              <span>Daftar Provider</span>
+            </button>
+            <h2 className={isPage ? "page-view-title" : "modal-title"}>Tambah {currentTemplate.name}</h2>
+          </div>
+        ) : view === 'manage' ? (
+          <div className="provider-header-nav">
+            <button
+              type="button"
+              className={isPage ? "page-back-nav-btn" : "provider-back-btn"}
+              onClick={() => setView('catalog')}
+              title="Kembali ke katalog provider"
+            >
+              <ArrowLeft size={16} />
+              <span>Daftar Provider</span>
+            </button>
+            <h2 className={isPage ? "page-view-title" : "modal-title"}>Pengaturan Provider</h2>
+          </div>
+        ) : (
+          <div className="provider-header-title-box">
+            {isPage && (
               <button
                 type="button"
-                className="provider-back-btn"
-                onClick={() => setView('catalog')}
-                title="Kembali ke katalog provider"
+                className="page-back-nav-btn"
+                onClick={onClose}
+                title="Kembali ke Dashboard Utama"
               >
-                <ArrowLeft size={16} />
-                <span>Daftar Provider</span>
+                <ArrowLeft size={14} />
+                <span>Kembali ke Dashboard</span>
               </button>
-              <h2 className="modal-title">Tambah {currentTemplate.name}</h2>
-            </div>
-          ) : view === 'manage' ? (
-            <div className="provider-header-nav">
-              <button
-                type="button"
-                className="provider-back-btn"
-                onClick={() => setView('catalog')}
-                title="Kembali ke katalog provider"
-              >
-                <ArrowLeft size={16} />
-                <span>Daftar Provider</span>
-              </button>
-              <h2 className="modal-title">Pengaturan Provider</h2>
-            </div>
-          ) : (
-            <div className="provider-header-title-box">
-              <h2 className="modal-title">Kelola Provider AI</h2>
-              <p className="provider-modal-desc">
-                Pilih atau tambahkan endpoint OpenAI-compatible (Ollama, LM Studio, Cloud LLM)
-              </p>
-            </div>
-          )}
-          <button
-            type="button"
-            className="modal-close-btn"
-            onClick={onClose}
-            aria-label="Tutup jendela"
-          >
-            <X size={16} />
-          </button>
-        </div>
+            )}
+            <h2 className={isPage ? "page-view-title" : "modal-title"}>Kelola Provider AI</h2>
+            <p className={isPage ? "page-view-subtitle" : "provider-modal-desc"}>
+              Pilih atau tambahkan endpoint OpenAI-compatible (Ollama, LM Studio, Cloud LLM)
+            </p>
+          </div>
+        )}
+        <button
+          type="button"
+          className="modal-close-btn"
+          onClick={onClose}
+          aria-label="Tutup jendela"
+        >
+          <X size={16} />
+        </button>
+      </div>
 
         {/* Modal Body */}
         <div className="modal-body provider-modal-body">
@@ -1243,6 +1250,25 @@ export default function ManageProvidersModal({
           )}
         </div>
       </div>
+  );
+
+  if (isPage) {
+    return (
+      <div className="page-view-container providers-page-view animate-page-enter">
+        {modalContent}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="modal-backdrop"
+      onMouseDown={handleBackdropMouseDown}
+      onMouseUp={handleBackdropMouseUp}
+      aria-modal="true"
+      role="dialog"
+    >
+      {modalContent}
     </div>
   );
 }
