@@ -205,6 +205,65 @@ export async function startTerminalChat() {
       process.exit(0);
     }
 
+    if (action === '/model' || action === '/models') {
+      if (!arg) {
+        console.log(`\n${c.bold}${c.brightCyan}✦ Katalog Model AI Orion:${c.reset}`);
+        MODELS.forEach((m, idx) => {
+          const isCurrent = m.id === currentModel;
+          const marker = isCurrent ? ` ${c.green}[Aktif]${c.reset}` : '';
+          console.log(
+            `  ${c.cyan}[${idx + 1}] ${c.bold}${m.id.padEnd(12)}${c.reset} ${c.white}${m.desc}${c.reset}${marker}`
+          );
+        });
+        console.log(`\n${c.gray}Cara ganti model: ${c.yellow}/model <nama|nomor>${c.gray} (contoh: ${c.yellow}/model agnes${c.gray} atau ${c.yellow}/model 2${c.gray})${c.reset}\n`);
+        return;
+      }
+
+      // Check by index number (1, 2, 3) or by id
+      let targetModel = null;
+      const numIdx = parseInt(arg, 10);
+      if (!isNaN(numIdx) && numIdx >= 1 && numIdx <= MODELS.length) {
+        targetModel = MODELS[numIdx - 1];
+      } else {
+        targetModel = MODELS.find((m) => m.id.toLowerCase() === arg.toLowerCase());
+      }
+
+      if (targetModel) {
+        currentModel = targetModel.id;
+        console.log(
+          `\n${c.green}✓ Model AI dialihkan ke: ${c.bold}${targetModel.name}${c.reset} ${c.dim}(${targetModel.id})${c.reset}\n`
+        );
+      } else {
+        console.log(
+          `\n${c.red}⚠️  Model '${arg}' tidak ditemukan.${c.reset} Ketik ${c.yellow}/model${c.reset} untuk melihat daftar.\n`
+        );
+      }
+      return;
+    }
+
+    if (action === '/tier' || action === '/reasoning') {
+      const validTiers = ['low', 'medium', 'high'];
+      if (!arg || !validTiers.includes(arg.toLowerCase())) {
+        console.log(`\n${c.bold}Tingkat Penalaran (Reasoning Tier):${c.reset} ${c.cyan}${reasoningTier}${c.reset}`);
+        console.log(`${c.gray}Pilihan: ${c.yellow}/tier low${c.gray} | ${c.yellow}/tier medium${c.gray} | ${c.yellow}/tier high${c.reset}\n`);
+        return;
+      }
+      reasoningTier = arg.toLowerCase();
+      console.log(`\n${c.green}✓ Tingkat penalaran diatur ke: ${c.bold}${reasoningTier}${c.reset}\n`);
+      return;
+    }
+
+    if (action === '/help' || action === '/h' || action === '/?') {
+      console.log(`\n${c.bold}${c.brightCyan}✦ Daftar Perintah Orion Terminal Chat:${c.reset}`);
+      console.log(`  ${c.yellow}/model${c.reset} [nama|nomor]   Lihat katalog atau beralih model AI`);
+      console.log(`  ${c.yellow}/tier${c.reset} [level]        Atur tingkat penalaran (${c.dim}low, medium, high${c.reset})`);
+      console.log(`  ${c.yellow}/clear${c.reset}               Bersihkan layar terminal`);
+      console.log(`  ${c.yellow}/reset${c.reset}               Mulai percakapan baru (reset riwayat)`);
+      console.log(`  ${c.yellow}/help${c.reset}                Tampilkan bantuan perintah`);
+      console.log(`  ${c.yellow}/exit${c.reset}                Keluar dari sesi terminal chat\n`);
+      return;
+    }
+
     if (action === '/clear') {
       console.clear();
       printHeader(currentModel, reasoningTier);
@@ -213,9 +272,11 @@ export async function startTerminalChat() {
 
     if (action === '/reset' || action === '/new') {
       history = [];
-      console.log(`${c.green}✓ Riwayat percakapan telah direset.${c.reset}\n`);
+      console.log(`\n${c.green}✓ Riwayat percakapan telah direset.${c.reset}\n`);
       return;
     }
+
+    console.log(`\n${c.yellow}⚠️  Perintah '${action}' tidak dikenal.${c.reset} Ketik ${c.yellow}/help${c.reset} untuk panduan.\n`);
   }
 
   // Handle Ctrl+C gracefully
