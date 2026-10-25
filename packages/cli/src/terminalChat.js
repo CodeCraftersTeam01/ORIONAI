@@ -456,6 +456,10 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
       out += `\x1b[90m${leftTokens}${' '.repeat(gap2)}${keyColor}${keyLabel}\x1b[0m\x1b[K\n`;
       linesBelow++;
 
+      // Pi Status Footer Line 3: agent status indicator
+      out += `\x1b[90m● 🌌 orion-core: \x1b[33m⚡ READY\x1b[0m\x1b[K\n`;
+      linesBelow++;
+
       process.stdout.write(out);
 
       // Restore cursor position to the input line
