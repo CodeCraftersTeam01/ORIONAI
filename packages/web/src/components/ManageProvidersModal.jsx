@@ -556,17 +556,6 @@ export default function ManageProvidersModal({
           </div>
         ) : (
           <div className="provider-header-title-box">
-            {isPage && (
-              <button
-                type="button"
-                className="page-back-nav-btn"
-                onClick={onClose}
-                title="Kembali ke Dashboard Utama"
-              >
-                <ArrowLeft size={14} />
-                <span>Kembali ke Dashboard</span>
-              </button>
-            )}
             <h2 className={isPage ? "page-view-title" : "modal-title"}>Kelola Provider AI</h2>
             <p className={isPage ? "page-view-subtitle" : "provider-modal-desc"}>
               Pilih atau tambahkan endpoint OpenAI-compatible (Ollama, LM Studio, Cloud LLM)
