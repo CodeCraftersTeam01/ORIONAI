@@ -168,13 +168,39 @@ export function cleanIndonesianText(text) {
   res = res.replace(/([a-zA-Z0-9\u00C0-\u017F])(\*\*[^\*\n]+\*\*)/g, '$1 $2');
   res = res.replace(/(\*\*[^\*\n]+\*\*)([a-zA-Z0-9\u00C0-\u017F])/g, '$1 $2');
 
-  // 5. Prepositions squished with words
-  res = res.replace(/\b(dari|ke|di|pada|untuk|dengan|tanpa|dalam|hingga|sampai|mulai|serta)(penjelasan|perencanaan|kebutuhan|analisis|pemecahan|pertanyaan|pembuatan|pengembangan|pembelajaran|penggunaan|pelaksanaan|pekerjaan)\b/gi, '$1 $2');
+  // 5. Glued Relative Pronoun "yang"
+  res = res.replace(/\byang([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'yang $1');
 
-  // 6. Modal verbs squished with verbs
+  // 6. Glued Preposition "dengan"
+  res = res.replace(/\bdengan([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'dengan $1');
+  res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,})dengan\b/gi, '$1 dengan');
+
+  // 7. Glued Preposition "untuk"
+  res = res.replace(/\buntuk([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'untuk $1');
+  res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,})untuk\b/gi, '$1 untuk');
+
+  // 8. Glued Linking Verbs "adalah" & "merupakan"
+  res = res.replace(/\badalah([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'adalah $1');
+  res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,})adalah\b/gi, '$1 adalah');
+  res = res.replace(/\bmerupakan([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'merupakan $1');
+  res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,})merupakan\b/gi, '$1 merupakan');
+
+  // 9. Glued Adverbs & Prepositions: secara, sebagai, dalam, tanpa, pada, oleh
+  res = res.replace(/\bsecara([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'secara $1');
+  res = res.replace(/\bsebagai([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'sebagai $1');
+  res = res.replace(/\bdalam([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'dalam $1');
+  res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,})dalam\b/gi, '$1 dalam');
+  res = res.replace(/\btanpa([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'tanpa $1');
+  res = res.replace(/\bpada([a-zA-Z\u00C0-\u017F]{3,})\b/gi, (m, p1) => (/^(hal|nan)$/i.test(p1) ? m : `pada ${p1}`));
+  res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,})oleh\b/gi, (m, p1) => (/^memper$/i.test(p1) ? m : `${p1} oleh`));
+
+  // 10. Prepositions squished with words
+  res = res.replace(/\b(dari|ke|di|pada|untuk|dengan|tanpa|dalam|hingga|sampai|mulai|serta)(penjelasan|perencanaan|kebutuhan|analisis|pemecahan|pertanyaan|pembuatan|pengembangan|pembelajaran|penggunaan|pelaksanaan|pekerjaan|cara|tingkat|kematangan|rasa|selera)\b/gi, '$1 $2');
+
+  // 11. Modal verbs squished with verbs
   res = res.replace(/\b(siap|dapat|bisa|akan|telah|sudah|sedang|ingin)(membantu|menjawab|menjelaskan|menganalisis|merancang|menyelesaikan|memberikan|menemukan|melakukan)\b/gi, '$1 $2');
 
-  // 7. Word squished with "yang"
+  // 12. Word squished with "yang"
   res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,})(yang|ini|itu|tersebut)\b/gi, (match, p1, p2) => {
     if (/^(go|sa|la|wa|ba|pe|se)yang$/i.test(match)) return match;
     return `${p1} ${p2}`;
@@ -216,6 +242,10 @@ export function cleanIndonesianText(text) {
     [/\bbisabantu\b/gi, 'bisa bantu'],
     [/\bsayabantu\b/gi, 'saya bantu'],
     [/\bhariini\b/gi, 'hari ini'],
+    [/\byangdimasak\b/gi, 'yang dimasak'],
+    [/\bdisajikandengan\b/gi, 'disajikan dengan'],
+    [/\btingkatkematangan\b/gi, 'tingkat kematangan'],
+    [/\bsesuaiselera\b/gi, 'sesuai selera'],
   ];
 
   for (const [re, repl] of SQUISHED_MAP) {

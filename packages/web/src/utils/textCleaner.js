@@ -1,5 +1,5 @@
 // packages/web/src/utils/textCleaner.js
-// Shared Indonesian prose formatter ensuring identical typographic quality between text chat and voice mode
+// Shared Indonesian prose formatter ensuring clean spacing and typographic elegance
 
 export function cleanIndonesianText(text) {
   if (!text || typeof text !== 'string') return text || '';
@@ -31,23 +31,65 @@ export function cleanIndonesianText(text) {
   // 5. Lowercase followed directly by Uppercase (CamelCase squished Indonesian prose)
   res = res.replace(/([a-z\u00C0-\u017F])([A-Z])/g, '$1 $2');
 
-  // 6. Prepositions squished with words/pronouns (e.g. denganAnda -> dengan Anda, untukAnda -> untuk Anda)
+  // 6. Glued Relative Pronoun "yang":
+  // e.g. yangdimasak -> yang dimasak, yangdibuat -> yang dibuat, yangdapat -> yang dapat
+  res = res.replace(/\byang([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'yang $1');
+
+  // 7. Glued Preposition "dengan":
+  // Prefix: dengancara -> dengan cara, denganmudah -> dengan mudah, dengantingkat -> dengan tingkat
+  res = res.replace(/\bdengan([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'dengan $1');
+  // Suffix: disajikandengan -> disajikan dengan, berkaitandengan -> berkaitan dengan, samadengan -> sama dengan
+  res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,})dengan\b/gi, '$1 dengan');
+
+  // 8. Glued Preposition "untuk":
+  // Prefix: untukmembuat -> untuk membuat, untukanak -> untuk anak
+  res = res.replace(/\buntuk([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'untuk $1');
+  // Suffix: bergunauntuk -> berguna untuk, cocokuntuk -> cocok untuk
+  res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,})untuk\b/gi, '$1 untuk');
+
+  // 9. Glued Linking Verbs "adalah" & "merupakan":
+  // Prefix: adalahsebuah -> adalah sebuah, adalahsalah -> adalah salah
+  res = res.replace(/\badalah([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'adalah $1');
+  res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,})adalah\b/gi, '$1 adalah');
+  res = res.replace(/\bmerupakan([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'merupakan $1');
+  res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,})merupakan\b/gi, '$1 merupakan');
+
+  // 10. Glued Adverbs & Conjunctions: "secara", "sebagai", "dalam", "tanpa":
+  res = res.replace(/\bsecara([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'secara $1');
+  res = res.replace(/\bsebagai([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'sebagai $1');
+  res = res.replace(/\bdalam([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'dalam $1');
+  res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,})dalam\b/gi, '$1 dalam');
+  res = res.replace(/\btanpa([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'tanpa $1');
+
+  // 11. Glued Preposition "pada" (preserving "padahal" and "padanan"):
+  res = res.replace(/\bpada([a-zA-Z\u00C0-\u017F]{3,})\b/gi, (match, p1) => {
+    if (/^(hal|nan)$/i.test(p1)) return match;
+    return `pada ${p1}`;
+  });
+
+  // 12. Glued Agent Marker "oleh" (preserving "memperoleh"):
+  res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,})oleh\b/gi, (match, p1) => {
+    if (/^memper$/i.test(p1)) return match;
+    return `${p1} oleh`;
+  });
+
+  // 13. Prepositions squished with common nouns/pronouns:
   const prepPattern = '\\b(dari|ke|di|pada|untuk|dengan|tanpa|dalam|hingga|sampai|mulai|serta|sebagai)';
-  const nounPattern = '(penjelasan|perencanaan|kebutuhan|analisis|pemecahan|pertanyaan|pembuatan|pengembangan|pembelajaran|penggunaan|pelaksanaan|pekerjaan|bantuan|solusi|informasi|tugas|layanan|proses|topik|aspek|bidang|anda|kamu|kita|saya|mereka|siapa|apa|semua)';
+  const nounPattern = '(penjelasan|perencanaan|kebutuhan|analisis|pemecahan|pertanyaan|pembuatan|pengembangan|pembelajaran|penggunaan|pelaksanaan|pekerjaan|bantuan|solusi|informasi|tugas|layanan|proses|topik|aspek|bidang|cara|tingkat|kematangan|rasa|selera|tujuan|anda|kamu|kita|saya|mereka|siapa|apa|semua)';
   res = res.replace(new RegExp(prepPattern + nounPattern + '\\b', 'gi'), '$1 $2');
 
-  // 7. Modal verbs squished with verbs (e.g. siapmembantu -> siap membantu, bisabantu -> bisa bantu)
+  // 14. Modal verbs squished with verbs:
   const modalPattern = '\\b(siap|dapat|bisa|akan|telah|sudah|sedang|ingin|harus|perlu|boleh)';
-  const verbPattern = '(membantu|menjawab|menjelaskan|menganalisis|merancang|menyelesaikan|memberikan|menemukan|melakukan|bekerja|bantu|pakai|gunakan|bicara|dengar)';
+  const verbPattern = '(membantu|menjawab|menjelaskan|menganalisis|merancang|menyelesaikan|memberikan|menemukan|melakukan|bekerja|bantu|pakai|gunakan|bicara|dengar|membuat|memasak|disajikan|dipanggang|digoreng)';
   res = res.replace(new RegExp(modalPattern + verbPattern + '\\b', 'gi'), '$1 $2');
 
-  // 8. Pronouns squished with words ("buatanyang" -> "buatan yang")
+  // 15. Suffix words: "buatanyang" -> "buatan yang", "halini" -> "hal ini"
   res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,})(yang|ini|itu|tersebut)\b/gi, (match, p1, p2) => {
     if (/^(go|sa|la|wa|ba|pe|se)yang$/i.test(match)) return match;
     return `${p1} ${p2}`;
   });
 
-  // 9. Dictionary of known glued Indonesian phrases
+  // 16. Comprehensive dictionary of squished Indonesian phrases
   const SQUISHED_MAP = [
     [/\bSenangbertemudengan\b/gi, 'Senang bertemu dengan'],
     [/\bbertemudengan\b/gi, 'bertemu dengan'],
@@ -82,16 +124,24 @@ export function cleanIndonesianText(text) {
     [/\bhariini\b/gi, 'hari ini'],
     [/\bapakahada\b/gi, 'apakah ada'],
     [/\badayang\b/gi, 'ada yang'],
+    [/\bsalahsatu\b/gi, 'salah satu'],
+    [/\bcaramembuat\b/gi, 'cara membuat'],
+    [/\bcaramemasak\b/gi, 'cara memasak'],
+    [/\btingkatkematangan\b/gi, 'tingkat kematangan'],
+    [/\bsesuaiselera\b/gi, 'sesuai selera'],
+    [/\bdengancara\b/gi, 'dengan cara'],
+    [/\byangdimasak\b/gi, 'yang dimasak'],
+    [/\bdisajikandengan\b/gi, 'disajikan dengan'],
   ];
 
   for (const [re, repl] of SQUISHED_MAP) {
     res = res.replace(re, repl);
   }
 
-  // 10. Normalize consecutive spaces
+  // 17. Normalize consecutive spaces
   res = res.replace(/[ \t]{2,}/g, ' ');
 
-  // 11. Restore placeholders
+  // 18. Restore placeholders
   linkPlaceholders.forEach((link, idx) => {
     res = res.replace(`__MD_LINK_${idx}__`, link);
   });

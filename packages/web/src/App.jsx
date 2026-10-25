@@ -608,8 +608,8 @@ export default function App() {
         customProvidersRef.current || customProviders
       );
 
-      // Voice prompt: explicit instruction for short, punchy, conversational spoken reply
-      const voicePrompt = `${queryText}\n\n[Instruksi Panggilan Suara]: Jawablah secara SINGKAT, PADAT, BERBOBOT, dan natural seperti berbicara di telepon (maksimal 1-2 kalimat saja). DILARANG menggunakan markdown, bullet points, atau kode.`;
+      // Voice prompt: explicit instruction for short, punchy, conversational spoken reply with standard spacing
+      const voicePrompt = `${queryText}\n\n[Instruksi Panggilan Suara]: Jawablah secara SINGKAT, PADAT, BERBOBOT, dan natural seperti berbicara di telepon (maksimal 1-2 kalimat saja). Wajib gunakan spasi pemisah antar kata yang benar dan normal (jangan menggabungkan kata). DILARANG menggunakan markdown, bullet points, atau kode.`;
 
       const res = await fetch('/api/chat/stream', {
         method: 'POST',
