@@ -363,7 +363,9 @@ export async function streamChatCompletion({
   try {
     const { messages, config } = buildMessagesPayload({ message, history, attachments, modelId: model, reasoningTier });
     const { targetUrl, headers, targetModel, temperature } = resolveEndpointAndHeaders(customProvider, config, orionApiKey);
-    console.log(`[AI STREAM] Routing request -> modelId: "${model}", targetModel: "${targetModel}", targetUrl: "${targetUrl}"`);
+    if (process.env.DEBUG_AI) {
+      console.log(`[AI STREAM] Routing request -> modelId: "${model}", targetModel: "${targetModel}", targetUrl: "${targetUrl}"`);
+    }
 
     const response = await fetch(targetUrl, {
       method: 'POST',
