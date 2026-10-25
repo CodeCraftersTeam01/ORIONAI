@@ -128,34 +128,46 @@ router.post('/stream', chatRateLimiter, validateChatInput, (req, res) => {
     res.flushHeaders();
   }
 
-  streamChatCompletion({
-    message,
-    history: history || [],
-    attachments: attachments || [],
-    model: model || 'orion',
-    reasoningTier: reasoningTier || 'medium',
-    customProvider: customProvider || null,
-    orionApiKey: orionApiKey || null,
-    signal: abortController.signal,
-    onChunk: (chunk) => {
+  try {
+    streamChatCompletion({
+      message,
+      history: history || [],
+      attachments: attachments || [],
+      model: model || 'orion',
+      reasoningTier: reasoningTier || 'medium',
+      customProvider: customProvider || null,
+      orionApiKey: orionApiKey || null,
+      signal: abortController.signal,
+      onChunk: (chunk) => {
+        if (res.writableEnded) return;
+        res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
+        if (typeof res.flush === 'function') {
+          res.flush();
+        }
+      },
+      onDone: () => {
+        if (res.writableEnded) return;
+        res.write('data: [DONE]\n\n');
+        res.end();
+      },
+      onError: (err) => {
+        if (res.writableEnded) return;
+        console.error('SSE Stream Error:', err.message);
+        res.write(`data: ${JSON.stringify({ error: err.message || 'Koneksi ke AI server terputus.' })}\n\n`);
+        res.end();
+      },
+    }).catch((err) => {
       if (res.writableEnded) return;
-      res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
-      if (typeof res.flush === 'function') {
-        res.flush();
-      }
-    },
-    onDone: () => {
-      if (res.writableEnded) return;
-      res.write('data: [DONE]\n\n');
-      res.end();
-    },
-    onError: (err) => {
-      if (res.writableEnded) return;
-      console.error('SSE Stream Error:', err.message);
+      console.error('SSE Async Rejection:', err.message);
       res.write(`data: ${JSON.stringify({ error: err.message || 'Koneksi ke AI server terputus.' })}\n\n`);
       res.end();
-    },
-  });
+    });
+  } catch (err) {
+    if (res.writableEnded) return;
+    console.error('SSE Synchronous Exception:', err.message);
+    res.write(`data: ${JSON.stringify({ error: err.message || 'Koneksi ke AI server terputus.' })}\n\n`);
+    res.end();
+  }
 });
 
 // POST /api/chat/test-provider (Dynamic connection ping using /models without hardcoded model)
