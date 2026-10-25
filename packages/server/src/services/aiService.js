@@ -586,7 +586,7 @@ export async function testSpecificModel({ baseUrl, apiKey, modelId }) {
   };
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const timeoutId = setTimeout(() => controller.abort(), 45000);
 
   try {
     const res = await fetch(targetUrl, {
@@ -599,12 +599,19 @@ export async function testSpecificModel({ baseUrl, apiKey, modelId }) {
 
     if (!res.ok) {
       const errText = await res.text();
-      let parsedMsg = errText;
+      let parsedMsg = '';
       try {
         const parsed = JSON.parse(errText);
-        parsedMsg = parsed.error?.message || parsed.message || errText;
+        parsedMsg = parsed.error?.message || (typeof parsed.error === 'string' ? parsed.error : null) || parsed.message || '';
       } catch {}
-      throw new Error(`HTTP ${res.status}: ${parsedMsg}`);
+
+      if (res.status === 401 || res.status === 403 || /unauthorized|api\s*key|kredensial|token/i.test(parsedMsg || errText)) {
+        throw new Error('API Key belum diisi atau tidak valid (Akses ditolak). Silakan tambahkan API Key yang benar pada menu "API Keys" di atas.');
+      }
+      if (res.status === 404) {
+        throw new Error(`Model "${modelId}" tidak ditemukan atau tidak tersedia di server provider.`);
+      }
+      throw new Error(parsedMsg || `HTTP ${res.status}: Gagal memverifikasi model`);
     }
 
     const data = await res.json();
