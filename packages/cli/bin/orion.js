@@ -172,26 +172,44 @@ if (
   process.exit(0);
 }
 
+// Load environment variables from server/.env if available
+const serverEnvPath = path.resolve(__dirname, '../../server/.env');
+if (fs.existsSync(serverEnvPath)) {
+  try {
+    const content = fs.readFileSync(serverEnvPath, 'utf8');
+    content.split('\n').forEach((line) => {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith('#')) {
+        const idx = trimmed.indexOf('=');
+        if (idx !== -1) {
+          const key = trimmed.slice(0, idx).trim();
+          const val = trimmed.slice(idx + 1).trim().replace(/^["']|["']$/g, '');
+          if (key && !process.env[key]) {
+            process.env[key] = val;
+          }
+        }
+      }
+    });
+  } catch {}
+}
+
 // Check if --help or -h or help
 if (args.includes('--help') || args.includes('-h') || args[0] === 'help') {
   console.log(`
 🌌 Orion Agent CLI — Platform Asisten Cerdas Kosmik (v${appVersion})
 
 Penggunaan:
-  orion [perintah/opsi]
-
-Perintah Utama:
-  orion chat, -c        Buka percakapan AI interaktif langsung di terminal
-  orion --view          Jalankan service dan langsung buka Orion Agent di browser
+  orion                 Mulai obrolan AI interaktif langsung di terminal (Default)
+  orion chat, -c        Mulai obrolan AI interaktif di terminal
+  orion --view          Jalankan service dan buka antarmuka web di browser
   orion start           Jalankan service server di foreground
   orion --stop          Hentikan service Orion Agent yang sedang berjalan
   orion --restart       Muat ulang / restart service Orion Agent
-  orion --status        Cek apakah Orion Agent sedang aktif
-  orion --version       Tampilkan informasi versi lengkap
+  orion --status        Cek status apakah Orion Agent sedang aktif
+  orion --version       Tampilkan informasi versi
   orion --help          Tampilkan petunjuk penggunaan ini
 
 Opsi Tambahan:
-  chat, --chat, -c      Mulai sesi terminal chat interaktif
   --view, -o, --open    Otomatis membuka browser default ke antarmuka web
   --port, -p <nomor>    Tentukan port server (default: 5001)
   --stop, stop          Hentikan proses yang berjalan di port target
@@ -201,24 +219,11 @@ Opsi Tambahan:
   --help, -h            Tampilkan bantuan ini
 
 Contoh Penggunaan:
-  orion chat                    # Percakapan interaktif langsung di terminal
+  orion                         # Langsung masuk ke chat interaktif di terminal
   orion --view                  # Buka di browser di port 5001
   orion --restart --view        # Restart service dan buka ulang di browser
   orion --stop                  # Matikan service di port 5001
 `);
-  process.exit(0);
-}
-
-// Handle interactive terminal chat mode
-const isChatMode =
-  args.includes('chat') ||
-  args.includes('--chat') ||
-  args.includes('-c') ||
-  args.includes('interactive') ||
-  args.includes('-i');
-
-if (isChatMode) {
-  await startTerminalChat();
   process.exit(0);
 }
 
@@ -247,6 +252,30 @@ if (isRestart) {
   console.log(`🔄 Me-restart Orion Agent di port ${targetPort}...`);
   await stopRunningService(targetPort, true);
   await new Promise((res) => setTimeout(res, 600));
+}
+
+// Explicit web server flags
+const isServerCommand =
+  args.includes('start') ||
+  args.includes('serve') ||
+  args.includes('server') ||
+  args.includes('--view') ||
+  args.includes('-o') ||
+  args.includes('--open') ||
+  args.includes('view');
+
+// If no server-specific command is passed, default to interactive terminal chat!
+const isChatMode =
+  !isServerCommand ||
+  args.includes('chat') ||
+  args.includes('--chat') ||
+  args.includes('-c') ||
+  args.includes('interactive') ||
+  args.includes('-i');
+
+if (isChatMode && !isServerCommand) {
+  await startTerminalChat();
+  process.exit(0);
 }
 
 const shouldView =
