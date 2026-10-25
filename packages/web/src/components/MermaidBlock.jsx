@@ -377,14 +377,14 @@ export default function MermaidBlock({ code, title = 'Flowchart' }) {
           }
         })
         .catch((err) => {
-          console.warn('[Mermaid Render Caught]:', err.message || err);
+          console.warn('[Mermaid Syntax Notice]: Diagram syntax belum selesai atau tidak valid, menampilkan teks kode.', err.message || err);
           if (isMounted) {
             setError(err.message || 'Format diagram tidak dikenali');
             scheduleCleanup(renderId);
           }
         });
     } catch (err) {
-      console.warn('[Mermaid Render Caught]:', err.message || err);
+      console.warn('[Mermaid Syntax Notice]: Diagram syntax belum selesai atau tidak valid, menampilkan teks kode.', err.message || err);
       if (isMounted) {
         setError(err.message || 'Format diagram tidak dikenali');
         scheduleCleanup(renderId);
