@@ -329,7 +329,8 @@ function readInteractivePrompt({ promptPrefix, syncedConfig, currentModel, reaso
     let menuType = null; // 'command' | 'model' | 'tier'
     let menuIndex = 0;
     let menuLinesRendered = 0;
-    let menuItems = [];
+    let allItems = [];
+    let filteredItems = [];
     let menuTitle = '';
 
     const wasRaw = process.stdin.isRaw;
@@ -351,12 +352,12 @@ function readInteractivePrompt({ promptPrefix, syncedConfig, currentModel, reaso
 
     function renderMenu() {
       clearMenu();
-      if (!menuOpen || menuItems.length === 0) return;
+      if (!menuOpen || filteredItems.length === 0) return;
 
       const visiblePromptLen = promptPrefix.replace(/\x1b\[[0-9;]*m/g, '').length;
       let out = `\n\x1b[1m\x1b[36m${menuTitle}\x1b[0m \x1b[90m(Gunakan ↑ / ↓ lalu Enter, Esc untuk batal)\x1b[0m\x1b[K\n`;
 
-      menuItems.forEach((item, idx) => {
+      filteredItems.forEach((item, idx) => {
         const isSelected = idx === menuIndex;
         const cursor = isSelected ? `\x1b[36m\x1b[1m❯\x1b[0m` : ` `;
         const label = isSelected
@@ -370,26 +371,78 @@ function readInteractivePrompt({ promptPrefix, syncedConfig, currentModel, reaso
         out += `${cursor} ${label} ${detail}${badge}\x1b[K\n`;
       });
 
-      menuLinesRendered = menuItems.length + 2;
+      menuLinesRendered = filteredItems.length + 2;
       process.stdout.write(out);
 
-      // Restore cursor position to prompt line
+      // Restore cursor position to prompt line accurately
       process.stdout.write(`\x1b[${menuLinesRendered}A\r\x1b[${visiblePromptLen + buffer.length}C`);
+    }
+
+    function filterCommandItems() {
+      const query = buffer.trim().toLowerCase();
+      if (!query || query === '/') {
+        filteredItems = allItems;
+      } else {
+        const cleanQuery = query.startsWith('/') ? query.slice(1) : query;
+        filteredItems = allItems.filter((item) => {
+          const itemLabel = item.label.toLowerCase();
+          const itemAction = item.action.toLowerCase();
+          return (
+            itemLabel.startsWith(query) ||
+            itemLabel.slice(1).startsWith(cleanQuery) ||
+            itemAction.startsWith(cleanQuery)
+          );
+        });
+      }
+
+      if (filteredItems.length === 0) {
+        clearMenu();
+        menuOpen = false;
+        return;
+      }
+
+      menuOpen = true;
+      menuIndex = 0;
+      renderMenu();
     }
 
     function openCommandMenu() {
       menuOpen = true;
       menuType = 'command';
       menuTitle = '✦ Rekomendasi Perintah:';
-      menuItems = COMMAND_ITEMS;
-      menuIndex = 0;
+      allItems = COMMAND_ITEMS;
+      filterCommandItems();
+    }
+
+    function filterModelItems(search = '') {
+      if (!search) {
+        filteredItems = allItems;
+        menuIndex = Math.max(0, filteredItems.findIndex((m) => m.id === currentModel));
+      } else {
+        const q = search.toLowerCase();
+        filteredItems = allItems.filter(
+          (m) =>
+            m.id.toLowerCase().includes(q) ||
+            m.name.toLowerCase().includes(q) ||
+            (m.detail && m.detail.toLowerCase().includes(q))
+        );
+        menuIndex = 0;
+      }
+
+      if (filteredItems.length === 0) {
+        clearMenu();
+        menuOpen = false;
+        return;
+      }
+
+      menuOpen = true;
       renderMenu();
     }
 
-    function openModelMenu() {
+    function openModelMenu(initialFilter = '') {
       const freshConfig = loadSyncedConfig();
       const models = getAvailableModels(freshConfig);
-      menuItems = models.map((m) => ({
+      allItems = models.map((m) => ({
         label: m.id,
         detail: m.name !== m.id ? `${m.name} — ${m.desc}` : m.desc,
         id: m.id,
@@ -399,20 +452,20 @@ function readInteractivePrompt({ promptPrefix, syncedConfig, currentModel, reaso
       menuOpen = true;
       menuType = 'model';
       menuTitle = '✦ Pilih Model AI Aktif:';
-      menuIndex = Math.max(0, menuItems.findIndex((m) => m.id === currentModel));
-      renderMenu();
+      filterModelItems(initialFilter);
     }
 
     function openTierMenu() {
-      menuItems = [
+      allItems = [
         { label: 'low', detail: 'Penalaran ringkas & respon instan tercepat', value: 'low', badge: reasoningTier === 'low' ? 'Aktif' : '' },
         { label: 'medium', detail: 'Keseimbangan optimal kecepatan & penalaran', value: 'medium', badge: reasoningTier === 'medium' ? 'Aktif' : '' },
         { label: 'high', detail: 'Penalaran mendalam untuk masalah kompleks', value: 'high', badge: reasoningTier === 'high' ? 'Aktif' : '' },
       ];
+      filteredItems = allItems;
       menuOpen = true;
       menuType = 'tier';
       menuTitle = '✦ Pilih Tingkat Penalaran (Reasoning Tier):';
-      menuIndex = Math.max(0, menuItems.findIndex((t) => t.value === reasoningTier));
+      menuIndex = Math.max(0, filteredItems.findIndex((t) => t.value === reasoningTier));
       renderMenu();
     }
 
@@ -421,7 +474,7 @@ function readInteractivePrompt({ promptPrefix, syncedConfig, currentModel, reaso
     const onData = (chunk) => {
       const key = chunk.toString();
 
-      // 1. Ctrl+C
+      // 1. Ctrl+C (Clean termination)
       if (key === '\u0003') {
         clearMenu();
         cleanup();
@@ -429,43 +482,39 @@ function readInteractivePrompt({ promptPrefix, syncedConfig, currentModel, reaso
         process.exit(0);
       }
 
-      // 2. Menu Navigation when menu is open
-      if (menuOpen) {
-        // Arrow Up (\u001b[A, \u001bOA, k)
-        if (key === '\u001b[A' || key === '\u001bOA' || key === 'k') {
-          menuIndex = (menuIndex - 1 + menuItems.length) % menuItems.length;
+      // 2. Arrow Up
+      if (key === '\u001b[A' || key === '\u001bOA') {
+        if (menuOpen && filteredItems.length > 0) {
+          menuIndex = (menuIndex - 1 + filteredItems.length) % filteredItems.length;
           renderMenu();
           return;
         }
+      }
 
-        // Arrow Down (\u001b[B, \u001bOB, j)
-        if (key === '\u001b[B' || key === '\u001bOB' || key === 'j') {
-          menuIndex = (menuIndex + 1) % menuItems.length;
+      // 3. Arrow Down
+      if (key === '\u001b[B' || key === '\u001bOB') {
+        if (menuOpen && filteredItems.length > 0) {
+          menuIndex = (menuIndex + 1) % filteredItems.length;
           renderMenu();
           return;
         }
+      }
 
-        // Escape (\u001b)
-        if (key === '\u001b') {
+      // 4. Escape
+      if (key === '\u001b') {
+        if (menuOpen) {
           clearMenu();
           menuOpen = false;
           buffer = '';
           renderPrompt();
           return;
         }
+      }
 
-        // Backspace in menu
-        if (key === '\u007f' || key === '\b') {
-          clearMenu();
-          menuOpen = false;
-          buffer = '';
-          renderPrompt();
-          return;
-        }
-
-        // Enter in menu: Select option!
-        if (key === '\r' || key === '\n') {
-          const selected = menuItems[menuIndex];
+      // 5. Enter: Auto-selects the top/highlighted suggestion or executes typed prompt
+      if (key === '\r' || key === '\n') {
+        if (menuOpen && filteredItems.length > 0) {
+          const selected = filteredItems[menuIndex];
           clearMenu();
           menuOpen = false;
 
@@ -504,43 +553,42 @@ function readInteractivePrompt({ promptPrefix, syncedConfig, currentModel, reaso
           }
         }
 
-        // Quick letter matching in command menu (e.g. typing 'm' selects /model)
-        if (menuType === 'command' && key.length === 1 && /[a-z]/i.test(key)) {
-          const char = key.toLowerCase();
-          const foundIdx = menuItems.findIndex((it) => it.label.slice(1).startsWith(char));
-          if (foundIdx !== -1) {
-            menuIndex = foundIdx;
-            renderMenu();
-            return;
-          }
-        }
-
-        return;
-      }
-
-      // 3. Normal Prompt Input (Menu closed)
-      // Enter
-      if (key === '\r' || key === '\n') {
+        // When menu is closed or empty:
+        clearMenu();
         const text = buffer.trim();
         cleanup();
         process.stdout.write('\n');
 
-        if (text === '/' || text === '/menu') {
-          resolve({ type: 'open_command_menu' });
-          return;
-        }
-        if (text === '/model' || text === '/models') {
-          resolve({ type: 'open_model_menu' });
-          return;
-        }
-        if (text === '/tier' || text === '/reasoning') {
-          resolve({ type: 'open_tier_menu' });
-          return;
-        }
         if (text.startsWith('/')) {
+          const parts = text.split(/\s+/);
+          const cmdName = parts[0].toLowerCase();
+          const arg = parts.slice(1).join(' ').trim();
+
+          // Auto-match command prefix like /mod -> /model, /t -> /tier, /cl -> /clear, etc.
+          const matchedCmd = COMMAND_ITEMS.find((c) =>
+            c.label === cmdName ||
+            c.label.startsWith(cmdName) ||
+            c.action === cmdName.slice(1) ||
+            c.action.startsWith(cmdName.slice(1))
+          );
+
+          if (matchedCmd) {
+            if (matchedCmd.action === 'model' && !arg) {
+              resolve({ type: 'open_model_menu' });
+              return;
+            }
+            if (matchedCmd.action === 'tier' && !arg) {
+              resolve({ type: 'open_tier_menu' });
+              return;
+            }
+            resolve({ type: 'command_line', text: `/${matchedCmd.action}${arg ? ` ${arg}` : ''}`, action: matchedCmd.action });
+            return;
+          }
+
           resolve({ type: 'command_line', text });
           return;
         }
+
         if (text.length > 0) {
           resolve({ type: 'chat', text });
           return;
@@ -549,33 +597,68 @@ function readInteractivePrompt({ promptPrefix, syncedConfig, currentModel, reaso
         return;
       }
 
-      // Backspace
+      // 6. Backspace
       if (key === '\u007f' || key === '\b') {
         if (buffer.length > 0) {
           buffer = buffer.slice(0, -1);
           renderPrompt();
+
+          if (menuType === 'model' && buffer.startsWith('/model')) {
+            const search = buffer.slice('/model'.length).trim();
+            filterModelItems(search);
+          } else if (buffer.startsWith('/')) {
+            openCommandMenu();
+          } else {
+            clearMenu();
+            menuOpen = false;
+          }
         }
         return;
       }
 
-      // Instant slash detection: When user types '/' on an empty prompt, pop up suggestions immediately!
-      if (key === '/' && buffer === '') {
-        buffer = '/';
-        renderPrompt();
-        openCommandMenu();
+      // 7. Tab (Auto-complete)
+      if (key === '\t') {
+        if (menuOpen && filteredItems.length > 0) {
+          const selected = filteredItems[menuIndex];
+          if (menuType === 'command') {
+            buffer = selected.label;
+            renderPrompt();
+            if (selected.action === 'model') {
+              openModelMenu();
+            } else if (selected.action === 'tier') {
+              openTierMenu();
+            } else {
+              filterCommandItems();
+            }
+            return;
+          }
+          if (menuType === 'model') {
+            buffer = `/model ${selected.id}`;
+            renderPrompt();
+            return;
+          }
+        }
         return;
       }
 
-      // Regular characters
+      // 8. Normal Character Input (User typing / or continuing /mod, etc.)
       if (key.length === 1 && key >= ' ') {
         buffer += key;
         renderPrompt();
 
-        // If user typed '/model' exactly without enter, we can also suggest models
-        if (buffer === '/model') {
-          openModelMenu();
-        } else if (buffer === '/tier') {
-          openTierMenu();
+        if (menuType === 'model' && buffer.startsWith('/model')) {
+          const search = buffer.slice('/model'.length).trim();
+          filterModelItems(search);
+          return;
+        }
+
+        if (buffer.startsWith('/')) {
+          openCommandMenu();
+        } else {
+          if (menuOpen) {
+            clearMenu();
+            menuOpen = false;
+          }
         }
       }
     };
