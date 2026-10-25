@@ -34,6 +34,7 @@ import {
   Square,
   ArrowLeft,
   MessageSquare,
+  Terminal,
 } from 'lucide-react';
 import AuroraBackground from './components/AuroraBackground';
 import OrionLogo from './components/OrionLogo';
@@ -61,6 +62,7 @@ import ChatInput from './components/ChatInput';
 import FormattedMessage from './components/FormattedMessage';
 import SettingsModal from './components/SettingsModal';
 import ManageProvidersModal from './components/ManageProvidersModal';
+import LogsView from './components/LogsView';
 import ThinkingIndicator from './components/ThinkingIndicator';
 import { soundEffects } from './utils/soundEffects';
 import { formatFileSize } from './utils/fileHelpers';
@@ -1031,6 +1033,9 @@ export default function App() {
             {currentView === 'settings' && (
               <span className="session-active-title">Pengaturan</span>
             )}
+            {currentView === 'logs' && (
+              <span className="session-active-title">System & Gateway Logs</span>
+            )}
           </div>
 
           <div className="header-simple-right">
@@ -1079,6 +1084,16 @@ export default function App() {
 
             <button
               type="button"
+              className={`nav-icon-simple ${currentView === 'logs' ? 'active' : ''}`}
+              onClick={() => setCurrentView(currentView === 'logs' ? 'dashboard' : 'logs')}
+              title="System & Gateway Logs"
+              aria-label="Logs"
+            >
+              <Terminal size={15} />
+            </button>
+
+            <button
+              type="button"
               className={`nav-icon-simple ${currentView === 'settings' ? 'active' : ''}`}
               onClick={() => setCurrentView(currentView === 'settings' ? 'dashboard' : 'settings')}
               title="Pengaturan"
@@ -1116,6 +1131,8 @@ export default function App() {
             onSelectThemeMode={handleSelectThemeMode}
             onClearAllSessions={handleClearAllSessions}
           />
+        ) : currentView === 'logs' ? (
+          <LogsView onClose={() => setCurrentView('dashboard')} />
         ) : (
           <>
             {/* Message Stream or Unified Spatial Hero (Seamless shared elements) */}

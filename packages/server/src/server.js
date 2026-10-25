@@ -6,7 +6,9 @@ import dotenv from 'dotenv';
 import apiRoutes from './routes/apiRoutes.js';
 import itemRoutes from './routes/itemRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
+import logRoutes from './routes/logRoutes.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
+import { logger } from './services/loggerService.js';
 
 // Load environment variables
 dotenv.config();
@@ -25,9 +27,14 @@ app.use(
   })
 );
 
-// 2. Logging in non-production
+// 2. Logging routed to LoggerService (silences noise from terminal, visible in /logs)
 if (process.env.NODE_ENV !== 'test') {
-  app.use(morgan('dev'));
+  app.use(
+    morgan('dev', {
+      stream: logger.morganStream,
+      skip: (req) => req.path.startsWith('/api/logs'),
+    })
+  );
 }
 
 // 3. Payload limits (allows high-res images and file attachments up to 25MB)
@@ -96,6 +103,7 @@ if (hasDist) {
 app.use('/api', apiRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/items', itemRoutes);
+app.use('/api/logs', logRoutes);
 
 // SPA routing: any non-API GET request serves web index.html if dist exists
 if (hasDist) {

@@ -11,6 +11,7 @@ import {
   Cpu,
   Sparkles,
   LayoutDashboard,
+  Terminal,
 } from 'lucide-react';
 import OrionLogo from './OrionLogo';
 
@@ -95,6 +96,18 @@ export default function Sidebar({
               >
                 <Cpu size={16} className="nav-item-icon" />
                 <span className="nav-item-label">Provider</span>
+              </button>
+
+              <button
+                type="button"
+                className={`sidebar-nav-item ${currentView === 'logs' ? 'active' : ''}`}
+                onClick={() => {
+                  onNavigate?.('logs');
+                  if (window.innerWidth < 768) onCloseMobile();
+                }}
+              >
+                <Terminal size={16} className="nav-item-icon" />
+                <span className="nav-item-label">Logs</span>
               </button>
             </nav>
           </div>
@@ -207,6 +220,20 @@ export default function Sidebar({
               aria-label="Toggle Sound"
             >
               {soundEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
+            </button>
+
+            <button
+              type="button"
+              className={`footer-icon-btn ${currentView === 'logs' ? 'active' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onNavigate?.('logs');
+                if (window.innerWidth < 768) onCloseMobile?.();
+              }}
+              title="System & Gateway Logs"
+              aria-label="Logs"
+            >
+              <Terminal size={14} />
             </button>
 
             <button

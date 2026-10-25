@@ -10,6 +10,7 @@ import {
   testSpecificModel,
 } from '../services/aiService.js';
 import { chatRateLimiter, validateChatInput } from '../middleware/security.js';
+import { logger } from '../services/loggerService.js';
 
 const orionConfigDir = path.join(os.homedir(), '.orion');
 const providersConfigFile = path.join(orionConfigDir, 'providers.json');
@@ -165,19 +166,19 @@ router.post('/stream', chatRateLimiter, validateChatInput, (req, res) => {
       },
       onError: (err) => {
         if (res.writableEnded) return;
-        console.error('SSE Stream Error:', err.message);
+        logger.warn(`SSE Stream Error: ${err.message}`, { error: err.message }, 'AGENT', 'errors');
         res.write(`data: ${JSON.stringify({ error: err.message || 'Koneksi ke AI server terputus.' })}\n\n`);
         res.end();
       },
     }).catch((err) => {
       if (res.writableEnded) return;
-      console.error('SSE Async Rejection:', err.message);
+      logger.error(`SSE Async Rejection: ${err.message}`, { error: err.message }, 'AGENT', 'errors');
       res.write(`data: ${JSON.stringify({ error: err.message || 'Koneksi ke AI server terputus.' })}\n\n`);
       res.end();
     });
   } catch (err) {
     if (res.writableEnded) return;
-    console.error('SSE Synchronous Exception:', err.message);
+    logger.error(`SSE Synchronous Exception: ${err.message}`, { error: err.message }, 'AGENT', 'errors');
     res.write(`data: ${JSON.stringify({ error: err.message || 'Koneksi ke AI server terputus.' })}\n\n`);
     res.end();
   }
