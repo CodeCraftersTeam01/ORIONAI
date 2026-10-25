@@ -44,20 +44,31 @@ ORIONAI/
 
 ---
 
-## 🚀 Penggunaan Cepat (CLI)
+### 1. Obrolan Terminal Interaktif (Default)
+Jalankan perintah `orion` tanpa argumen untuk langsung masuk ke sesi obrolan terminal interaktif:
 
-### Jalankan Langsung dengan Browser
+```bash
+# Langsung masuk ke sesi terminal chat
+orion
+
+# Atau via npm:
+npm run chat
+```
+
+> **Fitur Terminal Chat:**
+> - Ketik `/` pada prompt kosong untuk memunculkan **rekomendasi perintah instan** (tanpa perlu menekan tombol Enter).
+> - Gunakan panah atas (↑) dan bawah (↓) lalu tekan **Enter** untuk memilih rekomendasi perintah (`/model`, `/tier`, `/key`, dll.).
+> - Pemilih model (`/model`) otomatis menampilkan seluruh model dari custom provider yang Anda tambahkan di antarmuka web.
+
+### 2. Jalankan Antarmuka Web di Browser
 Cukup panggil perintah `view` atau opsi `--view` untuk menyalakan service dan otomatis membuka antarmuka web di browser:
 
 ```bash
 # Menyalakan service dan otomatis membuka browser
+orion --view
+
+# Atau via npm:
 npm run view
-
-# Atau melalui CLI executable langsung:
-./bin/orion.js --view
-
-# Menjalankan di port kustom:
-./bin/orion.js --port 5005 --view
 ```
 
 ### Opsi Perintah CLI
