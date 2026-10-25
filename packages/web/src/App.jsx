@@ -67,6 +67,53 @@ import { formatFileSize } from './utils/fileHelpers';
 import { isReasoningSupported } from './utils/modelConfig';
 import './App.css';
 
+function formatUserFacingError(errMessage) {
+  if (!errMessage) {
+    return '⚠️ **Gagal Terhubung ke Server AI**\n\nServer AI saat ini sedang tidak dapat dijangkau. Silakan periksa koneksi Anda dan coba lagi.';
+  }
+
+  const msg = errMessage.toLowerCase();
+
+  // 1. API Key specific issues
+  if (
+    msg.includes('api key') ||
+    msg.includes('apikey') ||
+    msg.includes('unauthorized') ||
+    msg.includes('401') ||
+    msg.includes('forbidden') ||
+    msg.includes('403') ||
+    msg.includes('kredensial')
+  ) {
+    return `⚠️ **API Key Belum Diisi / Tidak Valid**\n\n${
+      errMessage.includes('⚠️')
+        ? errMessage
+        : 'API Key untuk model ini belum dimasukkan atau tidak valid. Silakan buka menu **Provider** dan periksa kembali API Key Anda.'
+    }`;
+  }
+
+  // 2. Server connectivity / 502 / Offline / Load failed
+  if (
+    msg.includes('load failed') ||
+    msg.includes('failed to fetch') ||
+    msg.includes('502') ||
+    msg.includes('503') ||
+    msg.includes('504') ||
+    msg.includes('network') ||
+    msg.includes('econnrefused') ||
+    msg.includes('offline')
+  ) {
+    return '⚠️ **Server AI Tidak Dapat Dihubungi**\n\nServer penyedia model AI saat ini sedang offline atau tidak dapat dijangkau. Silakan periksa koneksi internet Anda atau coba beberapa saat lagi.';
+  }
+
+  // 3. Rate limiting / Kuota
+  if (msg.includes('429') || msg.includes('rate limit') || msg.includes('quota')) {
+    return '⚠️ **Batas Permintaan Tercapai (Rate Limit)**\n\nTerlalu banyak permintaan dalam waktu singkat atau kuota habis. Silakan tunggu beberapa saat sebelum mencoba lagi.';
+  }
+
+  // 4. Default clean error message
+  return `⚠️ **Terjadi Kendala Layanan**\n\n${errMessage}`;
+}
+
 const DYNAMIC_RECOMMENDATIONS_POOL = [
   {
     id: 'essay',
@@ -748,7 +795,7 @@ export default function App() {
         return;
       }
 
-      const errorContent = `⚠️ **Respon terhambat / Gagal terhubung**:\n\n${err.message}\n\n*Server AI eksternal (Tailscale \`pi.leopard-gila.ts.net\`) saat ini sedang offline atau mengembalikan HTTP 502 Bad Gateway. Silakan periksa koneksi Tailscale/layanan di node Pi, atau pilih custom provider lain seperti Ollama / OpenAI.*`;
+      const errorContent = formatUserFacingError(err.message);
 
       setSessions((prev) =>
         prev.map((s) => {
