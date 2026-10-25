@@ -30,17 +30,6 @@ export default function SettingsModal({
     <div className={`settings-card-wrapper ${isPage ? 'is-page-mode' : 'modal-dialog'}`}>
       <div className={isPage ? 'page-view-header' : 'modal-header'}>
         <div className="page-view-header-content">
-          {isPage && (
-            <button
-              type="button"
-              className="page-back-nav-btn"
-              onClick={onClose}
-              title="Kembali ke Dashboard Utama"
-            >
-              <ArrowLeft size={14} />
-              <span>Kembali ke Dashboard</span>
-            </button>
-          )}
           <h1 className={isPage ? 'page-view-title' : 'modal-title'}>Pengaturan</h1>
           <p className="page-view-subtitle">
             Preferensi antarmuka visual, efek audio notifikasi, dan manajemen privasi obrolan Orion Agent.
