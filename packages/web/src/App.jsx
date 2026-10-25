@@ -381,13 +381,12 @@ export default function App() {
     }).catch(() => {});
   };
 
-  // Sync custom providers with server / filesystem (~/.orion/providers.json) on mount
-  useEffect(() => {
-    let isMounted = true;
+  // Sync custom providers, models & API keys with server / filesystem (~/.orion/providers.json)
+  const syncConfigFromServer = () => {
     fetch('/api/chat/providers-config')
       .then((res) => res.json())
       .then((data) => {
-        if (!isMounted || !data.success) return;
+        if (!data || !data.success) return;
         // Merge providers bidirectionally: preserve local custom providers and server providers
         const localSaved = localStorage.getItem('orion_custom_providers');
         let localProviders = [];
@@ -423,7 +422,6 @@ export default function App() {
         if (mergedProviders.length > 0) {
           setCustomProviders(mergedProviders);
           localStorage.setItem('orion_custom_providers', JSON.stringify(mergedProviders));
-          syncProvidersToServer(mergedProviders, data.selectedModel || selectedModel, data.reasoningTier || reasoningTier);
         }
 
         if (data.selectedModel) {
@@ -436,9 +434,13 @@ export default function App() {
         }
       })
       .catch(() => {});
+  };
 
+  useEffect(() => {
+    syncConfigFromServer();
+    window.addEventListener('focus', syncConfigFromServer);
     return () => {
-      isMounted = false;
+      window.removeEventListener('focus', syncConfigFromServer);
     };
   }, []);
 
@@ -723,7 +725,9 @@ export default function App() {
       );
     };
 
-    const orionProvider = (customProviders || []).find((p) => p.templateId === 'orion');
+    const orionProvider = (customProviders || []).find(
+      (p) => p.id === 'orion' || p.templateId === 'orion'
+    );
     const userOrionApiKey =
       orionProvider?.apiKeys?.find((k) => k.active)?.key || orionProvider?.apiKey || '';
 
