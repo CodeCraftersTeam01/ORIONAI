@@ -1773,7 +1773,7 @@
    -------------------------------------------------------------------------- */
 @media (min-width: 821px) {
   .chat-input-wrapper.is-centered {
-    bottom: calc(50% - 92px + 14vh);
+    bottom: calc(50% - 92px + 10.5vh);
     padding: 0 1.5rem;
     background: transparent;
   }
