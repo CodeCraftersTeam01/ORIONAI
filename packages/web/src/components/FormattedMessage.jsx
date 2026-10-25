@@ -637,6 +637,17 @@ function getTableAlignments(line) {
             /^(sequenceDiagram|classDiagram|stateDiagram|erDiagram|pie|gantt|mindmap|timeline)\b/im.test(trimmedCode);
 
           if (isMermaid) {
+            // Defer SVG conversion while AI is actively typing the diagram code
+            if (isStreaming && !part.isClosed) {
+              return (
+                <CodeBlock
+                  key={index}
+                  code={part.value}
+                  language={lang || 'mermaid'}
+                />
+              );
+            }
+
             return (
               <MermaidBlock
                 key={index}
