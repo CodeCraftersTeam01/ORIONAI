@@ -5,12 +5,21 @@ import mermaid from 'mermaid';
 // Initialize mermaid with cozy Apple-like aesthetic
 let mermaidInitialized = false;
 
+// Globally silence Mermaid parseError from injecting error elements into document.body
+if (typeof window !== 'undefined' && mermaid) {
+  try {
+    mermaid.parseError = function (err) {
+      console.warn('[Mermaid Syntax Warning (Suppressed from DOM)]:', err);
+    };
+  } catch {}
+}
+
 function ensureMermaidInit(isDark) {
   try {
     mermaid.initialize({
       startOnLoad: false,
       securityLevel: 'loose',
-      suppressErrorRendering: true, // Prevents Mermaid from injecting ugly red bomb error into document.body
+      suppressErrorRendering: true, // Prevents Mermaid from injecting error into document.body
       theme: isDark ? 'dark' : 'neutral',
       fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Rounded", "SF Pro Text", sans-serif',
       fontSize: 13,
@@ -50,6 +59,11 @@ function ensureMermaidInit(isDark) {
             edgeLabelBackground: '#f1f5f9',
           },
     });
+
+    mermaid.parseError = function (err) {
+      console.warn('[Mermaid Syntax Warning (Suppressed from DOM)]:', err);
+    };
+
     mermaidInitialized = true;
   } catch (err) {
     console.warn('Mermaid init error:', err);
