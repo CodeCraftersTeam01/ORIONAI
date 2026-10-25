@@ -1340,7 +1340,7 @@
 }
 
 .welcome-hero-container.is-chat-mode {
-  transform: translateY(-13.5vh);
+  transform: translateY(-5.5vh);
 }
 
 .welcome-logo-badge {
