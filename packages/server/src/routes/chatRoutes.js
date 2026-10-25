@@ -75,7 +75,7 @@ const SUGGESTIONS = [
 // POST /api/chat/message (Standard JSON Response with Rate Limiting & Input Validation)
 router.post('/message', chatRateLimiter, validateChatInput, async (req, res, next) => {
   try {
-    const { message, history, attachments, model, reasoningTier, customProvider } = req.body;
+    const { message, history, attachments, model, reasoningTier, customProvider, orionApiKey } = req.body;
 
     const result = await getChatCompletion({
       message,
@@ -84,6 +84,7 @@ router.post('/message', chatRateLimiter, validateChatInput, async (req, res, nex
       model: model || 'orion',
       reasoningTier: reasoningTier || 'medium',
       customProvider: customProvider || null,
+      orionApiKey: orionApiKey || null,
     });
 
     res.json({
@@ -107,7 +108,7 @@ router.post('/message', chatRateLimiter, validateChatInput, async (req, res, nex
 
 // POST /api/chat/stream (Real-time SSE Streaming with Rate Limiting & Input Validation)
 router.post('/stream', chatRateLimiter, validateChatInput, (req, res) => {
-  const { message, history, attachments, model, reasoningTier, customProvider } = req.body;
+  const { message, history, attachments, model, reasoningTier, customProvider, orionApiKey } = req.body;
   const abortController = new AbortController();
 
   req.on('close', () => {
@@ -134,6 +135,7 @@ router.post('/stream', chatRateLimiter, validateChatInput, (req, res) => {
     model: model || 'orion',
     reasoningTier: reasoningTier || 'medium',
     customProvider: customProvider || null,
+    orionApiKey: orionApiKey || null,
     signal: abortController.signal,
     onChunk: (chunk) => {
       if (res.writableEnded) return;

@@ -251,7 +251,7 @@ function buildMessagesPayload({ message, history = [], attachments = [], modelId
 /**
  * Helper to prepare request targets for built-in or custom providers
  */
-function resolveEndpointAndHeaders(customProvider, config) {
+function resolveEndpointAndHeaders(customProvider, config, userOrionApiKey) {
   let targetUrl;
   let targetApiKey;
   let targetModel;
@@ -264,9 +264,15 @@ function resolveEndpointAndHeaders(customProvider, config) {
     targetModel = customProvider.modelId || 'default';
   } else {
     targetUrl = `${BASE_URL.replace(/\/+$/, '')}/chat/completions`;
-    targetApiKey = API_KEY;
+    targetApiKey = (userOrionApiKey && userOrionApiKey.trim()) || (API_KEY && API_KEY.trim()) || '';
     targetModel = config.upstreamModel;
     temperature = config.temperature;
+
+    if (!targetApiKey) {
+      throw new Error(
+        '⚠️ API Key Orion belum dimasukkan. Silakan buka menu Provider dan masukkan API Key Anda untuk mulai mengobrol.'
+      );
+    }
   }
 
   const headers = {
@@ -289,10 +295,11 @@ export async function getChatCompletion({
   model = 'orion',
   reasoningTier = 'medium',
   customProvider = null,
+  orionApiKey = null,
   signal,
 }) {
   const { messages, config } = buildMessagesPayload({ message, history, attachments, modelId: model, reasoningTier });
-  const { targetUrl, headers, targetModel, temperature } = resolveEndpointAndHeaders(customProvider, config);
+  const { targetUrl, headers, targetModel, temperature } = resolveEndpointAndHeaders(customProvider, config, orionApiKey);
 
   try {
     const response = await fetch(targetUrl, {
@@ -347,13 +354,14 @@ export async function streamChatCompletion({
   model = 'orion',
   reasoningTier = 'medium',
   customProvider = null,
+  orionApiKey = null,
   onChunk,
   onDone,
   onError,
   signal,
 }) {
   const { messages, config } = buildMessagesPayload({ message, history, attachments, modelId: model, reasoningTier });
-  const { targetUrl, headers, targetModel, temperature } = resolveEndpointAndHeaders(customProvider, config);
+  const { targetUrl, headers, targetModel, temperature } = resolveEndpointAndHeaders(customProvider, config, orionApiKey);
   console.log(`[AI STREAM] Routing request -> modelId: "${model}", targetModel: "${targetModel}", targetUrl: "${targetUrl}"`);
 
   try {
