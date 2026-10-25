@@ -1340,7 +1340,7 @@
 }
 
 .welcome-hero-container.is-chat-mode {
-  transform: translateY(-2.5vh);
+  transform: translateY(-9.5vh);
 }
 
 .welcome-logo-badge {
@@ -1772,14 +1772,14 @@
    -------------------------------------------------------------------------- */
 @media (min-width: 821px) {
   .chat-input-wrapper.is-centered {
-    bottom: calc(50% - 92px);
+    bottom: calc(50% - 92px + 7vh);
     padding: 0 1.5rem;
     background: transparent;
   }
 
   /* When hidden in dashboard, translate deep down below viewport bottom so it ascends gracefully from below */
   .chat-input-wrapper.is-centered.is-hidden-dashboard {
-    transform: translateY(calc(50vh + 140px)) scale(0.92) !important;
+    transform: translateY(calc(50vh + 160px)) scale(0.92) !important;
     opacity: 0 !important;
     pointer-events: none !important;
     filter: blur(14px) !important;
