@@ -2013,6 +2013,7 @@
     min-height: calc(100vh - 60px);
     justify-content: center;
     margin: 0 auto;
+    transform: none !important;
   }
 
   .welcome-logo-badge {
