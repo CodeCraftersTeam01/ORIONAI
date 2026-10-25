@@ -365,20 +365,53 @@ export function centerLines(text, cols) {
     .join('\n');
 }
 
-// Show centered minimalist ORION AGENT Splash Screen (Bold, Italic, White)
+// Show centered minimalist ORION AGENT Splash Screen (Large, Bold, Italic, White)
 export async function showSplashScreen() {
   const cols = process.stdout.columns || 80;
   const rows = process.stdout.rows || 24;
 
-  // Title: "ORION AGENT" - White, Bold, Italic (per user request)
-  const titleText = `${c.bold}${c.italic}${c.brightWhite}ORION AGENT${c.reset}`;
+  let bannerRaw = [];
+  if (cols >= 68) {
+    bannerRaw = [
+      String.raw`   ____  ____  ________  _   __    ___   ____________   ________`,
+      String.raw`  / __ \/ __ \/  _/ __ \/ | / /   /   | / ____/ ____/ | / /_  __/`,
+      String.raw` / / / / /_/ // // / / /  |/ /   / /| |/ / __/ __/ /  |/ / / /   `,
+      String.raw`/ /_/ / _, _// // /_/ / /|  /   / ___ / /_/ / /___/ /|  / / /    `,
+      String.raw`\____/_/ |_/___/\____/_/ |_/   /_/  |_\____/_____/_/ |_/ /_/     `,
+    ];
+  } else if (cols >= 38) {
+    bannerRaw = [
+      String.raw`   ____  ____  ________  _   __`,
+      String.raw`  / __ \/ __ \/  _/ __ \/ | / /`,
+      String.raw` / / / / /_/ // // / / /  |/ / `,
+      String.raw`/ /_/ / _, _// // /_/ / /|  /  `,
+      String.raw`\____/_/ |_/___/\____/_/ |_/   `,
+      '',
+      String.raw`    ___   ____________   ________`,
+      String.raw`   /   | / ____/ ____/ | / /_  __/`,
+      String.raw`  / /| |/ / __/ __/ /  |/ / / /   `,
+      String.raw` / ___ / /_/ / /___/ /|  / / /    `,
+      String.raw`/_/  |_\____/_____/_/ |_/ /_/     `,
+    ];
+  } else {
+    bannerRaw = ['ORION AGENT'];
+  }
 
-  // Content has 3 vertical lines: Title + empty line + status line
-  const topPad = Math.max(1, Math.floor((rows - 4) / 2));
+  const styledBanner = bannerRaw
+    .map((line) => `${c.bold}${c.italic}${c.brightWhite}${line}${c.reset}`)
+    .join('\n');
+
+  // Subtitle
+  const subtitle = `${c.dim}${c.white}✦  O R I O N   A G E N T  ✦${c.reset}`;
+
+  // Content lines count: banner + 1 empty + subtitle + 1 empty + 1 status line
+  const totalContentLines = bannerRaw.length + 3;
+  const topPad = Math.max(1, Math.floor((rows - totalContentLines) / 2));
 
   console.clear();
   process.stdout.write('\n'.repeat(topPad));
-  process.stdout.write(centerLines(titleText, cols) + '\n\n');
+  process.stdout.write(centerLines(styledBanner, cols) + '\n\n');
+  process.stdout.write(centerLines(subtitle, cols) + '\n\n');
 
   const steps = [
     'Menghubungkan ke konfigurasi model...',
