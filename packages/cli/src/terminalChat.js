@@ -854,7 +854,11 @@ export async function startTerminalChat() {
       history.push({ role: 'user', content: userMessage });
 
       // Pi Chat UI: Print user message in padded dark-gray block (Screenshot 4 & 5)
-      process.stdout.write(`\n\x1b[48;5;236m\x1b[1m\x1b[37m  ${userMessage}  \x1b[0m\n\n`);
+      const paddedMsg = userMessage
+        .split('\n')
+        .map((line) => `  ${line}  `)
+        .join('\n');
+      process.stdout.write(`\n\x1b[48;5;236m\x1b[1m\x1b[37m${paddedMsg}\x1b[0m\n\n`);
 
       // Pi Working Spinner (Screenshot 4)
       const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
