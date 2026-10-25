@@ -259,6 +259,8 @@ const isServerCommand =
   args.includes('start') ||
   args.includes('serve') ||
   args.includes('server') ||
+  args.includes('--restart') ||
+  args.includes('restart') ||
   args.includes('--view') ||
   args.includes('-o') ||
   args.includes('--open') ||
