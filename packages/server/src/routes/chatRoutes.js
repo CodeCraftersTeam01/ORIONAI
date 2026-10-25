@@ -205,7 +205,8 @@ router.post('/test-model', chatRateLimiter, async (req, res) => {
     const result = await testSpecificModel({ baseUrl, apiKey, modelId });
     res.json(result);
   } catch (err) {
-    res.status(400).json({
+    const isApiKeyError = /api\s*key|kredensial|unauthorized/i.test(err.message);
+    res.status(isApiKeyError ? 401 : 400).json({
       success: false,
       message: err.message || `Gagal memverifikasi model "${req.body.modelId}".`,
     });
