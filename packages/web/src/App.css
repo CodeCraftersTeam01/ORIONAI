@@ -595,12 +595,12 @@
   opacity: 0.35;
 }
 
-/* In-Voice-Call mode: Wave starts at bottom horizon when quiet (5%), and billows up dynamically when speaking/shouting */
+/* In-Voice-Call mode: Wave rests gently at bottom horizon (5%) and rises subtly with voice without flooding screen */
 .tryliner-aurora-wrapper.in-voice-call {
-  height: 52vh !important;
-  min-height: 350px !important;
-  max-height: 560px !important;
-  opacity: 1 !important;
+  height: 25vh !important;
+  min-height: 150px !important;
+  max-height: 230px !important;
+  opacity: 0.95 !important;
   pointer-events: none;
   transition:
     height 0.85s cubic-bezier(0.16, 1, 0.3, 1),
@@ -610,29 +610,29 @@
   -webkit-mask-image: linear-gradient(
     to top,
     rgba(0, 0, 0, 1) 0%,
-    rgba(0, 0, 0, 1) 75%,
-    rgba(0, 0, 0, 0.85) 88%,
-    rgba(0, 0, 0, 0.35) 96%,
+    rgba(0, 0, 0, 1) 50%,
+    rgba(0, 0, 0, 0.65) 75%,
+    rgba(0, 0, 0, 0.20) 90%,
     transparent 100%
   ) !important;
   mask-image: linear-gradient(
     to top,
     rgba(0, 0, 0, 1) 0%,
-    rgba(0, 0, 0, 1) 75%,
-    rgba(0, 0, 0, 0.85) 88%,
-    rgba(0, 0, 0, 0.35) 96%,
+    rgba(0, 0, 0, 1) 50%,
+    rgba(0, 0, 0, 0.65) 75%,
+    rgba(0, 0, 0, 0.20) 90%,
     transparent 100%
   ) !important;
 }
 
 .tryliner-aurora-wrapper.in-voice-call .tryliner-aurora-canvas {
-  height: 560px !important;
-  opacity: 1;
+  height: 230px !important;
+  opacity: 0.95;
 }
 
 .tryliner-aurora-wrapper.in-voice-call .tryliner-aurora-bottom-boost {
-  opacity: 0.65;
-  filter: blur(45px);
+  opacity: 0.40;
+  filter: blur(36px);
 }
 
 .tryliner-aurora-wrapper.in-voice-call .tryliner-aurora-feather {
@@ -6306,8 +6306,10 @@ svg[aria-roledescription="error"] {
 }
 
 .voice-calling-overlay {
-  position: fixed;
+  position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -6430,8 +6432,8 @@ svg[aria-roledescription="error"] {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  height: 84px;
-  margin-bottom: 1.5rem;
+  height: 68px;
+  margin-bottom: 2.2rem;
 }
 
 .voice-eq-bar {
@@ -6442,48 +6444,11 @@ svg[aria-roledescription="error"] {
   transition: height 0.08s ease-out, opacity 0.15s ease-out;
 }
 
-/* Info */
-.voice-calling-info {
-  margin-bottom: 2.2rem;
-}
-
-.voice-calling-title {
-  font-size: 1.35rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 0.35rem;
-  letter-spacing: -0.02em;
-}
-
-.voice-calling-subtitle {
-  font-size: 0.92rem;
-  color: var(--text-muted);
-}
-
-.voice-status-listening {
-  color: #00d2ff;
-  font-weight: 500;
-  animation: textListeningPulse 1.8s ease-in-out infinite;
-}
-
-.voice-status-muted {
-  color: #ef4444;
-  font-weight: 500;
-}
-
-.voice-status-idle {
-  color: var(--text-secondary);
-}
-
-@keyframes textListeningPulse {
-  0%, 100% { opacity: 0.75; }
-  50% { opacity: 1; }
-}
-
 /* Actions */
 .voice-calling-actions {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 1rem;
 }
 

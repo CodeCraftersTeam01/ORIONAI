@@ -243,11 +243,11 @@ export default function AuroraBackground({
     const handleResize = () => {
       if (!canvas || !gl) return;
       const w = window.innerWidth || canvas.clientWidth || 1000;
-      const h = 560; // Expanded vertical headroom allowing high wave surges without clipping
+      const h = 240; // Controlled vertical headroom maintaining aesthetic wave proportions
 
       const scale = Math.min(1.0, 1000 / Math.max(w, 1));
       const targetW = Math.max(320, Math.round(w * scale));
-      const targetH = Math.max(260, Math.round(h * scale));
+      const targetH = Math.max(160, Math.round(h * scale));
 
       if (canvas.width !== targetW || canvas.height !== targetH) {
         canvas.width = targetW;
@@ -292,11 +292,11 @@ export default function AuroraBackground({
 
       // Smooth wave strength interpolation:
       // When quiet, rests calmly at 5% (0.05).
-      // When speaking or shouting, surges dynamically up to 2.1x height!
+      // Controlled, natural voice modulation (up to 0.82x height) that avoids huge screen-flooding surges
       const { isVoiceCalling: calling, audioLevel: level } = propsRef.current;
-      const boost = Math.min(2.05, Math.pow(Math.max(0, level || 0), 0.48) * 2.15);
+      const boost = Math.min(0.80, Math.pow(Math.max(0, level || 0), 1.15) * 0.82);
       const targetStrength = calling ? 0.05 + boost : 1.0;
-      const factor = targetStrength > state.currentWaveStrength ? 0.45 : 0.14;
+      const factor = targetStrength > state.currentWaveStrength ? 0.22 : 0.10;
       state.currentWaveStrength += (targetStrength - state.currentWaveStrength) * factor;
       gl.uniform1f(state.locations.u_wave_strength, state.currentWaveStrength);
 

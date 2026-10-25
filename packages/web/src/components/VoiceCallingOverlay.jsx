@@ -12,18 +12,18 @@ export default function VoiceCallingOverlay({
 
   // Generate 7 organic equalizer bars modulated by real-time audioLevel
   const barHeights = useMemo(() => {
-    const base = [14, 22, 32, 44, 34, 24, 16];
+    const base = [10, 16, 24, 32, 24, 16, 10];
     return base.map((b, i) => {
       if (isMuted) return 6;
       const factor = Math.sin(i * 1.1 + performance.now() * 0.005) * 0.35 + 0.65;
-      const dynamicBoost = Math.pow(Math.max(0, audioLevel), 0.55) * 110 * factor;
-      return Math.min(128, Math.max(8, b + dynamicBoost));
+      const dynamicBoost = audioLevel * 50 * factor;
+      return Math.min(68, Math.max(8, b + dynamicBoost));
     });
   }, [audioLevel, isMuted]);
 
   // Dynamic scale of central glowing orb
-  const orbScale = isMuted ? 1.0 : 1.0 + Math.min(Math.pow(Math.max(0, audioLevel), 0.55) * 0.55, 0.55);
-  const ringOpacity = isMuted ? 0.2 : 0.35 + Math.min(audioLevel * 0.75, 0.75);
+  const orbScale = isMuted ? 1.0 : 1.0 + Math.min(audioLevel * 0.22, 0.22);
+  const ringOpacity = isMuted ? 0.2 : 0.35 + Math.min(audioLevel * 0.45, 0.45);
 
   return (
     <div className="voice-calling-overlay" aria-live="polite">
@@ -38,14 +38,14 @@ export default function VoiceCallingOverlay({
             className="voice-pulse-ring ring-outer"
             style={{
               opacity: ringOpacity * 0.6,
-              transform: `scale(${1 + audioLevel * 0.65})`,
+              transform: `scale(${1 + audioLevel * 0.35})`,
             }}
           />
           <div
             className="voice-pulse-ring ring-mid"
             style={{
               opacity: ringOpacity * 0.8,
-              transform: `scale(${1 + audioLevel * 0.4})`,
+              transform: `scale(${1 + audioLevel * 0.22})`,
             }}
           />
           <div
@@ -65,27 +65,13 @@ export default function VoiceCallingOverlay({
           {barHeights.map((h, idx) => (
             <span
               key={idx}
-              className={`voice-eq-bar ${audioLevel > 0.1 ? 'active' : ''}`}
+              className={`voice-eq-bar ${audioLevel > 0.08 ? 'active' : ''}`}
               style={{
                 height: `${h}px`,
-                opacity: isMuted ? 0.3 : Math.min(1.0, 0.5 + audioLevel * 0.8),
+                opacity: isMuted ? 0.3 : Math.min(1.0, 0.5 + audioLevel * 0.6),
               }}
             />
           ))}
-        </div>
-
-        {/* Status Text */}
-        <div className="voice-calling-info">
-          <h2 className="voice-calling-title">Orion Voice Calling</h2>
-          <p className="voice-calling-subtitle">
-            {isMuted ? (
-              <span className="voice-status-muted">Mikrofon Dibisukan</span>
-            ) : audioLevel > 0.08 ? (
-              <span className="voice-status-listening">Mendengarkan suara Anda...</span>
-            ) : (
-              <span className="voice-status-idle">Bicaralah, Orion siap mendengarkan</span>
-            )}
-          </p>
         </div>
 
         {/* Action Controls */}

@@ -443,20 +443,21 @@ export default function App() {
         }
         const rms = Math.sqrt(sumSquares / bufferLength);
 
-        // 2. Focused vocal frequency range (bins 1 to 40 ~ 80Hz to 3.5kHz)
+        // 2. Focused vocal frequency range (bins 2 to 36 ~ 150Hz to 3.2kHz)
         let vocalSum = 0;
-        const vocalBins = Math.min(40, bufferLength);
-        for (let i = 1; i < vocalBins; i++) {
+        const vocalBins = Math.min(36, bufferLength);
+        for (let i = 2; i < vocalBins; i++) {
           vocalSum += freqData[i];
         }
-        const vocalAvg = vocalSum / (vocalBins - 1) / 255;
+        const vocalAvg = vocalSum / (vocalBins - 2) / 255;
 
-        // Combined audio energy with high dynamic range and instant reaction to shouting
-        const rawEnergy = Math.max(0, rms * 5.2 + maxDeviation * 2.2 + vocalAvg * 2.8 - 0.04);
-        const instantLevel = Math.min(1.0, Math.pow(rawEnergy, 0.62));
+        // Balanced audio energy with realistic noise gate (ignores mic background hiss)
+        const combinedEnergy = rms * 2.8 + maxDeviation * 0.8 + vocalAvg * 1.6;
+        const gatedEnergy = Math.max(0, combinedEnergy - 0.10);
+        const instantLevel = Math.min(1.0, gatedEnergy * 1.35);
 
-        // Fast attack (instant surge on shouting) and smooth organic decay
-        const factor = instantLevel > smoothedLevel ? 0.65 : 0.14;
+        // Natural, smooth organic interpolation
+        const factor = instantLevel > smoothedLevel ? 0.30 : 0.12;
         smoothedLevel += (instantLevel - smoothedLevel) * factor;
 
         setVoiceAudioLevel(smoothedLevel);
