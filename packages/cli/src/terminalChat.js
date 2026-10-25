@@ -332,61 +332,51 @@ export async function showSplashScreen() {
 
 // Print minimalist chat header (Pi style)
 export function printHeader(modelId, tier, hasKey = false) {
-  const cols = Math.min(process.stdout.columns || 80, 80);
+  const cols = Math.max(40, process.stdout.columns || 80);
   const divider = '─'.repeat(cols);
-  const cwd = process.cwd();
-  const folderName = path.basename(cwd) || cwd;
-  const keyStatus = hasKey
-    ? `${c.green}● Key Tersambung${c.reset}`
-    : `${c.yellow}○ Key Belum Diatur (/login)${c.reset}`;
 
   console.log(`${c.brightCyan}${c.bold}🌌 ORION AGENT TERMINAL CHAT${c.reset} ${c.dim}(Pi-Engine v1.1.0)${c.reset}`);
   console.log(
-    `${c.gray}Folder:${c.reset} ${c.white}${folderName}${c.reset} · ${c.gray}Model:${c.reset} ${c.cyan}${modelId}${c.reset}${
-      modelId === 'orion' ? ` ${c.dim}(tier: ${tier})${c.reset}` : ''
-    } · ${keyStatus}`
-  );
-  console.log(
-    `${c.gray}Pintasan:${c.reset} ${c.yellow}Ctrl+L${c.reset} ${c.dim}(Model)${c.reset} · ${c.yellow}Shift+Tab${c.reset} ${c.dim}(Thinking)${c.reset} · ${c.yellow}!cmd${c.reset} ${c.dim}(Shell)${c.reset} · ${c.yellow}/${c.reset} ${c.dim}(Commands)${c.reset}`
+    `${c.gray}Pintasan:${c.reset} ${c.yellow}Ctrl+L${c.reset} ${c.dim}(Model)${c.reset} · ${c.yellow}Shift+Tab${c.reset} ${c.dim}(Reasoning)${c.reset} · ${c.yellow}!cmd${c.reset} ${c.dim}(Shell)${c.reset} · ${c.yellow}/${c.reset} ${c.dim}(Perintah)${c.reset}`
   );
   console.log(`${c.gray}${divider}${c.reset}\n`);
 }
 
 const COMMAND_ITEMS = [
-  { label: '/model', detail: 'Pilih & beralih model AI aktif (Ctrl+L)', action: 'model' },
-  { label: '/thinking', detail: 'Atur tingkat penalaran (low/medium/high, Shift+Tab)', action: 'thinking' },
-  { label: '/tier', detail: 'Alias /thinking untuk tingkat penalaran', action: 'tier' },
-  { label: '/session', detail: 'Lihat info sesi, pesan riwayat & estimasi token', action: 'session' },
-  { label: '/copy', detail: 'Salin respon asisten terakhir ke clipboard', action: 'copy' },
-  { label: '/compact', detail: 'Kompak riwayat percakapan untuk menghemat token', action: 'compact' },
-  { label: '/hotkeys', detail: 'Daftar pintasan keyboard (Ctrl+L, Shift+Tab, !cmd)', action: 'hotkeys' },
-  { label: '/settings', detail: 'Tampilkan preferensi & konfigurasi aktif', action: 'settings' },
-  { label: '/login', detail: 'Sambungkan / perbarui API Key Orion', action: 'login' },
-  { label: '/logout', detail: 'Hapus kredensial API Key yang tersimpan', action: 'logout' },
-  { label: '/key', detail: 'Alias /login untuk memasukkan API Key', action: 'key' },
-  { label: '/clear', detail: 'Bersihkan layar terminal obrolan', action: 'clear' },
-  { label: '/new', detail: 'Mulai sesi obrolan baru & reset riwayat', action: 'new' },
-  { label: '/reset', detail: 'Reset riwayat percakapan sesi', action: 'reset' },
-  { label: '/help', detail: 'Tampilkan panduan bantuan semua perintah', action: 'help' },
-  { label: '/exit', detail: 'Keluar dari sesi terminal obrolan (/quit, /q)', action: 'exit' },
+  { label: 'settings', detail: 'Buka menu pengaturan & preferensi aktif', action: 'settings' },
+  { label: 'model', detail: '<provider/model> — Pilih & beralih model AI (Ctrl+L)', action: 'model' },
+  { label: 'thinking', detail: 'Atur tingkat penalaran (low/medium/high, Shift+Tab)', action: 'thinking' },
+  { label: 'tier', detail: 'Alias /thinking untuk tingkat penalaran', action: 'tier' },
+  { label: 'session', detail: 'Lihat info sesi, pesan riwayat & estimasi token', action: 'session' },
+  { label: 'copy', detail: 'Salin respon asisten terakhir ke clipboard', action: 'copy' },
+  { label: 'compact', detail: 'Kompak riwayat percakapan untuk menghemat token', action: 'compact' },
+  { label: 'hotkeys', detail: 'Daftar pintasan keyboard (Ctrl+L, Shift+Tab, !cmd)', action: 'hotkeys' },
+  { label: 'export', detail: 'Ekspor riwayat sesi obrolan (JSONL)', action: 'export' },
+  { label: 'login', detail: 'Sambungkan / perbarui API Key Orion', action: 'login' },
+  { label: 'logout', detail: 'Hapus kredensial API Key yang tersimpan', action: 'logout' },
+  { label: 'key', detail: 'Alias /login untuk memasukkan API Key', action: 'key' },
+  { label: 'clear', detail: 'Bersihkan layar terminal obrolan', action: 'clear' },
+  { label: 'new', detail: 'Mulai sesi obrolan baru & reset riwayat', action: 'new' },
+  { label: 'reset', detail: 'Reset riwayat percakapan sesi', action: 'reset' },
+  { label: 'help', detail: 'Tampilkan panduan bantuan semua perintah', action: 'help' },
+  { label: 'exit', detail: 'Keluar dari sesi terminal obrolan (/quit, /q)', action: 'exit' },
 ];
 
 /**
- * Interactive Input Reader:
- * As soon as the user types '/', suggestions pop up IMMEDIATELY (no Enter needed).
- * The user can navigate suggestions with ↑ / ↓ arrow keys, press Enter to select,
- * or press Backspace / Esc to cancel.
+ * Interactive Input Reader (Pi Agent TUI):
+ * - Bottom-framed input box between two divider lines (─)
+ * - Suggestions windowed to max 5 items with smooth overflow scrolling & (x/y) pagination
+ * - Pi status footer bar showing cwd (~), active model/tier, context token estimate, and API key status
+ * - Fast keyboard shortcuts: Ctrl+L (Model), Shift+Tab (Tier), !cmd (Shell), Tab (Autocomplete)
  */
-function readInteractivePrompt({ promptPrefix, syncedConfig, currentModel, reasoningTier }) {
+function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, userApiKey, history }) {
   return new Promise((resolve) => {
     let buffer = '';
     let menuOpen = false;
-    let menuType = null; // 'command' | 'model' | 'tier'
     let menuIndex = 0;
-    let menuLinesRendered = 0;
-    let allItems = [];
+    let scrollOffset = 0;
+    let isFirstRender = true;
     let filteredItems = [];
-    let menuTitle = '';
 
     const wasRaw = process.stdin.isRaw;
     if (process.stdin.isTTY) {
@@ -394,265 +384,219 @@ function readInteractivePrompt({ promptPrefix, syncedConfig, currentModel, reaso
       process.stdin.resume();
     }
 
-    function renderPrompt() {
-      process.stdout.write(`\r\x1b[K${promptPrefix}${buffer}`);
-    }
+    function renderUI() {
+      const cols = Math.max(40, process.stdout.columns || 80);
+      const divider = '─'.repeat(cols);
 
-    function clearMenu() {
-      if (menuLinesRendered > 0) {
-        process.stdout.write(`\x1b[${menuLinesRendered}A\r\x1b[J`);
-        menuLinesRendered = 0;
+      // If already rendered, move cursor UP 1 line to top divider and clear below
+      if (!isFirstRender) {
+        process.stdout.write('\x1b[1A\r\x1b[J');
       }
-    }
+      isFirstRender = false;
 
-    function renderMenu() {
-      clearMenu();
-      if (!menuOpen || filteredItems.length === 0) return;
+      let out = '';
+      // Top divider
+      out += `\x1b[90m${divider}\x1b[0m\n`;
+      // Input line
+      out += `${buffer}\n`;
+      // Bottom divider
+      out += `\x1b[90m${divider}\x1b[0m\n`;
 
-      const visiblePromptLen = promptPrefix.replace(/\x1b\[[0-9;]*m/g, '').length;
-      let out = `\n\x1b[1m\x1b[36m${menuTitle}\x1b[0m \x1b[90m(Gunakan ↑ / ↓ lalu Enter, Esc untuk batal)\x1b[0m\x1b[K\n`;
+      let linesBelow = 1;
 
-      filteredItems.forEach((item, idx) => {
-        const isSelected = idx === menuIndex;
-        const cursor = isSelected ? `\x1b[36m\x1b[1m❯\x1b[0m` : ` `;
-        const label = isSelected
-          ? `\x1b[1m\x1b[37m${item.label.padEnd(20)}\x1b[0m`
-          : `\x1b[90m${item.label.padEnd(20)}\x1b[0m`;
-        const detail = item.detail
-          ? (isSelected ? `\x1b[36m${item.detail}\x1b[0m` : `\x1b[90m${item.detail}\x1b[0m`)
-          : '';
-        const badge = item.badge ? ` \x1b[32m[${item.badge}]\x1b[0m` : '';
+      // Suggestions Window (Max 5 visible items with overflow scrolling)
+      if (menuOpen && filteredItems.length > 0) {
+        const PAGE_SIZE = 5;
+        if (menuIndex < scrollOffset) {
+          scrollOffset = menuIndex;
+        } else if (menuIndex >= scrollOffset + PAGE_SIZE) {
+          scrollOffset = menuIndex - PAGE_SIZE + 1;
+        }
 
-        out += `${cursor} ${label} ${detail}${badge}\x1b[K\n`;
-      });
+        const visibleItems = filteredItems.slice(scrollOffset, scrollOffset + PAGE_SIZE);
+        visibleItems.forEach((item, idx) => {
+          const realIdx = scrollOffset + idx;
+          const isSelected = realIdx === menuIndex;
+          const cursor = isSelected ? `\x1b[36m→ \x1b[0m` : `  `;
+          const label = isSelected
+            ? `\x1b[1m\x1b[37m${item.label.padEnd(16)}\x1b[0m`
+            : `\x1b[37m${item.label.padEnd(16)}\x1b[0m`;
+          const detail = item.detail ? `\x1b[90m${item.detail}\x1b[0m` : '';
 
-      menuLinesRendered = filteredItems.length + 2;
+          out += `${cursor}${label} ${detail}\x1b[K\n`;
+          linesBelow++;
+        });
+
+        if (filteredItems.length > PAGE_SIZE) {
+          out += `  \x1b[90m(${menuIndex + 1}/${filteredItems.length})\x1b[0m\x1b[K\n`;
+          linesBelow++;
+        }
+      }
+
+      // Pi Status Footer Line 1: cwd ~ on left, (provider) model • tier on right
+      const leftCwd = '~';
+      const availableModels = getAvailableModels(syncedConfig);
+      const matchedModel = availableModels.find((m) => m.id === currentModel);
+      const provName = matchedModel?.provider?.name || matchedModel?.provider?.id || 'orion';
+      const rightModel = `(${provName}) ${currentModel} • ${reasoningTier}`;
+      const gap1 = Math.max(2, cols - leftCwd.length - rightModel.length);
+      out += `\x1b[90m${leftCwd}${' '.repeat(gap1)}${rightModel}\x1b[0m\x1b[K\n`;
+      linesBelow++;
+
+      // Pi Status Footer Line 2: token usage % on left, key status on right
+      const estTokens = Math.round(
+        (history || []).reduce((acc, m) => acc + (m.content ? m.content.length / 4 : 0), 0)
+      );
+      const tokenPct = ((estTokens / 128000) * 100).toFixed(1);
+      const leftTokens = `${tokenPct}%/128k (auto)`;
+      const keyLabel = userApiKey ? `● Key Tersambung` : `○ Belum diatur (/login)`;
+      const keyColor = userApiKey ? `\x1b[32m` : `\x1b[33m`;
+      const cleanKeyLen = keyLabel.length;
+      const gap2 = Math.max(2, cols - leftTokens.length - cleanKeyLen);
+      out += `\x1b[90m${leftTokens}${' '.repeat(gap2)}${keyColor}${keyLabel}\x1b[0m\x1b[K\n`;
+      linesBelow++;
+
       process.stdout.write(out);
 
-      // Restore cursor position to prompt line accurately
-      process.stdout.write(`\x1b[${menuLinesRendered}A\r\x1b[${visiblePromptLen + buffer.length}C`);
+      // Restore cursor position to the input line
+      process.stdout.write(`\x1b[${linesBelow}A\r\x1b[${buffer.length}C`);
     }
 
-    function filterCommandItems() {
-      const query = buffer.trim().toLowerCase();
-      if (!query || query === '/') {
-        filteredItems = allItems;
-      } else {
-        const cleanQuery = query.startsWith('/') ? query.slice(1) : query;
-        filteredItems = allItems.filter((item) => {
-          const itemLabel = item.label.toLowerCase();
-          const itemAction = item.action.toLowerCase();
-          return (
-            itemLabel.startsWith(query) ||
-            itemLabel.slice(1).startsWith(cleanQuery) ||
-            itemAction.startsWith(cleanQuery)
-          );
-        });
+    function clearUI() {
+      if (!isFirstRender) {
+        process.stdout.write('\x1b[1A\r\x1b[J');
+        isFirstRender = true;
       }
+    }
 
-      if (filteredItems.length === 0) {
-        clearMenu();
+    function updateSuggestions() {
+      if (!buffer.startsWith('/')) {
         menuOpen = false;
+        renderUI();
         return;
       }
 
-      menuOpen = true;
-      menuIndex = 0;
-      renderMenu();
-    }
-
-    function openCommandMenu() {
-      menuOpen = true;
-      menuType = 'command';
-      menuTitle = '✦ Rekomendasi Perintah:';
-      allItems = COMMAND_ITEMS;
-      filterCommandItems();
-    }
-
-    function filterModelItems(search = '') {
-      if (!search) {
-        filteredItems = allItems;
-        menuIndex = Math.max(0, filteredItems.findIndex((m) => m.id === currentModel));
+      const query = buffer.slice(1).trim().toLowerCase();
+      if (!query) {
+        filteredItems = COMMAND_ITEMS;
       } else {
-        const q = search.toLowerCase();
-        filteredItems = allItems.filter(
-          (m) =>
-            m.id.toLowerCase().includes(q) ||
-            m.name.toLowerCase().includes(q) ||
-            (m.detail && m.detail.toLowerCase().includes(q))
+        filteredItems = COMMAND_ITEMS.filter(
+          (item) =>
+            item.label.toLowerCase().startsWith(query) ||
+            item.action.toLowerCase().startsWith(query) ||
+            item.label.toLowerCase().includes(query)
         );
-        menuIndex = 0;
       }
 
-      if (filteredItems.length === 0) {
-        clearMenu();
-        menuOpen = false;
-        return;
-      }
-
-      menuOpen = true;
-      renderMenu();
+      menuOpen = filteredItems.length > 0;
+      menuIndex = 0;
+      scrollOffset = 0;
+      renderUI();
     }
 
-    function openModelMenu(initialFilter = '') {
-      const freshConfig = loadSyncedConfig();
-      const models = getAvailableModels(freshConfig);
-      allItems = models.map((m) => ({
-        label: m.id,
-        detail: m.name !== m.id ? `${m.name} — ${m.desc}` : m.desc,
-        id: m.id,
-        name: m.name,
-        badge: m.id === currentModel ? 'Aktif' : '',
-      }));
-      menuOpen = true;
-      menuType = 'model';
-      menuTitle = '✦ Pilih Model AI Aktif:';
-      filterModelItems(initialFilter);
-    }
+    renderUI();
 
-    function openTierMenu() {
-      allItems = [
-        { label: 'low', detail: 'Penalaran ringkas & respon instan tercepat', value: 'low', badge: reasoningTier === 'low' ? 'Aktif' : '' },
-        { label: 'medium', detail: 'Keseimbangan optimal kecepatan & penalaran', value: 'medium', badge: reasoningTier === 'medium' ? 'Aktif' : '' },
-        { label: 'high', detail: 'Penalaran mendalam untuk masalah kompleks', value: 'high', badge: reasoningTier === 'high' ? 'Aktif' : '' },
-      ];
-      filteredItems = allItems;
-      menuOpen = true;
-      menuType = 'tier';
-      menuTitle = '✦ Pilih Tingkat Penalaran (Reasoning Tier):';
-      menuIndex = Math.max(0, filteredItems.findIndex((t) => t.value === reasoningTier));
-      renderMenu();
-    }
-
-    renderPrompt();
+    const onResize = () => {
+      renderUI();
+    };
+    process.stdout.on('resize', onResize);
 
     const onData = (chunk) => {
       const key = chunk.toString();
 
-      // 1. Ctrl+C (Interrupt / Clear line or exit)
+      // Ctrl+C (Interrupt / Clear line or exit)
       if (key === '\u0003') {
         if (buffer.length > 0) {
-          clearMenu();
-          menuOpen = false;
           buffer = '';
-          process.stdout.write('^C\n');
-          renderPrompt();
+          menuOpen = false;
+          renderUI();
           return;
         }
-        clearMenu();
+        clearUI();
         cleanup();
         console.log(`\n${c.brightCyan}✦ Sesi terminal selesai. Sampai jumpa!${c.reset}\n`);
         process.exit(0);
       }
 
-      // 2. Ctrl+D (EOF / Exit when buffer is empty)
+      // Ctrl+D (EOF / Exit when buffer is empty)
       if (key === '\u0004') {
         if (buffer.length === 0) {
-          clearMenu();
+          clearUI();
           cleanup();
           console.log(`\n${c.brightCyan}✦ Sesi terminal selesai. Sampai jumpa!${c.reset}\n`);
           process.exit(0);
         }
       }
 
-      // 3. Ctrl+L (Pi Shortcut: Instantly open Model Selector)
+      // Ctrl+L (Pi Shortcut: Instantly open Model Selector)
       if (key === '\u000c') {
-        clearMenu();
+        clearUI();
         cleanup();
-        process.stdout.write('\n');
         resolve({ type: 'open_model_menu' });
         return;
       }
 
-      // 4. Shift+Tab (Pi Shortcut: Instantly cycle Thinking / Reasoning Tier)
+      // Shift+Tab (Pi Shortcut: Instantly cycle Reasoning Tier)
       if (key === '\u001b[Z') {
-        clearMenu();
+        clearUI();
         const tiers = ['low', 'medium', 'high'];
         const nextIdx = (tiers.indexOf(reasoningTier) + 1) % tiers.length;
         cleanup();
-        process.stdout.write('\n');
         resolve({ type: 'switch_tier', tier: tiers[nextIdx] });
         return;
       }
 
-      // 5. Arrow Up
+      // Arrow Up
       if (key === '\u001b[A' || key === '\u001bOA') {
         if (menuOpen && filteredItems.length > 0) {
           menuIndex = (menuIndex - 1 + filteredItems.length) % filteredItems.length;
-          renderMenu();
+          renderUI();
           return;
         }
       }
 
-      // 6. Arrow Down
+      // Arrow Down
       if (key === '\u001b[B' || key === '\u001bOB') {
         if (menuOpen && filteredItems.length > 0) {
           menuIndex = (menuIndex + 1) % filteredItems.length;
-          renderMenu();
+          renderUI();
           return;
         }
       }
 
-      // 7. Escape
+      // Escape
       if (key === '\u001b') {
         if (menuOpen) {
-          clearMenu();
           menuOpen = false;
-          buffer = '';
-          renderPrompt();
+          renderUI();
           return;
         }
       }
 
-      // 8. Enter: Auto-selects the top/highlighted suggestion or executes typed prompt
+      // Enter
       if (key === '\r' || key === '\n') {
         if (menuOpen && filteredItems.length > 0) {
           const selected = filteredItems[menuIndex];
-          clearMenu();
+          clearUI();
           menuOpen = false;
+          cleanup();
 
-          if (menuType === 'command') {
-            if (selected.action === 'model') {
-              buffer = '/model';
-              renderPrompt();
-              openModelMenu();
-              return;
-            }
-            if (selected.action === 'tier' || selected.action === 'thinking') {
-              buffer = `/${selected.action}`;
-              renderPrompt();
-              openTierMenu();
-              return;
-            }
-            // For other commands (clear, reset, key, help, exit, session, copy, etc.)
-            cleanup();
-            process.stdout.write('\n');
-            resolve({ type: 'command', action: selected.action, raw: `/${selected.action}` });
+          if (selected.action === 'model') {
+            resolve({ type: 'open_model_menu' });
             return;
           }
-
-          if (menuType === 'model') {
-            cleanup();
-            process.stdout.write('\n');
-            resolve({ type: 'switch_model', model: selected });
+          if (selected.action === 'tier' || selected.action === 'thinking') {
+            resolve({ type: 'open_tier_menu' });
             return;
           }
-
-          if (menuType === 'tier') {
-            cleanup();
-            process.stdout.write('\n');
-            resolve({ type: 'switch_tier', tier: selected.value });
-            return;
-          }
+          resolve({ type: 'command', action: selected.action, raw: `/${selected.action}` });
+          return;
         }
 
-        // When menu is closed or empty:
-        clearMenu();
+        clearUI();
         const text = buffer.trim();
         cleanup();
-        process.stdout.write('\n');
 
-        // Pi Feature: Shell execution via !<command> or !!<command>
         if (text.startsWith('!')) {
           resolve({ type: 'shell_command', raw: text });
           return;
@@ -663,12 +607,12 @@ function readInteractivePrompt({ promptPrefix, syncedConfig, currentModel, reaso
           const cmdName = parts[0].toLowerCase();
           const arg = parts.slice(1).join(' ').trim();
 
-          // Auto-match command prefix like /mod -> /model, /t -> /tier, /cl -> /clear, etc.
-          const matchedCmd = COMMAND_ITEMS.find((c) =>
-            c.label === cmdName ||
-            c.label.startsWith(cmdName) ||
-            c.action === cmdName.slice(1) ||
-            c.action.startsWith(cmdName.slice(1))
+          const matchedCmd = COMMAND_ITEMS.find(
+            (c) =>
+              `/${c.label}` === cmdName ||
+              `/${c.label}`.startsWith(cmdName) ||
+              c.action === cmdName.slice(1) ||
+              c.action.startsWith(cmdName.slice(1))
           );
 
           if (matchedCmd) {
@@ -680,7 +624,11 @@ function readInteractivePrompt({ promptPrefix, syncedConfig, currentModel, reaso
               resolve({ type: 'open_tier_menu' });
               return;
             }
-            resolve({ type: 'command_line', text: `/${matchedCmd.action}${arg ? ` ${arg}` : ''}`, action: matchedCmd.action });
+            resolve({
+              type: 'command_line',
+              text: `/${matchedCmd.action}${arg ? ` ${arg}` : ''}`,
+              action: matchedCmd.action,
+            });
             return;
           }
 
@@ -696,74 +644,36 @@ function readInteractivePrompt({ promptPrefix, syncedConfig, currentModel, reaso
         return;
       }
 
-      // 6. Backspace
+      // Backspace
       if (key === '\u007f' || key === '\b') {
         if (buffer.length > 0) {
           buffer = buffer.slice(0, -1);
-          renderPrompt();
-
-          if (menuType === 'model' && buffer.startsWith('/model')) {
-            const search = buffer.slice('/model'.length).trim();
-            filterModelItems(search);
-          } else if (buffer.startsWith('/')) {
-            openCommandMenu();
-          } else {
-            clearMenu();
-            menuOpen = false;
-          }
+          updateSuggestions();
         }
         return;
       }
 
-      // 7. Tab (Auto-complete)
+      // Tab (Auto-complete)
       if (key === '\t') {
         if (menuOpen && filteredItems.length > 0) {
           const selected = filteredItems[menuIndex];
-          if (menuType === 'command') {
-            buffer = selected.label;
-            renderPrompt();
-            if (selected.action === 'model') {
-              openModelMenu();
-            } else if (selected.action === 'tier') {
-              openTierMenu();
-            } else {
-              filterCommandItems();
-            }
-            return;
-          }
-          if (menuType === 'model') {
-            buffer = `/model ${selected.id}`;
-            renderPrompt();
-            return;
-          }
+          buffer = `/${selected.label}`;
+          updateSuggestions();
         }
         return;
       }
 
-      // 8. Normal Character Input (User typing / or continuing /mod, etc.)
+      // Normal character input
       if (key.length === 1 && key >= ' ') {
         buffer += key;
-        renderPrompt();
-
-        if (menuType === 'model' && buffer.startsWith('/model')) {
-          const search = buffer.slice('/model'.length).trim();
-          filterModelItems(search);
-          return;
-        }
-
-        if (buffer.startsWith('/')) {
-          openCommandMenu();
-        } else {
-          if (menuOpen) {
-            clearMenu();
-            menuOpen = false;
-          }
-        }
+        updateSuggestions();
+        return;
       }
     };
 
     function cleanup() {
       process.stdin.removeListener('data', onData);
+      process.stdout.removeListener('resize', onResize);
       if (process.stdin.isTTY) {
         process.stdin.setRawMode(wasRaw);
       }
@@ -788,8 +698,6 @@ export async function startTerminalChat() {
 
   printHeader(currentModel, reasoningTier, !!userApiKey);
 
-  const promptPrefix = `${c.brightBlue}${c.bold}You ›${c.reset} `;
-
   while (true) {
     // Re-check synced config on each prompt turn to capture any new providers / keys / models added via web
     const freshConfig = loadSyncedConfig();
@@ -804,10 +712,11 @@ export async function startTerminalChat() {
     }
 
     const inputResult = await readInteractivePrompt({
-      promptPrefix,
       syncedConfig: freshConfig,
       currentModel,
       reasoningTier,
+      userApiKey,
+      history,
     });
 
     if (inputResult.type === 'empty') {
@@ -832,7 +741,7 @@ export async function startTerminalChat() {
       continue;
     }
 
-    // Triggered model menu explicitly
+    // Triggered model menu explicitly (e.g. via Ctrl+L or /model)
     if (inputResult.type === 'open_model_menu') {
       const models = getAvailableModels(freshConfig);
       const modelItems = models.map((m) => ({
@@ -913,7 +822,7 @@ export async function startTerminalChat() {
       continue;
     }
 
-    // Regular Chat message
+    // Regular Chat message (Pi Chat UI)
     if (inputResult.type === 'chat') {
       const availableModels = getAvailableModels(freshConfig);
       const matchedModel = availableModels.find((m) => m.id === currentModel);
@@ -940,7 +849,19 @@ export async function startTerminalChat() {
       const userMessage = inputResult.text;
       history.push({ role: 'user', content: userMessage });
 
-      process.stdout.write(`\n${c.brightCyan}${c.bold}Orion ›${c.reset} `);
+      // Pi Chat UI: Print user message in padded dark-gray block (Screenshot 4 & 5)
+      process.stdout.write(`\n\x1b[48;5;236m\x1b[1m\x1b[37m  ${userMessage}  \x1b[0m\n\n`);
+
+      // Pi Working Spinner (Screenshot 4)
+      const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+      let spinnerIdx = 0;
+      let hasReceivedFirstChunk = false;
+      const spinnerTimer = setInterval(() => {
+        if (!hasReceivedFirstChunk) {
+          process.stdout.write(`\r\x1b[K\x1b[36m${spinnerFrames[spinnerIdx]}\x1b[0m \x1b[90mWorking...\x1b[0m`);
+          spinnerIdx = (spinnerIdx + 1) % spinnerFrames.length;
+        }
+      }, 80);
 
       let assistantReply = '';
       let inThinking = false;
@@ -956,6 +877,12 @@ export async function startTerminalChat() {
             orionApiKey: userApiKey,
             signal: activeAbortController.signal,
             onChunk: (chunk) => {
+              if (!hasReceivedFirstChunk) {
+                hasReceivedFirstChunk = true;
+                clearInterval(spinnerTimer);
+                process.stdout.write('\r\x1b[K'); // Clears the Working... line completely
+              }
+
               assistantReply += chunk;
 
               if (chunk.includes('<think>')) {
@@ -973,12 +900,27 @@ export async function startTerminalChat() {
               }
             },
             onDone: () => {
+              if (!hasReceivedFirstChunk) {
+                hasReceivedFirstChunk = true;
+                clearInterval(spinnerTimer);
+                process.stdout.write('\r\x1b[K');
+              }
               resolveStream();
             },
             onError: (err) => {
+              if (!hasReceivedFirstChunk) {
+                hasReceivedFirstChunk = true;
+                clearInterval(spinnerTimer);
+                process.stdout.write('\r\x1b[K');
+              }
               rejectStream(err);
             },
           }).catch((err) => {
+            if (!hasReceivedFirstChunk) {
+              hasReceivedFirstChunk = true;
+              clearInterval(spinnerTimer);
+              process.stdout.write('\r\x1b[K');
+            }
             rejectStream(err);
           });
         });
@@ -994,6 +936,7 @@ export async function startTerminalChat() {
           process.stdout.write(`\n${c.red}❌ Terjadi kesalahan: ${err.message}${c.reset}\n\n`);
         }
       } finally {
+        clearInterval(spinnerTimer);
         isGenerating = false;
         activeAbortController = null;
       }
@@ -1065,16 +1008,29 @@ export async function startTerminalChat() {
       return false;
     }
 
+    if (action === '/export') {
+      try {
+        ensureConfigDir();
+        const exportPath = path.join(configDir, `session-${Date.now()}.jsonl`);
+        const content = history.map((h) => JSON.stringify(h)).join('\n');
+        fs.writeFileSync(exportPath, content, 'utf8');
+        console.log(`\n${c.green}✓ Sesi obrolan diekspor ke: ${c.white}${exportPath}${c.reset}\n`);
+      } catch (err) {
+        console.log(`\n${c.red}❌ Gagal mengekspor sesi: ${err.message}${c.reset}\n`);
+      }
+      return false;
+    }
+
     if (action === '/hotkeys') {
       console.log(`\n${c.bold}${c.brightCyan}✦ Daftar Pintasan Keyboard (Pi Shortcuts):${c.reset}`);
       console.log(`  ${c.yellow}Ctrl+L${c.reset}         Buka langsung pemilih model AI`);
       console.log(`  ${c.yellow}Shift+Tab${c.reset}      Ganti tingkat penalaran (low → medium → high)`);
       console.log(`  ${c.yellow}!perintah${c.reset}      Jalankan perintah shell terminal (hasil masuk konteks AI)`);
       console.log(`  ${c.yellow}!!perintah${c.reset}     Jalankan perintah shell diam-diam`);
-      console.log(`  ${c.yellow}/${c.reset}              Saran perintah otomatis saat mengetik`);
+      console.log(`  ${c.yellow}/${c.reset}              Saran perintah otomatis saat mengetik (windowed)`);
       console.log(`  ${c.yellow}Tab${c.reset}            Auto-complete saran perintah atau model`);
       console.log(`  ${c.yellow}Esc${c.reset}            Tutup menu saran`);
-      console.log(`  ${c.yellow}Ctrl+C${c.reset}         Bersihkan baris prompt / hentikan respon berjalan`);
+      console.log(`  ${c.yellow}Ctrl+C${c.reset}         Bersihkan baris prompt / batalkan stream`);
       console.log(`  ${c.yellow}Ctrl+D${c.reset}         Keluar dari sesi terminal\n`);
       return false;
     }
@@ -1161,6 +1117,7 @@ export async function startTerminalChat() {
       console.log(`  ${c.yellow}/session${c.reset}                Lihat info sesi, pesan riwayat & estimasi token`);
       console.log(`  ${c.yellow}/copy${c.reset}                   Salin respon asisten terakhir ke clipboard`);
       console.log(`  ${c.yellow}/compact${c.reset}                Kompak riwayat percakapan untuk menghemat token`);
+      console.log(`  ${c.yellow}/export${c.reset}                 Ekspor sesi percakapan ke file JSONL`);
       console.log(`  ${c.yellow}/hotkeys${c.reset}                Tampilkan daftar pintasan keyboard`);
       console.log(`  ${c.yellow}/settings${c.reset}               Tampilkan preferensi & konfigurasi aktif`);
       console.log(`  ${c.yellow}/login, /key${c.reset} [key]      Sambungkan / masukkan API Key Orion`);
@@ -1178,49 +1135,61 @@ export async function startTerminalChat() {
 }
 
 /**
- * Dedicated interactive selector helper for standalone selection menus
+ * Dedicated interactive selector helper for standalone selection menus (Model / Tier)
+ * Features windowed pagination (PAGE_SIZE = 6) with (x/y) indicator to prevent screen overflow.
  */
 async function selectModelInteractive({ title, items, initialIndex = 0 }) {
   if (!items || items.length === 0) return null;
   if (!process.stdin.isTTY) return items[0];
 
+  const PAGE_SIZE = 6;
   let selectedIndex = Math.max(0, Math.min(initialIndex, items.length - 1));
+  let scrollOffset = Math.floor(selectedIndex / PAGE_SIZE) * PAGE_SIZE;
   let linesRendered = 0;
 
   function render(isFirst = false) {
-    let out = '';
     if (!isFirst && linesRendered > 0) {
-      out += `\x1b[${linesRendered}A\r`;
+      process.stdout.write(`\x1b[${linesRendered}A\r\x1b[J`);
     }
 
-    out += `\x1b[1m\x1b[36m${title}\x1b[0m \x1b[90m(Gunakan ↑ / ↓ lalu Enter, Esc untuk batal)\x1b[0m\x1b[K\n`;
+    if (selectedIndex < scrollOffset) {
+      scrollOffset = selectedIndex;
+    } else if (selectedIndex >= scrollOffset + PAGE_SIZE) {
+      scrollOffset = selectedIndex - PAGE_SIZE + 1;
+    }
 
-    items.forEach((item, idx) => {
-      const isSelected = idx === selectedIndex;
-      const cursor = isSelected ? `\x1b[36m\x1b[1m❯\x1b[0m` : ` `;
+    const visibleItems = items.slice(scrollOffset, scrollOffset + PAGE_SIZE);
+    let out = `\x1b[1m\x1b[36m${title}\x1b[0m \x1b[90m(Gunakan ↑ / ↓ lalu Enter, Esc untuk batal)\x1b[0m\x1b[K\n`;
+    let count = 1;
+
+    visibleItems.forEach((item, idx) => {
+      const realIdx = scrollOffset + idx;
+      const isSelected = realIdx === selectedIndex;
+      const cursor = isSelected ? `\x1b[36m→ \x1b[0m` : `  `;
       const label = isSelected
         ? `\x1b[1m\x1b[37m${item.label.padEnd(22)}\x1b[0m`
-        : `\x1b[90m${item.label.padEnd(22)}\x1b[0m`;
+        : `\x1b[37m${item.label.padEnd(22)}\x1b[0m`;
       const detail = item.detail
         ? (isSelected ? `\x1b[36m${item.detail}\x1b[0m` : `\x1b[90m${item.detail}\x1b[0m`)
         : '';
       const badge = item.badge ? ` \x1b[32m[${item.badge}]\x1b[0m` : '';
 
-      out += `${cursor} ${label} ${detail}${badge}\x1b[K\n`;
+      out += `${cursor}${label} ${detail}${badge}\x1b[K\n`;
+      count++;
     });
 
-    linesRendered = items.length + 1;
+    if (items.length > PAGE_SIZE) {
+      out += `  \x1b[90m(${selectedIndex + 1}/${items.length})\x1b[0m\x1b[K\n`;
+      count++;
+    }
+
+    linesRendered = count;
     process.stdout.write(out);
   }
 
   function clear() {
     if (linesRendered > 0) {
-      let out = `\x1b[${linesRendered}A\r`;
-      for (let i = 0; i < linesRendered; i++) {
-        out += '\x1b[2K\n';
-      }
-      out += `\x1b[${linesRendered}A\r`;
-      process.stdout.write(out);
+      process.stdout.write(`\x1b[${linesRendered}A\r\x1b[J`);
       linesRendered = 0;
     }
   }
