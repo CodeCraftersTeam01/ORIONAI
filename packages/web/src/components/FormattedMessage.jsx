@@ -660,6 +660,16 @@ function getTableAlignments(line) {
           // 2. ASCII Box Flowchart auto-detection (converts box drawing like in user screenshot to Mermaid SVG)
           const convertedMermaid = tryConvertAsciiToMermaid(part.value);
           if (convertedMermaid) {
+            if (isStreaming && !part.isClosed) {
+              return (
+                <CodeBlock
+                  key={index}
+                  code={part.value}
+                  language={lang || part.language}
+                />
+              );
+            }
+
             return (
               <MermaidBlock
                 key={index}
