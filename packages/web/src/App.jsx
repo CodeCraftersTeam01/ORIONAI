@@ -67,6 +67,9 @@ import ThinkingIndicator from './components/ThinkingIndicator';
 import { soundEffects } from './utils/soundEffects';
 import { formatFileSize } from './utils/fileHelpers';
 import { isReasoningSupported } from './utils/modelConfig';
+import VoiceCallingOverlay from './components/VoiceCallingOverlay';
+import { playCosmicHumSound, playCosmicEndCallSound } from './utils/audioEffects';
+import { cleanIndonesianText } from './utils/textCleaner';
 import './App.css';
 
 function formatUserFacingError(errMessage) {
@@ -223,6 +226,85 @@ const renderRecommendationIcon = (iconName) => {
   }
 };
 
+/**
+ * Resolves active provider, model ID, and API keys based on the user's selected model.
+ */
+function resolveModelAndProvider(targetModel, providersList) {
+  const orionProvider = (providersList || []).find(
+    (p) => p.id === 'orion' || p.templateId === 'orion' || p.name?.toLowerCase().includes('official')
+  );
+  const userOrionApiKey =
+    orionProvider?.apiKeys?.find((k) => k.active)?.key || orionProvider?.apiKey || '';
+
+  let activeCustomProvider = null;
+  let effectiveModel = targetModel || 'orion::orion';
+
+  if (targetModel && targetModel.includes('::')) {
+    const [provId, modId] = targetModel.split('::');
+    const parentProv = (providersList || []).find((p) => p.id === provId);
+    if (parentProv) {
+      let activeKey = parentProv.apiKeys?.find((k) => k.active)?.key || parentProv.apiKey || '';
+      if (!activeKey && (provId === 'orion' || parentProv.templateId === 'orion' || parentProv.name?.toLowerCase().includes('official'))) {
+        activeKey = userOrionApiKey;
+      }
+      activeCustomProvider = {
+        id: parentProv.id,
+        baseUrl: parentProv.baseUrl,
+        apiKey: activeKey,
+        modelId: modId,
+        name: parentProv.name,
+        requiresApiKey: parentProv.requiresApiKey,
+      };
+    }
+  } else if (targetModel) {
+    for (const p of providersList || []) {
+      const foundMod = (p.models || []).find((m) => (typeof m === 'string' ? m === targetModel : m.id === targetModel && m.enabled));
+      if (foundMod) {
+        const modId = typeof foundMod === 'string' ? foundMod : foundMod.id;
+        effectiveModel = `${p.id}::${modId}`;
+        let activeKey = p.apiKeys?.find((k) => k.active)?.key || p.apiKey || '';
+        if (!activeKey && (p.id === 'orion' || p.templateId === 'orion' || p.name?.toLowerCase().includes('official'))) {
+          activeKey = userOrionApiKey;
+        }
+        activeCustomProvider = {
+          id: p.id,
+          baseUrl: p.baseUrl,
+          apiKey: activeKey,
+          modelId: modId,
+          name: p.name,
+          requiresApiKey: p.requiresApiKey,
+        };
+        break;
+      }
+    }
+  }
+
+  if (!activeCustomProvider && (providersList || []).length > 0) {
+    for (const p of providersList) {
+      const firstEnabled = (p.models || []).find((m) => m && m.enabled);
+      if (firstEnabled) {
+        const modId = typeof firstEnabled === 'string' ? firstEnabled : firstEnabled.id;
+        effectiveModel = `${p.id}::${modId}`;
+        let activeKey = p.apiKeys?.find((k) => k.active)?.key || p.apiKey || '';
+        if (!activeKey && (p.id === 'orion' || p.templateId === 'orion' || p.name?.toLowerCase().includes('official'))) {
+          activeKey = userOrionApiKey;
+        }
+        activeCustomProvider = {
+          id: p.id,
+          baseUrl: p.baseUrl,
+          apiKey: activeKey,
+          modelId: modId,
+          name: p.name,
+          requiresApiKey: p.requiresApiKey,
+        };
+        break;
+      }
+    }
+  }
+
+  return { effectiveModel, activeCustomProvider, userOrionApiKey };
+}
+
 export default function App() {
   // Theme mode state: 'system' (auto detect browser/OS), 'light' (default white), 'dark' (optional black)
   const [themeMode, setThemeMode] = useState(() => {
@@ -271,11 +353,21 @@ export default function App() {
     setThemeMode(mode);
   };
 
-  // Sessions state
+  // Sessions state (automatically cleans any interrupted empty assistant bubbles)
   const [sessions, setSessions] = useState(() => {
     try {
       const saved = localStorage.getItem('orion_chat_sessions');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.map((s) => ({
+            ...s,
+            messages: (s.messages || []).filter(
+              (m) => !(m.role === 'assistant' && (!m.content || m.content.trim() === ''))
+            ),
+          }));
+        }
+      }
     } catch {
       // storage quota fallback
     }
@@ -310,18 +402,32 @@ export default function App() {
   const [customProviders, setCustomProviders] = useState(() => {
     try {
       const saved = localStorage.getItem('orion_custom_providers');
-      return saved ? JSON.parse(saved) : [];
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        // Discard any stale legacy official provider containing hardcoded models
+        return parsed.filter((p) => {
+          if (p.id === 'orion' && p.models?.some((m) => (m.id || m) === 'orion-auto' || (m.name || m) === 'Orion Auto Router')) {
+            return false;
+          }
+          return true;
+        });
+      }
+      return [];
     } catch {
       return [];
     }
   });
   const [isManageProvidersOpen, setIsManageProvidersOpen] = useState(false);
 
-  // Selected AI Model (Orion, Agnes 2.5 Flash, Nemotron 3, or Custom Provider ID)
+  // Selected AI Model (Dynamic format: providerId::modelId, e.g. orion::orion)
   const [selectedModel, setSelectedModel] = useState(() => {
     const saved = localStorage.getItem('orion_selected_model');
+    if (saved === 'orion') return 'orion::orion';
+    if (saved === 'agnes' || saved === 'agnes-2.5-flash') return 'orion::agnes-2.5-flash';
+    if (saved === 'nemotron-3') return 'orion::nemotron-3';
     if (saved) return saved;
-    return 'orion';
+    return 'orion::orion';
   });
 
   const [reasoningTier, setReasoningTier] = useState(() => {
@@ -360,6 +466,505 @@ export default function App() {
     return () => clearInterval(interval);
   }, [currentView, rotatingSubtitles.length]);
 
+  // AI Voice Calling State & Real-time Microphone Audio Analyzer
+  const [isVoiceCalling, setIsVoiceCalling] = useState(false);
+  const [voiceAudioLevel, setVoiceAudioLevel] = useState(0);
+  const [isVoiceMuted, setIsVoiceMuted] = useState(false);
+  const [voiceAgentStatus, setVoiceAgentStatus] = useState('listening'); // 'listening' | 'thinking' | 'speaking'
+  const [voiceUserTranscript, setVoiceUserTranscript] = useState('');
+  const [voiceAgentResponse, setVoiceAgentResponse] = useState('');
+  const [voiceResponseTurn, setVoiceResponseTurn] = useState(0);
+
+  const voiceMediaStreamRef = useRef(null);
+  const voiceAudioContextRef = useRef(null);
+  const voiceAnalyserRef = useRef(null);
+  const voiceRafIdRef = useRef(null);
+  const voiceSpeechRecRef = useRef(null);
+  const voiceSilenceTimerRef = useRef(null);
+  const voiceTranscriptAccumulatorRef = useRef('');
+  const voiceIsProcessingQueryRef = useRef(false);
+  const voiceAbortControllerRef = useRef(null);
+
+  const isVoiceCallingRef = useRef(false);
+  isVoiceCallingRef.current = isVoiceCalling;
+
+  const isVoiceMutedRef = useRef(false);
+  isVoiceMutedRef.current = isVoiceMuted;
+
+  const selectedModelRef = useRef(selectedModel);
+  selectedModelRef.current = selectedModel;
+
+  const customProvidersRef = useRef(customProviders);
+  customProvidersRef.current = customProviders;
+
+  const voiceSelectedModelRef = useRef(selectedModel);
+
+  // Real-time Speech-to-Text Recognition Setup
+  const startVoiceSpeechRecognition = () => {
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRec) {
+      console.warn('SpeechRecognition API not available in this browser');
+      return;
+    }
+
+    try {
+      if (voiceSpeechRecRef.current) {
+        try { voiceSpeechRecRef.current.stop(); } catch {}
+      }
+
+      const recognition = new SpeechRec();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'id-ID';
+      recognition.maxAlternatives = 1;
+
+      recognition.onresult = (event) => {
+        if (voiceIsProcessingQueryRef.current || isVoiceMutedRef.current) return;
+
+        let interim = '';
+        let final = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            final += event.results[i][0].transcript;
+          } else {
+            interim += event.results[i][0].transcript;
+          }
+        }
+
+        const currentSpeech = (final || interim).trim();
+        if (currentSpeech) {
+          voiceTranscriptAccumulatorRef.current = currentSpeech;
+          setVoiceUserTranscript(currentSpeech);
+
+          // Reset silence timer on new utterance
+          if (voiceSilenceTimerRef.current) {
+            clearTimeout(voiceSilenceTimerRef.current);
+          }
+
+          // User stops talking: 1500ms silence threshold triggers agent thinking & response
+          voiceSilenceTimerRef.current = setTimeout(() => {
+            const query = voiceTranscriptAccumulatorRef.current.trim();
+            if (query.length >= 2 && !voiceIsProcessingQueryRef.current && isVoiceCallingRef.current) {
+              handleTriggerVoiceAgentResponse(query);
+            }
+          }, 1500);
+        }
+      };
+
+      recognition.onerror = (e) => {
+        // no-speech is normal during pauses
+        if (e.error === 'no-speech' && isVoiceCallingRef.current && !voiceIsProcessingQueryRef.current) {
+          // ignore
+        }
+      };
+
+      recognition.onend = () => {
+        // Keep listening alive unless muted or processing agent reply
+        if (isVoiceCallingRef.current && !voiceIsProcessingQueryRef.current && !isVoiceMutedRef.current) {
+          try {
+            recognition.start();
+          } catch {}
+        }
+      };
+
+      recognition.start();
+      voiceSpeechRecRef.current = recognition;
+    } catch (err) {
+      console.warn('Speech recognition start error:', err);
+    }
+  };
+
+  const handleTriggerVoiceAgentResponse = async (queryText) => {
+    if (!queryText || voiceIsProcessingQueryRef.current || !isVoiceCallingRef.current) return;
+    voiceIsProcessingQueryRef.current = true;
+    if (voiceSilenceTimerRef.current) {
+      clearTimeout(voiceSilenceTimerRef.current);
+      voiceSilenceTimerRef.current = null;
+    }
+
+    // 1. Temporarily mute user mic so background noise doesn't interfere while agent thinks & speaks
+    if (voiceMediaStreamRef.current) {
+      voiceMediaStreamRef.current.getAudioTracks().forEach((t) => { t.enabled = false; });
+    }
+    if (voiceSpeechRecRef.current) {
+      try { voiceSpeechRecRef.current.stop(); } catch {}
+    }
+    setVoiceAudioLevel(0);
+
+    // 2. Set Agent Status to Thinking (keep prior response visible until next answer starts)
+    setVoiceAgentStatus('thinking');
+    setVoiceUserTranscript(queryText);
+
+    const controller = new AbortController();
+    voiceAbortControllerRef.current = controller;
+
+    let accumulatedReply = '';
+
+    try {
+      // Use the model selected before starting the voice call
+      const modelToUse = voiceSelectedModelRef.current || selectedModelRef.current || selectedModel;
+      const { effectiveModel, activeCustomProvider, userOrionApiKey } = resolveModelAndProvider(
+        modelToUse,
+        customProvidersRef.current || customProviders
+      );
+
+      // Voice prompt: explicit instruction for short, punchy, conversational spoken reply with standard spacing
+      const voicePrompt = `${queryText}\n\n[Instruksi Panggilan Suara]: Jawablah secara SINGKAT, PADAT, BERBOBOT, dan natural seperti berbicara di telepon (maksimal 1-2 kalimat saja). Wajib gunakan spasi pemisah antar kata yang benar dan normal (jangan menggabungkan kata). DILARANG menggunakan markdown, bullet points, atau kode.`;
+
+      const res = await fetch('/api/chat/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: voicePrompt,
+          history: activeSession ? activeSession.messages : [],
+          attachments: [],
+          model: effectiveModel || modelToUse,
+          reasoningTier: 'low',
+          customProvider: activeCustomProvider,
+          orionApiKey: userOrionApiKey,
+        }),
+        signal: controller.signal,
+      });
+
+      if (!res.ok) {
+        throw new Error('Gagal menghubungi AI');
+      }
+
+      // Hold agent status as 'thinking' so the animated thinking cue is clearly visible until first token
+      let hasStartedSpeaking = false;
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith('data:')) continue;
+          const dataStr = trimmed.replace(/^data:\s*/, '').trim();
+          if (dataStr === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(dataStr);
+            if (parsed.error) {
+              throw new Error(parsed.error);
+            }
+            const token = parsed.chunk || parsed.token || parsed.delta || parsed.content || '';
+            if (token) {
+              accumulatedReply += token;
+              // Clean out think tags, markdown, and fix glued spacing
+              const rawClean = accumulatedReply
+                .replace(/<think>[\s\S]*?<\/think>/gi, '')
+                .replace(/<think>[\s\S]*$/gi, '')
+                .replace(/[*#_`~]/g, '');
+              const cleanText = cleanIndonesianText(rawClean);
+              if (cleanText) {
+                if (!hasStartedSpeaking) {
+                  hasStartedSpeaking = true;
+                  setVoiceResponseTurn((prev) => prev + 1);
+                  setVoiceAgentStatus('speaking');
+                  setVoiceUserTranscript('');
+                }
+                setVoiceAgentResponse(cleanText);
+              }
+            }
+          } catch (e) {
+            if (e.message && !e.message.includes('JSON') && !e.message.includes('Unexpected')) {
+              throw e;
+            }
+          }
+        }
+      }
+
+      if (!hasStartedSpeaking) {
+        hasStartedSpeaking = true;
+        setVoiceResponseTurn((prev) => prev + 1);
+        setVoiceAgentStatus('speaking');
+        setVoiceUserTranscript('');
+      }
+
+      let finalAnswer = cleanIndonesianText(
+        accumulatedReply
+          .replace(/<think>[\s\S]*?<\/think>/gi, '')
+          .replace(/<think>[\s\S]*$/gi, '')
+          .replace(/[*#_`~]/g, '')
+      );
+
+      // Fallback if stream was empty
+      if (!finalAnswer) {
+        try {
+          const fallbackRes = await fetch('/api/chat/message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: voicePrompt,
+              history: activeSession ? activeSession.messages : [],
+              model: effectiveModel || modelToUse,
+              reasoningTier: 'low',
+              customProvider: activeCustomProvider,
+              orionApiKey: userOrionApiKey,
+            }),
+            signal: controller.signal,
+          });
+          if (fallbackRes.ok) {
+            const json = await fallbackRes.json();
+            const fallbackContent = json.data?.content || json.reply || '';
+            finalAnswer = fallbackContent
+              .replace(/<think>[\s\S]*?<\/think>/gi, '')
+              .replace(/<think>[\s\S]*$/gi, '')
+              .replace(/[*#_`~]/g, '')
+              .trim();
+          }
+        } catch {}
+      }
+
+      if (!finalAnswer) {
+        finalAnswer = 'Halo, saya mendengar Anda. Ada yang bisa saya bantu?';
+      }
+
+      setVoiceAgentResponse(finalAnswer);
+
+      // Record this exchange in active session messages
+      const userMsg = {
+        id: `msg-v-user-${Date.now()}`,
+        role: 'user',
+        content: queryText,
+        timestamp: new Date().toISOString(),
+      };
+      const aiMsg = {
+        id: `msg-v-ai-${Date.now()}`,
+        role: 'assistant',
+        content: finalAnswer,
+        model: effectiveModel || modelToUse,
+        timestamp: new Date().toISOString(),
+      };
+      setSessions((prev) =>
+        prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [...s.messages, userMsg, aiMsg] } : s))
+      );
+
+      // 4. Brief natural pause before mic seamlessly re-opens for the next user utterance
+      await new Promise((resolve) => setTimeout(resolve, 400));
+
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        setVoiceResponseTurn((prev) => prev + 1);
+        setVoiceUserTranscript('');
+        setVoiceAgentResponse('Maaf, suara kurang jelas. Bisa tolong diulangi?');
+      }
+    } finally {
+      // 5. Re-open microphone and resume listening while keeping current response visible
+      if (isVoiceCallingRef.current) {
+        voiceIsProcessingQueryRef.current = false;
+        voiceTranscriptAccumulatorRef.current = '';
+        setVoiceUserTranscript('');
+        // Retain voiceAgentResponse so text stays on screen until replaced by next reply
+        setVoiceAgentStatus('listening');
+
+        // Unmute audio tracks if not manually muted by user
+        if (voiceMediaStreamRef.current && !isVoiceMutedRef.current) {
+          voiceMediaStreamRef.current.getAudioTracks().forEach((t) => { t.enabled = true; });
+        }
+
+        // Restart Speech Recognition
+        if (!isVoiceMutedRef.current) {
+          startVoiceSpeechRecognition();
+        }
+      }
+    }
+  };
+
+  const handleStartVoiceCalling = async () => {
+    try {
+      voiceSelectedModelRef.current = selectedModel;
+      playCosmicHumSound();
+      setIsVoiceCalling(true);
+      setIsVoiceMuted(false);
+      setVoiceAgentStatus('listening');
+      setVoiceUserTranscript('');
+      setVoiceAgentResponse('');
+      voiceTranscriptAccumulatorRef.current = '';
+      voiceIsProcessingQueryRef.current = false;
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showToast('Akses mikrofon tidak didukung di browser ini');
+        return;
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+
+      voiceMediaStreamRef.current = stream;
+
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      const audioCtx = new AudioContextClass();
+      if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+      }
+      voiceAudioContextRef.current = audioCtx;
+
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.65;
+      voiceAnalyserRef.current = analyser;
+
+      const source = audioCtx.createMediaStreamSource(stream);
+      source.connect(analyser);
+
+      const bufferLength = analyser.frequencyBinCount;
+      const freqData = new Uint8Array(bufferLength);
+      const timeData = new Uint8Array(bufferLength);
+
+      let smoothedLevel = 0;
+
+      const analyzeAudio = () => {
+        if (!voiceAnalyserRef.current) return;
+        analyser.getByteFrequencyData(freqData);
+        analyser.getByteTimeDomainData(timeData);
+
+        // 1. Time-domain RMS and peak deviation (vital for immediate reaction to shouting or loud voice)
+        let maxDeviation = 0;
+        let sumSquares = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          const deviation = Math.abs(timeData[i] - 128) / 128;
+          if (deviation > maxDeviation) maxDeviation = deviation;
+          sumSquares += deviation * deviation;
+        }
+        const rms = Math.sqrt(sumSquares / bufferLength);
+
+        // 2. Focused vocal frequency range (bins 2 to 36 ~ 150Hz to 3.2kHz)
+        let vocalSum = 0;
+        const vocalBins = Math.min(36, bufferLength);
+        for (let i = 2; i < vocalBins; i++) {
+          vocalSum += freqData[i];
+        }
+        const vocalAvg = vocalSum / (vocalBins - 2) / 255;
+
+        // Balanced audio energy with realistic noise gate (ignores mic background hiss)
+        const combinedEnergy = rms * 2.8 + maxDeviation * 0.8 + vocalAvg * 1.6;
+        const gatedEnergy = Math.max(0, combinedEnergy - 0.10);
+        const instantLevel = Math.min(1.0, gatedEnergy * 1.35);
+
+        // Natural, smooth organic interpolation
+        const factor = instantLevel > smoothedLevel ? 0.30 : 0.12;
+        smoothedLevel += (instantLevel - smoothedLevel) * factor;
+
+        setVoiceAudioLevel(smoothedLevel);
+
+        voiceRafIdRef.current = requestAnimationFrame(analyzeAudio);
+      };
+
+      voiceRafIdRef.current = requestAnimationFrame(analyzeAudio);
+
+      // Start Real-time Speech-to-Text Transcription
+      startVoiceSpeechRecognition();
+    } catch (err) {
+      console.warn('Microphone access error:', err);
+      showToast('Gagal mengakses mikrofon: ' + (err.message || 'Izin ditolak'));
+      handleEndVoiceCalling();
+    }
+  };
+
+  const handleEndVoiceCalling = () => {
+    playCosmicEndCallSound();
+    setIsVoiceCalling(false);
+    setVoiceAudioLevel(0);
+    setIsVoiceMuted(false);
+    setVoiceAgentStatus('listening');
+    setVoiceUserTranscript('');
+    setVoiceAgentResponse('');
+    setVoiceResponseTurn(0);
+    voiceTranscriptAccumulatorRef.current = '';
+    voiceIsProcessingQueryRef.current = false;
+
+    if (voiceAbortControllerRef.current) {
+      voiceAbortControllerRef.current.abort();
+      voiceAbortControllerRef.current = null;
+    }
+
+    if (voiceSilenceTimerRef.current) {
+      clearTimeout(voiceSilenceTimerRef.current);
+      voiceSilenceTimerRef.current = null;
+    }
+
+    if (voiceSpeechRecRef.current) {
+      try { voiceSpeechRecRef.current.stop(); } catch {}
+      voiceSpeechRecRef.current = null;
+    }
+
+    if (voiceRafIdRef.current) {
+      cancelAnimationFrame(voiceRafIdRef.current);
+      voiceRafIdRef.current = null;
+    }
+
+    if (voiceMediaStreamRef.current) {
+      voiceMediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      voiceMediaStreamRef.current = null;
+    }
+
+    if (voiceAudioContextRef.current) {
+      voiceAudioContextRef.current.close().catch(() => {});
+      voiceAudioContextRef.current = null;
+    }
+    voiceAnalyserRef.current = null;
+  };
+
+  const handleToggleVoiceMute = () => {
+    const newMuted = !isVoiceMuted;
+    setIsVoiceMuted(newMuted);
+
+    if (voiceMediaStreamRef.current) {
+      const audioTracks = voiceMediaStreamRef.current.getAudioTracks();
+      audioTracks.forEach((t) => {
+        t.enabled = !newMuted;
+      });
+    }
+
+    if (newMuted) {
+      setVoiceAudioLevel(0);
+      if (voiceSpeechRecRef.current) {
+        try { voiceSpeechRecRef.current.stop(); } catch {}
+      }
+    } else {
+      if (!voiceIsProcessingQueryRef.current) {
+        startVoiceSpeechRecognition();
+      }
+    }
+  };
+
+  // Keyboard shortcut: Escape to close voice calling
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isVoiceCalling) {
+        handleEndVoiceCalling();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isVoiceCalling]);
+
+  // Clean up media streams and audio context on unmount
+  useEffect(() => {
+    return () => {
+      if (voiceRafIdRef.current) cancelAnimationFrame(voiceRafIdRef.current);
+      if (voiceMediaStreamRef.current) {
+        voiceMediaStreamRef.current.getTracks().forEach((t) => t.stop());
+      }
+      if (voiceAudioContextRef.current) {
+        voiceAudioContextRef.current.close().catch(() => {});
+      }
+    };
+  }, []);
+
   const handleNavigateView = (view) => {
     soundEffects.click?.();
     setCurrentView(view);
@@ -389,18 +994,36 @@ export default function App() {
       .then((res) => res.json())
       .then((data) => {
         if (!data || !data.success) return;
-        // Merge providers bidirectionally: preserve local custom providers and server providers
+        const serverProviders = Array.isArray(data.providers) ? data.providers : [];
+        const hasServerOfficial = serverProviders.some(
+          (p) => p.templateId === 'orion' || p.name?.toLowerCase().includes('official') || p.id === 'orion'
+        );
+
         const localSaved = localStorage.getItem('orion_custom_providers');
         let localProviders = [];
         try {
           if (localSaved) localProviders = JSON.parse(localSaved);
         } catch {}
 
+        // Discard stale legacy or duplicate official provider from local storage
+        localProviders = (localProviders || []).filter((p) => {
+          if (!p || !p.id) return false;
+          const isOfficial = p.templateId === 'orion' || p.name?.toLowerCase().includes('official') || p.id === 'orion';
+          if (isOfficial && hasServerOfficial) {
+            const officialServer = serverProviders.find(
+              (sp) => sp.templateId === 'orion' || sp.name?.toLowerCase().includes('official') || sp.id === 'orion'
+            );
+            return p.id === officialServer?.id;
+          }
+          return true;
+        });
+
         const providerMap = new Map();
-        (data.providers || []).forEach((p) => {
+        serverProviders.forEach((p) => {
           if (p && p.id) providerMap.set(p.id, p);
         });
-        (localProviders || []).forEach((p) => {
+
+        localProviders.forEach((p) => {
           if (p && p.id) {
             if (providerMap.has(p.id)) {
               const existing = providerMap.get(p.id);
@@ -427,8 +1050,12 @@ export default function App() {
         }
 
         if (data.selectedModel) {
-          setSelectedModel(data.selectedModel);
-          localStorage.setItem('orion_selected_model', data.selectedModel);
+          let resolved = data.selectedModel;
+          if (resolved === 'orion') resolved = 'orion::orion';
+          else if (resolved === 'agnes' || resolved === 'agnes-2.5-flash') resolved = 'orion::agnes-2.5-flash';
+          else if (resolved === 'nemotron-3') resolved = 'orion::nemotron-3';
+          setSelectedModel(resolved);
+          localStorage.setItem('orion_selected_model', resolved);
         }
         if (data.reasoningTier) {
           setReasoningTier(data.reasoningTier);
@@ -645,22 +1272,10 @@ export default function App() {
       timestamp: new Date().toISOString(),
     };
 
-    let activeCustomProvider = null;
-    if (selectedModel && selectedModel.includes('::')) {
-      const [provId, modId] = selectedModel.split('::');
-      const parentProv = customProviders.find((p) => p.id === provId);
-      if (parentProv) {
-        const activeKey = parentProv.apiKeys?.find((k) => k.active)?.key || parentProv.apiKey || '';
-        activeCustomProvider = {
-          baseUrl: parentProv.baseUrl,
-          apiKey: activeKey,
-          modelId: modId,
-          name: parentProv.name,
-        };
-      }
-    } else {
-      activeCustomProvider = customProviders.find((p) => p.id === selectedModel) || null;
-    }
+    const { effectiveModel, activeCustomProvider, userOrionApiKey } = resolveModelAndProvider(
+      selectedModel,
+      customProviders
+    );
 
     const modelSupportsReasoning = isReasoningSupported(
       selectedModel,
@@ -673,7 +1288,7 @@ export default function App() {
       id: aiMessageId,
       role: 'assistant',
       content: '',
-      model: selectedModel,
+      model: effectiveModel || selectedModel,
       reasoningTier: activeReasoningTier,
       customProvider: activeCustomProvider,
       timestamp: new Date().toISOString(),
@@ -727,12 +1342,6 @@ export default function App() {
       );
     };
 
-    const orionProvider = (customProviders || []).find(
-      (p) => p.id === 'orion' || p.templateId === 'orion'
-    );
-    const userOrionApiKey =
-      orionProvider?.apiKeys?.find((k) => k.active)?.key || orionProvider?.apiKey || '';
-
     try {
       const res = await fetch('/api/chat/stream', {
         method: 'POST',
@@ -741,7 +1350,7 @@ export default function App() {
           message: displayPrompt,
           history: activeSession ? activeSession.messages : [],
           attachments: activeAttachments,
-          model: selectedModel,
+          model: effectiveModel || selectedModel,
           reasoningTier: activeReasoningTier,
           customProvider: activeCustomProvider,
           orionApiKey: userOrionApiKey,
@@ -968,6 +1577,9 @@ export default function App() {
         active={currentView === 'chat' || currentView === 'dashboard'}
         inChat={currentView === 'chat' && messages.length > 0}
         theme={theme}
+        isVoiceCalling={isVoiceCalling}
+        audioLevel={voiceAudioLevel}
+        isThinking={isVoiceCalling && voiceAgentStatus === 'thinking'}
       />
 
       {/* Minimal Toast */}
@@ -995,7 +1607,7 @@ export default function App() {
       />
 
       {/* Main Area */}
-      <main className="chat-main">
+      <main className={`chat-main ${isVoiceCalling ? 'is-voice-calling-active' : ''}`}>
         {/* Simple Transparent Header (No Background) */}
         <header className="chat-header-simple">
           <div className="header-simple-left">
@@ -1279,10 +1891,12 @@ export default function App() {
                             {msg.content && <div className="user-text-content">{msg.content}</div>}
                           </div>
                         ) : msg.content === '' ? (
-                          <ThinkingIndicator
-                            model={msg.model || selectedModel}
-                            reasoningTier={msg.reasoningTier || reasoningTier}
-                          />
+                          isGenerating && isStreamingThis ? (
+                            <ThinkingIndicator
+                              model={msg.model || selectedModel}
+                              reasoningTier={msg.reasoningTier || reasoningTier}
+                            />
+                          ) : null
                         ) : (
                           <FormattedMessage content={msg.content} isStreaming={isStreamingThis} />
                         )}
@@ -1341,6 +1955,7 @@ export default function App() {
           setAttachments={setAttachments}
           onSend={() => handleSendMessage()}
           onStop={handleStopGeneration}
+          onStartVoiceCall={handleStartVoiceCalling}
           isGenerating={isGenerating}
           isCentered={messages.length === 0 || currentView === 'dashboard'}
           isHiddenDashboard={currentView === 'dashboard'}
@@ -1350,6 +1965,18 @@ export default function App() {
           setReasoningTier={handleReasoningTierChange}
           customProviders={customProviders}
           onOpenManageProviders={() => setCurrentView('providers')}
+        />
+
+        {/* Ambient Voice Calling Overlay with Equalizer Wave Visualizer */}
+        <VoiceCallingOverlay
+          isActive={isVoiceCalling}
+          isMuted={isVoiceMuted}
+          agentStatus={voiceAgentStatus}
+          userTranscript={voiceUserTranscript}
+          agentResponse={voiceAgentResponse}
+          responseTurn={voiceResponseTurn}
+          onToggleMute={handleToggleVoiceMute}
+          onEndCall={handleEndVoiceCalling}
         />
           </>
         )}

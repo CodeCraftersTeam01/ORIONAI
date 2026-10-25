@@ -24,34 +24,6 @@ function ensureConfigDir() {
 
 const router = Router();
 
-// Available Models List matching Gemini-style Model Selector
-const AVAILABLE_MODELS = [
-  {
-    id: 'orion',
-    name: 'Orion',
-    displayName: 'Orion',
-    subtitle: 'Tugas kompleks & penalaran',
-    supportsReasoning: true,
-    status: 'active',
-  },
-  {
-    id: 'agnes',
-    name: 'Agnes 2.5 Flash',
-    displayName: 'Agnes 2.5 Flash',
-    subtitle: 'Bantuan serbaguna & kreatif',
-    supportsReasoning: false,
-    status: 'active',
-  },
-  {
-    id: 'nemotron-3',
-    name: 'Nemotron 3',
-    displayName: 'Nemotron 3',
-    subtitle: 'Jawaban tercepat bebas biaya',
-    supportsReasoning: false,
-    status: 'active',
-  },
-];
-
 const REASONING_TIERS = [
   { id: 'low', name: 'Low', desc: 'Quick and efficient' },
   { id: 'medium', name: 'Medium', desc: 'Balanced depth' },
@@ -95,7 +67,7 @@ router.post('/message', chatRateLimiter, validateChatInput, async (req, res, nex
       message,
       history: history || [],
       attachments: attachments || [],
-      model: model || 'orion',
+      model: model || 'orion::orion',
       reasoningTier: reasoningTier || 'medium',
       customProvider: customProvider || null,
       orionApiKey: orionApiKey || null,
@@ -147,7 +119,7 @@ router.post('/stream', chatRateLimiter, validateChatInput, (req, res) => {
       message,
       history: history || [],
       attachments: attachments || [],
-      model: model || 'orion',
+      model: model || 'orion::orion',
       reasoningTier: reasoningTier || 'medium',
       customProvider: customProvider || null,
       orionApiKey: orionApiKey || null,
@@ -227,14 +199,41 @@ router.post('/test-model', chatRateLimiter, async (req, res) => {
   }
 });
 
-// GET /api/chat/models (Sanitized public model info)
+// GET /api/chat/models (Dynamic enabled models from active provider configuration)
 router.get('/models', (req, res) => {
-  res.json({
-    success: true,
-    models: AVAILABLE_MODELS,
-    reasoningTiers: REASONING_TIERS,
-    status: 'online',
-  });
+  try {
+    ensureConfigDir();
+    let providers = [];
+    if (fs.existsSync(providersConfigFile)) {
+      try {
+        const data = JSON.parse(fs.readFileSync(providersConfigFile, 'utf8'));
+        providers = data.providers || [];
+      } catch {}
+    }
+    const enabledModels = [];
+    providers.forEach((prov) => {
+      (prov.models || []).forEach((m) => {
+        if (m && m.enabled) {
+          enabledModels.push({
+            id: `${prov.id}::${m.id}`,
+            name: m.name || m.id,
+            displayName: m.name || m.id,
+            providerName: prov.name,
+            supportsReasoning: Boolean(m.supportsReasoning),
+            status: 'active',
+          });
+        }
+      });
+    });
+    res.json({
+      success: true,
+      models: enabledModels,
+      reasoningTiers: REASONING_TIERS,
+      status: 'online',
+    });
+  } catch (err) {
+    res.json({ success: true, models: [], reasoningTiers: REASONING_TIERS, status: 'online' });
+  }
 });
 
 // GET /api/chat/providers-config (Sync providers from ~/.orion/providers.json)
@@ -279,7 +278,7 @@ router.get('/providers-config', (req, res) => {
       }
     }
 
-    // Default fallback provider configuration
+    // Default fallback provider configuration (polosan awal tanpa model sebelum di-scan / diimpor)
     const defaultProviders = [
       {
         id: 'orion',
@@ -289,16 +288,7 @@ router.get('/providers-config', (req, res) => {
         apiKey: savedApiKey,
         requiresApiKey: true,
         hideBaseUrl: true,
-        models: [
-          { id: 'orion', name: 'Orion', enabled: true, tested: true, lastTestStatus: 'success' },
-          { id: 'orion-auto', name: 'Orion Auto Router', enabled: true, tested: true, lastTestStatus: 'success' },
-          { id: 'agnes-2.5-flash', name: 'Agnes 2.5 Flash', enabled: true, tested: true, lastTestStatus: 'success' },
-          { id: 'agnes-2.5-pro', name: 'Agnes 2.5 Pro', enabled: true, tested: true, lastTestStatus: 'success' },
-          { id: 'agnes-3.0-flash', name: 'Agnes 3.0 Flash', enabled: true, tested: true, lastTestStatus: 'success' },
-          { id: 'gemini-3.7-flash', name: 'Gemini 3.7 Flash', enabled: true, tested: true, lastTestStatus: 'success' },
-          { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash Lite', enabled: true, tested: true, lastTestStatus: 'success' },
-          { id: 'nemotron-3', name: 'Nemotron 3', enabled: true, tested: true, lastTestStatus: 'success' },
-        ],
+        models: [],
       },
     ];
 
@@ -309,7 +299,7 @@ router.get('/providers-config', (req, res) => {
         JSON.stringify(
           {
             providers: defaultProviders,
-            selectedModel: 'orion',
+            selectedModel: 'orion::orion',
             reasoningTier: 'medium',
             updatedAt: Date.now(),
           },
@@ -323,7 +313,7 @@ router.get('/providers-config', (req, res) => {
     return res.json({
       success: true,
       providers: defaultProviders,
-      selectedModel: 'orion',
+      selectedModel: 'orion::orion',
       reasoningTier: 'medium',
     });
   } catch (err) {

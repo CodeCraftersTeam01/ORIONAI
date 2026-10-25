@@ -595,6 +595,50 @@
   opacity: 0.35;
 }
 
+/* In-Voice-Call mode: Wave rests gently at bottom horizon (5%) and rises subtly with voice without flooding screen */
+.tryliner-aurora-wrapper.in-voice-call {
+  height: 25vh !important;
+  min-height: 150px !important;
+  max-height: 230px !important;
+  opacity: 0.95 !important;
+  pointer-events: none;
+  transition:
+    height 0.85s cubic-bezier(0.16, 1, 0.3, 1),
+    min-height 0.85s cubic-bezier(0.16, 1, 0.3, 1),
+    max-height 0.85s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  -webkit-mask-image: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 1) 50%,
+    rgba(0, 0, 0, 0.65) 75%,
+    rgba(0, 0, 0, 0.20) 90%,
+    transparent 100%
+  ) !important;
+  mask-image: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 1) 50%,
+    rgba(0, 0, 0, 0.65) 75%,
+    rgba(0, 0, 0, 0.20) 90%,
+    transparent 100%
+  ) !important;
+}
+
+.tryliner-aurora-wrapper.in-voice-call .tryliner-aurora-canvas {
+  height: 230px !important;
+  opacity: 0.95;
+}
+
+.tryliner-aurora-wrapper.in-voice-call .tryliner-aurora-bottom-boost {
+  opacity: 0.40;
+  filter: blur(36px);
+}
+
+.tryliner-aurora-wrapper.in-voice-call .tryliner-aurora-feather {
+  opacity: 0 !important;
+}
+
 /* 106% bleed width, fixed 360px height so canvas element NEVER resizes or clears buffer during transitions */
 .tryliner-aurora-canvas {
   position: absolute;
@@ -1735,6 +1779,41 @@
 .btn-send-message.active:hover {
   transform: scale(1.05);
   opacity: 0.95;
+}
+
+/* AI Calling Equalizer Waveform Button */
+.btn-send-message.is-ai-calling {
+  background: linear-gradient(135deg, #0066ff, #00d2ff);
+  color: #ffffff;
+  border-color: rgba(0, 210, 255, 0.45);
+  cursor: pointer;
+  box-shadow: 0 4px 18px rgba(0, 163, 255, 0.42);
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-send-message.is-ai-calling:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 26px rgba(0, 163, 255, 0.65);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.btn-send-message.is-ai-calling:active {
+  transform: scale(0.96);
+}
+
+.ai-calling-waveform-icon {
+  animation: aiWavePulse 2.4s ease-in-out infinite;
+}
+
+@keyframes aiWavePulse {
+  0%, 100% {
+    transform: scale(1.0);
+    opacity: 0.92;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
 }
 
 .btn-send-message.btn-stop-active {
@@ -3009,10 +3088,11 @@ svg[aria-roledescription="error"] {
 /* Main Dropdown Menu (Compact, Minimal & Clean) */
 .gemini-dropdown-menu {
   position: absolute;
-  bottom: calc(100% + 10px);
+  bottom: calc(100% + 4px);
   right: 0;
   width: 268px;
   max-width: calc(100vw - 32px);
+  max-height: min(340px, calc(100vh - 140px));
   background: rgba(255, 255, 255, 0.98);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -3021,6 +3101,8 @@ svg[aria-roledescription="error"] {
   box-shadow: 0 12px 36px -8px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(0, 0, 0, 0.04);
   padding: 0.35rem;
   z-index: 200;
+  display: flex;
+  flex-direction: column;
   animation: geminiDropdownFadeIn 0.16s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
@@ -3043,7 +3125,8 @@ svg[aria-roledescription="error"] {
 
 /* Scrollable Container for Model List */
 .gemini-models-scroll-container {
-  max-height: 250px;
+  flex: 0 1 auto;
+  max-height: 180px;
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
@@ -6196,6 +6279,285 @@ svg[aria-roledescription="error"] {
     width: 100%;
   }
 }
+
+/* ==========================================================================
+   AI VOICE CALLING OVERLAY & AUDIO VISUALIZER
+   ========================================================================== */
+.is-voice-calling-active .welcome-logo-badge,
+.is-voice-calling-active .welcome-titles-wrapper,
+.is-voice-calling-active .dynamic-recs-wrapper,
+.is-voice-calling-active .chat-input-wrapper,
+.chat-main.is-voice-calling-active .welcome-logo-badge,
+.chat-main.is-voice-calling-active .welcome-titles-wrapper,
+.chat-main.is-voice-calling-active .dynamic-recs-wrapper,
+.chat-main.is-voice-calling-active .chat-input-wrapper,
+.chat-main.is-voice-calling-active .messages-container,
+.is-voice-calling-active .messages-container {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.5s !important;
+}
+
+.welcome-logo-badge,
+.welcome-titles-wrapper,
+.dynamic-recs-wrapper,
+.chat-input-wrapper,
+.messages-container {
+  transition:
+    opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.voice-calling-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 95;
+  pointer-events: auto;
+  animation: voiceOverlayFadeIn 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes voiceOverlayFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.voice-calling-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-width: 680px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 18vh; /* Positioned in upper-middle of content area */
+  padding-bottom: 7rem;
+  margin: 0 auto;
+}
+
+/* Dynamic Voice Dialogue Stage (Frameless, clean, dignified typography) */
+.voice-dialogue-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  max-width: 680px;
+  min-height: 180px;
+  text-align: center;
+}
+
+/* Subtle, minimal listening hint (non-slop, calm) */
+.voice-listening-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 450;
+  color: var(--text-secondary);
+  opacity: 0.85;
+  letter-spacing: -0.01em;
+  animation: voiceFadeIn 0.35s ease-out;
+}
+
+.voice-listening-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #38bdf8;
+  animation: voiceSubtlePulse 2s ease-in-out infinite;
+}
+
+.voice-listening-hint.is-muted .voice-listening-dot {
+  background: #f87171;
+  animation: none;
+}
+
+.voice-listening-hint.is-muted {
+  color: #f87171;
+}
+
+@keyframes voiceSubtlePulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+/* Anti-Slop Dignified Thinking Indicator (Frameless, peaceful typography) */
+.voice-thinking-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.75rem;
+  animation: voiceFadeIn 0.35s ease-out;
+}
+
+.voice-thinking-text {
+  font-size: 1.25rem;
+  font-weight: 450;
+  color: var(--text-secondary);
+  letter-spacing: -0.01em;
+  margin: 0;
+  animation: voiceThinkingBreathe 2.4s ease-in-out infinite;
+  user-select: none;
+}
+
+@keyframes voiceThinkingBreathe {
+  0%, 100% {
+    opacity: 0.45;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 0.95;
+    transform: translateY(-2px);
+  }
+}
+
+/* User Spoken Transcript (Subtle, calm preview) */
+.voice-user-transcript {
+  max-width: 580px;
+  margin-bottom: 1.25rem;
+  animation: voiceFadeIn 0.3s ease-out;
+}
+
+.voice-user-text {
+  font-size: 1.15rem;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+/* Spoken AI Response (Frameless, beautiful typography with cozy blur reveal) */
+.voice-agent-speech {
+  width: 100%;
+  max-width: 660px;
+  padding: 0 1.25rem;
+}
+
+.voice-agent-speech.cozy-blur-reveal {
+  animation: cozyBlurReveal 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity, filter;
+}
+
+.voice-agent-speech.is-thinking-prior {
+  opacity: 0.45;
+  transition: opacity 0.4s ease;
+}
+
+.voice-agent-text {
+  font-size: 1.45rem;
+  font-weight: 500;
+  line-height: 1.68;
+  color: #f8fafc;
+  margin: 0;
+  letter-spacing: -0.015em;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+[data-theme='light'] .voice-agent-text {
+  color: #0f172a;
+}
+
+@keyframes cozyBlurReveal {
+  0% {
+    opacity: 0;
+    filter: blur(14px);
+    transform: translateY(14px) scale(0.97);
+  }
+  60% {
+    filter: blur(3px);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0px);
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Action Controls (Docked at bottom, clean & professional) */
+.voice-calling-actions {
+  position: absolute;
+  bottom: 2.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  z-index: 10;
+}
+
+.voice-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.75rem 1.4rem;
+  border-radius: 9999px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.voice-action-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.voice-action-btn:active {
+  transform: translateY(0);
+}
+
+.voice-action-btn.is-muted {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #f87171;
+}
+
+.voice-action-btn.btn-end-call {
+  background: #dc2626;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 16px rgba(220, 38, 38, 0.35);
+}
+
+.voice-action-btn.btn-end-call:hover {
+  background: #ef4444;
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.45);
+}
+
+[data-theme='light'] .voice-action-btn {
+  border-color: rgba(0, 0, 0, 0.1);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+[data-theme='light'] .voice-action-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
 
 
 

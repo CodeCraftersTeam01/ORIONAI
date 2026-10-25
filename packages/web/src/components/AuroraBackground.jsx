@@ -28,6 +28,7 @@ uniform vec4 u_color1; // Electric Blue
 uniform vec4 u_color2; // Radiant Cyan
 uniform vec4 u_color3; // Deep Sapphire
 uniform float u_distortion;
+uniform float u_wave_strength;
 
 out vec4 fragColor;
 
@@ -55,26 +56,26 @@ void main() {
   float t = u_time * 0.85;
 
   // Wave Layer 1: Deep rolling oceanic swell
-  float w1 = sin(uv_orig.x * 2.8 + t * 0.75) * 0.16 + cos(uv_orig.x * 5.6 - t * 0.55 + 1.2) * 0.09;
-  float crest1 = 0.58 + w1 * (1.1 + u_distortion * 3.5);
+  float w1 = (sin(uv_orig.x * 2.8 + t * 0.75) * 0.16 + cos(uv_orig.x * 5.6 - t * 0.55 + 1.2) * 0.09) * u_wave_strength;
+  float crest1 = 0.58 * u_wave_strength + w1 * (1.1 + u_distortion * 3.5);
 
   // Wave Layer 2: Main electric blue surging wave
-  float w2 = sin(uv_orig.x * 3.8 + t * 1.15 + 1.8) * 0.20 + cos(uv_orig.x * 7.4 - t * 0.90 + 2.4) * 0.10;
-  float crest2 = 0.46 + w2 * (1.2 + u_distortion * 4.2);
+  float w2 = (sin(uv_orig.x * 3.8 + t * 1.15 + 1.8) * 0.20 + cos(uv_orig.x * 7.4 - t * 0.90 + 2.4) * 0.10) * u_wave_strength;
+  float crest2 = 0.46 * u_wave_strength + w2 * (1.2 + u_distortion * 4.2);
 
   // Wave Layer 3: Foreground luminous cyan rippling crest
-  float w3 = sin(uv_orig.x * 4.4 + t * 1.40 + 3.4) * 0.17 + cos(uv_orig.x * 8.8 - t * 1.05 + 0.8) * 0.08;
-  float crest3 = 0.36 + w3 * (1.1 + u_distortion * 3.6);
+  float w3 = (sin(uv_orig.x * 4.4 + t * 1.40 + 3.4) * 0.17 + cos(uv_orig.x * 8.8 - t * 1.05 + 0.8) * 0.08) * u_wave_strength;
+  float crest3 = 0.36 * u_wave_strength + w3 * (1.1 + u_distortion * 3.6);
 
   // Fluid noise flow
   vec2 flow_uv = uv_orig * vec2(2.6, 3.8) + vec2(t * 0.28, -t * 0.14);
   float n1 = noise(flow_uv);
   float n2 = noise(flow_uv * 2.0 + vec2(-t * 0.35, t * 0.2));
 
-  // Volumetric wave body masks
-  float mask1 = smoothstep(crest1 + 0.28, crest1 - 0.08, uv_orig.y);
-  float mask2 = smoothstep(crest2 + 0.24, crest2 - 0.06, uv_orig.y);
-  float mask3 = smoothstep(crest3 + 0.18, crest3 - 0.05, uv_orig.y);
+  // Volumetric wave body masks (using 1.0 - smoothstep to ensure edge0 < edge1 across all GPU backends)
+  float mask1 = 1.0 - smoothstep(crest1 - 0.08, crest1 + 0.28, uv_orig.y);
+  float mask2 = 1.0 - smoothstep(crest2 - 0.06, crest2 + 0.24, uv_orig.y);
+  float mask3 = 1.0 - smoothstep(crest3 - 0.05, crest3 + 0.18, uv_orig.y);
 
   // Highly optimized quadratic bell curve for soft glowing crest highlights (replaces expensive exp/pow)
   float d1 = clamp(1.0 - abs(uv_orig.y - crest1) * 9.5, 0.0, 1.0);
@@ -102,8 +103,8 @@ void main() {
   color = mix(color, col_cyan * (0.88 + 0.28 * n2), mask3);
   color += col_rim * rim3;
 
-  // Vertical falloff: seamless dissolution into background
-  float top_falloff = smoothstep(0.88, 0.18, uv_orig.y);
+  // Vertical falloff: soft dissolution only at the top 10% edge so surging waves never get cut off
+  float top_falloff = 1.0 - smoothstep(0.90, 1.0, uv_orig.y);
   float total_alpha = clamp(max(max(mask1 * 0.75, mask2 * 0.90), mask3 * 0.95) + rim1 * 0.35 + rim2 * 0.50 + rim3 * 0.60, 0.0, 1.0);
   total_alpha *= top_falloff;
 
@@ -143,8 +144,20 @@ function createProgram(gl, vsSrc, fsSrc) {
   return prog;
 }
 
-export default function AuroraBackground({ active = true, inChat = false, theme = 'dark' }) {
+export default function AuroraBackground({
+  active = true,
+  inChat = false,
+  theme = 'dark',
+  isVoiceCalling = false,
+  audioLevel = 0,
+  isThinking = false,
+}) {
   const canvasRef = useRef(null);
+  const propsRef = useRef({ isVoiceCalling, audioLevel, isThinking });
+  useEffect(() => {
+    propsRef.current = { isVoiceCalling, audioLevel, isThinking };
+  }, [isVoiceCalling, audioLevel, isThinking]);
+
   const animStateRef = useRef({
     rafId: null,
     gl: null,
@@ -153,6 +166,7 @@ export default function AuroraBackground({ active = true, inChat = false, theme 
     startTime: performance.now(),
     lastFrameTime: performance.now(),
     totalAnimationTime: 0,
+    currentWaveStrength: 1.0,
     isRunning: false,
   });
 
@@ -215,6 +229,7 @@ export default function AuroraBackground({ active = true, inChat = false, theme 
         'u_color2',
         'u_color3',
         'u_distortion',
+        'u_wave_strength',
       ];
       const locations = {};
       uniforms.forEach((u) => {
@@ -229,11 +244,11 @@ export default function AuroraBackground({ active = true, inChat = false, theme 
     const handleResize = () => {
       if (!canvas || !gl) return;
       const w = window.innerWidth || canvas.clientWidth || 1000;
-      const h = 360; // Stable reference height matching max-height
+      const h = 240; // Controlled vertical headroom maintaining aesthetic wave proportions
 
       const scale = Math.min(1.0, 1000 / Math.max(w, 1));
       const targetW = Math.max(320, Math.round(w * scale));
-      const targetH = Math.max(120, Math.round(h * scale));
+      const targetH = Math.max(160, Math.round(h * scale));
 
       if (canvas.width !== targetW || canvas.height !== targetH) {
         canvas.width = targetW;
@@ -259,10 +274,13 @@ export default function AuroraBackground({ active = true, inChat = false, theme 
         return;
       }
 
-      // Delta time capped to 50ms to prevent huge jumps when tab switches
+      const { isVoiceCalling: calling, audioLevel: level, isThinking: thinking } = propsRef.current;
+
+      // Delta time: slightly faster cadence during thinking to visualize dynamic brainstorming
       const delta = Math.min(elapsed / 1000, 0.05);
       lastFrameTimestamp = now;
-      state.totalAnimationTime += delta * 0.52;
+      const speedMult = (calling && thinking) ? 1.35 : 0.52;
+      state.totalAnimationTime += delta * speedMult;
 
       gl.useProgram(state.program);
       gl.clear(gl.COLOR_BUFFER_BIT);
@@ -276,19 +294,45 @@ export default function AuroraBackground({ active = true, inChat = false, theme 
       const rawWave = 0.55 + 0.32 * cycle1 + 0.13 * cycle2;
       const waveIntensity = Math.min(Math.max(rawWave, 0.0), 1.0);
 
+      // Smooth wave strength interpolation:
+      // When thinking/brainstorming: undulating celestial waves that ripple dynamically!
+      // When listening: quiet resting level at 5% (0.05) modulated by user speech level.
+      const boost = Math.min(0.80, Math.pow(Math.max(0, level || 0), 1.15) * 0.82);
+      let targetStrength = 1.0;
+      if (calling) {
+        if (thinking) {
+          // Brainstorming waves: multi-harmonic undulating flow
+          const brainWave = 0.26 + 0.14 * Math.sin(animTime * 2.4) + 0.08 * Math.cos(animTime * 3.8);
+          targetStrength = Math.max(0.18, Math.min(0.50, brainWave));
+        } else {
+          targetStrength = 0.05 + boost;
+        }
+      }
+
+      const factor = targetStrength > state.currentWaveStrength ? 0.22 : 0.10;
+      state.currentWaveStrength += (targetStrength - state.currentWaveStrength) * factor;
+      gl.uniform1f(state.locations.u_wave_strength, state.currentWaveStrength);
+
       const currentScale = 0.35 + 0.12 * waveIntensity;
-      const currentDistortion = 0.15 + 0.12 * waveIntensity;
+      const currentDistortion = (calling && thinking)
+        ? 0.35 + 0.14 * Math.sin(animTime * 2.6)
+        : (0.15 + 0.12 * waveIntensity);
       const currentRotation = 0.015 * Math.sin(animTime * 0.15);
 
       gl.uniform1f(state.locations.u_scale, currentScale);
       gl.uniform1f(state.locations.u_rotation, currentRotation);
 
-      // Electric Blue rgb(0, 107, 255)
-      gl.uniform4f(state.locations.u_color1, 0.0, 0.42, 1.0, 1.0);
-      // Radiant Sky Cyan rgb(97, 224, 255)
-      gl.uniform4f(state.locations.u_color2, 0.38, 0.88, 1.0, 1.0);
-      // Deep Royal Sapphire rgb(0, 56, 224)
-      gl.uniform4f(state.locations.u_color3, 0.0, 0.22, 0.88, 1.0);
+      if (calling && thinking) {
+        // Celestial Brainstorming Colors: Luminous Cyan & Electric Sapphire
+        gl.uniform4f(state.locations.u_color1, 0.12, 0.44, 1.0, 1.0);
+        gl.uniform4f(state.locations.u_color2, 0.42, 0.90, 1.0, 1.0);
+        gl.uniform4f(state.locations.u_color3, 0.05, 0.18, 0.82, 1.0);
+      } else {
+        // Standard Electric Blue, Radiant Cyan, Deep Sapphire
+        gl.uniform4f(state.locations.u_color1, 0.0, 0.42, 1.0, 1.0);
+        gl.uniform4f(state.locations.u_color2, 0.38, 0.88, 1.0, 1.0);
+        gl.uniform4f(state.locations.u_color3, 0.0, 0.22, 0.88, 1.0);
+      }
 
       gl.uniform1f(state.locations.u_distortion, currentDistortion);
 
@@ -347,7 +391,9 @@ export default function AuroraBackground({ active = true, inChat = false, theme 
 
   return (
     <div
-      className={`tryliner-aurora-wrapper ${active ? 'visible' : 'hidden'} ${inChat ? 'in-chat' : 'in-home'}`}
+      className={`tryliner-aurora-wrapper ${active ? 'visible' : 'hidden'} ${inChat ? 'in-chat' : 'in-home'} ${
+        isVoiceCalling ? 'in-voice-call' : ''
+      }`}
       aria-hidden="true"
     >
       {/* Full Bleed Canvas */}

@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { ChevronDown, ChevronRight, Check, SlidersHorizontal, Cpu } from 'lucide-react';
+import { ChevronDown, ChevronRight, Check, SlidersHorizontal } from 'lucide-react';
 import {
-  AVAILABLE_MODELS,
   REASONING_TIERS,
   getModelById,
   getReasoningTierById,
@@ -9,7 +8,7 @@ import {
 } from '../utils/modelConfig';
 
 export default function ModelSelector({
-  selectedModel = 'orion',
+  selectedModel = null,
   reasoningTier = 'medium',
   customProviders = [],
   onSelectModel,
@@ -22,106 +21,102 @@ export default function ModelSelector({
   const containerRef = useRef(null);
   const flyoutTimeoutRef = useRef(null);
 
-  // Extract enabled models from custom providers
-  const customModelItems = useMemo(() => {
-    const items = [];
+  // 1. Extract ONLY scanned & checked (enabled) models across all providers, deduplicating duplicate groups/models
+  const providerGroups = useMemo(() => {
+    const groupsMap = new Map();
+    const seenModelKeys = new Set();
+
     (customProviders || []).forEach((prov) => {
-      const enabledModels = (prov.models || []).filter((m) => m.enabled);
-      if (enabledModels.length > 0) {
-        enabledModels.forEach((m) => {
-          const supportsReasoning = isReasoningSupported(m.id, m.name, m.supportsReasoning);
-          items.push({
-            id: `${prov.id}::${m.id}`,
-            name: m.name || m.id,
-            displayName: m.name || m.id,
-            subtitle: prov.name,
-            providerName: prov.name,
-            providerId: prov.id,
-            modelId: m.id,
-            hasModel: true,
-            supportsReasoning,
-          });
-        });
-      } else if (prov.modelId) {
-        // Legacy fallback
-        const supportsReasoning = isReasoningSupported(prov.modelId, prov.displayName || prov.name);
-        items.push({
-          id: `${prov.id}::${prov.modelId}`,
-          name: prov.displayName || prov.name,
-          displayName: prov.displayName || prov.name,
-          subtitle: prov.name,
-          providerName: prov.name,
+      const enabledModels = (prov.models || []).filter((m) => Boolean(m && m.enabled));
+      if (enabledModels.length === 0) return;
+
+      const rawName = prov.displayName || prov.name || 'Provider';
+      const isOfficial = prov.templateId === 'orion' || prov.id === 'orion' || rawName.toLowerCase().includes('official');
+      const groupKey = isOfficial ? 'Orion AI (Official)' : rawName;
+
+      if (!groupsMap.has(groupKey)) {
+        groupsMap.set(groupKey, {
           providerId: prov.id,
-          modelId: prov.modelId,
-          hasModel: true,
-          supportsReasoning,
-        });
-      } else {
-        // Provider exists but hasn't enabled any models yet
-        items.push({
-          id: prov.id,
-          name: prov.name,
-          displayName: prov.name,
-          subtitle: 'Belum ada model aktif (klik untuk kelola)',
-          providerName: prov.name,
-          providerId: prov.id,
-          modelId: null,
-          hasModel: false,
-          supportsReasoning: false,
+          providerName: groupKey,
+          items: [],
         });
       }
+
+      const currentGroup = groupsMap.get(groupKey);
+
+      enabledModels.forEach((m) => {
+        const modId = typeof m === 'string' ? m : m.id;
+        const modName = typeof m === 'string' ? m : m.displayName || m.name || modId;
+        const cleanModId = (modId || '').toLowerCase().trim();
+
+        // Discard legacy duplicate or hardcoded orion-auto
+        if (cleanModId === 'orion-auto' || cleanModId === 'orion auto router') {
+          return;
+        }
+
+        // Prevent duplicate model entries within the same provider group (e.g. "orion" vs "Orion")
+        const dedupKey = `${groupKey}::${cleanModId}`;
+        if (seenModelKeys.has(dedupKey)) return;
+        seenModelKeys.add(dedupKey);
+
+        const supportsReasoning = isReasoningSupported(modId, modName, m.supportsReasoning);
+
+        currentGroup.items.push({
+          id: `${prov.id}::${modId}`,
+          name: modName,
+          displayName: modName,
+          subtitle: groupKey,
+          providerName: groupKey,
+          providerId: prov.id,
+          modelId: modId,
+          supportsReasoning,
+          hasModel: true,
+        });
+      });
     });
-    return items;
+
+    return Array.from(groupsMap.values()).filter((g) => g.items.length > 0);
   }, [customProviders]);
 
-  // Combine standard models with enabled custom provider models
+  // 2. Flattened list of strictly active models
   const allModels = useMemo(() => {
-    const list = [...AVAILABLE_MODELS];
-    customModelItems.forEach((item) => {
-      if (item.hasModel) {
-        list.push({
-          id: item.id,
-          name: item.name,
-          displayName: item.displayName,
-          subtitle: item.subtitle,
-          isCustom: true,
-          providerId: item.providerId,
-          modelId: item.modelId,
-          supportsReasoning: Boolean(item.supportsReasoning),
-        });
-      }
-    });
-    return list;
-  }, [customModelItems]);
+    return providerGroups.flatMap((g) => g.items);
+  }, [providerGroups]);
 
+  // 3. Resolve currently active model
   const currentModel = useMemo(() => {
-    if (selectedModel && selectedModel.includes('::')) {
-      const [provId, modId] = selectedModel.split('::');
-      const found = allModels.find((m) => m.id === selectedModel);
-      if (found) return found;
-      const prov = (customProviders || []).find((p) => p.id === provId);
-      const customModelObj = (prov?.models || []).find((m) => m.id === modId);
-      const supportsReasoning = isReasoningSupported(
-        modId,
-        customModelObj?.name || modId,
-        customModelObj?.supportsReasoning
-      );
-      return {
-        id: selectedModel,
-        name: modId,
-        displayName: modId,
-        subtitle: prov ? prov.name : modId,
-        isCustom: true,
-        providerId: provId,
-        modelId: modId,
-        supportsReasoning,
-      };
+    if (allModels.length === 0) return null;
+
+    if (selectedModel) {
+      // Direct ID match (e.g. 'custom-123::orion')
+      const exact = allModels.find((m) => m.id === selectedModel);
+      if (exact) return exact;
+
+      // Model ID match (e.g. 'orion' or 'orion::orion' maps to active provider's 'orion')
+      const targetModId = selectedModel.includes('::') ? selectedModel.split('::')[1] : selectedModel;
+      const modMatch = allModels.find((m) => m.modelId === targetModId);
+      if (modMatch) return modMatch;
     }
-    return allModels.find((m) => m.id === selectedModel) || AVAILABLE_MODELS[0];
-  }, [allModels, selectedModel, customProviders]);
+
+    // Default to the first enabled model
+    return allModels[0];
+  }, [allModels, selectedModel]);
 
   const currentTier = getReasoningTierById(reasoningTier);
-  const canUseReasoning = Boolean(currentModel.supportsReasoning);
+  const canUseReasoning = Boolean(currentModel && currentModel.supportsReasoning);
+
+  // Auto-sync selected model if previous model is no longer enabled
+  useEffect(() => {
+    if (allModels.length > 0) {
+      const hasActive = allModels.some((m) => m.id === selectedModel);
+      if (!hasActive && typeof onSelectModel === 'function') {
+        const fallback = currentModel || allModels[0];
+        if (fallback) {
+          onSelectModel(fallback.id);
+        }
+      }
+    }
+  }, [allModels, selectedModel, currentModel, onSelectModel]);
 
   // Close when clicked outside
   useEffect(() => {
@@ -140,16 +135,20 @@ export default function ModelSelector({
   }, []);
 
   const handleModelClick = (modelId) => {
-    onSelectModel(modelId);
-    const targetModel = allModels.find((m) => m.id === modelId) || getModelById(modelId);
-    if (!targetModel.supportsReasoning) {
+    if (typeof onSelectModel === 'function') {
+      onSelectModel(modelId);
+    }
+    const targetModel = allModels.find((m) => m.id === modelId) || getModelById(modelId, customProviders);
+    if (!targetModel || !targetModel.supportsReasoning) {
       setIsReasoningFlyoutOpen(false);
       setIsOpen(false);
     }
   };
 
   const handleReasoningSelect = (tierId) => {
-    onSelectReasoningTier(tierId);
+    if (typeof onSelectReasoningTier === 'function') {
+      onSelectReasoningTier(tierId);
+    }
     setIsReasoningFlyoutOpen(false);
     setIsOpen(false);
   };
@@ -186,9 +185,15 @@ export default function ModelSelector({
         aria-expanded={isOpen}
       >
         <span className="gemini-pill-text">
-          {currentModel.displayName || currentModel.name}
-          {currentModel.supportsReasoning && (
-            <span className="gemini-pill-tier-tag"> • {currentTier.name}</span>
+          {currentModel ? (
+            <>
+              {currentModel.displayName || currentModel.name}
+              {currentModel.supportsReasoning && (
+                <span className="gemini-pill-tier-tag"> • {currentTier.name}</span>
+              )}
+            </>
+          ) : (
+            'Pilih Model'
           )}
         </span>
         <ChevronDown size={13} className={`gemini-pill-chevron ${isOpen ? 'rotated' : ''}`} />
@@ -199,70 +204,64 @@ export default function ModelSelector({
         <div className="gemini-dropdown-menu" onClick={(e) => e.stopPropagation()}>
           {/* Scrollable Model List Area */}
           <div className="gemini-models-scroll-container">
-            {/* Built-in Models List */}
-            <div className="gemini-menu-list">
-              {AVAILABLE_MODELS.map((item) => {
-                const isSelected = item.id === currentModel.id;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={`gemini-menu-item ${isSelected ? 'selected' : ''}`}
-                    onClick={() => handleModelClick(item.id)}
-                  >
-                    <div className="gemini-item-check-col">
-                      {isSelected ? <Check size={14} className="gemini-check-icon" /> : null}
-                    </div>
-                    <div className="gemini-item-text-col">
-                      <span className="gemini-item-title">{item.displayName}</span>
-                      <span className="gemini-item-subtitle">{item.subtitle}</span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Custom Providers List if available */}
-            {customModelItems.length > 0 && (
-              <>
-                <div className="gemini-menu-divider" />
-                <div className="gemini-section-tag">Model Kustom</div>
-                <div className="gemini-menu-list">
-                  {customModelItems.map((item) => {
-                    const isSelected = item.id === currentModel.id;
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        className={`gemini-menu-item ${isSelected ? 'selected' : ''}`}
-                        onClick={() => {
-                          if (item.hasModel) {
-                            handleModelClick(item.id);
-                          } else {
-                            setIsOpen(false);
-                            if (typeof onOpenManageProviders === 'function') {
-                              onOpenManageProviders();
-                            }
-                          }
-                        }}
-                      >
-                        <div className="gemini-item-check-col">
-                          {isSelected ? <Check size={14} className="gemini-check-icon" /> : null}
-                        </div>
-                        <div className="gemini-item-text-col">
-                          <span className="gemini-item-title">
-                            {item.displayName}
-                            {item.supportsReasoning && (
-                              <span className="gemini-thinking-badge">Thinking</span>
-                            )}
-                          </span>
-                          <span className="gemini-item-subtitle">{item.subtitle}</span>
-                        </div>
-                      </button>
-                    );
-                  })}
+            {providerGroups.length === 0 ? (
+              <div
+                style={{
+                  padding: '1rem 0.9rem',
+                  textAlign: 'center',
+                  color: 'var(--text-muted)',
+                  fontSize: '0.78rem',
+                }}
+              >
+                <div
+                  style={{
+                    fontWeight: 600,
+                    marginBottom: '0.3rem',
+                    color: 'var(--text-primary)',
+                  }}
+                >
+                  Belum ada model aktif
                 </div>
-              </>
+                <div style={{ lineHeight: 1.4 }}>
+                  Buka menu Provider untuk memindai dan mencentang model yang ingin digunakan.
+                </div>
+              </div>
+            ) : (
+              providerGroups.map((group, idx) => (
+                <div key={group.providerId} className="gemini-provider-section">
+                  {idx > 0 && <div className="gemini-menu-divider" />}
+                  <div className="gemini-section-tag">{group.providerName}</div>
+                  <div className="gemini-menu-list">
+                    {group.items.map((item) => {
+                      const isSelected =
+                        currentModel &&
+                        (item.id === currentModel.id ||
+                          item.modelId?.toLowerCase() === currentModel.modelId?.toLowerCase());
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className={`gemini-menu-item ${isSelected ? 'selected' : ''}`}
+                          onClick={() => handleModelClick(item.id)}
+                        >
+                          <div className="gemini-item-check-col">
+                            {isSelected ? <Check size={14} className="gemini-check-icon" /> : null}
+                          </div>
+                          <div className="gemini-item-text-col">
+                            <span className="gemini-item-title">
+                              {item.displayName}
+                              {item.supportsReasoning && (
+                                <span className="gemini-thinking-badge">Thinking</span>
+                              )}
+                            </span>
+                            <span className="gemini-item-subtitle">{item.subtitle}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))
             )}
           </div>
 
@@ -286,7 +285,7 @@ export default function ModelSelector({
               disabled={!canUseReasoning}
               title={
                 canUseReasoning
-                  ? `Ubah tingkat penalaran (${currentModel.displayName || currentModel.name})`
+                  ? `Ubah tingkat penalaran (${currentModel?.displayName || currentModel?.name})`
                   : 'Model ini tidak mendukung fitur penalaran'
               }
             >
@@ -313,9 +312,7 @@ export default function ModelSelector({
                 onMouseEnter={handleFlyoutMouseEnter}
                 onMouseLeave={handleFlyoutMouseLeave}
               >
-                {/* Pointer Arrow on right edge */}
                 <div className="gemini-flyout-pointer" />
-
                 <div className="gemini-flyout-content">
                   {REASONING_TIERS.map((tier) => {
                     const isTierSelected = tier.id === currentTier.id;

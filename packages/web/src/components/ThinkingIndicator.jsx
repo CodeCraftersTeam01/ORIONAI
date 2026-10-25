@@ -50,11 +50,12 @@ const PHRASE_COLLECTIONS = {
   ],
 };
 
-export default function ThinkingIndicator({ model = 'orion', reasoningTier = 'medium' }) {
+export default function ThinkingIndicator({ model = 'orion::orion', reasoningTier = 'medium' }) {
   // Determine phrase collection based on model & tier
   const phrases = useMemo(() => {
-    if (model === 'agnes') return PHRASE_COLLECTIONS.agnes;
-    if (model === 'nemotron-3') return PHRASE_COLLECTIONS['nemotron-3'];
+    const clean = (typeof model === 'string' && model.includes('::') ? model.split('::')[1] : model || '').toLowerCase();
+    if (clean.startsWith('agnes')) return PHRASE_COLLECTIONS.agnes;
+    if (clean.startsWith('nemotron')) return PHRASE_COLLECTIONS['nemotron-3'];
     if (reasoningTier === 'high') return PHRASE_COLLECTIONS.orion_high;
     if (reasoningTier === 'low') return PHRASE_COLLECTIONS.orion_low;
     return PHRASE_COLLECTIONS.orion_medium;
