@@ -1234,12 +1234,18 @@ async function selectModelInteractive({ title, items, initialIndex = 0 }) {
 
       if (key === '\u001b[A' || key === '\u001bOA' || key === 'k') {
         selectedIndex = (selectedIndex - 1 + items.length) % items.length;
+        if (selectedIndex === items.length - 1) {
+          scrollOffset = Math.max(0, items.length - PAGE_SIZE);
+        }
         render(false);
         return;
       }
 
       if (key === '\u001b[B' || key === '\u001bOB' || key === 'j') {
         selectedIndex = (selectedIndex + 1) % items.length;
+        if (selectedIndex === 0) {
+          scrollOffset = 0;
+        }
         render(false);
         return;
       }
