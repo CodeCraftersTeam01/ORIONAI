@@ -15,7 +15,7 @@ export default function VoiceCallingOverlay({
   return (
     <div className="voice-calling-overlay" aria-live="polite">
       <div className="voice-calling-container">
-        {/* Dynamic Voice Dialogue Stage */}
+        {/* Dynamic Voice Dialogue Stage (Positioned in upper-middle of content) */}
         <div className="voice-dialogue-stage">
           {/* Status Pill Badge */}
           <div className="voice-status-pill-wrap">
@@ -49,15 +49,26 @@ export default function VoiceCallingOverlay({
             </div>
           )}
 
-          {/* Agent Response Text (Concise, punchy, high-legibility centered text) */}
+          {/* Agent Response Text with Cozy Reveal Animation */}
           {agentResponse && agentStatus === 'speaking' && (
-            <div className="voice-agent-response-card">
-              <p className="voice-agent-text">{agentResponse}</p>
+            <div className="voice-agent-response-card cozy-reveal">
+              <div className="voice-agent-glow-aura" />
+              <p className="voice-agent-text">
+                {agentResponse.split(' ').map((word, idx) => (
+                  <span
+                    key={`w-${idx}-${word}`}
+                    className="cozy-word"
+                    style={{ animationDelay: `${Math.min(idx * 0.038, 0.7)}s` }}
+                  >
+                    {word}{' '}
+                  </span>
+                ))}
+              </p>
             </div>
           )}
         </div>
 
-        {/* Action Controls: Mute & Tutup Panggilan */}
+        {/* Action Controls: Mute & Tutup Panggilan (Docked at the bottom) */}
         <div className="voice-calling-actions">
           {/* Toggle Mute Button */}
           <button

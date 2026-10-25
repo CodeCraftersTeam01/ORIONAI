@@ -6290,16 +6290,20 @@ svg[aria-roledescription="error"] {
 .chat-main.is-voice-calling-active .welcome-logo-badge,
 .chat-main.is-voice-calling-active .welcome-titles-wrapper,
 .chat-main.is-voice-calling-active .dynamic-recs-wrapper,
-.chat-main.is-voice-calling-active .chat-input-wrapper {
+.chat-main.is-voice-calling-active .chat-input-wrapper,
+.chat-main.is-voice-calling-active .messages-container,
+.is-voice-calling-active .messages-container {
   opacity: 0 !important;
-  transform: translateY(22px) scale(0.96) !important;
+  visibility: hidden !important;
   pointer-events: none !important;
+  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.5s !important;
 }
 
 .welcome-logo-badge,
 .welcome-titles-wrapper,
 .dynamic-recs-wrapper,
-.chat-input-wrapper {
+.chat-input-wrapper,
+.messages-container {
   transition:
     opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
     transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
@@ -6337,21 +6341,21 @@ svg[aria-roledescription="error"] {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 2rem 1.5rem;
+  justify-content: flex-start;
+  padding-top: 18vh; /* Positioned in upper-middle of content area */
+  padding-bottom: 7rem;
   margin: 0 auto;
 }
 
-/* Dynamic Voice Dialogue Stage (Centered in Content Area) */
+/* Dynamic Voice Dialogue Stage (Positioned in Upper-Middle of Content Area) */
 .voice-dialogue-stage {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   width: 100%;
-  max-width: 600px;
+  max-width: 620px;
   min-height: 160px;
-  margin-top: -3.5rem; /* Optical vertical centering in content area */
 }
 
 /* Status Pill Badge */
@@ -6466,49 +6470,89 @@ svg[aria-roledescription="error"] {
   margin: 0;
 }
 
-/* Agent Response Card (Centered Hero Text) */
-.voice-agent-response-card {
-  max-width: 540px;
-  padding: 1.35rem 1.85rem;
-  border-radius: 20px;
-  background: rgba(10, 25, 50, 0.65);
-  border: 1px solid rgba(0, 180, 255, 0.28);
+/* Agent Response Card (Cozy Reveal in Upper-Middle Content) */
+.voice-agent-response-card.cozy-reveal {
+  position: relative;
+  max-width: 580px;
+  width: 100%;
+  padding: 1.65rem 2.2rem;
+  border-radius: 24px;
+  background: radial-gradient(circle at 50% 0%, rgba(20, 45, 80, 0.78), rgba(8, 16, 32, 0.90));
+  border: 1px solid rgba(97, 224, 255, 0.25);
   box-shadow:
-    0 12px 38px rgba(0, 0, 0, 0.4),
-    0 0 25px rgba(0, 140, 255, 0.15);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  animation: voiceFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    0 24px 54px rgba(0, 0, 0, 0.6),
+    0 0 35px rgba(0, 163, 255, 0.14),
+    inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  animation: cozyCardEntrance 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  overflow: hidden;
+}
+
+.voice-agent-glow-aura {
+  position: absolute;
+  top: -45px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 240px;
+  height: 90px;
+  background: radial-gradient(circle, rgba(0, 210, 255, 0.28) 0%, transparent 70%);
+  pointer-events: none;
+  filter: blur(22px);
 }
 
 .voice-agent-text {
   font-size: 1.25rem;
   font-weight: 500;
-  line-height: 1.55;
-  color: #f0fdf4;
+  line-height: 1.65;
+  color: #f8fafc;
   margin: 0;
   letter-spacing: -0.01em;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 }
 
-[data-theme='light'] .voice-agent-response-card {
-  background: rgba(255, 255, 255, 0.85);
-  border-color: rgba(0, 140, 255, 0.3);
-  box-shadow: 0 12px 35px rgba(0, 100, 255, 0.15);
+.cozy-word {
+  display: inline-block;
+  opacity: 0;
+  filter: blur(6px);
+  transform: translateY(6px);
+  animation: cozyWordReveal 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+[data-theme='light'] .voice-agent-response-card.cozy-reveal {
+  background: radial-gradient(circle at 50% 0%, rgba(240, 249, 255, 0.92), rgba(255, 255, 255, 0.96));
+  border-color: rgba(0, 140, 255, 0.35);
+  box-shadow: 0 16px 45px rgba(0, 100, 255, 0.18);
 }
 
 [data-theme='light'] .voice-agent-text {
   color: #0f172a;
+  text-shadow: none;
 }
 
-@keyframes voiceFadeIn {
+@keyframes cozyCardEntrance {
   from {
     opacity: 0;
-    transform: translateY(10px) scale(0.97);
+    filter: blur(14px);
+    transform: translateY(18px) scale(0.96);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1.0);
+    filter: blur(0);
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes cozyWordReveal {
+  from {
+    opacity: 0;
+    filter: blur(6px);
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0px);
+    transform: translateY(0);
   }
 }
 
