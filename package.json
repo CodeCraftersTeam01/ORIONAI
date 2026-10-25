@@ -22,6 +22,7 @@
   "scripts": {
     "start": "node packages/cli/bin/orion.js",
     "orion": "node packages/cli/bin/orion.js",
+    "chat": "node packages/cli/bin/orion.js chat",
     "view": "node packages/cli/bin/orion.js --view",
     "build": "npm --prefix packages/web run build",
     "dev:server": "npm --prefix packages/server run dev",

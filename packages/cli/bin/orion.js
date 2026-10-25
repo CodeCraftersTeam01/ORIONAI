@@ -6,6 +6,7 @@ import fs from 'fs';
 import os from 'os';
 import { execSync } from 'child_process';
 import { startServer } from '../../server/src/server.js';
+import { startTerminalChat } from '../src/terminalChat.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -180,6 +181,7 @@ Penggunaan:
   orion [perintah/opsi]
 
 Perintah Utama:
+  orion chat, -c        Buka percakapan AI interaktif langsung di terminal
   orion --view          Jalankan service dan langsung buka Orion Agent di browser
   orion start           Jalankan service server di foreground
   orion --stop          Hentikan service Orion Agent yang sedang berjalan
@@ -189,6 +191,7 @@ Perintah Utama:
   orion --help          Tampilkan petunjuk penggunaan ini
 
 Opsi Tambahan:
+  chat, --chat, -c      Mulai sesi terminal chat interaktif
   --view, -o, --open    Otomatis membuka browser default ke antarmuka web
   --port, -p <nomor>    Tentukan port server (default: 5001)
   --stop, stop          Hentikan proses yang berjalan di port target
@@ -198,11 +201,24 @@ Opsi Tambahan:
   --help, -h            Tampilkan bantuan ini
 
 Contoh Penggunaan:
+  orion chat                    # Percakapan interaktif langsung di terminal
   orion --view                  # Buka di browser di port 5001
   orion --restart --view        # Restart service dan buka ulang di browser
   orion --stop                  # Matikan service di port 5001
-  orion --stop --port 5005      # Matikan service spesifik di port 5005
 `);
+  process.exit(0);
+}
+
+// Handle interactive terminal chat mode
+const isChatMode =
+  args.includes('chat') ||
+  args.includes('--chat') ||
+  args.includes('-c') ||
+  args.includes('interactive') ||
+  args.includes('-i');
+
+if (isChatMode) {
+  await startTerminalChat();
   process.exit(0);
 }
 
