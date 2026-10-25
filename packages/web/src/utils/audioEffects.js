@@ -29,38 +29,38 @@ export function playCosmicHumSound() {
     if (!ctx) return;
     const now = ctx.currentTime;
 
-    // Master envelope for swell
+    // Master envelope for gentle, cozy swell (safe for all speakers)
     const masterGain = ctx.createGain();
-    masterGain.gain.setValueAtTime(0.001, now);
-    masterGain.gain.linearRampToValueAtTime(0.28, now + 0.42); // Smooth crescendo swell
-    masterGain.gain.exponentialRampToValueAtTime(0.12, now + 1.2);
-    masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 2.5); // Long ethereal tail
+    masterGain.gain.setValueAtTime(0.0001, now);
+    masterGain.gain.linearRampToValueAtTime(0.045, now + 0.38); // Gentle soft swell
+    masterGain.gain.exponentialRampToValueAtTime(0.015, now + 1.1);
+    masterGain.gain.exponentialRampToValueAtTime(0.00005, now + 2.2); // Warm gentle fade
 
-    // Resonant Lowpass filter sweep: creates the signature "eeeennnngg" opening texture
+    // Warm Lowpass filter sweep without harsh resonance
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.Q.value = 3.2; // Warm resonance
-    filter.frequency.setValueAtTime(140, now);
-    filter.frequency.exponentialRampToValueAtTime(780, now + 0.65); // "eeeee" opening sweep
-    filter.frequency.exponentialRampToValueAtTime(260, now + 2.2);  // "nnnng" settling body
+    filter.Q.value = 1.2; // Soft, smooth resonance (won't clip or buzz speakers)
+    filter.frequency.setValueAtTime(160, now);
+    filter.frequency.exponentialRampToValueAtTime(540, now + 0.6);
+    filter.frequency.exponentialRampToValueAtTime(220, now + 2.0);
 
-    // Oscillator 1: Warm sub drone (A2 ~110 Hz)
+    // Oscillator 1: Warm sub drone with smooth triangle wave (no harsh sawtooth harmonics)
     const oscSub = ctx.createOscillator();
-    oscSub.type = 'sawtooth';
+    oscSub.type = 'triangle';
     oscSub.frequency.setValueAtTime(96, now);
-    oscSub.frequency.exponentialRampToValueAtTime(110, now + 0.8);
+    oscSub.frequency.exponentialRampToValueAtTime(110, now + 0.7);
 
     // Oscillator 2: Radiant fifth harmonic (E3 ~164.8 Hz)
     const oscFifth = ctx.createOscillator();
-    oscFifth.type = 'triangle';
+    oscFifth.type = 'sine';
     oscFifth.frequency.setValueAtTime(146.8, now);
-    oscFifth.frequency.exponentialRampToValueAtTime(164.8, now + 0.8);
+    oscFifth.frequency.exponentialRampToValueAtTime(164.8, now + 0.7);
 
     // Oscillator 3: Shimmering octave (A3 ~220 Hz)
     const oscShimmer = ctx.createOscillator();
     oscShimmer.type = 'sine';
     oscShimmer.frequency.setValueAtTime(220, now);
-    oscShimmer.frequency.linearRampToValueAtTime(221.8, now + 1.6); // Subtle celestial beating
+    oscShimmer.frequency.linearRampToValueAtTime(221.5, now + 1.4);
 
     oscSub.connect(filter);
     oscFifth.connect(filter);
@@ -73,9 +73,9 @@ export function playCosmicHumSound() {
     oscFifth.start(now);
     oscShimmer.start(now);
 
-    oscSub.stop(now + 2.6);
-    oscFifth.stop(now + 2.6);
-    oscShimmer.stop(now + 2.6);
+    oscSub.stop(now + 2.3);
+    oscFifth.stop(now + 2.3);
+    oscShimmer.stop(now + 2.3);
 
     // Clean up AudioContext once playback concludes to free system audio channels
     setTimeout(() => {
@@ -84,7 +84,7 @@ export function playCosmicHumSound() {
           ctx.close().catch(() => {});
         }
       } catch {}
-    }, 2800);
+    }, 2500);
   } catch (err) {
     console.warn('Audio effect error:', err);
   }
@@ -100,9 +100,9 @@ export function playCosmicEndCallSound() {
     const now = ctx.currentTime;
 
     const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.001, now);
-    gain.gain.linearRampToValueAtTime(0.14, now + 0.05);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.7);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(0.035, now + 0.05); // Very soft and pleasant
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.6);
 
     const osc = ctx.createOscillator();
     osc.type = 'sine';

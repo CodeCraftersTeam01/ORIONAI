@@ -225,6 +225,85 @@ const renderRecommendationIcon = (iconName) => {
   }
 };
 
+/**
+ * Resolves active provider, model ID, and API keys based on the user's selected model.
+ */
+function resolveModelAndProvider(targetModel, providersList) {
+  const orionProvider = (providersList || []).find(
+    (p) => p.id === 'orion' || p.templateId === 'orion' || p.name?.toLowerCase().includes('official')
+  );
+  const userOrionApiKey =
+    orionProvider?.apiKeys?.find((k) => k.active)?.key || orionProvider?.apiKey || '';
+
+  let activeCustomProvider = null;
+  let effectiveModel = targetModel || 'orion::orion';
+
+  if (targetModel && targetModel.includes('::')) {
+    const [provId, modId] = targetModel.split('::');
+    const parentProv = (providersList || []).find((p) => p.id === provId);
+    if (parentProv) {
+      let activeKey = parentProv.apiKeys?.find((k) => k.active)?.key || parentProv.apiKey || '';
+      if (!activeKey && (provId === 'orion' || parentProv.templateId === 'orion' || parentProv.name?.toLowerCase().includes('official'))) {
+        activeKey = userOrionApiKey;
+      }
+      activeCustomProvider = {
+        id: parentProv.id,
+        baseUrl: parentProv.baseUrl,
+        apiKey: activeKey,
+        modelId: modId,
+        name: parentProv.name,
+        requiresApiKey: parentProv.requiresApiKey,
+      };
+    }
+  } else if (targetModel) {
+    for (const p of providersList || []) {
+      const foundMod = (p.models || []).find((m) => (typeof m === 'string' ? m === targetModel : m.id === targetModel && m.enabled));
+      if (foundMod) {
+        const modId = typeof foundMod === 'string' ? foundMod : foundMod.id;
+        effectiveModel = `${p.id}::${modId}`;
+        let activeKey = p.apiKeys?.find((k) => k.active)?.key || p.apiKey || '';
+        if (!activeKey && (p.id === 'orion' || p.templateId === 'orion' || p.name?.toLowerCase().includes('official'))) {
+          activeKey = userOrionApiKey;
+        }
+        activeCustomProvider = {
+          id: p.id,
+          baseUrl: p.baseUrl,
+          apiKey: activeKey,
+          modelId: modId,
+          name: p.name,
+          requiresApiKey: p.requiresApiKey,
+        };
+        break;
+      }
+    }
+  }
+
+  if (!activeCustomProvider && (providersList || []).length > 0) {
+    for (const p of providersList) {
+      const firstEnabled = (p.models || []).find((m) => m && m.enabled);
+      if (firstEnabled) {
+        const modId = typeof firstEnabled === 'string' ? firstEnabled : firstEnabled.id;
+        effectiveModel = `${p.id}::${modId}`;
+        let activeKey = p.apiKeys?.find((k) => k.active)?.key || p.apiKey || '';
+        if (!activeKey && (p.id === 'orion' || p.templateId === 'orion' || p.name?.toLowerCase().includes('official'))) {
+          activeKey = userOrionApiKey;
+        }
+        activeCustomProvider = {
+          id: p.id,
+          baseUrl: p.baseUrl,
+          apiKey: activeKey,
+          modelId: modId,
+          name: p.name,
+          requiresApiKey: p.requiresApiKey,
+        };
+        break;
+      }
+    }
+  }
+
+  return { effectiveModel, activeCustomProvider, userOrionApiKey };
+}
+
 export default function App() {
   // Theme mode state: 'system' (auto detect browser/OS), 'light' (default white), 'dark' (optional black)
   const [themeMode, setThemeMode] = useState(() => {
@@ -273,11 +352,21 @@ export default function App() {
     setThemeMode(mode);
   };
 
-  // Sessions state
+  // Sessions state (automatically cleans any interrupted empty assistant bubbles)
   const [sessions, setSessions] = useState(() => {
     try {
       const saved = localStorage.getItem('orion_chat_sessions');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.map((s) => ({
+            ...s,
+            messages: (s.messages || []).filter(
+              (m) => !(m.role === 'assistant' && (!m.content || m.content.trim() === ''))
+            ),
+          }));
+        }
+      }
     } catch {
       // storage quota fallback
     }
@@ -400,6 +489,14 @@ export default function App() {
   const isVoiceMutedRef = useRef(false);
   isVoiceMutedRef.current = isVoiceMuted;
 
+  const selectedModelRef = useRef(selectedModel);
+  selectedModelRef.current = selectedModel;
+
+  const customProvidersRef = useRef(customProviders);
+  customProvidersRef.current = customProviders;
+
+  const voiceSelectedModelRef = useRef(selectedModel);
+
   // Real-time Speech-to-Text Recognition Setup
   const startVoiceSpeechRecognition = () => {
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -503,33 +600,12 @@ export default function App() {
     let accumulatedReply = '';
 
     try {
-      // Find active provider and model
-      const orionProvider = (customProviders || []).find(
-        (p) => p.id === 'orion' || p.templateId === 'orion' || p.name?.toLowerCase().includes('official')
+      // Use the model selected before starting the voice call
+      const modelToUse = voiceSelectedModelRef.current || selectedModelRef.current || selectedModel;
+      const { effectiveModel, activeCustomProvider, userOrionApiKey } = resolveModelAndProvider(
+        modelToUse,
+        customProvidersRef.current || customProviders
       );
-      const userOrionApiKey =
-        orionProvider?.apiKeys?.find((k) => k.active)?.key || orionProvider?.apiKey || '';
-
-      let activeCustomProvider = null;
-      let effectiveModel = selectedModel;
-      if (selectedModel && selectedModel.includes('::')) {
-        const [provId, modId] = selectedModel.split('::');
-        const parentProv = (customProviders || []).find((p) => p.id === provId);
-        if (parentProv) {
-          let activeKey = parentProv.apiKeys?.find((k) => k.active)?.key || parentProv.apiKey || '';
-          if (!activeKey && (provId === 'orion' || parentProv.templateId === 'orion')) {
-            activeKey = userOrionApiKey;
-          }
-          activeCustomProvider = {
-            id: parentProv.id,
-            baseUrl: parentProv.baseUrl,
-            apiKey: activeKey,
-            modelId: modId,
-            name: parentProv.name,
-            requiresApiKey: parentProv.requiresApiKey,
-          };
-        }
-      }
 
       // Voice prompt: explicit instruction for short, punchy, conversational spoken reply
       const voicePrompt = `${queryText}\n\n[Instruksi Panggilan Suara]: Jawablah secara SINGKAT, PADAT, BERBOBOT, dan natural seperti berbicara di telepon (maksimal 1-2 kalimat saja). DILARANG menggunakan markdown, bullet points, atau kode.`;
@@ -541,7 +617,7 @@ export default function App() {
           message: voicePrompt,
           history: activeSession ? activeSession.messages : [],
           attachments: [],
-          model: effectiveModel || selectedModel,
+          model: effectiveModel || modelToUse,
           reasoningTier: 'low',
           customProvider: activeCustomProvider,
           orionApiKey: userOrionApiKey,
@@ -569,22 +645,75 @@ export default function App() {
         for (const line of lines) {
           const trimmed = line.trim();
           if (!trimmed || !trimmed.startsWith('data:')) continue;
-          const jsonStr = trimmed.slice(5).trim();
-          if (jsonStr === '[DONE]') break;
+          const dataStr = trimmed.replace(/^data:\s*/, '').trim();
+          if (dataStr === '[DONE]') break;
           try {
-            const parsed = JSON.parse(jsonStr);
-            const token = parsed.token || parsed.delta || parsed.content || '';
+            const parsed = JSON.parse(dataStr);
+            if (parsed.error) {
+              throw new Error(parsed.error);
+            }
+            const token = parsed.chunk || parsed.token || parsed.delta || parsed.content || '';
             if (token) {
               accumulatedReply += token;
-              const cleanText = accumulatedReply.replace(/[*#_`]/g, '').trim();
-              setVoiceAgentResponse(cleanText);
+              // Clean out think tags and markdown
+              const cleanText = accumulatedReply
+                .replace(/<think>[\s\S]*?<\/think>/gi, '')
+                .replace(/<think>[\s\S]*$/gi, '')
+                .replace(/[*#_`~]/g, '')
+                .trim();
+              if (cleanText) {
+                setVoiceAgentResponse(cleanText);
+              }
             }
-          } catch {}
+          } catch (e) {
+            if (e.message && !e.message.includes('JSON') && !e.message.includes('Unexpected')) {
+              throw e;
+            }
+          }
         }
       }
 
-      // Record this exchange in active session messages so it's not lost
-      const finalAnswer = accumulatedReply.replace(/[*#_`]/g, '').trim();
+      let finalAnswer = accumulatedReply
+        .replace(/<think>[\s\S]*?<\/think>/gi, '')
+        .replace(/<think>[\s\S]*$/gi, '')
+        .replace(/[*#_`~]/g, '')
+        .trim();
+
+      // Fallback if stream was empty
+      if (!finalAnswer) {
+        try {
+          const fallbackRes = await fetch('/api/chat/message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: voicePrompt,
+              history: activeSession ? activeSession.messages : [],
+              model: effectiveModel || modelToUse,
+              reasoningTier: 'low',
+              customProvider: activeCustomProvider,
+              orionApiKey: userOrionApiKey,
+            }),
+            signal: controller.signal,
+          });
+          if (fallbackRes.ok) {
+            const json = await fallbackRes.json();
+            const fallbackContent = json.data?.content || json.reply || '';
+            finalAnswer = fallbackContent
+              .replace(/<think>[\s\S]*?<\/think>/gi, '')
+              .replace(/<think>[\s\S]*$/gi, '')
+              .replace(/[*#_`~]/g, '')
+              .trim();
+          }
+        } catch {}
+      }
+
+      if (!finalAnswer) {
+        finalAnswer = 'Halo, saya mendengar Anda. Ada yang bisa saya bantu?';
+      }
+
+      setVoiceAgentResponse(finalAnswer);
+
+      // Record this exchange in active session messages
       const userMsg = {
         id: `msg-v-user-${Date.now()}`,
         role: 'user',
@@ -595,7 +724,7 @@ export default function App() {
         id: `msg-v-ai-${Date.now()}`,
         role: 'assistant',
         content: finalAnswer,
-        model: effectiveModel || selectedModel,
+        model: effectiveModel || modelToUse,
         timestamp: new Date().toISOString(),
       };
       setSessions((prev) =>
@@ -603,7 +732,7 @@ export default function App() {
       );
 
       // 4. Reading pause so the user comfortably reads the concise answer before mic re-opens
-      const readingDelay = Math.max(3000, Math.min(5500, finalAnswer.length * 60));
+      const readingDelay = Math.max(3000, Math.min(6000, finalAnswer.length * 55));
       await new Promise((resolve) => setTimeout(resolve, readingDelay));
 
     } catch (err) {
@@ -635,6 +764,7 @@ export default function App() {
 
   const handleStartVoiceCalling = async () => {
     try {
+      voiceSelectedModelRef.current = selectedModel;
       playCosmicHumSound();
       setIsVoiceCalling(true);
       setIsVoiceMuted(false);
@@ -1125,77 +1255,10 @@ export default function App() {
       timestamp: new Date().toISOString(),
     };
 
-    const orionProvider = (customProviders || []).find(
-      (p) => p.id === 'orion' || p.templateId === 'orion' || p.name?.toLowerCase().includes('official')
+    const { effectiveModel, activeCustomProvider, userOrionApiKey } = resolveModelAndProvider(
+      selectedModel,
+      customProviders
     );
-    const userOrionApiKey =
-      orionProvider?.apiKeys?.find((k) => k.active)?.key || orionProvider?.apiKey || '';
-
-    let activeCustomProvider = null;
-    let effectiveModel = selectedModel;
-
-    if (selectedModel && selectedModel.includes('::')) {
-      const [provId, modId] = selectedModel.split('::');
-      const parentProv = customProviders.find((p) => p.id === provId);
-      if (parentProv) {
-        let activeKey = parentProv.apiKeys?.find((k) => k.active)?.key || parentProv.apiKey || '';
-        if (!activeKey && (provId === 'orion' || parentProv.templateId === 'orion' || parentProv.name?.toLowerCase().includes('official'))) {
-          activeKey = userOrionApiKey;
-        }
-        activeCustomProvider = {
-          id: parentProv.id,
-          baseUrl: parentProv.baseUrl,
-          apiKey: activeKey,
-          modelId: modId,
-          name: parentProv.name,
-          requiresApiKey: parentProv.requiresApiKey,
-        };
-      }
-    } else if (selectedModel) {
-      for (const p of customProviders) {
-        const foundMod = (p.models || []).find((m) => (typeof m === 'string' ? m === selectedModel : m.id === selectedModel && m.enabled));
-        if (foundMod) {
-          const modId = typeof foundMod === 'string' ? foundMod : foundMod.id;
-          effectiveModel = `${p.id}::${modId}`;
-          let activeKey = p.apiKeys?.find((k) => k.active)?.key || p.apiKey || '';
-          if (!activeKey && (p.id === 'orion' || p.templateId === 'orion' || p.name?.toLowerCase().includes('official'))) {
-            activeKey = userOrionApiKey;
-          }
-          activeCustomProvider = {
-            id: p.id,
-            baseUrl: p.baseUrl,
-            apiKey: activeKey,
-            modelId: modId,
-            name: p.name,
-            requiresApiKey: p.requiresApiKey,
-          };
-          break;
-        }
-      }
-    }
-
-    if (!activeCustomProvider && customProviders.length > 0) {
-      for (const p of customProviders) {
-        const firstEnabled = (p.models || []).find((m) => m && m.enabled);
-        if (firstEnabled) {
-          const modId = firstEnabled.id;
-          effectiveModel = `${p.id}::${modId}`;
-          let activeKey = p.apiKeys?.find((k) => k.active)?.key || p.apiKey || '';
-          if (!activeKey && (p.id === 'orion' || p.templateId === 'orion' || p.name?.toLowerCase().includes('official'))) {
-            activeKey = userOrionApiKey;
-          }
-          activeCustomProvider = {
-            id: p.id,
-            baseUrl: p.baseUrl,
-            apiKey: activeKey,
-            modelId: modId,
-            name: p.name,
-            requiresApiKey: p.requiresApiKey,
-          };
-          break;
-        }
-      }
-    }
 
     const modelSupportsReasoning = isReasoningSupported(
       selectedModel,
@@ -1810,10 +1873,12 @@ export default function App() {
                             {msg.content && <div className="user-text-content">{msg.content}</div>}
                           </div>
                         ) : msg.content === '' ? (
-                          <ThinkingIndicator
-                            model={msg.model || selectedModel}
-                            reasoningTier={msg.reasoningTier || reasoningTier}
-                          />
+                          isGenerating && isStreamingThis ? (
+                            <ThinkingIndicator
+                              model={msg.model || selectedModel}
+                              reasoningTier={msg.reasoningTier || reasoningTier}
+                            />
+                          ) : null
                         ) : (
                           <FormattedMessage content={msg.content} isStreaming={isStreamingThis} />
                         )}
