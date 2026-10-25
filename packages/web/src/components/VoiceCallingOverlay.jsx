@@ -1,5 +1,5 @@
 import React from 'react';
-import { Mic, MicOff, PhoneOff, Sparkles } from 'lucide-react';
+import { Mic, MicOff, PhoneOff } from 'lucide-react';
 
 export default function VoiceCallingOverlay({
   isActive = false,
@@ -15,70 +15,49 @@ export default function VoiceCallingOverlay({
   return (
     <div className="voice-calling-overlay" aria-live="polite">
       <div className="voice-calling-container">
-        {/* Dynamic Voice Dialogue Stage (Positioned in upper-middle of content) */}
+        {/* Typographic Voice Dialogue Stage */}
         <div className="voice-dialogue-stage">
-          {/* Status Pill Badge */}
-          <div className="voice-status-pill-wrap">
-            {agentStatus === 'thinking' && (
-              <div className="voice-status-pill is-thinking">
-                <Sparkles size={14} className="pill-sparkle-spin" />
-                <span>Orion sedang berpikir...</span>
-              </div>
-            )}
+          {/* Status Indicator (Subtle, purposeful, non-slop) */}
+          {agentStatus === 'thinking' && (
+            <div className="voice-thinking-status">
+              <span className="voice-thinking-pulse" />
+              <span>Memproses jawaban...</span>
+            </div>
+          )}
 
-            {agentStatus === 'speaking' && (
-              <div className="voice-status-pill is-speaking">
-                <span className="voice-live-dot" />
-                <span>Orion</span>
-              </div>
-            )}
+          {agentStatus === 'listening' && !userTranscript && (
+            <div className={`voice-listening-hint ${isMuted ? 'is-muted' : ''}`}>
+              <span className="voice-listening-dot" />
+              <span>{isMuted ? 'Mikrofon dibisukan' : 'Silakan berbicara...'}</span>
+            </div>
+          )}
 
-            {agentStatus === 'listening' && (
-              <div className={`voice-status-pill is-listening ${isMuted ? 'muted' : ''}`}>
-                <span className="voice-pulse-dot" />
-                <span>{isMuted ? 'Mikrofon Dibisukan' : 'Mendengarkan...'}</span>
-              </div>
-            )}
-          </div>
-
-          {/* User Live Speech Transcript (During speech & while thinking) */}
+          {/* User Spoken Transcript (Clean, understated typography) */}
           {userTranscript && (agentStatus === 'listening' || agentStatus === 'thinking') && (
-            <div className="voice-user-transcript-card">
-              <span className="voice-transcript-caption">Anda</span>
+            <div className="voice-user-transcript">
               <p className="voice-user-text">“{userTranscript}”</p>
             </div>
           )}
 
-          {/* Agent Response Text with Cozy Reveal Animation */}
+          {/* Spoken AI Response (Frameless, high-legibility clean typography) */}
           {agentResponse && agentStatus === 'speaking' && (
-            <div className="voice-agent-response-card cozy-reveal">
-              <div className="voice-agent-glow-aura" />
-              <p className="voice-agent-text">
-                {agentResponse.split(' ').map((word, idx) => (
-                  <span
-                    key={`w-${idx}-${word}`}
-                    className="cozy-word"
-                    style={{ animationDelay: `${Math.min(idx * 0.038, 0.7)}s` }}
-                  >
-                    {word}{' '}
-                  </span>
-                ))}
-              </p>
+            <div className="voice-agent-speech">
+              <p className="voice-agent-text">{agentResponse}</p>
             </div>
           )}
         </div>
 
-        {/* Action Controls: Mute & Tutup Panggilan (Docked at the bottom) */}
+        {/* Action Controls: Mute & Tutup Panggilan (Docked cleanly at bottom) */}
         <div className="voice-calling-actions">
           {/* Toggle Mute Button */}
           <button
             type="button"
-            className={`voice-action-btn ${isMuted ? 'muted' : ''}`}
+            className={`voice-action-btn ${isMuted ? 'is-muted' : ''}`}
             onClick={onToggleMute}
             title={isMuted ? 'Aktifkan Mikrofon' : 'Bisukan Mikrofon'}
             aria-label={isMuted ? 'Aktifkan Mikrofon' : 'Bisukan Mikrofon'}
           >
-            {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
+            {isMuted ? <MicOff size={18} /> : <Mic size={18} />}
             <span>{isMuted ? 'Unmute' : 'Mute'}</span>
           </button>
 
@@ -90,7 +69,7 @@ export default function VoiceCallingOverlay({
             title="Tutup Panggilan Suara (Esc)"
             aria-label="Tutup Panggilan Suara"
           >
-            <PhoneOff size={20} />
+            <PhoneOff size={18} />
             <span>Tutup Panggilan</span>
           </button>
         </div>
