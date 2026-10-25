@@ -67,6 +67,8 @@ import ThinkingIndicator from './components/ThinkingIndicator';
 import { soundEffects } from './utils/soundEffects';
 import { formatFileSize } from './utils/fileHelpers';
 import { isReasoningSupported } from './utils/modelConfig';
+import VoiceCallingOverlay from './components/VoiceCallingOverlay';
+import { playCosmicHumSound, playCosmicEndCallSound } from './utils/audioEffects';
 import './App.css';
 
 function formatUserFacingError(errMessage) {
@@ -373,6 +375,143 @@ export default function App() {
     }, 4500);
     return () => clearInterval(interval);
   }, [currentView, rotatingSubtitles.length]);
+
+  // AI Voice Calling State & Real-time Microphone Audio Analyzer
+  const [isVoiceCalling, setIsVoiceCalling] = useState(false);
+  const [voiceAudioLevel, setVoiceAudioLevel] = useState(0);
+  const [isVoiceMuted, setIsVoiceMuted] = useState(false);
+
+  const voiceMediaStreamRef = useRef(null);
+  const voiceAudioContextRef = useRef(null);
+  const voiceAnalyserRef = useRef(null);
+  const voiceRafIdRef = useRef(null);
+
+  const handleStartVoiceCalling = async () => {
+    try {
+      playCosmicHumSound();
+      setIsVoiceCalling(true);
+      setIsVoiceMuted(false);
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showToast('Akses mikrofon tidak didukung di browser ini');
+        return;
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+
+      voiceMediaStreamRef.current = stream;
+
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      const audioCtx = new AudioContextClass();
+      if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+      }
+      voiceAudioContextRef.current = audioCtx;
+
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.65;
+      voiceAnalyserRef.current = analyser;
+
+      const source = audioCtx.createMediaStreamSource(stream);
+      source.connect(analyser);
+
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      let smoothedLevel = 0;
+
+      const analyzeAudio = () => {
+        if (!voiceAnalyserRef.current) return;
+        analyser.getByteFrequencyData(dataArray);
+
+        let sum = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          sum += dataArray[i];
+        }
+        const rawAverage = sum / bufferLength;
+        const normalized = Math.min(1.0, Math.max(0, (rawAverage - 8) / 70));
+
+        smoothedLevel += (normalized - smoothedLevel) * 0.28;
+        setVoiceAudioLevel(smoothedLevel);
+
+        voiceRafIdRef.current = requestAnimationFrame(analyzeAudio);
+      };
+
+      voiceRafIdRef.current = requestAnimationFrame(analyzeAudio);
+    } catch (err) {
+      console.warn('Microphone access error:', err);
+      showToast('Gagal mengakses mikrofon: ' + (err.message || 'Izin ditolak'));
+      handleEndVoiceCalling();
+    }
+  };
+
+  const handleEndVoiceCalling = () => {
+    playCosmicEndCallSound();
+    setIsVoiceCalling(false);
+    setVoiceAudioLevel(0);
+    setIsVoiceMuted(false);
+
+    if (voiceRafIdRef.current) {
+      cancelAnimationFrame(voiceRafIdRef.current);
+      voiceRafIdRef.current = null;
+    }
+
+    if (voiceMediaStreamRef.current) {
+      voiceMediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      voiceMediaStreamRef.current = null;
+    }
+
+    if (voiceAudioContextRef.current) {
+      voiceAudioContextRef.current.close().catch(() => {});
+      voiceAudioContextRef.current = null;
+    }
+    voiceAnalyserRef.current = null;
+  };
+
+  const handleToggleVoiceMute = () => {
+    if (voiceMediaStreamRef.current) {
+      const audioTracks = voiceMediaStreamRef.current.getAudioTracks();
+      const newMuted = !isVoiceMuted;
+      audioTracks.forEach((t) => {
+        t.enabled = !newMuted;
+      });
+      setIsVoiceMuted(newMuted);
+      if (newMuted) {
+        setVoiceAudioLevel(0);
+      }
+    }
+  };
+
+  // Keyboard shortcut: Escape to close voice calling
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isVoiceCalling) {
+        handleEndVoiceCalling();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isVoiceCalling]);
+
+  // Clean up media streams and audio context on unmount
+  useEffect(() => {
+    return () => {
+      if (voiceRafIdRef.current) cancelAnimationFrame(voiceRafIdRef.current);
+      if (voiceMediaStreamRef.current) {
+        voiceMediaStreamRef.current.getTracks().forEach((t) => t.stop());
+      }
+      if (voiceAudioContextRef.current) {
+        voiceAudioContextRef.current.close().catch(() => {});
+      }
+    };
+  }, []);
 
   const handleNavigateView = (view) => {
     soundEffects.click?.();
@@ -1053,6 +1192,8 @@ export default function App() {
         active={currentView === 'chat' || currentView === 'dashboard'}
         inChat={currentView === 'chat' && messages.length > 0}
         theme={theme}
+        isVoiceCalling={isVoiceCalling}
+        audioLevel={voiceAudioLevel}
       />
 
       {/* Minimal Toast */}
@@ -1080,7 +1221,7 @@ export default function App() {
       />
 
       {/* Main Area */}
-      <main className="chat-main">
+      <main className={`chat-main ${isVoiceCalling ? 'is-voice-calling-active' : ''}`}>
         {/* Simple Transparent Header (No Background) */}
         <header className="chat-header-simple">
           <div className="header-simple-left">
@@ -1426,6 +1567,7 @@ export default function App() {
           setAttachments={setAttachments}
           onSend={() => handleSendMessage()}
           onStop={handleStopGeneration}
+          onStartVoiceCall={handleStartVoiceCalling}
           isGenerating={isGenerating}
           isCentered={messages.length === 0 || currentView === 'dashboard'}
           isHiddenDashboard={currentView === 'dashboard'}
@@ -1435,6 +1577,15 @@ export default function App() {
           setReasoningTier={handleReasoningTierChange}
           customProviders={customProviders}
           onOpenManageProviders={() => setCurrentView('providers')}
+        />
+
+        {/* Ambient Voice Calling Overlay with Equalizer Wave Visualizer */}
+        <VoiceCallingOverlay
+          isActive={isVoiceCalling}
+          audioLevel={voiceAudioLevel}
+          isMuted={isVoiceMuted}
+          onToggleMute={handleToggleVoiceMute}
+          onEndCall={handleEndVoiceCalling}
         />
           </>
         )}

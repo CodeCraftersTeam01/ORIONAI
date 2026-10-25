@@ -10,6 +10,7 @@ import {
   Image as ImageIcon,
   Loader2,
   Square,
+  AudioWaveform,
 } from 'lucide-react';
 import { processFile, formatFileSize } from '../utils/fileHelpers';
 import ModelSelector from './ModelSelector';
@@ -21,6 +22,7 @@ export default function ChatInput({
   setAttachments,
   onSend,
   onStop,
+  onStartVoiceCall,
   isGenerating,
   isCentered = false,
   isHiddenDashboard = false,
@@ -264,19 +266,33 @@ export default function ChatInput({
             >
               <Square size={12} fill="currentColor" stroke="none" />
             </button>
-          ) : (
+          ) : canSend ? (
             <button
               type="button"
-              className={`btn-send-message ${canSend ? 'active' : ''}`}
+              className="btn-send-message active"
               onClick={(e) => {
                 e.stopPropagation();
-                if (canSend) onSend();
+                onSend();
               }}
-              disabled={!canSend}
               title="Kirim (Enter)"
               aria-label="Kirim pesan"
             >
               <ArrowUp size={16} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn-send-message is-ai-calling active"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (typeof onStartVoiceCall === 'function') {
+                  onStartVoiceCall();
+                }
+              }}
+              title="Mulai AI Calling (Panggilan Suara)"
+              aria-label="Mulai AI Calling"
+            >
+              <AudioWaveform size={17} className="ai-calling-waveform-icon" />
             </button>
           )}
         </div>

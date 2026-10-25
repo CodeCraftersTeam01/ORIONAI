@@ -28,6 +28,7 @@ uniform vec4 u_color1; // Electric Blue
 uniform vec4 u_color2; // Radiant Cyan
 uniform vec4 u_color3; // Deep Sapphire
 uniform float u_distortion;
+uniform float u_wave_strength;
 
 out vec4 fragColor;
 
@@ -55,16 +56,16 @@ void main() {
   float t = u_time * 0.85;
 
   // Wave Layer 1: Deep rolling oceanic swell
-  float w1 = sin(uv_orig.x * 2.8 + t * 0.75) * 0.16 + cos(uv_orig.x * 5.6 - t * 0.55 + 1.2) * 0.09;
-  float crest1 = 0.58 + w1 * (1.1 + u_distortion * 3.5);
+  float w1 = (sin(uv_orig.x * 2.8 + t * 0.75) * 0.16 + cos(uv_orig.x * 5.6 - t * 0.55 + 1.2) * 0.09) * u_wave_strength;
+  float crest1 = 0.58 * u_wave_strength + w1 * (1.1 + u_distortion * 3.5);
 
   // Wave Layer 2: Main electric blue surging wave
-  float w2 = sin(uv_orig.x * 3.8 + t * 1.15 + 1.8) * 0.20 + cos(uv_orig.x * 7.4 - t * 0.90 + 2.4) * 0.10;
-  float crest2 = 0.46 + w2 * (1.2 + u_distortion * 4.2);
+  float w2 = (sin(uv_orig.x * 3.8 + t * 1.15 + 1.8) * 0.20 + cos(uv_orig.x * 7.4 - t * 0.90 + 2.4) * 0.10) * u_wave_strength;
+  float crest2 = 0.46 * u_wave_strength + w2 * (1.2 + u_distortion * 4.2);
 
   // Wave Layer 3: Foreground luminous cyan rippling crest
-  float w3 = sin(uv_orig.x * 4.4 + t * 1.40 + 3.4) * 0.17 + cos(uv_orig.x * 8.8 - t * 1.05 + 0.8) * 0.08;
-  float crest3 = 0.36 + w3 * (1.1 + u_distortion * 3.6);
+  float w3 = (sin(uv_orig.x * 4.4 + t * 1.40 + 3.4) * 0.17 + cos(uv_orig.x * 8.8 - t * 1.05 + 0.8) * 0.08) * u_wave_strength;
+  float crest3 = 0.36 * u_wave_strength + w3 * (1.1 + u_distortion * 3.6);
 
   // Fluid noise flow
   vec2 flow_uv = uv_orig * vec2(2.6, 3.8) + vec2(t * 0.28, -t * 0.14);
@@ -143,8 +144,19 @@ function createProgram(gl, vsSrc, fsSrc) {
   return prog;
 }
 
-export default function AuroraBackground({ active = true, inChat = false, theme = 'dark' }) {
+export default function AuroraBackground({
+  active = true,
+  inChat = false,
+  theme = 'dark',
+  isVoiceCalling = false,
+  audioLevel = 0,
+}) {
   const canvasRef = useRef(null);
+  const propsRef = useRef({ isVoiceCalling, audioLevel });
+  useEffect(() => {
+    propsRef.current = { isVoiceCalling, audioLevel };
+  }, [isVoiceCalling, audioLevel]);
+
   const animStateRef = useRef({
     rafId: null,
     gl: null,
@@ -153,6 +165,7 @@ export default function AuroraBackground({ active = true, inChat = false, theme 
     startTime: performance.now(),
     lastFrameTime: performance.now(),
     totalAnimationTime: 0,
+    currentWaveStrength: 1.0,
     isRunning: false,
   });
 
@@ -215,6 +228,7 @@ export default function AuroraBackground({ active = true, inChat = false, theme 
         'u_color2',
         'u_color3',
         'u_distortion',
+        'u_wave_strength',
       ];
       const locations = {};
       uniforms.forEach((u) => {
@@ -275,6 +289,16 @@ export default function AuroraBackground({ active = true, inChat = false, theme 
       const cycle2 = Math.sin(animTime * 0.24 + 1.4);
       const rawWave = 0.55 + 0.32 * cycle1 + 0.13 * cycle2;
       const waveIntensity = Math.min(Math.max(rawWave, 0.0), 1.0);
+
+      // Smooth wave strength interpolation:
+      // When in voice calling mode, base drops to 0.05 (5% calm baseline requested by user)
+      // and surges up organically with user microphone audioLevel!
+      const { isVoiceCalling: calling, audioLevel: level } = propsRef.current;
+      const targetStrength = calling
+        ? Math.min(1.3, 0.05 + Math.pow(Math.max(0, level || 0), 0.7) * 0.95)
+        : 1.0;
+      state.currentWaveStrength += (targetStrength - state.currentWaveStrength) * 0.12;
+      gl.uniform1f(state.locations.u_wave_strength, state.currentWaveStrength);
 
       const currentScale = 0.35 + 0.12 * waveIntensity;
       const currentDistortion = 0.15 + 0.12 * waveIntensity;
@@ -347,7 +371,9 @@ export default function AuroraBackground({ active = true, inChat = false, theme 
 
   return (
     <div
-      className={`tryliner-aurora-wrapper ${active ? 'visible' : 'hidden'} ${inChat ? 'in-chat' : 'in-home'}`}
+      className={`tryliner-aurora-wrapper ${active ? 'visible' : 'hidden'} ${inChat ? 'in-chat' : 'in-home'} ${
+        isVoiceCalling ? 'in-voice-call' : ''
+      }`}
       aria-hidden="true"
     >
       {/* Full Bleed Canvas */}
