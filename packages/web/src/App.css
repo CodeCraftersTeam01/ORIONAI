@@ -1471,7 +1471,7 @@
   transform: translateY(0) scale(1);
   pointer-events: auto;
   max-height: 400px;
-  margin-top: 1.5rem;
+  margin-top: 0.5rem;
 }
 
 .dynamic-recs-header {
