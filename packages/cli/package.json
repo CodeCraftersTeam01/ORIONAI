@@ -1,0 +1,19 @@
+{
+  "name": "@orion-agent/cli",
+  "version": "1.0.0",
+  "description": "CLI launcher and interactive terminal chat interface for Orion Agent",
+  "type": "module",
+  "main": "bin/orion.js",
+  "bin": {
+    "orion": "./bin/orion.js",
+    "orion-agent": "./bin/orion.js"
+  },
+  "keywords": [
+    "orion",
+    "cli",
+    "agent",
+    "terminal-chat"
+  ],
+  "author": "Lanvry <wardilanang46@gmail.com>",
+  "license": "MIT"
+}

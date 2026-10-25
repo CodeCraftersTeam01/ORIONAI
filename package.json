@@ -1,11 +1,54 @@
 {
-  "name": "orionai-fullstack",
+  "name": "orion-agent",
   "version": "1.0.0",
-  "private": true,
-  "description": "Fullstack Boilerplate: Express.js Backend + React Vite Frontend",
+  "description": "Orion Agent — Intelligent Cosmic AI Platform & Assistant Monorepo",
+  "type": "module",
+  "main": "packages/server/src/server.js",
+  "bin": {
+    "orion": "./bin/orion.js",
+    "orion-agent": "./bin/orion.js"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "files": [
+    "bin",
+    "packages/cli",
+    "packages/server",
+    "packages/web/dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
-    "dev:backend": "npm --prefix backend run dev",
-    "dev:frontend": "npm --prefix frontend run dev",
-    "install:all": "npm --prefix backend install && npm --prefix frontend install"
+    "start": "node packages/cli/bin/orion.js",
+    "orion": "node packages/cli/bin/orion.js",
+    "chat": "node packages/cli/bin/orion.js chat",
+    "view": "node packages/cli/bin/orion.js --view",
+    "build": "npm --prefix packages/web run build",
+    "dev:server": "npm --prefix packages/server run dev",
+    "dev:web": "npm --prefix packages/web run dev",
+    "lint": "npm --prefix packages/web run lint",
+    "install:all": "npm install"
+  },
+  "keywords": [
+    "orion",
+    "orion-agent",
+    "ai",
+    "assistant",
+    "chat",
+    "cli",
+    "agent",
+    "monorepo"
+  ],
+  "author": "Lanvry <wardilanang46@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^8.7.1",
+    "helmet": "^8.3.0",
+    "morgan": "^1.10.0"
   }
 }
