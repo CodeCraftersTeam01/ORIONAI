@@ -332,14 +332,10 @@ export async function showSplashScreen() {
 
 // Print minimalist chat header (Pi style)
 export function printHeader(modelId, tier, hasKey = false) {
-  const cols = Math.max(40, process.stdout.columns || 80);
-  const divider = '─'.repeat(cols);
-
   console.log(`${c.brightCyan}${c.bold}🌌 ORION AGENT TERMINAL CHAT${c.reset} ${c.dim}(Pi-Engine v1.1.0)${c.reset}`);
   console.log(
     `${c.gray}Pintasan:${c.reset} ${c.yellow}Ctrl+L${c.reset} ${c.dim}(Model)${c.reset} · ${c.yellow}Shift+Tab${c.reset} ${c.dim}(Reasoning)${c.reset} · ${c.yellow}!cmd${c.reset} ${c.dim}(Shell)${c.reset} · ${c.yellow}/${c.reset} ${c.dim}(Perintah)${c.reset}`
   );
-  console.log(`${c.gray}${divider}${c.reset}\n`);
 }
 
 const COMMAND_ITEMS = [
@@ -385,8 +381,9 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
     }
 
     function renderUI() {
-      const cols = Math.max(40, process.stdout.columns || 80);
-      const divider = '─'.repeat(cols);
+      // Safe width (columns - 2) so terminal margin never auto-wraps lines
+      const width = Math.max(30, (process.stdout.columns || 80) - 2);
+      const divider = '─'.repeat(width);
 
       // If already rendered, move cursor UP 1 line to top divider and clear below
       if (!isFirstRender) {
@@ -419,9 +416,15 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
           const isSelected = realIdx === menuIndex;
           const cursor = isSelected ? `\x1b[36m→ \x1b[0m` : `  `;
           const label = isSelected
-            ? `\x1b[1m\x1b[37m${item.label.padEnd(16)}\x1b[0m`
-            : `\x1b[37m${item.label.padEnd(16)}\x1b[0m`;
-          const detail = item.detail ? `\x1b[90m${item.detail}\x1b[0m` : '';
+            ? `\x1b[1m\x1b[37m${item.label.padEnd(14)}\x1b[0m`
+            : `\x1b[37m${item.label.padEnd(14)}\x1b[0m`;
+          const maxDetailLen = Math.max(10, width - 20);
+          const detailText = item.detail
+            ? item.detail.length > maxDetailLen
+              ? item.detail.slice(0, maxDetailLen - 1) + '…'
+              : item.detail
+            : '';
+          const detail = detailText ? `\x1b[90m${detailText}\x1b[0m` : '';
 
           out += `${cursor}${label} ${detail}\x1b[K\n`;
           linesBelow++;
@@ -437,9 +440,11 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
       const leftCwd = '~';
       const availableModels = getAvailableModels(syncedConfig);
       const matchedModel = availableModels.find((m) => m.id === currentModel);
-      const provName = matchedModel?.provider?.name || matchedModel?.provider?.id || 'orion';
-      const rightModel = `(${provName}) ${currentModel} • ${reasoningTier}`;
-      const gap1 = Math.max(2, cols - leftCwd.length - rightModel.length);
+      const rawProvName = matchedModel?.provider?.name || matchedModel?.provider?.id || 'orion';
+      const provName = rawProvName.replace(/::.*/, '').replace(/\s*\(Official\)/, '');
+      const displayModel = currentModel.replace(/^orion::/, '');
+      const rightModel = `(${provName}) ${displayModel} • ${reasoningTier}`;
+      const gap1 = Math.max(2, width - leftCwd.length - rightModel.length);
       out += `\x1b[90m${leftCwd}${' '.repeat(gap1)}${rightModel}\x1b[0m\x1b[K\n`;
       linesBelow++;
 
@@ -452,7 +457,7 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
       const keyLabel = userApiKey ? `● Key Tersambung` : `○ Belum diatur (/login)`;
       const keyColor = userApiKey ? `\x1b[32m` : `\x1b[33m`;
       const cleanKeyLen = keyLabel.length;
-      const gap2 = Math.max(2, cols - leftTokens.length - cleanKeyLen);
+      const gap2 = Math.max(2, width - leftTokens.length - cleanKeyLen);
       out += `\x1b[90m${leftTokens}${' '.repeat(gap2)}${keyColor}${keyLabel}\x1b[0m\x1b[K\n`;
       linesBelow++;
 
