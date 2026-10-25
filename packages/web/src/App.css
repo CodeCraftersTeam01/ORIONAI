@@ -1335,7 +1335,7 @@
 }
 
 .welcome-hero-container.is-dashboard-mode {
-  transform: translateY(-13.5vh);
+  transform: translateY(-7.5vh);
   padding-bottom: 2rem;
 }
 
