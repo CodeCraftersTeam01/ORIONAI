@@ -1295,7 +1295,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 4.8rem;
+  min-height: 4.2rem;
   width: 100%;
   margin-top: 0;
 }
@@ -1328,7 +1328,7 @@
   letter-spacing: -0.02em;
   color: #1f1f1f;
   margin-top: 0;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.12rem;
   line-height: 1.2;
   text-wrap: balance;
   display: inline-flex;
@@ -4947,17 +4947,18 @@
 /* Rotating subtitle with smooth character blur entrance */
 .dashboard-rotating-subtitle {
   font-family: 'Google Sans', 'Outfit', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', sans-serif;
-  font-size: clamp(1.15rem, 2.4vw, 1.6rem);
+  font-size: clamp(0.92rem, 1.25vw, 1.05rem);
   font-weight: 400;
   color: var(--text-secondary);
-  letter-spacing: -0.015em;
-  margin-top: 0.35rem;
-  margin-bottom: 0.5rem;
-  min-height: 2.4rem;
+  letter-spacing: -0.01em;
+  margin-top: -0.05rem;
+  margin-bottom: 0.25rem;
+  min-height: 1.4rem;
   display: inline-flex;
   flex-wrap: wrap;
   justify-content: center;
   align-items: center;
+  opacity: 0.88;
 }
 
 [data-theme='dark'] .dashboard-rotating-subtitle {
@@ -4967,17 +4968,17 @@
 .blur-subtitle-char {
   display: inline-block;
   opacity: 0;
-  transform: translateY(8px) scale(0.96);
-  filter: blur(10px);
-  animation: subtitleCharBlurIn 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform: translateY(5px) scale(0.96);
+  filter: blur(8px);
+  animation: subtitleCharBlurIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   will-change: transform, opacity, filter;
 }
 
 @keyframes subtitleCharBlurIn {
   0% {
     opacity: 0;
-    transform: translateY(10px) scale(0.95);
-    filter: blur(12px);
+    transform: translateY(6px) scale(0.95);
+    filter: blur(10px);
   }
   100% {
     opacity: 1;
