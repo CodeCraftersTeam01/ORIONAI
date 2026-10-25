@@ -599,6 +599,10 @@ export default function App() {
       );
     };
 
+    const orionProvider = (customProviders || []).find((p) => p.templateId === 'orion');
+    const userOrionApiKey =
+      orionProvider?.apiKeys?.find((k) => k.active)?.key || orionProvider?.apiKey || '';
+
     try {
       const res = await fetch('/api/chat/stream', {
         method: 'POST',
@@ -610,6 +614,7 @@ export default function App() {
           model: selectedModel,
           reasoningTier: activeReasoningTier,
           customProvider: activeCustomProvider,
+          orionApiKey: userOrionApiKey,
         }),
         signal: controller.signal,
       });
@@ -695,6 +700,7 @@ export default function App() {
             model: selectedModel,
             reasoningTier: activeReasoningTier,
             customProvider: activeCustomProvider,
+            orionApiKey: userOrionApiKey,
           }),
           signal: controller.signal,
         });
