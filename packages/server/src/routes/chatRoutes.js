@@ -98,8 +98,8 @@ router.post('/message', chatRateLimiter, validateChatInput, async (req, res, nex
       },
     });
   } catch (error) {
-    console.error('Error in /api/chat/message:', error.message);
-    res.status(502).json({
+    const isApiKeyError = /api\s*key|kredensial|unauthorized/i.test(error.message);
+    res.status(isApiKeyError ? 401 : 502).json({
       success: false,
       message: error.message || 'Layanan AI sementara tidak dapat dihubungi. Silakan coba lagi beberapa saat lagi.',
     });
