@@ -240,25 +240,83 @@ router.get('/models', (req, res) => {
 router.get('/providers-config', (req, res) => {
   try {
     ensureConfigDir();
+    let savedApiKey = process.env.AI_API_KEY || '';
+    if (fs.existsSync(credentialsFile)) {
+      try {
+        const creds = JSON.parse(fs.readFileSync(credentialsFile, 'utf8'));
+        if (creds.apiKey) savedApiKey = creds.apiKey;
+      } catch {}
+    }
+
     if (fs.existsSync(providersConfigFile)) {
       const raw = fs.readFileSync(providersConfigFile, 'utf8');
       const data = JSON.parse(raw);
-      return res.json({
-        success: true,
-        providers: data.providers || [],
-        selectedModel: data.selectedModel || null,
-        reasoningTier: data.reasoningTier || null,
-      });
+      if (Array.isArray(data.providers) && data.providers.length > 0) {
+        return res.json({
+          success: true,
+          providers: data.providers,
+          selectedModel: data.selectedModel || null,
+          reasoningTier: data.reasoningTier || null,
+        });
+      }
     }
+
+    // Default fallback provider configuration
+    const defaultProviders = [
+      {
+        id: 'orion',
+        name: 'Orion AI (Official)',
+        category: 'Rekomendasi',
+        baseUrl: process.env.AI_BASE_URL || 'https://pi.leopard-gila.ts.net/v1',
+        apiKey: savedApiKey,
+        requiresApiKey: true,
+        hideBaseUrl: true,
+        models: [
+          { id: 'orion', name: 'Orion', enabled: true, tested: true, lastTestStatus: 'success' },
+          { id: 'orion-auto', name: 'Orion Auto Router', enabled: true, tested: true, lastTestStatus: 'success' },
+          { id: 'agnes-2.5-flash', name: 'Agnes 2.5 Flash', enabled: true, tested: true, lastTestStatus: 'success' },
+          { id: 'agnes-2.5-pro', name: 'Agnes 2.5 Pro', enabled: true, tested: true, lastTestStatus: 'success' },
+          { id: 'agnes-3.0-flash', name: 'Agnes 3.0 Flash', enabled: true, tested: true, lastTestStatus: 'success' },
+          { id: 'gemini-3.7-flash', name: 'Gemini 3.7 Flash', enabled: true, tested: true, lastTestStatus: 'success' },
+          { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash Lite', enabled: true, tested: true, lastTestStatus: 'success' },
+          { id: 'nemotron-3', name: 'Nemotron 3', enabled: true, tested: true, lastTestStatus: 'success' },
+        ],
+      },
+    ];
+
+    // Persist default providers to disk so ~/.orion/providers.json is never an empty array
+    try {
+      fs.writeFileSync(
+        providersConfigFile,
+        JSON.stringify(
+          {
+            providers: defaultProviders,
+            selectedModel: 'orion',
+            reasoningTier: 'medium',
+            updatedAt: Date.now(),
+          },
+          null,
+          2
+        ),
+        'utf8'
+      );
+    } catch {}
+
+    return res.json({
+      success: true,
+      providers: defaultProviders,
+      selectedModel: 'orion',
+      reasoningTier: 'medium',
+    });
   } catch (err) {
     console.error('Error reading providers-config:', err.message);
+    res.json({
+      success: true,
+      providers: [],
+      selectedModel: null,
+      reasoningTier: null,
+    });
   }
-  res.json({
-    success: true,
-    providers: [],
-    selectedModel: null,
-    reasoningTier: null,
-  });
 });
 
 // POST /api/chat/providers-config (Save & sync providers to ~/.orion/providers.json)
