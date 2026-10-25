@@ -531,13 +531,15 @@
   opacity: 0;
   visibility: hidden;
   transition:
-    height 0.85s cubic-bezier(0.16, 1, 0.3, 1),
-    max-height 0.85s cubic-bezier(0.16, 1, 0.3, 1),
-    min-height 0.85s cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1),
-    visibility 0.85s;
-  will-change: height, opacity, transform;
-  transform: translateZ(0);
+    height 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+    max-height 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+    min-height 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+    visibility 0.55s;
+  will-change: height, opacity;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
   contain: paint layout;
   /* Multi-stop ultra-soft feather mask for seamless borderless fade into background */
   -webkit-mask-image: linear-gradient(
@@ -578,35 +580,35 @@
 }
 
 .tryliner-aurora-wrapper.in-chat .tryliner-aurora-canvas {
-  filter: blur(3px);
-  opacity: 0.95;
+  opacity: 0.92;
 }
 
 .tryliner-aurora-wrapper.in-chat .tryliner-aurora-bottom-boost {
-  opacity: 0.42;
-  filter: blur(28px);
+  opacity: 0.40;
 }
 
 [data-theme='light'] .tryliner-aurora-wrapper.in-chat .tryliner-aurora-bottom-boost {
-  opacity: 0.38;
-  filter: blur(28px);
+  opacity: 0.36;
 }
 
 .tryliner-aurora-wrapper.in-chat .tryliner-aurora-feather {
   opacity: 0.35;
 }
 
-/* 106% bleed width so left/right canvas corners never clip */
+/* 106% bleed width, fixed 360px height so canvas element NEVER resizes or clears buffer during transitions */
 .tryliner-aurora-canvas {
+  position: absolute;
+  bottom: 0;
+  left: -3%;
   width: 106%;
-  height: 100%;
-  margin-left: -3%;
+  height: 360px;
   display: block;
-  filter: blur(3.5px); /* Balanced sweetspot: waves undulate clearly while gradating softly into background */
-  transform: translateZ(0);
+  filter: blur(3.5px); /* Constant blur - no transition to avoid Safari compositor glitch */
+  transform: translate3d(0, 0, 0);
   backface-visibility: hidden;
-  will-change: transform;
-  transition: opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1), filter 0.85s;
+  -webkit-backface-visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Radiant aura glow spread wide across the bottom horizon */
@@ -624,10 +626,13 @@
     rgba(90, 210, 255, 0.10) 65%,
     transparent 100%
   );
-  filter: blur(36px);
+  filter: blur(34px); /* Constant blur - no transition */
   opacity: 0.45;
   mix-blend-mode: normal;
-  transition: opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1), filter 0.85s;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transition: opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 [data-theme='light'] .tryliner-aurora-bottom-boost {

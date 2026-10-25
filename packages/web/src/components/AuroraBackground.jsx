@@ -224,16 +224,16 @@ export default function AuroraBackground({ active = true, inChat = false, theme 
     }
 
     // High performance resolution scaling:
-    // Limits the internal buffer size to a sweetspot (~800-1100px width).
-    // The GPU automatically upscales it with zero performance penalty.
+    // Uses window resize listener with stable reference height (360px)
+    // so the WebGL drawing buffer is NEVER reallocated or cleared during CSS view transitions!
     const handleResize = () => {
       if (!canvas || !gl) return;
-      const w = canvas.clientWidth || window.innerWidth;
-      const h = canvas.clientHeight || window.innerHeight;
+      const w = window.innerWidth || canvas.clientWidth || 1000;
+      const h = 360; // Stable reference height matching max-height
 
       const scale = Math.min(1.0, 1000 / Math.max(w, 1));
       const targetW = Math.max(320, Math.round(w * scale));
-      const targetH = Math.max(60, Math.round(h * scale));
+      const targetH = Math.max(120, Math.round(h * scale));
 
       if (canvas.width !== targetW || canvas.height !== targetH) {
         canvas.width = targetW;
@@ -242,8 +242,7 @@ export default function AuroraBackground({ active = true, inChat = false, theme 
       }
     };
 
-    const resizeObserver = new ResizeObserver(handleResize);
-    resizeObserver.observe(canvas);
+    window.addEventListener('resize', handleResize);
     handleResize();
 
     const state = animStateRef.current;
@@ -336,7 +335,7 @@ export default function AuroraBackground({ active = true, inChat = false, theme 
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      resizeObserver.disconnect();
+      window.removeEventListener('resize', handleResize);
       if (stopTimeoutId) clearTimeout(stopTimeoutId);
       if (state.rafId) {
         cancelAnimationFrame(state.rafId);
