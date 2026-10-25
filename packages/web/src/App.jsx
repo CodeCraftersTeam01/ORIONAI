@@ -64,7 +64,6 @@ import SettingsModal from './components/SettingsModal';
 import ManageProvidersModal from './components/ManageProvidersModal';
 import LogsView from './components/LogsView';
 import ThinkingIndicator from './components/ThinkingIndicator';
-import VoiceModeOverlay from './components/VoiceModeOverlay';
 import { soundEffects } from './utils/soundEffects';
 import { formatFileSize } from './utils/fileHelpers';
 import { isReasoningSupported } from './utils/modelConfig';
@@ -306,7 +305,6 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [copiedMsgId, setCopiedMsgId] = useState(null);
   const [toast, setToast] = useState(null);
-  const [isVoiceMode, setIsVoiceMode] = useState(false);
 
   // Custom Providers State (OpenAI, Gemini, Claude, Ollama, etc.)
   const [customProviders, setCustomProviders] = useState(() => {
@@ -964,12 +962,11 @@ export default function App() {
   };
 
   return (
-    <div className={`orion-layout ${isVoiceMode ? 'is-voice-mode' : ''}`}>
-      {/* Dynamic WebGL Aurora Mesh Background (Wave recedes to 3% calm tide during Voice Mode) */}
+    <div className="orion-layout">
+      {/* Dynamic WebGL Aurora Mesh Background (Only in Chat & Dashboard, completely inactive in Settings & Providers) */}
       <AuroraBackground
-        active={currentView === 'chat' || currentView === 'dashboard' || isVoiceMode}
-        inChat={!isVoiceMode && currentView === 'chat' && messages.length > 0}
-        calmWave={isVoiceMode}
+        active={currentView === 'chat' || currentView === 'dashboard'}
+        inChat={currentView === 'chat' && messages.length > 0}
         theme={theme}
       />
 
@@ -1025,56 +1022,35 @@ export default function App() {
           </div>
 
           <div className="header-simple-center">
-            {isVoiceMode ? (
-              <div className="voice-mode-badge-nav">
-                <Sparkles size={13} className="text-cyan" />
-                <span>Mode Suara AI</span>
-              </div>
-            ) : (
-              <>
-                {currentView === 'chat' && messages.length > 0 && (
-                  <span className="session-active-title">
-                    {activeSession ? activeSession.title : 'Orion'}
-                  </span>
-                )}
-                {currentView === 'providers' && (
-                  <span className="session-active-title">Kelola Provider AI</span>
-                )}
-                {currentView === 'settings' && (
-                  <span className="session-active-title">Pengaturan</span>
-                )}
-                {currentView === 'logs' && (
-                  <span className="session-active-title">System & Gateway Logs</span>
-                )}
-              </>
+            {currentView === 'chat' && messages.length > 0 && (
+              <span className="session-active-title">
+                {activeSession ? activeSession.title : 'Orion'}
+              </span>
+            )}
+            {currentView === 'providers' && (
+              <span className="session-active-title">Kelola Provider AI</span>
+            )}
+            {currentView === 'settings' && (
+              <span className="session-active-title">Pengaturan</span>
+            )}
+            {currentView === 'logs' && (
+              <span className="session-active-title">System & Gateway Logs</span>
             )}
           </div>
 
           <div className="header-simple-right">
-            {isVoiceMode ? (
-              <button
-                type="button"
-                className="btn-exit-voice-mode"
-                onClick={() => setIsVoiceMode(false)}
-                title="Keluar dari mode suara (Esc)"
-              >
-                <X size={15} />
-                <span>Keluar</span>
-              </button>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className="btn-simple-new-chat"
-                  onClick={() => {
-                    handleNewSession();
-                    setCurrentView('chat');
-                  }}
-                  title="Mulai Obrolan Baru"
-                >
-                  <Plus size={14} />
-                  <span>Chat Baru</span>
-                </button>
+            <button
+              type="button"
+              className="btn-simple-new-chat"
+              onClick={() => {
+                handleNewSession();
+                setCurrentView('chat');
+              }}
+              title="Mulai Obrolan Baru"
+            >
+              <Plus size={14} />
+              <span>Chat Baru</span>
+            </button>
 
             {currentView === 'chat' && messages.length > 0 && (
               <>
@@ -1125,8 +1101,6 @@ export default function App() {
             >
               <Settings size={15} />
             </button>
-              </>
-            )}
           </div>
         </header>
 
@@ -1367,7 +1341,6 @@ export default function App() {
           setAttachments={setAttachments}
           onSend={() => handleSendMessage()}
           onStop={handleStopGeneration}
-          onStartVoiceMode={() => setIsVoiceMode(true)}
           isGenerating={isGenerating}
           isCentered={messages.length === 0 || currentView === 'dashboard'}
           isHiddenDashboard={currentView === 'dashboard'}
@@ -1379,19 +1352,6 @@ export default function App() {
           onOpenManageProviders={() => setCurrentView('providers')}
         />
           </>
-        )}
-
-        {/* Immersive AI Voice Mode Overlay (Inside chat-main so Navbar and Sidebar remain intact) */}
-        {isVoiceMode && (
-          <VoiceModeOverlay
-            onClose={() => setIsVoiceMode(false)}
-            onSendPrompt={(prompt) => handleSendMessage(prompt)}
-            isGenerating={isGenerating}
-            lastAiResponse={
-              [...messages].reverse().find((m) => m.role === 'assistant')?.content || ''
-            }
-            theme={theme}
-          />
         )}
       </main>
 
