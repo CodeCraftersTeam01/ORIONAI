@@ -72,7 +72,7 @@ export default function OrionLogo({ size = 'md', isGenerating = false, showRings
         }}
       >
         <img
-          src="/orion-logo.png"
+          src="/orion-logo.svg"
           alt="Orion AI"
           className="orion-logo-img"
           style={{

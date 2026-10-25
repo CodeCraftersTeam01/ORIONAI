@@ -370,18 +370,20 @@ export async function showSplashScreen() {
   const rows = process.stdout.rows || 24;
 
   const logoAscii = [
-    `${c.brightCyan}           ✦${c.reset}`,
-    `${c.cyan}         *   *${c.reset}`,
-    `${c.cyan}       .   ✦   .${c.reset}`,
-    `${c.blue}    *   /  |  \\   *${c.reset}`,
-    `${c.brightCyan}   ✦───•───•───•───✦${c.reset}`,
-    `${c.blue}    *   \\  |  /   *${c.reset}`,
-    `${c.cyan}       .   ✦   .${c.reset}`,
-    `${c.cyan}         *   *${c.reset}`,
-    `${c.brightCyan}           ✦${c.reset}`,
+    `${c.brightCyan}                 ✦${c.reset}`,
+    `${c.blue}           * ─── • ─── *${c.reset}`,
+    `${c.cyan}         /  \\   / \\   /  \\${c.reset}`,
+    `${c.cyan}        •──── • ─── • ────•${c.reset}`,
+    `${c.blue}       / \\   /       \\   / \\${c.reset}`,
+    `${c.brightCyan}     ✦────• (    ✦    ) •────✦${c.reset}`,
+    `${c.blue}       \\ /   \\       /   \\ /${c.reset}`,
+    `${c.cyan}        •──── • ─── • ────•${c.reset}`,
+    `${c.cyan}         \\  /   \\ /   \\  /${c.reset}`,
+    `${c.blue}           * ─── • ─── *${c.reset}`,
+    `${c.brightCyan}                 ✦${c.reset}`,
     '',
-    `${c.bold}${c.brightCyan}     O R I O N   A I${c.reset}`,
-    `${c.dim}${c.white}  Intelligent Cosmic Agent${c.reset}`,
+    `${c.bold}${c.brightCyan}          O R I O N   A I${c.reset}`,
+    `${c.dim}${c.white}       Intelligent Cosmic Agent${c.reset}`,
   ].join('\n');
 
   const logoLines = logoAscii.split('\n').length + 3;
@@ -990,16 +992,34 @@ export async function startTerminalChat() {
       let isInlineCode = false;
       let inCodeBlock = false;
       let pendingSurrogate = '';
+      let streamWordBuffer = '';
       let lastChar = '';
 
       const SQUISHED_WORDS = [
         [/Senangbertemudengan/gi, 'Senang bertemu dengan'],
         [/bertemudengan/gi, 'bertemu dengan'],
+        [/Senangbertemu/gi, 'Senang bertemu'],
+        [/siapmembantu/gi, 'siap membantu'],
         [/asistenkecerdasan/gi, 'asisten kecerdasan'],
         [/buatanyang/gi, 'buatan yang'],
         [/kecerdasanbuatan/gi, 'kecerdasan buatan'],
-        [/siapmembantu/gi, 'siap membantu'],
+        [/yangsiap/gi, 'yang siap'],
+        [/adalahasisten/gi, 'adalah asisten'],
+        [/terimakasih/gi, 'terima kasih'],
       ];
+
+      function cleanIndonesianSpelling(text) {
+        let res = text;
+        // 1. Lowercase directly followed by Uppercase (e.g. "membantuAnda" -> "membantu Anda", "SayaORION" -> "Saya ORION")
+        res = res.replace(/([a-z\u00C0-\u017F])([A-Z])/g, '$1 $2');
+        // 2. Punctuation followed by letter/number (e.g. "ini?Jangan" -> "ini? Jangan")
+        res = res.replace(/([?!.,;:])([a-zA-Z0-9\u00C0-\u017F])/g, '$1 $2');
+
+        for (const [re, repl] of SQUISHED_WORDS) {
+          res = res.replace(re, repl);
+        }
+        return res;
+      }
 
       function formatStreamChunk(rawChunk) {
         let chunk = pendingSurrogate + rawChunk;
@@ -1013,10 +1033,7 @@ export async function startTerminalChat() {
           }
         }
 
-        // Clean common squished words from upstream models
-        for (const [re, repl] of SQUISHED_WORDS) {
-          chunk = chunk.replace(re, repl);
-        }
+        chunk = cleanIndonesianSpelling(chunk);
 
         let out = '';
         let i = 0;
@@ -1139,6 +1156,30 @@ export async function startTerminalChat() {
         return out;
       }
 
+      function flushWordBuffer(force = false) {
+        if (!streamWordBuffer) return;
+
+        if (force) {
+          const formatted = formatStreamChunk(streamWordBuffer);
+          process.stdout.write(inThinking ? `${c.gray}${formatted}${c.reset}` : formatted);
+          streamWordBuffer = '';
+          return;
+        }
+
+        const lastBoundary = Math.max(
+          streamWordBuffer.lastIndexOf(' '),
+          streamWordBuffer.lastIndexOf('\n'),
+          streamWordBuffer.lastIndexOf('\t')
+        );
+
+        if (lastBoundary !== -1) {
+          const toEmit = streamWordBuffer.slice(0, lastBoundary + 1);
+          streamWordBuffer = streamWordBuffer.slice(lastBoundary + 1);
+          const formatted = formatStreamChunk(toEmit);
+          process.stdout.write(inThinking ? `${c.gray}${formatted}${c.reset}` : formatted);
+        }
+      }
+
       try {
         await new Promise((resolveStream, rejectStream) => {
           streamChatCompletion({
@@ -1162,15 +1203,21 @@ export async function startTerminalChat() {
                 inThinking = true;
                 process.stdout.write(`\n${c.dim}${c.cyan}✦ Penalaran Internal (Thinking):${c.reset}\n${c.gray}`);
                 const afterTag = chunk.replace('<think>', '');
-                if (afterTag) process.stdout.write(formatStreamChunk(afterTag));
+                if (afterTag) {
+                  streamWordBuffer += afterTag;
+                  flushWordBuffer();
+                }
               } else if (chunk.includes('</think>')) {
                 inThinking = false;
                 process.stdout.write(`${c.reset}\n\n`);
                 const afterClose = chunk.replace('</think>', '');
-                if (afterClose) process.stdout.write(formatStreamChunk(afterClose));
+                if (afterClose) {
+                  streamWordBuffer += afterClose;
+                  flushWordBuffer();
+                }
               } else {
-                const formatted = formatStreamChunk(chunk);
-                process.stdout.write(inThinking ? `${c.gray}${formatted}${c.reset}` : formatted);
+                streamWordBuffer += chunk;
+                flushWordBuffer();
               }
             },
             onDone: () => {
@@ -1179,6 +1226,9 @@ export async function startTerminalChat() {
                 clearInterval(spinnerTimer);
                 process.stdout.write('\r\x1b[K');
               }
+              // Flush any remaining characters in streamWordBuffer
+              flushWordBuffer(true);
+
               if (pendingSurrogate) {
                 process.stdout.write(pendingSurrogate);
                 pendingSurrogate = '';

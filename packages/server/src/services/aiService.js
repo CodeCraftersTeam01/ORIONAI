@@ -146,37 +146,69 @@ Karakteristik:
   }
 }
 
+export function cleanIndonesianText(text) {
+  if (!text) return text;
+  let res = text;
+  // 1. Lowercase directly followed by Uppercase (e.g. "membantuAnda" -> "membantu Anda", "SayaORION" -> "Saya ORION")
+  res = res.replace(/([a-z\u00C0-\u017F])([A-Z])/g, '$1 $2');
+  // 2. Punctuation followed by letter/number (e.g. "ini?Jangan" -> "ini? Jangan")
+  res = res.replace(/([?!.,;:])([a-zA-Z0-9\u00C0-\u017F])/g, '$1 $2');
+
+  const SQUISHED_MAP = [
+    [/\bSenangbertemudengan\b/gi, 'Senang bertemu dengan'],
+    [/\bbertemudengan\b/gi, 'bertemu dengan'],
+    [/\bSenangbertemu\b/gi, 'Senang bertemu'],
+    [/\bsiapmembantu\b/gi, 'siap membantu'],
+    [/\basistenkecerdasan\b/gi, 'asisten kecerdasan'],
+    [/\bkecerdasanbuatan\b/gi, 'kecerdasan buatan'],
+    [/\bbuatanyang\b/gi, 'buatan yang'],
+    [/\byangsiap\b/gi, 'yang siap'],
+    [/\badalahasisten\b/gi, 'adalah asisten'],
+    [/\bterimakasih\b/gi, 'terima kasih'],
+  ];
+
+  for (const [re, repl] of SQUISHED_MAP) {
+    res = res.replace(re, repl);
+  }
+  return res;
+}
+
 /**
- * Sanitize text to guarantee correct identity
+ * Sanitize text to guarantee correct identity & clean formatting
  */
 export function sanitizeOrionText(text, modelId) {
   if (!text) return text;
+  let sanitized = text;
 
   // Bila model Agnes yang dipilih, pertahankan identitas Agnes!
   if (modelId === 'agnes' || modelId === 'agnes-2.5-flash' || (typeof modelId === 'string' && modelId.startsWith('agnes'))) {
-    return text
+    sanitized = sanitized
       .replace(/\bSapiens AI\b/gi, 'Agnes AI')
       .replace(/developed by Sapiens AI/gi, 'powered by Agnes')
       .replace(/dikembangkan oleh Sapiens AI/gi, 'ditenagai oleh Agnes AI')
       .replace(/created by Sapiens AI/gi, 'powered by Agnes');
+    return cleanIndonesianText(sanitized);
   }
 
   // Bila model Nemotron yang dipilih, pertahankan identitas Nemotron!
   if (modelId === 'nemotron-3' || (typeof modelId === 'string' && modelId.includes('nemotron'))) {
-    return text
+    sanitized = sanitized
       .replace(/\bSapiens AI\b/gi, 'Nemotron')
       .replace(/developed by Sapiens AI/gi, 'powered by Nemotron')
       .replace(/dikembangkan oleh Sapiens AI/gi, 'ditenagai oleh Nemotron')
       .replace(/created by Sapiens AI/gi, 'powered by Nemotron');
+    return cleanIndonesianText(sanitized);
   }
 
   // Untuk model Orion, terapkan sanitasi standar Orion
-  return text
+  sanitized = sanitized
     .replace(/\bAgnes\b/gi, 'Orion AI')
     .replace(/\bSapiens AI\b/gi, 'Orion AI')
     .replace(/developed by Sapiens AI/gi, 'powered by Orion')
     .replace(/dikembangkan oleh Sapiens AI/gi, 'ditenagai oleh Orion AI')
     .replace(/created by Sapiens AI/gi, 'powered by Orion');
+
+  return cleanIndonesianText(sanitized);
 }
 
 /**
