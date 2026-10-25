@@ -277,6 +277,8 @@ function FormattedMessage({ content, isStreaming = false }) {
 
     if (match[1]) {
       // Code block
+      const fullMatch = match[1];
+      const isClosed = fullMatch.endsWith('```');
       let lang = (match[2] || '').trim();
       const codeVal = match[3] || '';
       if (!lang || lang === 'text') {
@@ -288,6 +290,7 @@ function FormattedMessage({ content, isStreaming = false }) {
         type: 'code',
         language: lang || 'code',
         value: codeVal,
+        isClosed,
       });
     } else if (match[4]) {
       // Math block $$...$$
