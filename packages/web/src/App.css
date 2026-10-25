@@ -3816,13 +3816,14 @@
 .provider-form-row {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.45rem;
 }
 
 .provider-label {
-  font-size: 0.76rem;
-  font-weight: 500;
-  color: var(--text-secondary);
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
 }
 
 .provider-text-field {
@@ -3862,19 +3863,22 @@
 }
 
 .provider-field-help {
-  font-size: 0.68rem;
-  color: var(--text-muted);
+  font-size: 0.74rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-top: 0.15rem;
 }
 
 .provider-field-help code {
   font-family: monospace;
   background: rgba(0, 0, 0, 0.04);
-  padding: 0.05rem 0.25rem;
-  border-radius: 3px;
+  padding: 0.08rem 0.3rem;
+  border-radius: 4px;
+  color: var(--text-primary);
 }
 
 [data-theme='dark'] .provider-field-help code {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .provider-key-wrapper {
@@ -3884,20 +3888,27 @@
 }
 
 .provider-key-wrapper .provider-text-field {
-  padding-right: 2rem;
+  padding-right: 2.75rem;
 }
 
 .provider-eye-btn {
   position: absolute;
-  right: 0.45rem;
-  background: none;
+  right: 0.75rem;
+  background: transparent;
   border: none;
   color: var(--text-muted);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.2rem;
+  padding: 0.35rem;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.provider-eye-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .provider-eye-btn:hover {
