@@ -143,7 +143,12 @@ function createProgram(gl, vsSrc, fsSrc) {
   return prog;
 }
 
-export default function AuroraBackground({ active = true, inChat = false, theme = 'dark' }) {
+export default function AuroraBackground({
+  active = true,
+  inChat = false,
+  freezeWave = false,
+  theme = 'dark',
+}) {
   const canvasRef = useRef(null);
   const animStateRef = useRef({
     rafId: null,
@@ -262,7 +267,11 @@ export default function AuroraBackground({ active = true, inChat = false, theme 
       // Delta time capped to 50ms to prevent huge jumps when tab switches
       const delta = Math.min(elapsed / 1000, 0.05);
       lastFrameTimestamp = now;
-      state.totalAnimationTime += delta * 0.52;
+
+      // Stop wave animation in Voice Mode (per user request: "auroranya udah tidak beranimasi wavenya")
+      if (!freezeWave) {
+        state.totalAnimationTime += delta * 0.52;
+      }
 
       gl.useProgram(state.program);
       gl.clear(gl.COLOR_BUFFER_BIT);
@@ -343,7 +352,7 @@ export default function AuroraBackground({ active = true, inChat = false, theme 
       }
       state.isRunning = false;
     };
-  }, [active, theme]);
+  }, [active, theme, freezeWave]);
 
   return (
     <div

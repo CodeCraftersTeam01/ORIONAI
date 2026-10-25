@@ -64,6 +64,7 @@ import SettingsModal from './components/SettingsModal';
 import ManageProvidersModal from './components/ManageProvidersModal';
 import LogsView from './components/LogsView';
 import ThinkingIndicator from './components/ThinkingIndicator';
+import VoiceModeOverlay from './components/VoiceModeOverlay';
 import { soundEffects } from './utils/soundEffects';
 import { formatFileSize } from './utils/fileHelpers';
 import { isReasoningSupported } from './utils/modelConfig';
@@ -305,6 +306,7 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [copiedMsgId, setCopiedMsgId] = useState(null);
   const [toast, setToast] = useState(null);
+  const [isVoiceMode, setIsVoiceMode] = useState(false);
 
   // Custom Providers State (OpenAI, Gemini, Claude, Ollama, etc.)
   const [customProviders, setCustomProviders] = useState(() => {
@@ -962,11 +964,12 @@ export default function App() {
   };
 
   return (
-    <div className="orion-layout">
-      {/* Dynamic WebGL Aurora Mesh Background (Only in Chat & Dashboard, completely inactive in Settings & Providers) */}
+    <div className={`orion-layout ${isVoiceMode ? 'is-voice-mode' : ''}`}>
+      {/* Dynamic WebGL Aurora Mesh Background (Wave animation freezes during Voice Mode) */}
       <AuroraBackground
-        active={currentView === 'chat' || currentView === 'dashboard'}
-        inChat={currentView === 'chat' && messages.length > 0}
+        active={currentView === 'chat' || currentView === 'dashboard' || isVoiceMode}
+        inChat={!isVoiceMode && currentView === 'chat' && messages.length > 0}
+        freezeWave={isVoiceMode}
         theme={theme}
       />
 
@@ -1341,6 +1344,7 @@ export default function App() {
           setAttachments={setAttachments}
           onSend={() => handleSendMessage()}
           onStop={handleStopGeneration}
+          onStartVoiceMode={() => setIsVoiceMode(true)}
           isGenerating={isGenerating}
           isCentered={messages.length === 0 || currentView === 'dashboard'}
           isHiddenDashboard={currentView === 'dashboard'}
@@ -1396,6 +1400,19 @@ export default function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Immersive AI Voice Mode Overlay */}
+      {isVoiceMode && (
+        <VoiceModeOverlay
+          onClose={() => setIsVoiceMode(false)}
+          onSendPrompt={(prompt) => handleSendMessage(prompt)}
+          isGenerating={isGenerating}
+          lastAiResponse={
+            [...messages].reverse().find((m) => m.role === 'assistant')?.content || ''
+          }
+          theme={theme}
+        />
       )}
     </div>
   );

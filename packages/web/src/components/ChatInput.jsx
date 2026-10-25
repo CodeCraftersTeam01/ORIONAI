@@ -21,6 +21,7 @@ export default function ChatInput({
   setAttachments,
   onSend,
   onStop,
+  onStartVoiceMode,
   isGenerating,
   isCentered = false,
   isHiddenDashboard = false,
@@ -264,19 +265,38 @@ export default function ChatInput({
             >
               <Square size={12} fill="currentColor" stroke="none" />
             </button>
-          ) : (
+          ) : canSend ? (
             <button
               type="button"
-              className={`btn-send-message ${canSend ? 'active' : ''}`}
+              className="btn-send-message active"
               onClick={(e) => {
                 e.stopPropagation();
                 if (canSend) onSend();
               }}
-              disabled={!canSend}
               title="Kirim (Enter)"
               aria-label="Kirim pesan"
             >
               <ArrowUp size={16} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn-send-message btn-voice-mode active"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (typeof onStartVoiceMode === 'function') {
+                  onStartVoiceMode();
+                }
+              }}
+              title="Mulai Mode Suara AI (Voice Mode)"
+              aria-label="Mode Suara AI"
+            >
+              <div className="equalizer-icon-bars" aria-hidden="true">
+                <span className="eq-bar bar-1" />
+                <span className="eq-bar bar-2" />
+                <span className="eq-bar bar-3" />
+                <span className="eq-bar bar-4" />
+              </div>
             </button>
           )}
         </div>
