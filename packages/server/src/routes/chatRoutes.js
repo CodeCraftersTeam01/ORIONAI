@@ -252,11 +252,28 @@ router.get('/providers-config', (req, res) => {
       const raw = fs.readFileSync(providersConfigFile, 'utf8');
       const data = JSON.parse(raw);
       if (Array.isArray(data.providers) && data.providers.length > 0) {
+        let activeKeyFound = savedApiKey;
+        const syncedProviders = data.providers.map((p) => {
+          if (p.id === 'orion' || p.templateId === 'orion') {
+            const hasActiveKey = p.apiKeys?.find((k) => k.active && k.key?.trim())?.key || p.apiKey?.trim();
+            if (hasActiveKey) {
+              activeKeyFound = hasActiveKey;
+            } else if (savedApiKey) {
+              const keys = Array.isArray(p.apiKeys) && p.apiKeys.length > 0
+                ? p.apiKeys.map((k, idx) => (idx === 0 ? { ...k, key: savedApiKey, active: true } : k))
+                : [{ id: 'key-default', name: 'Primary Key', key: savedApiKey, active: true }];
+              return { ...p, apiKey: savedApiKey, apiKeys: keys };
+            }
+          }
+          return p;
+        });
+
         return res.json({
           success: true,
-          providers: data.providers,
+          providers: syncedProviders,
           selectedModel: data.selectedModel || null,
           reasoningTier: data.reasoningTier || null,
+          apiKey: activeKeyFound,
         });
       }
     }
