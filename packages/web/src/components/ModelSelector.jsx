@@ -21,38 +21,61 @@ export default function ModelSelector({
   const containerRef = useRef(null);
   const flyoutTimeoutRef = useRef(null);
 
-  // 1. Extract ONLY scanned & checked (enabled) models across all providers
+  // 1. Extract ONLY scanned & checked (enabled) models across all providers, deduplicating duplicate groups/models
   const providerGroups = useMemo(() => {
-    const groups = [];
+    const groupsMap = new Map();
+    const seenModelKeys = new Set();
+
     (customProviders || []).forEach((prov) => {
       const enabledModels = (prov.models || []).filter((m) => Boolean(m && m.enabled));
-      if (enabledModels.length > 0) {
-        const provName = prov.displayName || prov.name || 'Provider';
-        const items = enabledModels.map((m) => {
-          const modId = typeof m === 'string' ? m : m.id;
-          const modName = typeof m === 'string' ? m : m.displayName || m.name || modId;
-          const supportsReasoning = isReasoningSupported(modId, modName, m.supportsReasoning);
-          return {
-            id: `${prov.id}::${modId}`,
-            name: modName,
-            displayName: modName,
-            subtitle: provName,
-            providerName: provName,
-            providerId: prov.id,
-            modelId: modId,
-            supportsReasoning,
-            hasModel: true,
-          };
-        });
+      if (enabledModels.length === 0) return;
 
-        groups.push({
+      const rawName = prov.displayName || prov.name || 'Provider';
+      const isOfficial = prov.templateId === 'orion' || prov.id === 'orion' || rawName.toLowerCase().includes('official');
+      const groupKey = isOfficial ? 'Orion AI (Official)' : rawName;
+
+      if (!groupsMap.has(groupKey)) {
+        groupsMap.set(groupKey, {
           providerId: prov.id,
-          providerName: provName,
-          items,
+          providerName: groupKey,
+          items: [],
         });
       }
+
+      const currentGroup = groupsMap.get(groupKey);
+
+      enabledModels.forEach((m) => {
+        const modId = typeof m === 'string' ? m : m.id;
+        const modName = typeof m === 'string' ? m : m.displayName || m.name || modId;
+        const cleanModId = (modId || '').toLowerCase().trim();
+
+        // Discard legacy duplicate or hardcoded orion-auto
+        if (cleanModId === 'orion-auto' || cleanModId === 'orion auto router') {
+          return;
+        }
+
+        // Prevent duplicate model entries within the same provider group (e.g. "orion" vs "Orion")
+        const dedupKey = `${groupKey}::${cleanModId}`;
+        if (seenModelKeys.has(dedupKey)) return;
+        seenModelKeys.add(dedupKey);
+
+        const supportsReasoning = isReasoningSupported(modId, modName, m.supportsReasoning);
+
+        currentGroup.items.push({
+          id: `${prov.id}::${modId}`,
+          name: modName,
+          displayName: modName,
+          subtitle: groupKey,
+          providerName: groupKey,
+          providerId: prov.id,
+          modelId: modId,
+          supportsReasoning,
+          hasModel: true,
+        });
+      });
     });
-    return groups;
+
+    return Array.from(groupsMap.values()).filter((g) => g.items.length > 0);
   }, [customProviders]);
 
   // 2. Flattened list of strictly active models
@@ -213,8 +236,7 @@ export default function ModelSelector({
                       const isSelected =
                         currentModel &&
                         (item.id === currentModel.id ||
-                          (item.providerId === currentModel.providerId &&
-                            item.modelId === currentModel.modelId));
+                          item.modelId?.toLowerCase() === currentModel.modelId?.toLowerCase());
                       return (
                         <button
                           key={item.id}

@@ -310,7 +310,18 @@ export default function App() {
   const [customProviders, setCustomProviders] = useState(() => {
     try {
       const saved = localStorage.getItem('orion_custom_providers');
-      return saved ? JSON.parse(saved) : [];
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        // Discard any stale legacy official provider containing hardcoded models
+        return parsed.filter((p) => {
+          if (p.id === 'orion' && p.models?.some((m) => (m.id || m) === 'orion-auto' || (m.name || m) === 'Orion Auto Router')) {
+            return false;
+          }
+          return true;
+        });
+      }
+      return [];
     } catch {
       return [];
     }
@@ -392,18 +403,36 @@ export default function App() {
       .then((res) => res.json())
       .then((data) => {
         if (!data || !data.success) return;
-        // Merge providers bidirectionally: preserve local custom providers and server providers
+        const serverProviders = Array.isArray(data.providers) ? data.providers : [];
+        const hasServerOfficial = serverProviders.some(
+          (p) => p.templateId === 'orion' || p.name?.toLowerCase().includes('official') || p.id === 'orion'
+        );
+
         const localSaved = localStorage.getItem('orion_custom_providers');
         let localProviders = [];
         try {
           if (localSaved) localProviders = JSON.parse(localSaved);
         } catch {}
 
+        // Discard stale legacy or duplicate official provider from local storage
+        localProviders = (localProviders || []).filter((p) => {
+          if (!p || !p.id) return false;
+          const isOfficial = p.templateId === 'orion' || p.name?.toLowerCase().includes('official') || p.id === 'orion';
+          if (isOfficial && hasServerOfficial) {
+            const officialServer = serverProviders.find(
+              (sp) => sp.templateId === 'orion' || sp.name?.toLowerCase().includes('official') || sp.id === 'orion'
+            );
+            return p.id === officialServer?.id;
+          }
+          return true;
+        });
+
         const providerMap = new Map();
-        (data.providers || []).forEach((p) => {
+        serverProviders.forEach((p) => {
           if (p && p.id) providerMap.set(p.id, p);
         });
-        (localProviders || []).forEach((p) => {
+
+        localProviders.forEach((p) => {
           if (p && p.id) {
             if (providerMap.has(p.id)) {
               const existing = providerMap.get(p.id);
