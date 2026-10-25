@@ -1,36 +1,39 @@
 // packages/web/src/utils/audioEffects.js
 // High-fidelity Web Audio API synthesizer for cosmic UI effects
 
-let audioCtx = null;
-
-function getAudioContext() {
+function createAudioContext() {
   if (typeof window === 'undefined') return null;
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
   if (!AudioCtx) return null;
-  if (!audioCtx) {
-    audioCtx = new AudioCtx();
+  try {
+    const ctx = new AudioCtx();
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+    return ctx;
+  } catch (e) {
+    console.warn('AudioContext creation error:', e);
+    return null;
   }
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume().catch(() => {});
-  }
-  return audioCtx;
 }
 
 /**
  * Synthesizes the ambient "eeeennnngg" cosmic portal swell sound requested by the user.
  * Combines warm sub-harmonics, resonant lowpass filter sweep, and detuned celestial beating.
+ * Creates a dedicated AudioContext each time to ensure it plays reliably on every button press
+ * across all browsers (including Safari and iOS WebKit) without being blocked or muted.
  */
 export function playCosmicHumSound() {
   try {
-    const ctx = getAudioContext();
+    const ctx = createAudioContext();
     if (!ctx) return;
     const now = ctx.currentTime;
 
     // Master envelope for swell
     const masterGain = ctx.createGain();
     masterGain.gain.setValueAtTime(0.001, now);
-    masterGain.gain.linearRampToValueAtTime(0.26, now + 0.45); // Smooth crescendo swell
-    masterGain.gain.exponentialRampToValueAtTime(0.10, now + 1.3);
+    masterGain.gain.linearRampToValueAtTime(0.28, now + 0.42); // Smooth crescendo swell
+    masterGain.gain.exponentialRampToValueAtTime(0.12, now + 1.2);
     masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 2.5); // Long ethereal tail
 
     // Resonant Lowpass filter sweep: creates the signature "eeeennnngg" opening texture
@@ -57,7 +60,7 @@ export function playCosmicHumSound() {
     const oscShimmer = ctx.createOscillator();
     oscShimmer.type = 'sine';
     oscShimmer.frequency.setValueAtTime(220, now);
-    oscShimmer.frequency.linearRampToValueAtTime(221.8, now + 1.6); // Subtle beating
+    oscShimmer.frequency.linearRampToValueAtTime(221.8, now + 1.6); // Subtle celestial beating
 
     oscSub.connect(filter);
     oscFifth.connect(filter);
@@ -73,6 +76,15 @@ export function playCosmicHumSound() {
     oscSub.stop(now + 2.6);
     oscFifth.stop(now + 2.6);
     oscShimmer.stop(now + 2.6);
+
+    // Clean up AudioContext once playback concludes to free system audio channels
+    setTimeout(() => {
+      try {
+        if (ctx && ctx.state !== 'closed') {
+          ctx.close().catch(() => {});
+        }
+      } catch {}
+    }, 2800);
   } catch (err) {
     console.warn('Audio effect error:', err);
   }
@@ -83,7 +95,7 @@ export function playCosmicHumSound() {
  */
 export function playCosmicEndCallSound() {
   try {
-    const ctx = getAudioContext();
+    const ctx = createAudioContext();
     if (!ctx) return;
     const now = ctx.currentTime;
 
@@ -102,5 +114,13 @@ export function playCosmicEndCallSound() {
 
     osc.start(now);
     osc.stop(now + 0.75);
+
+    setTimeout(() => {
+      try {
+        if (ctx && ctx.state !== 'closed') {
+          ctx.close().catch(() => {});
+        }
+      } catch {}
+    }, 900);
   } catch {}
 }
