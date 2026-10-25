@@ -72,10 +72,10 @@ void main() {
   float n1 = noise(flow_uv);
   float n2 = noise(flow_uv * 2.0 + vec2(-t * 0.35, t * 0.2));
 
-  // Volumetric wave body masks
-  float mask1 = smoothstep(crest1 + 0.28, crest1 - 0.08, uv_orig.y);
-  float mask2 = smoothstep(crest2 + 0.24, crest2 - 0.06, uv_orig.y);
-  float mask3 = smoothstep(crest3 + 0.18, crest3 - 0.05, uv_orig.y);
+  // Volumetric wave body masks (using 1.0 - smoothstep to ensure edge0 < edge1 across all GPU backends)
+  float mask1 = 1.0 - smoothstep(crest1 - 0.08, crest1 + 0.28, uv_orig.y);
+  float mask2 = 1.0 - smoothstep(crest2 - 0.06, crest2 + 0.24, uv_orig.y);
+  float mask3 = 1.0 - smoothstep(crest3 - 0.05, crest3 + 0.18, uv_orig.y);
 
   // Highly optimized quadratic bell curve for soft glowing crest highlights (replaces expensive exp/pow)
   float d1 = clamp(1.0 - abs(uv_orig.y - crest1) * 9.5, 0.0, 1.0);
@@ -103,8 +103,8 @@ void main() {
   color = mix(color, col_cyan * (0.88 + 0.28 * n2), mask3);
   color += col_rim * rim3;
 
-  // Vertical falloff: seamless dissolution into background
-  float top_falloff = smoothstep(0.88, 0.18, uv_orig.y);
+  // Vertical falloff: soft dissolution only at the top 10% edge so surging waves never get cut off
+  float top_falloff = 1.0 - smoothstep(0.90, 1.0, uv_orig.y);
   float total_alpha = clamp(max(max(mask1 * 0.75, mask2 * 0.90), mask3 * 0.95) + rim1 * 0.35 + rim2 * 0.50 + rim3 * 0.60, 0.0, 1.0);
   total_alpha *= top_falloff;
 
@@ -243,11 +243,11 @@ export default function AuroraBackground({
     const handleResize = () => {
       if (!canvas || !gl) return;
       const w = window.innerWidth || canvas.clientWidth || 1000;
-      const h = 360; // Stable reference height matching max-height
+      const h = 560; // Expanded vertical headroom allowing high wave surges without clipping
 
       const scale = Math.min(1.0, 1000 / Math.max(w, 1));
       const targetW = Math.max(320, Math.round(w * scale));
-      const targetH = Math.max(120, Math.round(h * scale));
+      const targetH = Math.max(260, Math.round(h * scale));
 
       if (canvas.width !== targetW || canvas.height !== targetH) {
         canvas.width = targetW;
@@ -291,13 +291,13 @@ export default function AuroraBackground({
       const waveIntensity = Math.min(Math.max(rawWave, 0.0), 1.0);
 
       // Smooth wave strength interpolation:
-      // When in voice calling mode, base drops to 0.05 (5% calm baseline requested by user)
-      // and surges up organically with user microphone audioLevel!
+      // When quiet, rests calmly at 5% (0.05).
+      // When speaking or shouting, surges dynamically up to 2.1x height!
       const { isVoiceCalling: calling, audioLevel: level } = propsRef.current;
-      const targetStrength = calling
-        ? Math.min(1.3, 0.05 + Math.pow(Math.max(0, level || 0), 0.7) * 0.95)
-        : 1.0;
-      state.currentWaveStrength += (targetStrength - state.currentWaveStrength) * 0.12;
+      const boost = Math.min(2.05, Math.pow(Math.max(0, level || 0), 0.48) * 2.15);
+      const targetStrength = calling ? 0.05 + boost : 1.0;
+      const factor = targetStrength > state.currentWaveStrength ? 0.45 : 0.14;
+      state.currentWaveStrength += (targetStrength - state.currentWaveStrength) * factor;
       gl.uniform1f(state.locations.u_wave_strength, state.currentWaveStrength);
 
       const currentScale = 0.35 + 0.12 * waveIntensity;

@@ -423,22 +423,42 @@ export default function App() {
       source.connect(analyser);
 
       const bufferLength = analyser.frequencyBinCount;
-      const dataArray = new Uint8Array(bufferLength);
+      const freqData = new Uint8Array(bufferLength);
+      const timeData = new Uint8Array(bufferLength);
 
       let smoothedLevel = 0;
 
       const analyzeAudio = () => {
         if (!voiceAnalyserRef.current) return;
-        analyser.getByteFrequencyData(dataArray);
+        analyser.getByteFrequencyData(freqData);
+        analyser.getByteTimeDomainData(timeData);
 
-        let sum = 0;
+        // 1. Time-domain RMS and peak deviation (vital for immediate reaction to shouting or loud voice)
+        let maxDeviation = 0;
+        let sumSquares = 0;
         for (let i = 0; i < bufferLength; i++) {
-          sum += dataArray[i];
+          const deviation = Math.abs(timeData[i] - 128) / 128;
+          if (deviation > maxDeviation) maxDeviation = deviation;
+          sumSquares += deviation * deviation;
         }
-        const rawAverage = sum / bufferLength;
-        const normalized = Math.min(1.0, Math.max(0, (rawAverage - 8) / 70));
+        const rms = Math.sqrt(sumSquares / bufferLength);
 
-        smoothedLevel += (normalized - smoothedLevel) * 0.28;
+        // 2. Focused vocal frequency range (bins 1 to 40 ~ 80Hz to 3.5kHz)
+        let vocalSum = 0;
+        const vocalBins = Math.min(40, bufferLength);
+        for (let i = 1; i < vocalBins; i++) {
+          vocalSum += freqData[i];
+        }
+        const vocalAvg = vocalSum / (vocalBins - 1) / 255;
+
+        // Combined audio energy with high dynamic range and instant reaction to shouting
+        const rawEnergy = Math.max(0, rms * 5.2 + maxDeviation * 2.2 + vocalAvg * 2.8 - 0.04);
+        const instantLevel = Math.min(1.0, Math.pow(rawEnergy, 0.62));
+
+        // Fast attack (instant surge on shouting) and smooth organic decay
+        const factor = instantLevel > smoothedLevel ? 0.65 : 0.14;
+        smoothedLevel += (instantLevel - smoothedLevel) * factor;
+
         setVoiceAudioLevel(smoothedLevel);
 
         voiceRafIdRef.current = requestAnimationFrame(analyzeAudio);

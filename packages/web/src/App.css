@@ -595,22 +595,48 @@
   opacity: 0.35;
 }
 
-/* In-Voice-Call mode: Wave recedes down toward bottom horizon (surut ke bawah secara smooth & tenang) */
+/* In-Voice-Call mode: Wave starts at bottom horizon when quiet (5%), and billows up dynamically when speaking/shouting */
 .tryliner-aurora-wrapper.in-voice-call {
-  height: 14vh !important;
-  min-height: 85px !important;
-  max-height: 125px !important;
-  opacity: 0.95 !important;
+  height: 52vh !important;
+  min-height: 350px !important;
+  max-height: 560px !important;
+  opacity: 1 !important;
+  pointer-events: none;
   transition:
     height 0.85s cubic-bezier(0.16, 1, 0.3, 1),
     min-height 0.85s cubic-bezier(0.16, 1, 0.3, 1),
     max-height 0.85s cubic-bezier(0.16, 1, 0.3, 1),
     opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  -webkit-mask-image: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 1) 75%,
+    rgba(0, 0, 0, 0.85) 88%,
+    rgba(0, 0, 0, 0.35) 96%,
+    transparent 100%
+  ) !important;
+  mask-image: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 1) 75%,
+    rgba(0, 0, 0, 0.85) 88%,
+    rgba(0, 0, 0, 0.35) 96%,
+    transparent 100%
+  ) !important;
+}
+
+.tryliner-aurora-wrapper.in-voice-call .tryliner-aurora-canvas {
+  height: 560px !important;
+  opacity: 1;
 }
 
 .tryliner-aurora-wrapper.in-voice-call .tryliner-aurora-bottom-boost {
   opacity: 0.65;
   filter: blur(45px);
+}
+
+.tryliner-aurora-wrapper.in-voice-call .tryliner-aurora-feather {
+  opacity: 0 !important;
 }
 
 /* 106% bleed width, fixed 360px height so canvas element NEVER resizes or clears buffer during transitions */
