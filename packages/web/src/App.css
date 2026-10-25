@@ -6452,6 +6452,11 @@ svg[aria-roledescription="error"] {
   will-change: transform, opacity, filter;
 }
 
+.voice-agent-speech.is-thinking-prior {
+  opacity: 0.45;
+  transition: opacity 0.4s ease;
+}
+
 .voice-agent-text {
   font-size: 1.45rem;
   font-weight: 500;

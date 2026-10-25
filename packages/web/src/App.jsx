@@ -471,8 +471,8 @@ export default function App() {
   const [voiceAudioLevel, setVoiceAudioLevel] = useState(0);
   const [isVoiceMuted, setIsVoiceMuted] = useState(false);
   const [voiceAgentStatus, setVoiceAgentStatus] = useState('listening'); // 'listening' | 'thinking' | 'speaking'
-  const [voiceUserTranscript, setVoiceUserTranscript] = useState('');
   const [voiceAgentResponse, setVoiceAgentResponse] = useState('');
+  const [voiceResponseTurn, setVoiceResponseTurn] = useState(0);
 
   const voiceMediaStreamRef = useRef(null);
   const voiceAudioContextRef = useRef(null);
@@ -590,10 +590,9 @@ export default function App() {
     }
     setVoiceAudioLevel(0);
 
-    // 2. Set Agent Status to Thinking
+    // 2. Set Agent Status to Thinking (keep prior response visible until next answer starts)
     setVoiceAgentStatus('thinking');
     setVoiceUserTranscript(queryText);
-    setVoiceAgentResponse('');
 
     const controller = new AbortController();
     voiceAbortControllerRef.current = controller;
@@ -666,7 +665,9 @@ export default function App() {
               if (cleanText) {
                 if (!hasStartedSpeaking) {
                   hasStartedSpeaking = true;
+                  setVoiceResponseTurn((prev) => prev + 1);
                   setVoiceAgentStatus('speaking');
+                  setVoiceUserTranscript('');
                 }
                 setVoiceAgentResponse(cleanText);
               }
@@ -680,7 +681,10 @@ export default function App() {
       }
 
       if (!hasStartedSpeaking) {
+        hasStartedSpeaking = true;
+        setVoiceResponseTurn((prev) => prev + 1);
         setVoiceAgentStatus('speaking');
+        setVoiceUserTranscript('');
       }
 
       let finalAnswer = cleanIndonesianText(
@@ -742,22 +746,22 @@ export default function App() {
         prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [...s.messages, userMsg, aiMsg] } : s))
       );
 
-      // 4. Reading pause so the user comfortably reads the concise answer before mic re-opens
-      const readingDelay = Math.max(3000, Math.min(6000, finalAnswer.length * 55));
-      await new Promise((resolve) => setTimeout(resolve, readingDelay));
+      // 4. Brief natural pause before mic seamlessly re-opens for the next user utterance
+      await new Promise((resolve) => setTimeout(resolve, 400));
 
     } catch (err) {
       if (err.name !== 'AbortError') {
+        setVoiceResponseTurn((prev) => prev + 1);
+        setVoiceUserTranscript('');
         setVoiceAgentResponse('Maaf, suara kurang jelas. Bisa tolong diulangi?');
-        await new Promise((resolve) => setTimeout(resolve, 2500));
       }
     } finally {
-      // 5. Re-open microphone and restart listening for the next user utterance!
+      // 5. Re-open microphone and resume listening while keeping current response visible
       if (isVoiceCallingRef.current) {
         voiceIsProcessingQueryRef.current = false;
         voiceTranscriptAccumulatorRef.current = '';
         setVoiceUserTranscript('');
-        setVoiceAgentResponse('');
+        // Retain voiceAgentResponse so text stays on screen until replaced by next reply
         setVoiceAgentStatus('listening');
 
         // Unmute audio tracks if not manually muted by user
@@ -877,6 +881,7 @@ export default function App() {
     setVoiceAgentStatus('listening');
     setVoiceUserTranscript('');
     setVoiceAgentResponse('');
+    setVoiceResponseTurn(0);
     voiceTranscriptAccumulatorRef.current = '';
     voiceIsProcessingQueryRef.current = false;
 
@@ -1968,6 +1973,7 @@ export default function App() {
           agentStatus={voiceAgentStatus}
           userTranscript={voiceUserTranscript}
           agentResponse={voiceAgentResponse}
+          responseTurn={voiceResponseTurn}
           onToggleMute={handleToggleVoiceMute}
           onEndCall={handleEndVoiceCalling}
         />

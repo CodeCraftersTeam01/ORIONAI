@@ -8,6 +8,7 @@ export default function VoiceCallingOverlay({
   agentStatus = 'listening', // 'listening' | 'thinking' | 'speaking'
   userTranscript = '',
   agentResponse = '',
+  responseTurn = 0,
   onToggleMute,
   onEndCall,
 }) {
@@ -34,17 +35,20 @@ export default function VoiceCallingOverlay({
             </div>
           )}
 
-          {/* Listening State Hint when user is silent */}
-          {agentStatus === 'listening' && !userTranscript && (
+          {/* Listening State Hint when user is silent and no previous response exists */}
+          {agentStatus === 'listening' && !userTranscript && !formattedAgentResponse && (
             <div className={`voice-listening-hint ${isMuted ? 'is-muted' : ''}`}>
               <span className="voice-listening-dot" />
               <span>{isMuted ? 'Mikrofon dibisukan' : 'Silakan berbicara...'}</span>
             </div>
           )}
 
-          {/* Spoken AI Response (Cozy blur reveal with elegant typography & clean Indonesian spacing) */}
-          {formattedAgentResponse && agentStatus === 'speaking' && (
-            <div className="voice-agent-speech cozy-blur-reveal">
+          {/* Spoken AI Response: Stays visible until replaced by the next response */}
+          {formattedAgentResponse && (
+            <div
+              key={responseTurn}
+              className={`voice-agent-speech cozy-blur-reveal ${agentStatus === 'thinking' ? 'is-thinking-prior' : ''}`}
+            >
               <p className="voice-agent-text">{formattedAgentResponse}</p>
             </div>
           )}
