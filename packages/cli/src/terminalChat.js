@@ -158,6 +158,7 @@ export async function startTerminalChat() {
     process.stdout.write(`\n${c.brightCyan}${c.bold}Orion ›${c.reset} `);
 
     let assistantReply = '';
+    let inThinking = false;
 
     try {
       await new Promise((resolve, reject) => {
@@ -169,7 +170,20 @@ export async function startTerminalChat() {
           signal: activeAbortController.signal,
           onChunk: (chunk) => {
             assistantReply += chunk;
-            process.stdout.write(chunk);
+
+            if (chunk.includes('<think>')) {
+              inThinking = true;
+              process.stdout.write(`\n${c.dim}${c.cyan}✦ Penalaran Internal:${c.reset}\n${c.gray}`);
+              const afterTag = chunk.replace('<think>', '');
+              if (afterTag) process.stdout.write(afterTag);
+            } else if (chunk.includes('</think>')) {
+              inThinking = false;
+              process.stdout.write(`${c.reset}\n\n`);
+              const afterClose = chunk.replace('</think>', '');
+              if (afterClose) process.stdout.write(afterClose);
+            } else {
+              process.stdout.write(inThinking ? `${c.gray}${chunk}${c.reset}` : chunk);
+            }
           },
           onDone: () => {
             resolve();
