@@ -360,11 +360,11 @@ export async function streamChatCompletion({
   onError,
   signal,
 }) {
-  const { messages, config } = buildMessagesPayload({ message, history, attachments, modelId: model, reasoningTier });
-  const { targetUrl, headers, targetModel, temperature } = resolveEndpointAndHeaders(customProvider, config, orionApiKey);
-  console.log(`[AI STREAM] Routing request -> modelId: "${model}", targetModel: "${targetModel}", targetUrl: "${targetUrl}"`);
-
   try {
+    const { messages, config } = buildMessagesPayload({ message, history, attachments, modelId: model, reasoningTier });
+    const { targetUrl, headers, targetModel, temperature } = resolveEndpointAndHeaders(customProvider, config, orionApiKey);
+    console.log(`[AI STREAM] Routing request -> modelId: "${model}", targetModel: "${targetModel}", targetUrl: "${targetUrl}"`);
+
     const response = await fetch(targetUrl, {
       method: 'POST',
       headers,
@@ -447,7 +447,12 @@ export async function streamChatCompletion({
     onDone();
   } catch (err) {
     if (err.name === 'AbortError') return;
-    onError(err);
+    console.error('[AI STREAM ERROR]:', err.message);
+    if (typeof onError === 'function') {
+      onError(err);
+    } else {
+      throw err;
+    }
   }
 }
 
