@@ -638,6 +638,12 @@ function readInteractivePrompt({ promptPrefix, syncedConfig, currentModel, reaso
         cleanup();
         process.stdout.write('\n');
 
+        // Pi Feature: Shell execution via !<command> or !!<command>
+        if (text.startsWith('!')) {
+          resolve({ type: 'shell_command', raw: text });
+          return;
+        }
+
         if (text.startsWith('/')) {
           const parts = text.split(/\s+/);
           const cmdName = parts[0].toLowerCase();
@@ -859,6 +865,28 @@ export async function startTerminalChat() {
         reasoningTier = picked.value;
         saveSyncedConfig({ reasoningTier });
         console.log(`\n${c.green}✓ Tingkat penalaran diatur ke: ${c.bold}${reasoningTier}${c.reset}\n`);
+      }
+      continue;
+    }
+
+    // Shell command execution via !<command> or !!<command> (Pi Feature)
+    if (inputResult.type === 'shell_command') {
+      const isSilent = inputResult.raw.startsWith('!!');
+      const cmdToRun = isSilent ? inputResult.raw.slice(2).trim() : inputResult.raw.slice(1).trim();
+
+      if (!cmdToRun) {
+        console.log(`\n${c.yellow}⚠️  Format perintah terminal: !<perintah> (contoh: !git status atau !ls)${c.reset}\n`);
+        continue;
+      }
+
+      const result = runShellCommand(cmdToRun, isSilent);
+
+      if (!isSilent && result.output) {
+        history.push({
+          role: 'user',
+          content: `[Hasil Eksekusi Terminal \`${cmdToRun}\`]:\n\`\`\`\n${result.output.trim()}\n\`\`\``,
+        });
+        console.log(`\n${c.green}✓ Output terminal disertakan ke memori percakapan AI.${c.reset}\n`);
       }
       continue;
     }
