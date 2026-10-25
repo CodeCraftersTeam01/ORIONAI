@@ -637,8 +637,8 @@ function getTableAlignments(line) {
             /^(sequenceDiagram|classDiagram|stateDiagram|erDiagram|pie|gantt|mindmap|timeline)\b/im.test(trimmedCode);
 
           if (isMermaid) {
-            // Defer SVG conversion while AI is actively typing the diagram code
-            if (isStreaming && !part.isClosed) {
+            // Defer SVG conversion while AI is actively typing the diagram code or if code is empty
+            if ((isStreaming && !part.isClosed) || !trimmedCode) {
               return (
                 <CodeBlock
                   key={index}
@@ -660,7 +660,7 @@ function getTableAlignments(line) {
           // 2. ASCII Box Flowchart auto-detection (converts box drawing like in user screenshot to Mermaid SVG)
           const convertedMermaid = tryConvertAsciiToMermaid(part.value);
           if (convertedMermaid) {
-            if (isStreaming && !part.isClosed) {
+            if ((isStreaming && !part.isClosed) || !trimmedCode) {
               return (
                 <CodeBlock
                   key={index}
