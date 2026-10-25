@@ -692,10 +692,16 @@ export async function startTerminalChat() {
   const promptPrefix = `${c.brightBlue}${c.bold}You ›${c.reset} `;
 
   while (true) {
-    // Re-check synced config on each prompt turn to capture any new providers added via web
+    // Re-check synced config on each prompt turn to capture any new providers / keys / models added via web
     const freshConfig = loadSyncedConfig();
-    if (freshConfig.apiKey && !userApiKey) {
+    if (freshConfig.apiKey) {
       userApiKey = freshConfig.apiKey;
+    }
+    if (freshConfig.selectedModel && freshConfig.selectedModel !== currentModel) {
+      currentModel = freshConfig.selectedModel;
+    }
+    if (freshConfig.reasoningTier && freshConfig.reasoningTier !== reasoningTier) {
+      reasoningTier = freshConfig.reasoningTier;
     }
 
     const inputResult = await readInteractivePrompt({
@@ -890,6 +896,38 @@ export async function startTerminalChat() {
       return false;
     }
 
+    if (action === '/model' || action.startsWith('/mod')) {
+      if (arg) {
+        const freshConfig = loadSyncedConfig();
+        const availableModels = getAvailableModels(freshConfig);
+        const targetModel = availableModels.find(
+          (m) => m.id.toLowerCase() === arg.toLowerCase() || m.name.toLowerCase() === arg.toLowerCase()
+        );
+        if (targetModel) {
+          currentModel = targetModel.id;
+          saveSyncedConfig({ selectedModel: currentModel });
+          console.log(
+            `\n${c.green}✓ Model AI dialihkan ke: ${c.bold}${targetModel.name || targetModel.id}${c.reset} ${c.dim}(${targetModel.id})${c.reset}\n`
+          );
+        } else {
+          console.log(`\n${c.yellow}⚠️  Model '${arg}' tidak ditemukan.${c.reset} Ketik ${c.yellow}/model${c.reset} untuk memilih dari daftar.\n`);
+        }
+      }
+      return false;
+    }
+
+    if (action === '/tier' || action.startsWith('/tie')) {
+      if (arg && ['low', 'medium', 'high'].includes(arg.toLowerCase())) {
+        reasoningTier = arg.toLowerCase();
+        saveSyncedConfig({ reasoningTier });
+        console.log(`\n${c.green}✓ Tingkat penalaran diatur ke: ${c.bold}${reasoningTier}${c.reset}\n`);
+      } else {
+        console.log(`\n${c.bold}Tingkat Penalaran Aktif:${c.reset} ${c.cyan}${reasoningTier}${c.reset}`);
+        console.log(`${c.gray}Pilihan: ${c.yellow}/tier low${c.gray} | ${c.yellow}/tier medium${c.gray} | ${c.yellow}/tier high${c.reset}\n`);
+      }
+      return false;
+    }
+
     if (action === '/reset' || action === '/new') {
       history = [];
       console.log(`\n${c.green}✓ Riwayat percakapan telah direset.${c.reset}\n`);
@@ -1010,13 +1048,13 @@ async function selectModelInteractive({ title, items, initialIndex = 0 }) {
         return;
       }
 
-      if (key === '\u001b[A' || key === 'k') {
+      if (key === '\u001b[A' || key === '\u001bOA' || key === 'k') {
         selectedIndex = (selectedIndex - 1 + items.length) % items.length;
         render(false);
         return;
       }
 
-      if (key === '\u001b[B' || key === 'j') {
+      if (key === '\u001b[B' || key === '\u001bOB' || key === 'j') {
         selectedIndex = (selectedIndex + 1) % items.length;
         render(false);
         return;
