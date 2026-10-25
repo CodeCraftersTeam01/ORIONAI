@@ -270,7 +270,7 @@ export async function startTerminalChat() {
       const action = parts[0].toLowerCase();
       const arg = parts.slice(1).join(' ').trim();
 
-      if (action === '/exit' || action === '/quit') {
+      if (action === '/exit' || action === '/quit' || action === '/q') {
         console.log(`\n${c.brightCyan}✦ Terima kasih telah menggunakan Orion Agent. Sampai jumpa!${c.reset}\n`);
         rl.close();
         return;
