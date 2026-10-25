@@ -529,28 +529,28 @@ export default function ManageProvidersModal({
       {/* Header */}
       <div className={isPage ? "page-view-header modal-header" : "modal-header"}>
         {view === 'add' ? (
-          <div className="provider-header-nav">
+          <div className="provider-header-nav-block">
             <button
               type="button"
-              className={isPage ? "page-back-nav-btn" : "provider-back-btn"}
+              className="provider-breadcrumb-back"
               onClick={() => setView('catalog')}
-              title="Kembali ke katalog provider"
+              title="Kembali ke daftar provider"
             >
-              <ArrowLeft size={16} />
-              <span>Daftar Provider</span>
+              <ArrowLeft size={14} />
+              <span>Kembali ke Daftar Provider</span>
             </button>
             <h2 className={isPage ? "page-view-title" : "modal-title"}>Tambah {currentTemplate.name}</h2>
           </div>
         ) : view === 'manage' ? (
-          <div className="provider-header-nav">
+          <div className="provider-header-nav-block">
             <button
               type="button"
-              className={isPage ? "page-back-nav-btn" : "provider-back-btn"}
+              className="provider-breadcrumb-back"
               onClick={() => setView('catalog')}
-              title="Kembali ke katalog provider"
+              title="Kembali ke daftar provider"
             >
-              <ArrowLeft size={16} />
-              <span>Daftar Provider</span>
+              <ArrowLeft size={14} />
+              <span>Kembali ke Daftar Provider</span>
             </button>
             <h2 className={isPage ? "page-view-title" : "modal-title"}>Pengaturan Provider</h2>
           </div>
