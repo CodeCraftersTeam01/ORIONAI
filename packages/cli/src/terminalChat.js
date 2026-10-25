@@ -87,19 +87,35 @@ function saveSyncedConfig({ providers, selectedModel, reasoningTier, apiKey }) {
     if (fs.existsSync(providersPath)) {
       existingData = JSON.parse(fs.readFileSync(providersPath, 'utf8'));
     }
+
+    let updatedProviders = providers !== undefined ? providers : existingData.providers || [];
+
+    if (apiKey) {
+      fs.writeFileSync(credPath, JSON.stringify({ apiKey, updatedAt: Date.now() }, null, 2), 'utf8');
+      process.env.AI_API_KEY = apiKey;
+
+      // Update apiKey in Orion provider inside providers.json as well so the website sees it immediately
+      const orionIdx = updatedProviders.findIndex((p) => p.id === 'orion' || p.templateId === 'orion');
+      if (orionIdx !== -1) {
+        const prov = updatedProviders[orionIdx];
+        const existingKeys = Array.isArray(prov.apiKeys) ? prov.apiKeys : [];
+        const activeKeyObj = { id: `key-${Date.now()}`, name: 'CLI Key', key: apiKey, active: true };
+        updatedProviders[orionIdx] = {
+          ...prov,
+          apiKey: apiKey,
+          apiKeys: [activeKeyObj, ...existingKeys.filter((k) => k.key !== apiKey).map((k) => ({ ...k, active: false }))],
+        };
+      }
+    }
+
     const updated = {
       ...existingData,
-      providers: providers !== undefined ? providers : existingData.providers || [],
+      providers: updatedProviders,
       selectedModel: selectedModel || existingData.selectedModel || 'orion',
       reasoningTier: reasoningTier || existingData.reasoningTier || 'medium',
       updatedAt: Date.now(),
     };
     fs.writeFileSync(providersPath, JSON.stringify(updated, null, 2), 'utf8');
-
-    if (apiKey) {
-      fs.writeFileSync(credPath, JSON.stringify({ apiKey, updatedAt: Date.now() }, null, 2), 'utf8');
-      process.env.AI_API_KEY = apiKey;
-    }
   } catch {}
 }
 
