@@ -1588,6 +1588,7 @@
               filter 0.55s cubic-bezier(0.16, 1, 0.3, 1),
               padding 0.7s cubic-bezier(0.16, 1, 0.3, 1),
               background 0.45s ease;
+  will-change: bottom, transform;
 }
 
 .chat-input-wrapper.is-hidden-dashboard {
