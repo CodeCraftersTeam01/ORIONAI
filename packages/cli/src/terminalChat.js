@@ -464,10 +464,14 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
       // Pi Status Footer Line 3: agent status indicator (no trailing newline so cursor stays on footer row)
       out += `\x1b[90m● 🌌 orion-core: \x1b[33m⚡ READY\x1b[0m\x1b[K`;
 
+      // Calculate exact line offset dynamically from rendered output
+      const parts = out.split('\n');
+      const linesToInput = (parts.length - 1) - 1; // Distance from last line up to input line (index 1)
+
       process.stdout.write(out);
 
       // Restore cursor position to the input line
-      process.stdout.write(`\x1b[${linesBelow}A\r\x1b[${buffer.length}C`);
+      process.stdout.write(`\x1b[${linesToInput}A\r\x1b[${buffer.length}C`);
     }
 
     function clearUI() {
