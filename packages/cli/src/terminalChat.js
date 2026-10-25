@@ -4,23 +4,80 @@ import os from 'os';
 import path from 'path';
 import { streamChatCompletion } from '../../server/src/services/aiService.js';
 
-const credPath = path.join(os.homedir(), '.orion', 'credentials.json');
+const configDir = path.join(os.homedir(), '.orion');
+const providersPath = path.join(configDir, 'providers.json');
+const credPath = path.join(configDir, 'credentials.json');
 
-function loadSavedApiKey() {
-  try {
-    if (fs.existsSync(credPath)) {
-      const data = JSON.parse(fs.readFileSync(credPath, 'utf8'));
-      return data.apiKey || '';
-    }
-  } catch {}
-  return '';
+function ensureConfigDir() {
+  if (!fs.existsSync(configDir)) {
+    fs.mkdirSync(configDir, { recursive: true });
+  }
 }
 
-function saveApiKey(apiKey) {
+// Load synchronized configuration from ~/.orion/providers.json, credentials.json & process.env
+function loadSyncedConfig() {
+  ensureConfigDir();
+  let providers = [];
+  let selectedModel = 'orion';
+  let reasoningTier = 'medium';
+  let apiKey = '';
+
   try {
-    const dir = path.dirname(credPath);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(credPath, JSON.stringify({ apiKey, updatedAt: Date.now() }));
+    if (fs.existsSync(providersPath)) {
+      const data = JSON.parse(fs.readFileSync(providersPath, 'utf8'));
+      providers = data.providers || [];
+      if (data.selectedModel) selectedModel = data.selectedModel;
+      if (data.reasoningTier) reasoningTier = data.reasoningTier;
+    }
+  } catch {}
+
+  // 1. Check active key from custom providers
+  for (const prov of providers) {
+    const activeKey = prov.apiKeys?.find((k) => k.active)?.key || prov.apiKey;
+    if (activeKey && activeKey.trim()) {
+      apiKey = activeKey.trim();
+      break;
+    }
+  }
+
+  // 2. Check credentials.json
+  if (!apiKey) {
+    try {
+      if (fs.existsSync(credPath)) {
+        const data = JSON.parse(fs.readFileSync(credPath, 'utf8'));
+        if (data.apiKey) apiKey = data.apiKey.trim();
+      }
+    } catch {}
+  }
+
+  // 3. Fallback to process.env.AI_API_KEY
+  if (!apiKey && process.env.AI_API_KEY) {
+    apiKey = process.env.AI_API_KEY.trim();
+  }
+
+  return { providers, selectedModel, reasoningTier, apiKey };
+}
+
+function saveSyncedConfig({ providers, selectedModel, reasoningTier, apiKey }) {
+  ensureConfigDir();
+  try {
+    let existingData = {};
+    if (fs.existsSync(providersPath)) {
+      existingData = JSON.parse(fs.readFileSync(providersPath, 'utf8'));
+    }
+    const updated = {
+      ...existingData,
+      providers: providers !== undefined ? providers : existingData.providers || [],
+      selectedModel: selectedModel || existingData.selectedModel || 'orion',
+      reasoningTier: reasoningTier || existingData.reasoningTier || 'medium',
+      updatedAt: Date.now(),
+    };
+    fs.writeFileSync(providersPath, JSON.stringify(updated, null, 2), 'utf8');
+
+    if (apiKey) {
+      fs.writeFileSync(credPath, JSON.stringify({ apiKey, updatedAt: Date.now() }, null, 2), 'utf8');
+      process.env.AI_API_KEY = apiKey;
+    }
   } catch {}
 }
 
@@ -44,8 +101,8 @@ export const c = {
   white: '\x1b[37m',
 };
 
-// Available Model Catalog
-export const MODELS = [
+// Default Built-in Models Catalog
+const DEFAULT_MODELS = [
   {
     id: 'orion',
     name: 'Orion',
@@ -65,6 +122,40 @@ export const MODELS = [
     supportsReasoning: false,
   },
 ];
+
+// Combine custom provider models and defaults into a unified model list
+function getAvailableModels(syncedConfig) {
+  const modelList = [];
+
+  // Add models from custom providers
+  if (syncedConfig.providers && syncedConfig.providers.length > 0) {
+    syncedConfig.providers.forEach((prov) => {
+      const models = prov.models || [];
+      models.forEach((m) => {
+        const modelId = typeof m === 'string' ? m : m.id;
+        const modelName = typeof m === 'string' ? m : m.name || m.id;
+        const isEnabled = typeof m === 'object' ? (m.enabled ?? true) : true;
+        if (modelId && isEnabled && !modelList.some((existing) => existing.id === modelId)) {
+          modelList.push({
+            id: modelId,
+            name: modelName,
+            desc: `Provider: ${prov.name || 'Custom'}`,
+            supportsReasoning: /orion|deepseek|r1|reason/i.test(modelId),
+          });
+        }
+      });
+    });
+  }
+
+  // Add default models if not present
+  DEFAULT_MODELS.forEach((dm) => {
+    if (!modelList.some((existing) => existing.id === dm.id)) {
+      modelList.push(dm);
+    }
+  });
+
+  return modelList;
+}
 
 // Center text in terminal
 export function centerLines(text, cols) {
@@ -98,17 +189,16 @@ export async function showSplashScreen() {
     `${c.dim}${c.white}  Intelligent Cosmic Agent${c.reset}`,
   ].join('\n');
 
-  const logoLines = logoAscii.split('\n').length + 3; // +3 for progress
+  const logoLines = logoAscii.split('\n').length + 3;
   const topPad = Math.max(1, Math.floor((rows - logoLines) / 2));
 
   console.clear();
   process.stdout.write('\n'.repeat(topPad));
   process.stdout.write(centerLines(logoAscii, cols) + '\n\n');
 
-  // Smooth loading progression
   const steps = [
     '✦ Menginisialisasi modul kosmik...',
-    '✦ Menghubungkan ke model kecerdasan...',
+    '✦ Menghubungkan ke konfigurasi model...',
     '✦ Menyiapkan sesi terminal chat...',
     '✦ Sistem siap! Membuka antarmuka...',
   ];
@@ -116,10 +206,10 @@ export async function showSplashScreen() {
   for (let i = 0; i < steps.length; i++) {
     const statusText = `${c.gray}${steps[i]}${c.reset}`;
     process.stdout.write('\r\x1b[K' + centerLines(statusText, cols));
-    await new Promise((res) => setTimeout(res, 280));
+    await new Promise((res) => setTimeout(res, 220));
   }
 
-  await new Promise((res) => setTimeout(res, 350));
+  await new Promise((res) => setTimeout(res, 250));
   console.clear();
 }
 
@@ -128,27 +218,138 @@ export function printHeader(modelId, tier, hasKey = false) {
   const cols = Math.min(process.stdout.columns || 80, 72);
   const divider = '─'.repeat(cols);
   const keyStatus = hasKey
-    ? `${c.green}● Key Aktif${c.reset}`
+    ? `${c.green}● Key Aktif (Tersinkron)${c.reset}`
     : `${c.yellow}○ Key Kosong (/key)${c.reset}`;
 
   console.log(`${c.brightCyan}${c.bold}🌌 ORION AGENT TERMINAL CHAT${c.reset} ${c.dim}(v1.0.0)${c.reset}`);
   console.log(
     `${c.gray}Model:${c.reset} ${c.cyan}${modelId}${c.reset}${
       modelId === 'orion' ? ` ${c.dim}(tier: ${tier})${c.reset}` : ''
-    } · ${keyStatus} · ${c.gray}Ketik ${c.yellow}/help${c.gray} untuk opsi${c.reset}`
+    } · ${keyStatus} · ${c.gray}Ketik ${c.yellow}/${c.gray} untuk menu perintah${c.reset}`
   );
   console.log(`${c.gray}${divider}${c.reset}\n`);
+}
+
+/**
+ * Interactive Arrow-Key Menu Selector (↑ / ↓ to navigate, Enter to select, Esc to cancel)
+ */
+export async function interactiveSelect({ promptText, items, initialIndex = 0 }) {
+  if (!items || items.length === 0) return null;
+  if (!process.stdin.isTTY) {
+    return items[0];
+  }
+
+  let selectedIndex = Math.max(0, Math.min(initialIndex, items.length - 1));
+  let linesRendered = 0;
+
+  function render(isFirst = false) {
+    let out = '';
+    if (!isFirst && linesRendered > 0) {
+      out += `\x1b[${linesRendered}A\r`;
+    }
+
+    out += `\x1b[1m\x1b[36m✦ ${promptText}\x1b[0m \x1b[90m(Gunakan ↑ / ↓ lalu Enter, Esc untuk batal)\x1b[0m\x1b[K\n`;
+
+    items.forEach((item, idx) => {
+      const isSelected = idx === selectedIndex;
+      const cursor = isSelected ? `\x1b[36m\x1b[1m❯\x1b[0m` : ` `;
+      const label = isSelected
+        ? `\x1b[1m\x1b[37m${item.label.padEnd(18)}\x1b[0m`
+        : `\x1b[90m${item.label.padEnd(18)}\x1b[0m`;
+      const detail = item.detail
+        ? (isSelected ? `\x1b[36m${item.detail}\x1b[0m` : `\x1b[90m${item.detail}\x1b[0m`)
+        : '';
+      const badge = item.badge ? ` \x1b[32m[${item.badge}]\x1b[0m` : '';
+
+      out += `${cursor} ${label} ${detail}${badge}\x1b[K\n`;
+    });
+
+    linesRendered = items.length + 1;
+    process.stdout.write(out);
+  }
+
+  function clearMenu() {
+    if (linesRendered > 0) {
+      let out = `\x1b[${linesRendered}A\r`;
+      for (let i = 0; i < linesRendered; i++) {
+        out += '\x1b[K\n';
+      }
+      out += `\x1b[${linesRendered}A\r`;
+      process.stdout.write(out);
+      linesRendered = 0;
+    }
+  }
+
+  render(true);
+
+  return new Promise((resolve) => {
+    const wasRaw = process.stdin.isRaw;
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+
+    const onData = (buffer) => {
+      const key = buffer.toString();
+
+      // Ctrl+C
+      if (key === '\u0003') {
+        clearMenu();
+        cleanup();
+        process.exit(0);
+      }
+
+      // Enter / Return (\r or \n)
+      if (key === '\r' || key === '\n') {
+        clearMenu();
+        cleanup();
+        resolve(items[selectedIndex]);
+        return;
+      }
+
+      // Escape
+      if (key === '\u001b') {
+        clearMenu();
+        cleanup();
+        resolve(null);
+        return;
+      }
+
+      // Up Arrow (\u001b[A) or 'k'
+      if (key === '\u001b[A' || key === 'k') {
+        selectedIndex = (selectedIndex - 1 + items.length) % items.length;
+        render(false);
+        return;
+      }
+
+      // Down Arrow (\u001b[B) or 'j'
+      if (key === '\u001b[B' || key === 'j') {
+        selectedIndex = (selectedIndex + 1) % items.length;
+        render(false);
+        return;
+      }
+    };
+
+    function cleanup() {
+      process.stdin.removeListener('data', onData);
+      process.stdin.setRawMode(wasRaw);
+      process.stdin.pause();
+    }
+
+    process.stdin.on('data', onData);
+  });
 }
 
 // Main Interactive Terminal Chat Launcher
 export async function startTerminalChat() {
   await showSplashScreen();
 
-  let currentModel = 'orion';
-  let reasoningTier = 'medium';
-  let userApiKey = loadSavedApiKey() || process.env.AI_API_KEY || '';
+  // Load configuration synchronized from Web app / ~/.orion/providers.json
+  const syncedConfig = loadSyncedConfig();
+  let currentModel = syncedConfig.selectedModel || 'orion';
+  let reasoningTier = syncedConfig.reasoningTier || 'medium';
+  let userApiKey = syncedConfig.apiKey || '';
   let history = [];
   let isGenerating = false;
+  let isMenuOpen = false;
   let activeAbortController = null;
 
   printHeader(currentModel, reasoningTier, !!userApiKey);
@@ -160,9 +361,23 @@ export async function startTerminalChat() {
       prompt: `${c.brightBlue}${c.bold}You ›${c.reset} `,
     });
 
+    readline.emitKeypressEvents(process.stdin, rl);
+
     rl.prompt();
 
+    // Listen to real-time keypress: If user presses '/' on an empty prompt, open Command Menu immediately!
+    process.stdin.on('keypress', (char, key) => {
+      if (isGenerating || isMenuOpen) return;
+      if (char === '/' && rl.line === '') {
+        // Clear slash from prompt and open menu
+        rl.line = '';
+        process.stdout.write('\r\x1b[K');
+        handleTriggerCommandMenu();
+      }
+    });
+
     rl.on('line', async (line) => {
+      if (isMenuOpen) return;
       const input = line.trim();
 
       if (!input) {
@@ -170,9 +385,14 @@ export async function startTerminalChat() {
         return;
       }
 
-      // Handle commands
+      // If user typed '/' alone or commands
+      if (input === '/' || input === '/menu') {
+        await handleTriggerCommandMenu();
+        return;
+      }
+
       if (input.startsWith('/')) {
-        handleCommand(input);
+        await handleCommand(input);
         rl.prompt();
         return;
       }
@@ -180,7 +400,7 @@ export async function startTerminalChat() {
       // Validate API Key before sending request
       if (!userApiKey) {
         console.log(`\n${c.yellow}⚠️  API Key Orion belum dimasukkan.${c.reset}`);
-        console.log(`${c.gray}Ketik ${c.yellow}/key <api_key_anda>${c.gray} untuk memasukkan API Key sebelum mengobrol.${c.reset}\n`);
+        console.log(`${c.gray}Ketik ${c.yellow}/key <api_key_anda>${c.gray} atau pilih ${c.yellow}/key${c.gray} di menu untuk memasukkan API Key.${c.reset}\n`);
         rl.prompt();
         return;
       }
@@ -240,7 +460,7 @@ export async function startTerminalChat() {
         if (err.name === 'AbortError') {
           process.stdout.write(`\n${c.yellow}⚠️  Respon dihentikan oleh pengguna.${c.reset}\n\n`);
         } else if (/api\s*key/i.test(err.message)) {
-          process.stdout.write(`\n${c.yellow}⚠️  ${err.message}${c.reset}\n${c.gray}Ketik ${c.cyan}/key <api_key_anda>${c.gray} untuk memasukkan API Key Orion.${c.reset}\n\n`);
+          process.stdout.write(`\n${c.yellow}⚠️  ${err.message}${c.reset}\n${c.gray}Pilih ${c.cyan}/key${c.gray} di menu untuk memasukkan API Key Orion.${c.reset}\n\n`);
         } else {
           process.stdout.write(`\n${c.red}❌ Terjadi kesalahan: ${err.message}${c.reset}\n\n`);
         }
@@ -265,10 +485,110 @@ export async function startTerminalChat() {
       }
     });
 
-    function handleCommand(cmd) {
+    // Trigger Command Menu (when typing /)
+    async function handleTriggerCommandMenu() {
+      isMenuOpen = true;
+      rl.pause();
+
+      const commandItems = [
+        { label: '/model', detail: 'Pilih model AI aktif (Gunakan ↑ / ↓)', action: 'model' },
+        { label: '/tier', detail: 'Atur tingkat penalaran (low/medium/high)', action: 'tier' },
+        { label: '/key', detail: 'Masukkan atau perbarui Orion API Key', action: 'key' },
+        { label: '/clear', detail: 'Bersihkan layar terminal obrolan', action: 'clear' },
+        { label: '/reset', detail: 'Mulai obrolan baru (reset riwayat)', action: 'reset' },
+        { label: '/help', detail: 'Tampilkan panduan bantuan perintah', action: 'help' },
+        { label: '/exit', detail: 'Keluar dari obrolan terminal (/q)', action: 'exit' },
+      ];
+
+      const selected = await interactiveSelect({
+        promptText: 'Pilih Perintah Obrolan:',
+        items: commandItems,
+        initialIndex: 0,
+      });
+
+      isMenuOpen = false;
+      rl.resume();
+
+      if (selected) {
+        await handleCommand(`/${selected.action}`);
+      }
+      rl.prompt();
+    }
+
+    // Interactive Model Selector (when typing /model or selecting /model)
+    async function handleTriggerModelMenu() {
+      isMenuOpen = true;
+      rl.pause();
+
+      const freshConfig = loadSyncedConfig();
+      const availableModels = getAvailableModels(freshConfig);
+
+      const modelItems = availableModels.map((m) => ({
+        label: m.id,
+        detail: m.name !== m.id ? `${m.name} — ${m.desc}` : m.desc,
+        id: m.id,
+        name: m.name,
+        badge: m.id === currentModel ? 'Aktif' : '',
+      }));
+
+      const activeIdx = Math.max(0, modelItems.findIndex((m) => m.id === currentModel));
+
+      const selected = await interactiveSelect({
+        promptText: 'Pilih Model AI Aktif:',
+        items: modelItems,
+        initialIndex: activeIdx,
+      });
+
+      isMenuOpen = false;
+      rl.resume();
+
+      if (selected) {
+        currentModel = selected.id;
+        saveSyncedConfig({ selectedModel: currentModel });
+        console.log(
+          `\n${c.green}✓ Model AI dialihkan ke: ${c.bold}${selected.name || selected.id}${c.reset} ${c.dim}(${selected.id})${c.reset}\n`
+        );
+      }
+    }
+
+    // Interactive Tier Selector (when typing /tier or selecting /tier)
+    async function handleTriggerTierMenu() {
+      isMenuOpen = true;
+      rl.pause();
+
+      const tierItems = [
+        { label: 'low', detail: 'Penalaran ringkas & respon instan tercepat', value: 'low', badge: reasoningTier === 'low' ? 'Aktif' : '' },
+        { label: 'medium', detail: 'Keseimbangan optimal kecepatan dan penalaran', value: 'medium', badge: reasoningTier === 'medium' ? 'Aktif' : '' },
+        { label: 'high', detail: 'Penalaran mendalam untuk masalah kompleks/arsitektur', value: 'high', badge: reasoningTier === 'high' ? 'Aktif' : '' },
+      ];
+
+      const activeIdx = Math.max(0, tierItems.findIndex((t) => t.value === reasoningTier));
+
+      const selected = await interactiveSelect({
+        promptText: 'Pilih Tingkat Penalaran (Reasoning Tier):',
+        items: tierItems,
+        initialIndex: activeIdx,
+      });
+
+      isMenuOpen = false;
+      rl.resume();
+
+      if (selected) {
+        reasoningTier = selected.value;
+        saveSyncedConfig({ reasoningTier });
+        console.log(`\n${c.green}✓ Tingkat penalaran diatur ke: ${c.bold}${reasoningTier}${c.reset}\n`);
+      }
+    }
+
+    async function handleCommand(cmd) {
       const parts = cmd.split(/\s+/);
       const action = parts[0].toLowerCase();
       const arg = parts.slice(1).join(' ').trim();
+
+      if (action === '/' || action === '/menu') {
+        await handleTriggerCommandMenu();
+        return;
+      }
 
       if (action === '/exit' || action === '/quit' || action === '/q') {
         console.log(`\n${c.brightCyan}✦ Terima kasih telah menggunakan Orion Agent. Sampai jumpa!${c.reset}\n`);
@@ -278,47 +598,51 @@ export async function startTerminalChat() {
 
       if (action === '/model' || action === '/models') {
         if (!arg) {
-          console.log(`\n${c.bold}${c.brightCyan}✦ Katalog Model AI Orion:${c.reset}`);
-          MODELS.forEach((m, idx) => {
-            const isCurrent = m.id === currentModel;
-            const marker = isCurrent ? ` ${c.green}[Aktif]${c.reset}` : '';
-            console.log(
-              `  ${c.cyan}[${idx + 1}] ${c.bold}${m.id.padEnd(12)}${c.reset} ${c.white}${m.desc}${c.reset}${marker}`
-            );
-          });
-          console.log(`\n${c.gray}Cara ganti model: ${c.yellow}/model <nama|nomor>${c.gray} (contoh: ${c.yellow}/model agnes${c.gray} atau ${c.yellow}/model 2${c.gray})${c.reset}\n`);
+          // Open interactive arrow-key selector!
+          await handleTriggerModelMenu();
           return;
         }
 
+        // Direct argument supplied: /model <id|number>
+        const freshConfig = loadSyncedConfig();
+        const availableModels = getAvailableModels(freshConfig);
+
         let targetModel = null;
         const numIdx = parseInt(arg, 10);
-        if (!isNaN(numIdx) && numIdx >= 1 && numIdx <= MODELS.length) {
-          targetModel = MODELS[numIdx - 1];
+        if (!isNaN(numIdx) && numIdx >= 1 && numIdx <= availableModels.length) {
+          targetModel = availableModels[numIdx - 1];
         } else {
-          targetModel = MODELS.find((m) => m.id.toLowerCase() === arg.toLowerCase());
+          targetModel = availableModels.find((m) => m.id.toLowerCase() === arg.toLowerCase());
         }
 
         if (targetModel) {
           currentModel = targetModel.id;
+          saveSyncedConfig({ selectedModel: currentModel });
           console.log(
             `\n${c.green}✓ Model AI dialihkan ke: ${c.bold}${targetModel.name}${c.reset} ${c.dim}(${targetModel.id})${c.reset}\n`
           );
         } else {
           console.log(
-            `\n${c.red}⚠️  Model '${arg}' tidak ditemukan.${c.reset} Ketik ${c.yellow}/model${c.reset} untuk melihat daftar.\n`
+            `\n${c.red}⚠️  Model '${arg}' tidak ditemukan.${c.reset} Ketik ${c.yellow}/model${c.reset} untuk memilih dari daftar.\n`
           );
         }
         return;
       }
 
       if (action === '/tier' || action === '/reasoning') {
+        if (!arg) {
+          await handleTriggerTierMenu();
+          return;
+        }
+
         const validTiers = ['low', 'medium', 'high'];
-        if (!arg || !validTiers.includes(arg.toLowerCase())) {
+        if (!validTiers.includes(arg.toLowerCase())) {
           console.log(`\n${c.bold}Tingkat Penalaran (Reasoning Tier):${c.reset} ${c.cyan}${reasoningTier}${c.reset}`);
           console.log(`${c.gray}Pilihan: ${c.yellow}/tier low${c.gray} | ${c.yellow}/tier medium${c.gray} | ${c.yellow}/tier high${c.reset}\n`);
           return;
         }
         reasoningTier = arg.toLowerCase();
+        saveSyncedConfig({ reasoningTier });
         console.log(`\n${c.green}✓ Tingkat penalaran diatur ke: ${c.bold}${reasoningTier}${c.reset}\n`);
         return;
       }
@@ -336,20 +660,21 @@ export async function startTerminalChat() {
           return;
         }
         userApiKey = arg.trim();
-        saveApiKey(userApiKey);
-        console.log(`\n${c.green}✓ API Key Orion berhasil disimpan ke kredensial terminal.${c.reset}\n`);
+        saveSyncedConfig({ apiKey: userApiKey });
+        console.log(`\n${c.green}✓ API Key Orion berhasil disimpan dan disinkronkan ke seluruh sistem.${c.reset}\n`);
         return;
       }
 
       if (action === '/help' || action === '/h' || action === '/?') {
         console.log(`\n${c.bold}${c.brightCyan}✦ Daftar Perintah Orion Terminal Chat:${c.reset}`);
+        console.log(`  ${c.yellow}/${c.reset}                   Buka menu perintah interaktif (Gunakan panah ↑ / ↓)`);
+        console.log(`  ${c.yellow}/model${c.reset}                Buka pemilih model interaktif (Gunakan panah ↑ / ↓)`);
+        console.log(`  ${c.yellow}/tier${c.reset}                 Buka pemilih penalaran interaktif (low, medium, high)`);
         console.log(`  ${c.yellow}/key${c.reset} [api_key]        Masukkan atau perbarui Orion API Key Anda`);
-        console.log(`  ${c.yellow}/model${c.reset} [nama|nomor]   Lihat katalog atau beralih model AI`);
-        console.log(`  ${c.yellow}/tier${c.reset} [level]        Atur tingkat penalaran (${c.dim}low, medium, high${c.reset})`);
         console.log(`  ${c.yellow}/clear${c.reset}               Bersihkan layar terminal`);
         console.log(`  ${c.yellow}/reset${c.reset}               Mulai percakapan baru (reset riwayat)`);
         console.log(`  ${c.yellow}/help${c.reset}                Tampilkan bantuan perintah`);
-        console.log(`  ${c.yellow}/exit${c.reset}                Keluar dari sesi terminal chat\n`);
+        console.log(`  ${c.yellow}/exit, /q${c.reset}            Keluar dari sesi terminal chat\n`);
         return;
       }
 
@@ -365,8 +690,7 @@ export async function startTerminalChat() {
         return;
       }
 
-      console.log(`\n${c.yellow}⚠️  Perintah '${action}' tidak dikenal.${c.reset} Ketik ${c.yellow}/help${c.reset} untuk panduan.\n`);
+      console.log(`\n${c.yellow}⚠️  Perintah '${action}' tidak dikenal.${c.reset} Ketik ${c.yellow}/${c.reset} untuk menu interaktif.\n`);
     }
   });
 }
-
