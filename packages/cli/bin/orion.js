@@ -7,6 +7,8 @@ import os from 'os';
 import { execSync, spawn } from 'child_process';
 import { startServer, openUrl } from '../../server/src/server.js';
 import { startTerminalChat } from '../src/terminalChat.js';
+import { runCliSetupWizard } from '../src/setupWizard.js';
+import { isAuthInitialized } from '../../server/src/services/authService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -205,6 +207,7 @@ Penggunaan:
   orion --view --bg     Jalankan service di latar belakang dan buka di browser (Rekomendasi)
   orion --bg, -b        Jalankan service server di latar belakang (daemon)
   orion start           Jalankan service server di foreground
+  orion setup           Atur / ganti nama pengguna dan password akun pengelola
   orion --stop          Hentikan service Orion Agent yang sedang berjalan
   orion --restart       Muat ulang / restart service Orion Agent
   orion --status        Cek status apakah Orion Agent sedang aktif
@@ -267,6 +270,21 @@ if (isRestart) {
   console.log(`🔄 Me-restart Orion Agent di port ${targetPort}...`);
   await stopRunningService(targetPort, true);
   await new Promise((res) => setTimeout(res, 600));
+}
+
+// Handle setup command explicitly: `orion setup` or `orion init`
+if (args.includes('--setup') || args[0] === 'setup' || args[0] === 'init' || args[0] === 'reset-user') {
+  await runCliSetupWizard(true);
+  process.exit(0);
+}
+
+// First-time setup guard: if not configured and running in interactive terminal, prompt user
+if (!isAuthInitialized() && !isDaemonInternal && process.stdin.isTTY) {
+  const setupOk = await runCliSetupWizard();
+  if (!setupOk) {
+    console.error('Setup dibatalkan.');
+    process.exit(1);
+  }
 }
 
 // Explicit web server flags

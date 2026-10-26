@@ -12,6 +12,7 @@ import {
   Sparkles,
   LayoutDashboard,
   Terminal,
+  LogOut,
 } from 'lucide-react';
 import OrionLogo from './OrionLogo';
 
@@ -29,6 +30,8 @@ export default function Sidebar({
   onToggleSound,
   isOpen,
   onCloseMobile,
+  authUser,
+  onLogout,
 }) {
   return (
     <>
@@ -207,16 +210,18 @@ export default function Sidebar({
               onNavigate?.('settings');
               if (window.innerWidth < 768) onCloseMobile?.();
             }}
-            title="Arjuna (wardilanang46@gmail.com) — Buka Pengaturan"
+            title={`${authUser || 'Arjuna'} — Buka Pengaturan`}
           >
             <div className="sidebar-user-avatar">
-              <span className="user-initials">A</span>
+              <span className="user-initials">
+                {(authUser || 'Arjuna').charAt(0).toUpperCase()}
+              </span>
               <span className="user-online-pip" title="Online" />
             </div>
 
             <div className="sidebar-user-meta">
-              <span className="sidebar-user-name">Arjuna</span>
-              <span className="sidebar-user-email">wardilanang46@gmail.com</span>
+              <span className="sidebar-user-name">{authUser || 'Arjuna'}</span>
+              <span className="sidebar-user-email">Pengelola Sistem</span>
             </div>
           </div>
 
@@ -261,6 +266,21 @@ export default function Sidebar({
             >
               <Settings size={14} />
             </button>
+
+            {onLogout && (
+              <button
+                type="button"
+                className="footer-icon-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onLogout();
+                }}
+                title="Keluar (Logout)"
+                aria-label="Logout"
+              >
+                <LogOut size={14} />
+              </button>
+            )}
           </div>
         </div>
       </aside>

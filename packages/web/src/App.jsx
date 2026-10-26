@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import AuroraBackground from './components/AuroraBackground';
 import OrionLogo from './components/OrionLogo';
+import LoginPage from './components/LoginPage';
 
 function GithubIcon({ size = 15, className = '' }) {
   return (
@@ -399,6 +400,67 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [copiedMsgId, setCopiedMsgId] = useState(null);
   const [toast, setToast] = useState(null);
+
+  // Authentication State (Local Gateway Login & First-time Setup)
+  const [authStatus, setAuthStatus] = useState({
+    isLoading: true,
+    isAuthenticated: false,
+    isInitialized: true,
+    user: localStorage.getItem('orion_auth_user') || null,
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    const checkAuthStatus = async () => {
+      try {
+        const token = localStorage.getItem('orion_auth_token');
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const res = await fetch('/api/auth/status', { headers });
+        if (res.ok) {
+          const json = await res.json();
+          if (isMounted) {
+            setAuthStatus({
+              isLoading: false,
+              isAuthenticated: Boolean(json.data?.authenticated),
+              isInitialized: Boolean(json.data?.initialized),
+              user: json.data?.username || json.data?.configuredUsername || localStorage.getItem('orion_auth_user'),
+            });
+          }
+          return;
+        }
+      } catch (err) {
+        console.warn('Gagal memverifikasi status autentikasi:', err);
+      }
+      if (isMounted) {
+        setAuthStatus((prev) => ({ ...prev, isLoading: false }));
+      }
+    };
+    checkAuthStatus();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleLoginSuccess = (username, token) => {
+    setAuthStatus({
+      isLoading: false,
+      isAuthenticated: true,
+      isInitialized: true,
+      user: username,
+    });
+    showToast(`Selamat datang kembali, ${username}!`);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('orion_auth_token');
+    localStorage.removeItem('orion_auth_user');
+    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+    setAuthStatus((prev) => ({
+      ...prev,
+      isAuthenticated: false,
+    }));
+    showToast('Sesi telah diakhiri.');
+  };
 
   // Custom Providers State (OpenAI, Gemini, Claude, Ollama, etc.)
   const [customProviders, setCustomProviders] = useState(() => {
@@ -1534,7 +1596,12 @@ export default function App() {
     try {
       const res = await fetch('/api/chat/stream', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(localStorage.getItem('orion_auth_token')
+            ? { Authorization: `Bearer ${localStorage.getItem('orion_auth_token')}` }
+            : {}),
+        },
         body: JSON.stringify({
           message: displayPrompt,
           history: activeSession ? activeSession.messages : [],
@@ -1624,7 +1691,12 @@ export default function App() {
       if (!accumulated.trim()) {
         const fallbackRes = await fetch('/api/chat/message', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(localStorage.getItem('orion_auth_token')
+              ? { Authorization: `Bearer ${localStorage.getItem('orion_auth_token')}` }
+              : {}),
+          },
           body: JSON.stringify({
             message: userText,
             history: activeSession ? activeSession.messages : [],
@@ -1759,6 +1831,26 @@ export default function App() {
     showToast('Obrolan diunduh');
   };
 
+  // Authentication Guard: Login or Initial Setup Screen
+  if (authStatus.isLoading) {
+    return (
+      <div className="login-screen-wrapper">
+        <div className="login-btn-spinner" style={{ width: 28, height: 28, color: 'var(--text-primary)' }} />
+      </div>
+    );
+  }
+
+  if (!authStatus.isAuthenticated) {
+    return (
+      <LoginPage
+        isInitialized={authStatus.isInitialized}
+        onLoginSuccess={handleLoginSuccess}
+        theme={theme}
+        onToggleTheme={() => handleSelectThemeMode(theme === 'dark' ? 'light' : 'dark')}
+      />
+    );
+  }
+
   return (
     <div className="orion-layout">
       {/* Dynamic WebGL Aurora Mesh Background (Only in Chat & Dashboard, completely inactive in Settings & Providers) */}
@@ -1793,6 +1885,8 @@ export default function App() {
         onToggleSound={() => setSoundEnabled((prev) => !prev)}
         isOpen={isSidebarOpen}
         onCloseMobile={() => setIsSidebarOpen(false)}
+        authUser={authStatus.user}
+        onLogout={handleLogout}
       />
 
       {/* Main Area */}
