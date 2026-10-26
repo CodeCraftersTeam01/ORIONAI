@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { processFile, formatFileSize } from '../utils/fileHelpers';
 import ModelSelector from './ModelSelector';
+import ProjectSelector from './ProjectSelector';
 
 export default function ChatInput({
   input,
@@ -34,6 +35,10 @@ export default function ChatInput({
   onOpenManageProviders,
   isAgentMode = true,
   setIsAgentMode,
+  projectPath = null,
+  projectName = null,
+  onOpenProjectModal,
+  onClearProject,
 }) {
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -149,6 +154,17 @@ export default function ChatInput({
 
   return (
     <div className={`chat-input-wrapper ${isCentered ? 'is-centered' : 'is-docked'} ${isHiddenDashboard ? 'is-hidden-dashboard' : ''}`}>
+      {/* Top Bar: Project Selector (Image 2 style) */}
+      <div className="chat-input-top-bar">
+        <ProjectSelector
+          projectPath={projectPath}
+          projectName={projectName}
+          onOpenModal={onOpenProjectModal}
+          onClearProject={onClearProject}
+          disabled={isGenerating}
+        />
+      </div>
+
       <div
         className={`chat-input-box ${isDragging ? 'is-drag-over' : ''}`}
         onClick={() => textareaRef.current?.focus()}

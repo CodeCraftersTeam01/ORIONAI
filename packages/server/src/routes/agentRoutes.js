@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { runAgentLoop, resolveApproval } from '../agent/agentLoop.js';
 import { TOOL_DEFINITIONS } from '../agent/tools.js';
 import { chatRateLimiter, validateChatInput } from '../middleware/security.js';
+import { getDefaultWorkspacePath } from './workspaceRoutes.js';
 
 const router = Router();
 
@@ -45,8 +46,12 @@ router.post('/run', chatRateLimiter, validateChatInput, (req, res) => {
     reasoningTier = 'high',
     customProvider = null,
     orionApiKey = null,
-    workspaceRoot = process.cwd(),
+    workspaceRoot,
   } = req.body;
+
+  const effectiveWorkspace = (typeof workspaceRoot === 'string' && workspaceRoot.trim())
+    ? workspaceRoot.trim()
+    : getDefaultWorkspacePath();
 
   const abortController = new AbortController();
 
@@ -79,7 +84,7 @@ router.post('/run', chatRateLimiter, validateChatInput, (req, res) => {
     reasoningTier,
     customProvider,
     orionApiKey,
-    workspaceRoot,
+    workspaceRoot: effectiveWorkspace,
     signal: abortController.signal,
     onEvent: (event) => {
       sendEvent(event);

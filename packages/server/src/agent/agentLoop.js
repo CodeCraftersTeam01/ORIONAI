@@ -155,9 +155,13 @@ export async function runAgentLoop({
   const modelConfig = getModelConfig(model, reasoningTier);
   const endpointInfo = resolveEndpointAndHeaders(customProvider, modelConfig, orionApiKey);
 
-  // Initialize messages payload with Agent System Prompt
+  // Initialize messages payload with Agent System Prompt & Active Workspace
+  const activeWs = safetyGuard.getWorkspaceRoot();
   const messages = [
-    { role: 'system', content: AGENT_SYSTEM_PROMPT },
+    {
+      role: 'system',
+      content: `${AGENT_SYSTEM_PROMPT}\n\n[WORKSPACE PROYEK AKTIF]\nDirektori kerja (CWD) saat ini: ${activeWs}\nSemua perintah bash dan operasi berkas akan dieksekusi di dalam direktori proyek ini.`,
+    },
   ];
 
   // Append formatted history

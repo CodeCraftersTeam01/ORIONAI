@@ -64,6 +64,7 @@ import ChatInput from './components/ChatInput';
 import FormattedMessage from './components/FormattedMessage';
 import SettingsModal from './components/SettingsModal';
 import ManageProvidersModal from './components/ManageProvidersModal';
+import ProjectDirectoryModal from './components/ProjectDirectoryModal';
 import LogsView from './components/LogsView';
 import ModelsView from './components/ModelsView';
 import ThinkingIndicator from './components/ThinkingIndicator';
@@ -398,6 +399,7 @@ export default function App() {
     return saved !== null ? saved === 'true' : false; // quiet by default for cozy simple feel
   });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [copiedMsgId, setCopiedMsgId] = useState(null);
   const [toast, setToast] = useState(null);
@@ -1451,6 +1453,45 @@ export default function App() {
 
   const activeSession = sessions.find((s) => s.id === activeSessionId) || sessions[0];
   const messages = activeSession ? activeSession.messages : [];
+  const activeProjectPath = activeSession?.projectPath || null;
+  const activeProjectName = activeSession?.projectName || null;
+
+  const handleSelectProject = async (projectPath, projectName) => {
+    soundEffects.playClick?.();
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === activeSessionId
+          ? { ...s, projectPath, projectName }
+          : s
+      )
+    );
+    showToast(`Proyek dipilih: ${projectName}`);
+
+    // Persist to recent workspaces on server
+    try {
+      const token = localStorage.getItem('orion_auth_token');
+      await fetch('/api/workspace/recent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ path: projectPath, name: projectName }),
+      });
+    } catch {}
+  };
+
+  const handleClearProject = () => {
+    soundEffects.playClick?.();
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === activeSessionId
+          ? { ...s, projectPath: null, projectName: null }
+          : s
+      )
+    );
+    showToast('Proyek dilepas (Kembali ke default Orion Safe Workspace)');
+  };
 
   useEffect(() => {
     scrollToBottom(isGenerating);
@@ -1468,6 +1509,8 @@ export default function App() {
       title: 'Percakapan Baru',
       createdAt: new Date().toISOString(),
       messages: [],
+      projectPath: null,
+      projectName: null,
     };
     setSessions((prev) => [newSession, ...prev]);
     setActiveSessionId(newSession.id);
@@ -1485,6 +1528,8 @@ export default function App() {
             title: 'Percakapan Baru',
             createdAt: new Date().toISOString(),
             messages: [],
+            projectPath: null,
+            projectName: null,
           },
         ];
       }
@@ -1503,6 +1548,8 @@ export default function App() {
       title: 'Percakapan Baru',
       createdAt: new Date().toISOString(),
       messages: [],
+      projectPath: null,
+      projectName: null,
     };
     setSessions([fresh]);
     setActiveSessionId(fresh.id);
@@ -1665,6 +1712,7 @@ export default function App() {
           reasoningTier: activeReasoningTier,
           customProvider: activeCustomProvider,
           orionApiKey: userOrionApiKey,
+          workspaceRoot: activeProjectPath || undefined,
         }),
         signal: controller.signal,
       });
@@ -2405,6 +2453,10 @@ export default function App() {
           onOpenManageProviders={() => setCurrentView('providers')}
           isAgentMode={isAgentMode}
           setIsAgentMode={handleToggleAgentMode}
+          projectPath={activeProjectPath}
+          projectName={activeProjectName}
+          onOpenProjectModal={() => setIsProjectModalOpen(true)}
+          onClearProject={handleClearProject}
         />
 
         {/* Ambient Voice Calling Overlay with Equalizer Wave Visualizer */}
@@ -2421,6 +2473,14 @@ export default function App() {
           </>
         )}
       </main>
+
+      {/* Project Directory Picker Modal */}
+      <ProjectDirectoryModal
+        isOpen={isProjectModalOpen}
+        onClose={() => setIsProjectModalOpen(false)}
+        onSelectProject={handleSelectProject}
+        currentProjectPath={activeProjectPath}
+      />
 
       {/* Image Lightbox Modal */}
       {previewImage && (
