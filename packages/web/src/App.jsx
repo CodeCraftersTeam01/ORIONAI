@@ -507,6 +507,7 @@ export default function App() {
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRec) {
       console.warn('SpeechRecognition API not available in this browser');
+      showToast('Browser ini (Zen/Firefox) belum mendukung Web Speech. Silakan buka di Safari atau Chrome untuk transkripsi suara.');
       return;
     }
 

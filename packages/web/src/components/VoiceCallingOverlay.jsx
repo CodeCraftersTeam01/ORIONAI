@@ -39,7 +39,13 @@ export default function VoiceCallingOverlay({
           {agentStatus === 'listening' && !userTranscript && !formattedAgentResponse && (
             <div className={`voice-listening-hint ${isMuted ? 'is-muted' : ''}`}>
               <span className="voice-listening-dot" />
-              <span>{isMuted ? 'Mikrofon dibisukan' : 'Silakan berbicara...'}</span>
+              <span>
+                {isMuted
+                  ? 'Mikrofon dibisukan'
+                  : (typeof window !== 'undefined' && !window.SpeechRecognition && !window.webkitSpeechRecognition)
+                  ? 'Browser Zen/Firefox belum mendukung Web Speech bawaan. Silakan gunakan Safari atau Chrome.'
+                  : 'Silakan berbicara...'}
+              </span>
             </div>
           )}
 
