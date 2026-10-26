@@ -1454,6 +1454,8 @@ export async function startTerminalChat() {
         }
       }
 
+      let liveThoughtPreview = '';
+
       if (isAgentMode) {
         try {
           await new Promise((resolveAgent, rejectAgent) => {
@@ -1469,18 +1471,23 @@ export async function startTerminalChat() {
               autoApprove: false,
               onEvent: async (event) => {
                 if (event.type === 'agent_step') {
+                  liveThoughtPreview = '';
                   spinner.update(`[Tahap ${event.step}/${event.maxSteps}] Menganalisis & merancang tindakan...`);
                 } else if (event.type === 'agent_thought_chunk') {
-                  spinner.update(`[Tahap ${event.step}] Merancang kode & tindakan...`);
-                } else if (event.type === 'agent_thought') {
-                  spinner.clear();
-                  await streamer.flush();
-                  const th = event.thought || event.content || '';
-                  if (th && th.trim()) {
-                    process.stdout.write(`\n${c.dim}${c.cyan}✦ Penalaran Agent:${c.reset}\n${c.gray}${th.trim()}${c.reset}\n`);
+                  const chunkTxt = (event.chunk || '').replace(/\s+/g, ' ');
+                  if (chunkTxt) {
+                    liveThoughtPreview = (liveThoughtPreview + chunkTxt).slice(-50).trim();
+                    spinner.update(`✦ ${liveThoughtPreview}...`, false);
                   }
-                  spinner.start('Menyiapkan tindakan...');
+                } else if (event.type === 'agent_thought') {
+                  // User request: "penalaran agent itu muncul sesaat aja kalo sudah selesai dia akan hilang"
+                  // Show thought dynamically in the temporary spinner line, then clear on next phase
+                  const th = (event.thought || event.content || '').replace(/\s+/g, ' ').trim();
+                  if (th) {
+                    spinner.update(`✦ ${th.slice(0, 50)}...`, false);
+                  }
                 } else if (event.type === 'tool_call_start') {
+                  liveThoughtPreview = '';
                   spinner.clear();
                   await streamer.flush();
                   const rawTool = event.tool || event.toolCall?.name || 'tool';
@@ -1525,6 +1532,7 @@ export async function startTerminalChat() {
                 } else if (event.type === 'tool_call_complete') {
                   spinner.stop();
                   await streamer.flush();
+                  const toolName = event.tool || event.toolCall?.name || 'tool';
                   const isErr = event.isError || Boolean(event.result?.error);
                   const isCommand = toolName === 'bash' || toolName === 'run_command';
                   const tookText = (isCommand || (event.durationMs && event.durationMs > 500)) ? ` \x1b[38;5;244m(Took ${event.durationSec}s)\x1b[0m` : '';
@@ -1599,9 +1607,20 @@ export async function startTerminalChat() {
                 } else if (event.type === 'agent_done') {
                   spinner.stop();
                   const finalTxt = event.finalAnswer || event.content || '';
-                  if (finalTxt && !assistantReply.includes(finalTxt)) {
-                    assistantReply += finalTxt;
-                    streamWordBuffer += finalTxt;
+                  if (finalTxt) {
+                    if (!assistantReply) {
+                      assistantReply = finalTxt;
+                      streamWordBuffer = finalTxt;
+                    } else if (finalTxt.startsWith(assistantReply)) {
+                      const remainder = finalTxt.slice(assistantReply.length);
+                      if (remainder) {
+                        assistantReply += remainder;
+                        streamWordBuffer += remainder;
+                      }
+                    } else if (!assistantReply.includes(finalTxt)) {
+                      assistantReply += (assistantReply.endsWith('\n') ? '' : '\n') + finalTxt;
+                      streamWordBuffer += (streamWordBuffer.endsWith('\n') ? '' : '\n') + finalTxt;
+                    }
                   }
                   flushWordBuffer(true);
                   await streamer.flush();

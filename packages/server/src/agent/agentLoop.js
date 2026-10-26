@@ -261,11 +261,6 @@ export async function runAgentLoop({
 
           if (delta.content) {
             content += delta.content;
-            await onEvent({
-              type: 'agent_chunk',
-              chunk: delta.content,
-              step,
-            });
           }
 
           if (Array.isArray(delta.tool_calls)) {
@@ -317,22 +312,28 @@ export async function runAgentLoop({
     // Enforce max 3 tool calls per step
     const toolCalls = allToolCalls.slice(0, 3);
 
-    // Emit thoughts or intermediate explanations if present
-    if (content) {
-      onEvent({
-        type: 'agent_thought',
-        content,
-        thought: content,
-        step,
-      });
-    }
-
-    // If no tool calls, the agent has finished thinking and answered the user!
+    // If no tool calls, this is the final conversational answer!
     if (toolCalls.length === 0) {
       completed = true;
       finalAnswer = content;
       messages.push({ role: 'assistant', content: content || '' });
+      await onEvent({
+        type: 'agent_chunk',
+        chunk: content,
+        step,
+      });
       break;
+    }
+
+    // If there ARE tool calls, emit intermediate reasoning/thought so user sees intent
+    const thoughtText = reasoning || content;
+    if (thoughtText && thoughtText.trim()) {
+      await onEvent({
+        type: 'agent_thought',
+        content: thoughtText.trim(),
+        thought: thoughtText.trim(),
+        step,
+      });
     }
 
     // Push assistant message with tool calls into history
