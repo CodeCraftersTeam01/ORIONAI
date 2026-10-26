@@ -207,7 +207,9 @@ export async function runAgentLoop({
         signal,
       });
     } catch (err) {
-      if (err.name === 'AbortError') return;
+      if (err.name === 'AbortError' || signal?.aborted) {
+        throw new Error('Operasi agent dihentikan oleh pengguna.');
+      }
       throw new Error(`Koneksi AI gagal: ${err.message}`);
     }
 
@@ -327,16 +329,37 @@ export async function runAgentLoop({
         });
 
         const approved = await new Promise((resolve) => {
-          pendingApprovals.set(callId, { resolve, toolCall: { name: fnName, args: fnArgs } });
+          const onAbort = () => {
+            if (pendingApprovals.has(callId)) {
+              pendingApprovals.delete(callId);
+              resolve(false);
+            }
+          };
+
+          if (signal?.aborted) return resolve(false);
+          signal?.addEventListener('abort', onAbort, { once: true });
+
+          pendingApprovals.set(callId, {
+            resolve: (val) => {
+              signal?.removeEventListener('abort', onAbort);
+              resolve(val);
+            },
+            toolCall: { name: fnName, args: fnArgs },
+          });
 
           // Auto-timeout after 5 minutes if no response
           setTimeout(() => {
             if (pendingApprovals.has(callId)) {
               pendingApprovals.delete(callId);
+              signal?.removeEventListener('abort', onAbort);
               resolve(false);
             }
           }, 5 * 60 * 1000);
         });
+
+        if (signal?.aborted) {
+          throw new Error('Operasi agent dihentikan oleh pengguna.');
+        }
 
         if (!approved) {
           const rejectedResult = {

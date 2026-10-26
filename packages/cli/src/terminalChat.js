@@ -23,7 +23,111 @@ function copyToClipboard(text) {
   }
 }
 
-function promptCliApproval(toolCall) {
+class SmoothTextStreamer {
+  constructor({ signal = null, minDelay = 4, maxDelay = 12 } = {}) {
+    this.signal = signal;
+    this.minDelay = minDelay;
+    this.maxDelay = maxDelay;
+    this.queue = [];
+    this.isProcessing = false;
+    this.drainResolvers = [];
+
+    if (this.signal) {
+      this.signal.addEventListener('abort', () => this.stop(), { once: true });
+    }
+  }
+
+  _tokenize(text) {
+    if (!text) return [];
+    const tokens = [];
+    // Atomically capture ANSI escape sequences (CSI, OSC) or individual unicode characters
+    const regex = /(\x1b\[[0-9;?]*[a-zA-Z]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|[\s\S])/gu;
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      tokens.push(match[0]);
+    }
+    return tokens;
+  }
+
+  write(text) {
+    if (!text || this.signal?.aborted) return;
+    const tokens = this._tokenize(text);
+    for (let i = 0; i < tokens.length; i++) {
+      this.queue.push(tokens[i]);
+    }
+    this._processQueue();
+  }
+
+  async _processQueue() {
+    if (this.isProcessing) return;
+    this.isProcessing = true;
+
+    while (this.queue.length > 0) {
+      if (this.signal?.aborted) {
+        this.queue.length = 0;
+        break;
+      }
+
+      const qLen = this.queue.length;
+      let batchSize = 1;
+      let delay = this.maxDelay;
+
+      // Adaptive cadence: smooth progressive typewriter reveal that never lags behind fast chunks
+      if (qLen > 100) {
+        batchSize = 10;
+        delay = 2;
+      } else if (qLen > 50) {
+        batchSize = 5;
+        delay = 4;
+      } else if (qLen > 20) {
+        batchSize = 2;
+        delay = 8;
+      }
+
+      let toOutput = '';
+      for (let i = 0; i < batchSize && this.queue.length > 0; i++) {
+        const token = this.queue.shift();
+        toOutput += token;
+        // ANSI escape codes apply instantly without consuming delay budget
+        if (token.startsWith('\x1b')) {
+          i--;
+        }
+      }
+
+      if (toOutput) {
+        process.stdout.write(toOutput);
+      }
+
+      if (this.queue.length > 0 && delay > 0 && !this.signal?.aborted) {
+        await new Promise((r) => setTimeout(r, delay));
+      }
+    }
+
+    this.isProcessing = false;
+    const resolvers = this.drainResolvers.splice(0, this.drainResolvers.length);
+    for (const res of resolvers) res();
+  }
+
+  async flush() {
+    if (this.queue.length === 0 && !this.isProcessing) return;
+    if (this.signal?.aborted) {
+      this.queue.length = 0;
+      return;
+    }
+    return new Promise((resolve) => {
+      this.drainResolvers.push(resolve);
+    });
+  }
+
+  stop() {
+    this.queue.length = 0;
+    this.isProcessing = false;
+    const resolvers = this.drainResolvers.splice(0, this.drainResolvers.length);
+    for (const res of resolvers) res();
+  }
+}
+
+function promptCliApproval(toolCall, signal = null) {
   return new Promise((resolve) => {
     process.stdout.write(`\n\x1b[33m╭── ⚠️  PERSETUJUAN DIPERLUKAN (SAFETY GUARD) ──────────────────────────\x1b[0m\n`);
     process.stdout.write(`\x1b[33m│\x1b[0m Tool: \x1b[1m\x1b[36m${toolCall?.name || toolCall?.tool || 'tool'}\x1b[0m\n`);
@@ -32,7 +136,7 @@ function promptCliApproval(toolCall) {
     process.stdout.write(`\x1b[33m│\x1b[0m Target: \x1b[37m${target}\x1b[0m\n`);
     process.stdout.write(`\x1b[33m│\x1b[0m Alasan: \x1b[90m${toolCall?.risk?.reason || toolCall?.reason || 'Operasi sensitif / berdampak sistem'}\x1b[0m\n`);
     process.stdout.write(`\x1b[33m╰────────────────────────────────────────────────────────────────────────\x1b[0m\n`);
-    process.stdout.write(`\x1b[1m\x1b[33mSetujui tindakan ini? [y/N]: \x1b[0m`);
+    process.stdout.write(`\x1b[1m\x1b[33mSetujui tindakan ini? [y/N] \x1b[38;5;240m(Esc untuk batal)\x1b[0m\x1b[1m\x1b[33m: \x1b[0m`);
 
     const wasRaw = process.stdin.isRaw;
     if (process.stdin.setRawMode) {
@@ -40,11 +144,37 @@ function promptCliApproval(toolCall) {
     }
     process.stdin.resume();
 
+    const cleanup = () => {
+      signal?.removeEventListener('abort', onAbort);
+      process.stdin.removeListener('data', onKey);
+      if (process.stdin.setRawMode) {
+        process.stdin.setRawMode(wasRaw);
+      }
+    };
+
+    const onAbort = () => {
+      cleanup();
+      process.stdout.write(`\x1b[31mTolak (Dibatalkan via Esc)\x1b[0m\n\n`);
+      resolve(false);
+    };
+
+    if (signal?.aborted) {
+      onAbort();
+      return;
+    }
+    signal?.addEventListener('abort', onAbort, { once: true });
+
     const onKey = (buf) => {
       const char = buf.toString();
       if (char === '\u0003') {
         cleanup();
         process.exit(0);
+      }
+      if (char === '\u001b' || char === '\x1b') {
+        cleanup();
+        process.stdout.write(`\x1b[31mTolak (Dibatalkan via Esc)\x1b[0m\n\n`);
+        resolve(false);
+        return;
       }
       cleanup();
       if (char.toLowerCase() === 'y') {
@@ -55,13 +185,6 @@ function promptCliApproval(toolCall) {
         resolve(false);
       }
     };
-
-    function cleanup() {
-      process.stdin.removeListener('data', onKey);
-      if (process.stdin.setRawMode) {
-        process.stdin.setRawMode(wasRaw);
-      }
-    }
 
     process.stdin.on('data', onKey);
   });
@@ -1021,6 +1144,23 @@ export async function startTerminalChat() {
       isGenerating = true;
       activeAbortController = new AbortController();
 
+      const wasStdinRaw = process.stdin.isRaw;
+      if (process.stdin.isTTY) {
+        process.stdin.setRawMode(true);
+        process.stdin.resume();
+      }
+
+      const onAbortKey = (buf) => {
+        const key = buf.toString();
+        if (key === '\u001b' || key === '\x1b' || key === '\u0003') {
+          if (activeAbortController) {
+            activeAbortController.abort();
+          }
+        }
+      };
+
+      process.stdin.on('data', onAbortKey);
+
       const userMessage = inputResult.text;
       history.push({ role: 'user', content: userMessage });
 
@@ -1053,7 +1193,7 @@ export async function startTerminalChat() {
       let hasReceivedFirstChunk = false;
       const spinnerTimer = setInterval(() => {
         if (!hasReceivedFirstChunk) {
-          process.stdout.write(`\r\x1b[K\x1b[38;5;39m${spinnerFrames[spinnerIdx]}\x1b[0m \x1b[38;5;244mWorking...\x1b[0m`);
+          process.stdout.write(`\r\x1b[K\x1b[38;5;39m${spinnerFrames[spinnerIdx]}\x1b[0m \x1b[38;5;244mWorking...\x1b[0m \x1b[38;5;240m(Tekan \x1b[38;5;248mEsc\x1b[38;5;240m untuk batal)\x1b[0m`);
           spinnerIdx = (spinnerIdx + 1) % spinnerFrames.length;
         }
       }, 80);
@@ -1230,12 +1370,19 @@ export async function startTerminalChat() {
         return out;
       }
 
+      const streamer = new SmoothTextStreamer({
+        signal: activeAbortController.signal,
+        minDelay: 4,
+        maxDelay: 12,
+      });
+
       function flushWordBuffer(force = false) {
         if (!streamWordBuffer) return;
 
         if (force) {
           const formatted = formatStreamChunk(streamWordBuffer);
-          process.stdout.write(inThinking ? `${c.gray}${formatted}${c.reset}` : formatted);
+          const toWrite = inThinking ? `${c.gray}${formatted}${c.reset}` : formatted;
+          streamer.write(toWrite);
           streamWordBuffer = '';
           return;
         }
@@ -1250,7 +1397,8 @@ export async function startTerminalChat() {
           const toEmit = streamWordBuffer.slice(0, lastBoundary + 1);
           streamWordBuffer = streamWordBuffer.slice(lastBoundary + 1);
           const formatted = formatStreamChunk(toEmit);
-          process.stdout.write(inThinking ? `${c.gray}${formatted}${c.reset}` : formatted);
+          const toWrite = inThinking ? `${c.gray}${formatted}${c.reset}` : formatted;
+          streamer.write(toWrite);
         }
       }
 
@@ -1274,25 +1422,33 @@ export async function startTerminalChat() {
                 }
 
                 if (event.type === 'agent_thought') {
+                  await streamer.flush();
                   const th = event.thought || event.content || '';
                   if (th && th.trim()) {
                     process.stdout.write(`\n${c.dim}${c.cyan}✦ Penalaran Agent:${c.reset}\n${c.gray}${th.trim()}${c.reset}\n`);
                   }
                 } else if (event.type === 'tool_call_start') {
+                  await streamer.flush();
                   const toolName = event.tool || event.toolCall?.name || 'tool';
                   const toolArgs = event.args || event.toolCall?.args || {};
                   const target = toolArgs.path || toolArgs.command || toolArgs.query || (Object.keys(toolArgs).length ? JSON.stringify(toolArgs) : '');
                   process.stdout.write(`\n\x1b[38;5;75m⚡ Tool: \x1b[1m\x1b[37m${toolName}\x1b[0m ${target ? `\x1b[90m(${target})\x1b[0m` : ''}\n`);
                 } else if (event.type === 'tool_call_waiting_approval') {
+                  await streamer.flush();
                   const callId = event.toolCallId || event.toolCall?.id;
                   const toolName = event.tool || event.toolCall?.name || 'tool';
                   const toolArgs = event.args || event.toolCall?.args || {};
                   const reason = event.reason || event.toolCall?.risk?.reason || 'Operasi sensitif';
-                  const approved = await promptCliApproval({ id: callId, name: toolName, args: toolArgs, risk: { reason } });
+                  const approved = await promptCliApproval(
+                    { id: callId, name: toolName, args: toolArgs, risk: { reason } },
+                    activeAbortController?.signal
+                  );
                   resolveApproval(callId, approved);
                 } else if (event.type === 'tool_call_running') {
+                  await streamer.flush();
                   process.stdout.write(`  \x1b[90m↳ Menjalankan...\x1b[0m\n`);
                 } else if (event.type === 'tool_call_complete') {
+                  await streamer.flush();
                   const isErr = event.isError || Boolean(event.result?.error);
                   if (isErr) {
                     process.stdout.write(`  \x1b[31m✗ Error: ${event.result?.error || 'Eksekusi gagal'}\x1b[0m\n`);
@@ -1301,8 +1457,10 @@ export async function startTerminalChat() {
                     process.stdout.write(`  \x1b[32m✓ Selesai\x1b[0m ${preview ? `\x1b[90m— ${preview}\x1b[0m` : ''}\n`);
                   }
                 } else if (event.type === 'tool_call_rejected') {
+                  await streamer.flush();
                   process.stdout.write(`  \x1b[31m✗ Ditolak pengguna\x1b[0m\n`);
                 } else if (event.type === 'tool_call_error') {
+                  await streamer.flush();
                   process.stdout.write(`  \x1b[31m✗ Error: ${event.error || event.message}\x1b[0m\n`);
                 } else if (event.type === 'agent_chunk') {
                   assistantReply += event.chunk;
@@ -1315,6 +1473,7 @@ export async function startTerminalChat() {
                     streamWordBuffer += finalTxt;
                   }
                   flushWordBuffer(true);
+                  await streamer.flush();
                   if (headingLevel > 0 || isBold || isInlineCode) {
                     process.stdout.write('\x1b[0m');
                     headingLevel = 0;
@@ -1337,15 +1496,25 @@ export async function startTerminalChat() {
           history.push({ role: 'assistant', content: assistantReply });
           process.stdout.write('\n\n');
         } catch (err) {
-          if (err.name === 'AbortError') {
-            process.stdout.write(`\n${c.yellow}⚠️  Respon dihentikan oleh pengguna.${c.reset}\n\n`);
+          if (!hasReceivedFirstChunk) {
+            hasReceivedFirstChunk = true;
+            clearInterval(spinnerTimer);
+            process.stdout.write('\r\x1b[K');
+          }
+          if (err.name === 'AbortError' || /dihentikan oleh pengguna/i.test(err?.message) || activeAbortController?.signal?.aborted) {
+            process.stdout.write(`\n${c.yellow}⚠️  Respon dihentikan oleh pengguna (Esc).${c.reset}\n\n`);
           } else if (/api\s*key/i.test(err.message)) {
             process.stdout.write(`\n${c.yellow}⚠️  ${err.message}${c.reset}\n${c.gray}Ketik ${c.cyan}/login <api_key_anda>${c.gray} untuk memasukkan API Key Orion.${c.reset}\n\n`);
           } else {
             process.stdout.write(`\n${c.red}❌ Terjadi kesalahan: ${err.message}${c.reset}\n\n`);
           }
         } finally {
+          streamer.stop();
           clearInterval(spinnerTimer);
+          process.stdin.removeListener('data', onAbortKey);
+          if (process.stdin.isTTY) {
+            process.stdin.setRawMode(wasStdinRaw);
+          }
           isGenerating = false;
           activeAbortController = null;
         }
@@ -1390,7 +1559,7 @@ export async function startTerminalChat() {
                   flushWordBuffer();
                 }
               },
-              onDone: () => {
+              onDone: async () => {
                 if (!hasReceivedFirstChunk) {
                   hasReceivedFirstChunk = true;
                   clearInterval(spinnerTimer);
@@ -1398,6 +1567,7 @@ export async function startTerminalChat() {
                 }
                 // Flush any remaining characters in streamWordBuffer
                 flushWordBuffer(true);
+                await streamer.flush();
 
                 if (pendingSurrogate) {
                   process.stdout.write(pendingSurrogate);
@@ -1436,15 +1606,25 @@ export async function startTerminalChat() {
           history.push({ role: 'assistant', content: assistantReply });
           process.stdout.write('\n\n');
         } catch (err) {
-          if (err.name === 'AbortError') {
-            process.stdout.write(`\n${c.yellow}⚠️  Respon dihentikan oleh pengguna.${c.reset}\n\n`);
+          if (!hasReceivedFirstChunk) {
+            hasReceivedFirstChunk = true;
+            clearInterval(spinnerTimer);
+            process.stdout.write('\r\x1b[K');
+          }
+          if (err.name === 'AbortError' || /dihentikan oleh pengguna/i.test(err?.message) || activeAbortController?.signal?.aborted) {
+            process.stdout.write(`\n${c.yellow}⚠️  Respon dihentikan oleh pengguna (Esc).${c.reset}\n\n`);
           } else if (/api\s*key/i.test(err.message)) {
             process.stdout.write(`\n${c.yellow}⚠️  ${err.message}${c.reset}\n${c.gray}Ketik ${c.cyan}/login <api_key_anda>${c.gray} untuk memasukkan API Key Orion.${c.reset}\n\n`);
           } else {
             process.stdout.write(`\n${c.red}❌ Terjadi kesalahan: ${err.message}${c.reset}\n\n`);
           }
         } finally {
+          streamer.stop();
           clearInterval(spinnerTimer);
+          process.stdin.removeListener('data', onAbortKey);
+          if (process.stdin.isTTY) {
+            process.stdin.setRawMode(wasStdinRaw);
+          }
           isGenerating = false;
           activeAbortController = null;
         }
