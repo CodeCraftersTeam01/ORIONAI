@@ -186,6 +186,28 @@ export const TOOL_DEFINITIONS = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'ask_user',
+      description: 'Menampilkan pertanyaan atau konfirmasi kepada pengguna dengan daftar pilihan opsi dinamis yang dapat dipilih menggunakan tombol panah keyboard (Up/Down) dan Enter.',
+      parameters: {
+        type: 'object',
+        properties: {
+          question: {
+            type: 'string',
+            description: 'Pertanyaan atau hal yang ingin dikonfirmasi/ditanyakan ke pengguna',
+          },
+          options: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Daftar opsi pilihan dinamis yang dapat dipilih oleh pengguna (misal: ["Ya, lanjutkan penghapusan file", "Tidak, batalkan"], atau opsi pemilihan desain/framework/tindakan)',
+          },
+        },
+        required: ['question', 'options'],
+      },
+    },
+  },
 ];
 
 function normalizeToolArgs(toolName, rawArgs = {}) {
@@ -511,6 +533,19 @@ export async function executeTool(name, rawArgs = {}) {
             }
           );
         });
+      }
+
+      case 'delete_file': {
+        const fullPath = safetyGuard.resolveSafePath(args.path);
+        if (!fs.existsSync(fullPath)) {
+          return { error: `File tidak ditemukan: ${args.path}` };
+        }
+        fs.unlinkSync(fullPath);
+        return {
+          success: true,
+          path: args.path,
+          message: `File '${args.path}' berhasil dihapus.`,
+        };
       }
 
       default:

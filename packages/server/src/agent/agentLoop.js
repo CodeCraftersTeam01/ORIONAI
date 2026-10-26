@@ -16,7 +16,7 @@ export function resolveApproval(toolCallId, approved) {
 }
 
 const AGENT_SYSTEM_PROMPT = `Anda adalah Orion Agent, agen rekayasa kode otonom (arsitektur Pi Agent).
-Anda membantu pengguna dengan membaca berkas, menjalankan perintah terminal, mengedit kode, dan menulis file secara tuntas.
+Anda membantu pengguna dengan membaca berkas, menjalankan perintah terminal, mengedit kode, menulis file, dan menghapus berkas secara tuntas.
 
 Daftar tools yang tersedia:
 - write: Menulis atau membuat file baru dengan isi lengkap. Parameter: path (string), content (string).
@@ -26,12 +26,16 @@ Daftar tools yang tersedia:
 - ls: Melihat isi direktori. Parameter: path (string opsional).
 - find: Mencari file dengan pola/glob. Parameter: pattern (string), path (string opsional).
 - grep: Mencari teks di dalam file. Parameter: pattern (string), path (string opsional).
+- delete_file: Menghapus file dalam direktori proyek. Parameter: path (string). Sistem keselamatan (Safety Guard) akan otomatis meminta persetujuan pengguna dengan menu interaktif.
+- ask_user: Menampilkan pertanyaan pilihan opsi interaktif kepada pengguna yang dapat dipilih menggunakan tombol panah keyboard (Up/Down) dan Enter. Parameter: question (string), options (array of strings).
 
 Pedoman Eksekusi:
-1. EKSEKUSI LANGSUNG: Bila pengguna meminta membuat file (misal HTML, CSS, JS dashboard), panggil tool 'write' langsung dengan path dan content kode yang utuh, indah, dan fungsional.
+1. EKSEKUSI LANGSUNG & PERSETUJUAN:
+   - Bila pengguna meminta menghapus file (contoh: "tolong hapus test.txt"), panggil tool 'delete_file' langsung dengan path file tersebut. JANGAN hanya menanyakan konfirmasi lewat teks biasa, karena tool 'delete_file' otomatis memicu dialog persetujuan interaktif dari sistem keselamatan.
+   - Bila Anda memerlukan pilihan atau konfirmasi dari pengguna (seperti memilih teknologi, opsi arsitektur, atau preferensi desain), WAJIB panggil tool 'ask_user' dengan parameter 'question' dan 'options' (array pilihan dinamis).
 2. JANGAN MEMOTONG KODE: Selalu tulis kode lengkap tanpa placeholder seperti "// implementasi nanti".
-3. MULTI-TOOL DALAM 1 GILIRAN (CEPAT & SEKALIGUS): Bila pengguna meminta membuat beberapa file sekaligus (seperti file HTML, CSS, dan JavaScript untuk dashboard), PANGGIL SELURUH TOOL 'write' SEKALIGUS DALAM 1 GILIRAN (multi-tool call). Panggil tool write untuk HTML, write untuk CSS, dan write untuk JS bersamaan dalam 1 langkah agar seluruh file langsung dibuat seketika tanpa harus menunggu bergilir satu per satu.
-4. TANGGAP & RINGKAS: Berikan penjelasan yang singkat dan to-the-point dalam bahasa Indonesia.`;
+3. MULTI-TOOL DALAM 1 GILIRAN (CEPAT & SEKALIGUS): Bila pengguna meminta membuat beberapa file sekaligus (seperti file HTML, CSS, dan JavaScript untuk dashboard), PANGGIL SELURUH TOOL 'write' SEKALIGUS DALAM 1 GILIRAN (multi-tool call) agar seluruh file langsung dibuat seketika tanpa harus menunggu bergilir satu per satu.
+4. TANGGAP & TATA BAHASA: Berikan penjelasan yang singkat dan to-the-point dalam bahasa Indonesia. Selalu gunakan spasi yang jelas dan tepat antar setiap kata (contoh: "akan menghapus", "tidak dapat", "yakin ingin", "YA untuk melanjutkan").`;
 
 /**
  * Fallback parser to extract tool calls from models that format tools in XML/Markdown
@@ -481,6 +485,69 @@ export async function runAgentLoop({
           });
           continue;
         }
+      }
+
+      // Special interactive tool: ask_user (dynamic choice menu)
+      if (fnName === 'ask_user') {
+        const question = fnArgs.question || 'Pilih salah satu opsi:';
+        let options = Array.isArray(fnArgs.options) ? fnArgs.options : [];
+        if (options.length === 0) {
+          options = ['Ya, lanjutkan', 'Tidak, batalkan'];
+        }
+
+        await onEvent({
+          type: 'tool_call_waiting_choice',
+          toolCallId: callId,
+          tool: fnName,
+          question,
+          options,
+          step,
+        });
+
+        const chosen = await new Promise((resolve) => {
+          const onAbort = () => {
+            if (pendingApprovals.has(callId)) {
+              pendingApprovals.delete(callId);
+              resolve({ selected: 'Dibatalkan', index: -1, cancelled: true });
+            }
+          };
+
+          if (signal?.aborted) return resolve({ selected: 'Dibatalkan', index: -1, cancelled: true });
+          signal?.addEventListener('abort', onAbort, { once: true });
+
+          pendingApprovals.set(callId, {
+            resolve: (val) => {
+              signal?.removeEventListener('abort', onAbort);
+              resolve(val);
+            },
+            toolCall: { name: fnName, args: fnArgs },
+          });
+        });
+
+        const selectedText = typeof chosen === 'string' ? chosen : (chosen?.selected || chosen?.label || options[0]);
+        const result = {
+          success: !chosen?.cancelled,
+          selected: selectedText,
+          index: chosen?.index ?? 0,
+        };
+
+        await onEvent({
+          type: 'tool_call_complete',
+          toolCallId: callId,
+          tool: fnName,
+          args: fnArgs,
+          result: { message: `Pengguna memilih: "${selectedText}"` },
+          step,
+        });
+
+        messages.push({
+          role: 'tool',
+          tool_call_id: callId,
+          name: fnName,
+          content: JSON.stringify(result),
+        });
+
+        continue;
       }
 
       const toolStartTime = Date.now();

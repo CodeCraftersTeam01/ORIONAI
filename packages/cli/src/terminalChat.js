@@ -186,17 +186,74 @@ class AgentSpinner {
   }
 }
 
-function promptCliApproval(toolCall, signal = null) {
-  return new Promise((resolve) => {
-    process.stdout.write(`\n\x1b[33m╭── ⚠️  PERSETUJUAN DIPERLUKAN (SAFETY GUARD) ──────────────────────────\x1b[0m\n`);
-    process.stdout.write(`\x1b[33m│\x1b[0m Tool: \x1b[1m\x1b[36m${toolCall?.name || toolCall?.tool || 'tool'}\x1b[0m\n`);
-    const toolArgs = toolCall?.args || {};
-    const target = toolArgs.path || toolArgs.command || toolArgs.query || (Object.keys(toolArgs).length ? JSON.stringify(toolArgs) : '');
-    process.stdout.write(`\x1b[33m│\x1b[0m Target: \x1b[37m${target}\x1b[0m\n`);
-    process.stdout.write(`\x1b[33m│\x1b[0m Alasan: \x1b[90m${toolCall?.risk?.reason || toolCall?.reason || 'Operasi sensitif / berdampak sistem'}\x1b[0m\n`);
-    process.stdout.write(`\x1b[33m╰────────────────────────────────────────────────────────────────────────\x1b[0m\n`);
-    process.stdout.write(`\x1b[1m\x1b[33mSetujui tindakan ini? [y/N] \x1b[38;5;240m(Esc untuk batal)\x1b[0m\x1b[1m\x1b[33m: \x1b[0m`);
+/**
+ * Dedicated interactive selector helper for dynamic keyboard navigation (Up/Down + Enter)
+ * Supports custom dynamic options (strings or objects), numbers (1-9), Esc to cancel.
+ */
+export async function selectOptionInteractive({ title = 'Pilih salah satu opsi:', items = [], initialIndex = 0, signal = null }) {
+  if (!items || items.length === 0) return null;
+  if (!process.stdin.isTTY) {
+    const first = items[0];
+    return typeof first === 'string' ? { label: first, value: first, index: 0 } : { ...first, index: 0 };
+  }
 
+  const PAGE_SIZE = 6;
+  let selectedIndex = Math.max(0, Math.min(initialIndex, items.length - 1));
+  let scrollOffset = Math.floor(selectedIndex / PAGE_SIZE) * PAGE_SIZE;
+  let linesRendered = 0;
+
+  function render(isFirst = false) {
+    if (!isFirst && linesRendered > 0) {
+      process.stdout.write(`\x1b[${linesRendered}A\r\x1b[J`);
+    }
+
+    if (selectedIndex < scrollOffset) {
+      scrollOffset = selectedIndex;
+    } else if (selectedIndex >= scrollOffset + PAGE_SIZE) {
+      scrollOffset = selectedIndex - PAGE_SIZE + 1;
+    }
+
+    const visibleItems = items.slice(scrollOffset, scrollOffset + PAGE_SIZE);
+    let out = `\x1b[1m\x1b[36m${title}\x1b[0m \x1b[90m(Gunakan ↑ / ↓ lalu Enter, Esc untuk batal)\x1b[0m\x1b[K\n`;
+    let count = 1;
+
+    visibleItems.forEach((rawItem, idx) => {
+      const realIdx = scrollOffset + idx;
+      const isSelected = realIdx === selectedIndex;
+      const item = typeof rawItem === 'string' ? { label: rawItem, detail: '', value: rawItem } : rawItem;
+      const cursor = isSelected ? `\x1b[36m→ \x1b[0m` : `  `;
+      const numLabel = `[${realIdx + 1}] `;
+      const label = isSelected
+        ? `\x1b[1m\x1b[37m${numLabel}${item.label}\x1b[0m`
+        : `\x1b[37m${numLabel}${item.label}\x1b[0m`;
+      const detail = item.detail
+        ? (isSelected ? ` \x1b[36m— ${item.detail}\x1b[0m` : ` \x1b[90m— ${item.detail}\x1b[0m`)
+        : '';
+      const badge = item.badge ? ` \x1b[32m[${item.badge}]\x1b[0m` : '';
+
+      out += `${cursor}${label}${detail}${badge}\x1b[K\n`;
+      count++;
+    });
+
+    if (items.length > PAGE_SIZE) {
+      out += `  \x1b[90m(${selectedIndex + 1}/${items.length})\x1b[0m\x1b[K\n`;
+      count++;
+    }
+
+    linesRendered = count;
+    process.stdout.write(out);
+  }
+
+  function clear() {
+    if (linesRendered > 0) {
+      process.stdout.write(`\x1b[${linesRendered}A\r\x1b[J`);
+      linesRendered = 0;
+    }
+  }
+
+  render(true);
+
+  return new Promise((resolve) => {
     const wasRaw = process.stdin.isRaw;
     if (process.stdin.setRawMode) {
       process.stdin.setRawMode(true);
@@ -205,16 +262,17 @@ function promptCliApproval(toolCall, signal = null) {
 
     const cleanup = () => {
       signal?.removeEventListener('abort', onAbort);
-      process.stdin.removeListener('data', onKey);
+      process.stdin.removeListener('data', onData);
       if (process.stdin.setRawMode) {
         process.stdin.setRawMode(wasRaw);
       }
+      process.stdin.pause();
     };
 
     const onAbort = () => {
+      clear();
       cleanup();
-      process.stdout.write(`\x1b[31mTolak (Dibatalkan via Esc)\x1b[0m\n\n`);
-      resolve(false);
+      resolve(null);
     };
 
     if (signal?.aborted) {
@@ -223,30 +281,86 @@ function promptCliApproval(toolCall, signal = null) {
     }
     signal?.addEventListener('abort', onAbort, { once: true });
 
-    const onKey = (buf) => {
-      const char = buf.toString();
-      if (char === '\u0003') {
+    const onData = (buffer) => {
+      const key = buffer.toString();
+
+      if (key === '\u0003') {
+        clear();
         cleanup();
         process.exit(0);
       }
-      if (char === '\u001b' || char === '\x1b') {
+
+      if (key === '\r' || key === '\n') {
+        clear();
         cleanup();
-        process.stdout.write(`\x1b[31mTolak (Dibatalkan via Esc)\x1b[0m\n\n`);
-        resolve(false);
+        const raw = items[selectedIndex];
+        resolve(typeof raw === 'string' ? { label: raw, value: raw, index: selectedIndex } : { ...raw, index: selectedIndex });
         return;
       }
-      cleanup();
-      if (char.toLowerCase() === 'y') {
-        process.stdout.write(`\x1b[32mSetuju (Ya)\x1b[0m\n\n`);
-        resolve(true);
-      } else {
-        process.stdout.write(`\x1b[31mTolak (Tidak)\x1b[0m\n\n`);
-        resolve(false);
+
+      if (key === '\u001b' || key === '\x1b') {
+        clear();
+        cleanup();
+        resolve(null);
+        return;
+      }
+
+      if (key === '\u001b[A' || key === '\u001bOA' || key === 'k') {
+        selectedIndex = (selectedIndex - 1 + items.length) % items.length;
+        if (selectedIndex === items.length - 1) {
+          scrollOffset = Math.max(0, items.length - PAGE_SIZE);
+        }
+        render(false);
+        return;
+      }
+
+      if (key === '\u001b[B' || key === '\u001bOB' || key === 'j') {
+        selectedIndex = (selectedIndex + 1) % items.length;
+        if (selectedIndex === 0) {
+          scrollOffset = 0;
+        }
+        render(false);
+        return;
+      }
+
+      if (/^[1-9]$/.test(key)) {
+        const num = parseInt(key, 10) - 1;
+        if (num >= 0 && num < items.length) {
+          selectedIndex = num;
+          render(false);
+        }
       }
     };
 
-    process.stdin.on('data', onKey);
+    process.stdin.on('data', onData);
   });
+}
+
+export async function promptCliApproval(toolCall, signal = null) {
+  process.stdout.write(`\n\x1b[33m╭── ⚠️  PERSETUJUAN DIPERLUKAN (SAFETY GUARD) ──────────────────────────\x1b[0m\n`);
+  process.stdout.write(`\x1b[33m│\x1b[0m Tool: \x1b[1m\x1b[36m${toolCall?.name || toolCall?.tool || 'tool'}\x1b[0m\n`);
+  const toolArgs = toolCall?.args || {};
+  const target = toolArgs.path || toolArgs.command || toolArgs.query || (Object.keys(toolArgs).length ? JSON.stringify(toolArgs) : '');
+  process.stdout.write(`\x1b[33m│\x1b[0m Target: \x1b[37m${target}\x1b[0m\n`);
+  process.stdout.write(`\x1b[33m│\x1b[0m Alasan: \x1b[90m${toolCall?.risk?.reason || toolCall?.reason || 'Operasi sensitif / berdampak sistem'}\x1b[0m\n`);
+  process.stdout.write(`\x1b[33m╰────────────────────────────────────────────────────────────────────────\x1b[0m\n`);
+
+  const choice = await selectOptionInteractive({
+    title: 'Pilih tindakan Anda:',
+    items: [
+      { label: '✓ Setuju (Lanjutkan)', detail: 'Izinkan operasi ini dieksekusi', value: true },
+      { label: '✗ Tolak (Batalkan)', detail: 'Batalkan operasi ini', value: false },
+    ],
+    signal,
+  });
+
+  if (choice && choice.value === true) {
+    process.stdout.write(`  \x1b[32m✓ Anda memilih: Setuju (Lanjutkan)\x1b[0m\n\n`);
+    return true;
+  } else {
+    process.stdout.write(`  \x1b[31m✗ Anda memilih: Tolak (Batalkan)\x1b[0m\n\n`);
+    return false;
+  }
 }
 
 function runShellCommand(cmdStr, isSilent = false) {
@@ -1051,6 +1165,8 @@ export async function startTerminalChat() {
     process.stdout.write('\n'.repeat(padLines));
   }
 
+  let queuedUserMessage = '';
+
   while (true) {
     // Re-check synced config on each prompt turn to capture any new providers / keys / models added via web
     const freshConfig = loadSyncedConfig();
@@ -1067,14 +1183,20 @@ export async function startTerminalChat() {
       isAgentMode = freshConfig.agentMode;
     }
 
-    const inputResult = await readInteractivePrompt({
-      syncedConfig: freshConfig,
-      currentModel,
-      reasoningTier,
-      userApiKey,
-      history,
-      isAgentMode,
-    });
+    let inputResult;
+    if (queuedUserMessage) {
+      inputResult = { type: 'chat', text: queuedUserMessage };
+      queuedUserMessage = '';
+    } else {
+      inputResult = await readInteractivePrompt({
+        syncedConfig: freshConfig,
+        currentModel,
+        reasoningTier,
+        userApiKey,
+        history,
+        isAgentMode,
+      });
+    }
 
     if (inputResult.type === 'empty') {
       continue;
@@ -1261,29 +1383,80 @@ export async function startTerminalChat() {
       let streamWordBuffer = '';
       let lastChar = '';
 
-      const SQUISHED_WORDS = [
-        [/Senangbertemudengan/gi, 'Senang bertemu dengan'],
-        [/bertemudengan/gi, 'bertemu dengan'],
-        [/Senangbertemu/gi, 'Senang bertemu'],
-        [/siapmembantu/gi, 'siap membantu'],
-        [/asistenkecerdasan/gi, 'asisten kecerdasan'],
-        [/buatanyang/gi, 'buatan yang'],
-        [/kecerdasanbuatan/gi, 'kecerdasan buatan'],
-        [/yangsiap/gi, 'yang siap'],
-        [/adalahasisten/gi, 'adalah asisten'],
-        [/terimakasih/gi, 'terima kasih'],
-      ];
-
       function cleanIndonesianSpelling(text) {
-        let res = text;
-        // 1. Lowercase directly followed by Uppercase (e.g. "membantuAnda" -> "membantu Anda", "SayaORION" -> "Saya ORION")
-        res = res.replace(/([a-z\u00C0-\u017F])([A-Z])/g, '$1 $2');
-        // 2. Punctuation followed by letter/number (e.g. "ini?Jangan" -> "ini? Jangan")
-        res = res.replace(/([?!.,;:])([a-zA-Z0-9\u00C0-\u017F])/g, '$1 $2');
+        if (!text || typeof text !== 'string') return text || '';
 
-        for (const [re, repl] of SQUISHED_WORDS) {
+        // 1. Protect inline code `...`
+        const codePlaceholders = [];
+        let res = text.replace(/`([^`\n]+)`/g, (match) => {
+          codePlaceholders.push(match);
+          return `__INLINE_CODE_${codePlaceholders.length - 1}__`;
+        });
+
+        // 2. Fix glued uppercase words / abbreviations (e.g. "YAuntukmelanjutkan" -> "YA untuk melanjutkan")
+        res = res.replace(/([A-Z]{2,})(untuk|dan|atau|jika|bila|pada|ke|di)/g, '$1 $2');
+        res = res.replace(/\b(untuk|dan|atau|jika|bila)(melanjutkan|membatalkan|menghapus|membuat|mengedit|menulis|membaca|menjalankan)\b/gi, '$1 $2');
+
+        // 3. Lowercase directly followed by Uppercase (e.g. "membantuAnda" -> "membantu Anda")
+        res = res.replace(/([a-z\u00C0-\u017F])([A-Z])/g, '$1 $2');
+
+        // 4. Glued Indonesian modal/verbs/adverbs (e.g. "akanmenghapus", "yakiningin", "tidakdapat")
+        const modalPattern = '\\b(siap|dapat|bisa|akan|telah|sudah|sedang|ingin|harus|perlu|boleh|tidak|belum|bukan|jangan|yakin)';
+        const verbPattern = '(membantu|menjawab|menjelaskan|menganalisis|merancang|menyelesaikan|memberikan|menemukan|melakukan|bekerja|bantu|pakai|gunakan|bicara|dengar|membuat|menghapus|hapus|buat|baca|edit|tulis|buka|tutup|jalankan|ingin|dapat|bisa|ada|kembali)';
+        res = res.replace(new RegExp(modalPattern + verbPattern + '\\b', 'gi'), '$1 $2');
+
+        // 5. Glued relative pronoun "yang", prepositions "dengan", "untuk", etc.
+        res = res.replace(/\byang([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'yang $1');
+        res = res.replace(/\bdengan([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'dengan $1');
+        res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,})dengan\b/gi, '$1 dengan');
+        res = res.replace(/\buntuk([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'untuk $1');
+        res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,})untuk\b/gi, '$1 untuk');
+        res = res.replace(/\badalah([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'adalah $1');
+        res = res.replace(/\bsecara([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'secara $1');
+
+        // 6. Prepositions squished with nouns
+        const prepPattern = '\\b(dari|ke|pada|untuk|dengan|tanpa|dalam|hingga|sampai|serta|sebagai)';
+        const nounPattern = '(penjelasan|perencanaan|kebutuhan|analisis|pemecahan|pertanyaan|pembuatan|pengembangan|pembelajaran|penggunaan|pelaksanaan|pekerjaan|bantuan|solusi|informasi|tugas|layanan|proses|topik|aspek|bidang|cara|aturan|keselamatan|anda|kamu|kita|saya|mereka|siapa|apa|semua|file|folder|berkas)';
+        res = res.replace(new RegExp(prepPattern + nounPattern + '\\b', 'gi'), '$1 $2');
+
+        // 7. Punctuation spacing - DO NOT break file extensions!
+        res = res.replace(/([?!,;])([a-zA-Z0-9\u00C0-\u017F])/g, '$1 $2');
+        res = res.replace(/(?<!https?|ftp|file|ws|wss):([a-zA-Z0-9\u00C0-\u017F])/g, ': $1');
+        // Only space dot after word if followed by CAPITAL letter (new sentence)
+        res = res.replace(/(?<=[a-zA-Z0-9\u00C0-\u017F])\.([A-Z\u00C0-\u017F])/g, '. $1');
+
+        // Heal accidentally spaced file extensions (e.g. "test. txt" -> "test.txt")
+        res = res.replace(/\.\s+(txt|html|css|js|jsx|ts|tsx|json|md|py|sh|png|jpg|jpeg|gif|svg|zip|tar|gz)\b/gi, '.$1');
+
+        // 8. Specific known squished phrases
+        const SQUISHED_MAP = [
+          [/\bSenangbertemudengan\b/gi, 'Senang bertemu dengan'],
+          [/\bbertemudengan\b/gi, 'bertemu dengan'],
+          [/\bSenangbertemu\b/gi, 'Senang bertemu'],
+          [/\bsiapmembantu\b/gi, 'siap membantu'],
+          [/\bterimakasih\b/gi, 'terima kasih'],
+          [/\basistenkecerdasan\b/gi, 'asisten kecerdasan'],
+          [/\bkecerdasanbuatan\b/gi, 'kecerdasan buatan'],
+          [/\bbuatanyang\b/gi, 'buatan yang'],
+          [/\byangsiap\b/gi, 'yang siap'],
+          [/\badalahasisten\b/gi, 'adalah asisten'],
+          [/\bBerderti\b/gi, 'Berdasarkan'],
+          [/\bBerdasaraturan\b/gi, 'Berdasarkan aturan'],
+          [/\baturankeselamatan\b/gi, 'aturan keselamatan'],
+          [/\btidakdapat\b/gi, 'tidak dapat'],
+          [/\byakiningin\b/gi, 'yakin ingin'],
+          [/\bakanmenghapus\b/gi, 'akan menghapus'],
+        ];
+
+        for (const [re, repl] of SQUISHED_MAP) {
           res = res.replace(re, repl);
         }
+
+        // Restore placeholders
+        codePlaceholders.forEach((code, idx) => {
+          res = res.replace(`__INLINE_CODE_${idx}__`, code);
+        });
+
         return res;
       }
 
@@ -1527,6 +1700,37 @@ export async function startTerminalChat() {
                     activeAbortController?.signal
                   );
                   resolveApproval(callId, approved);
+                } else if (event.type === 'tool_call_waiting_choice') {
+                  spinner.stop();
+                  await streamer.flush();
+                  const callId = event.toolCallId || event.toolCall?.id;
+                  const question = event.question || 'Silakan pilih salah satu opsi:';
+                  const options = event.options || [];
+
+                  const items = options.map((opt, idx) => ({
+                    label: typeof opt === 'string' ? opt : opt.label || `Opsi ${idx + 1}`,
+                    detail: typeof opt === 'object' ? opt.detail : '',
+                    value: typeof opt === 'string' ? opt : opt.value || opt.label,
+                    index: idx,
+                  }));
+
+                  process.stdout.write(`\n\x1b[38;5;75m╭── 💬 PERTANYAAN DARI AI ──────────────────────────────────────\x1b[0m\n`);
+                  process.stdout.write(`\x1b[38;5;75m│\x1b[0m \x1b[1m\x1b[37m${question}\x1b[0m\n`);
+                  process.stdout.write(`\x1b[38;5;75m╰───────────────────────────────────────────────────────────────\x1b[0m\n`);
+
+                  const choice = await selectOptionInteractive({
+                    title: 'Gunakan ↑ / ↓ lalu Enter untuk memilih:',
+                    items,
+                    signal: activeAbortController?.signal,
+                  });
+
+                  if (choice) {
+                    process.stdout.write(`  \x1b[32m✓ Opsi terpilih:\x1b[0m \x1b[1m\x1b[37m${choice.label}\x1b[0m\n\n`);
+                    resolveApproval(callId, { selected: choice.label, index: choice.index });
+                  } else {
+                    process.stdout.write(`  \x1b[31m✗ Batal\x1b[0m\n\n`);
+                    resolveApproval(callId, { selected: 'Dibatalkan', index: -1, cancelled: true });
+                  }
                 } else if (event.type === 'tool_call_running') {
                   spinner.start(`Menjalankan ${event.tool || 'tool'}...`);
                 } else if (event.type === 'tool_call_complete') {
@@ -1641,6 +1845,20 @@ export async function startTerminalChat() {
 
           history.push({ role: 'assistant', content: assistantReply });
           process.stdout.write('\n\n');
+
+          // If AI asked a confirmation or selection question in text, offer interactive keyboard selector
+          const detectedChoice = detectChoiceOptions(assistantReply);
+          if (detectedChoice && !activeAbortController?.signal?.aborted) {
+            const picked = await selectOptionInteractive({
+              title: detectedChoice.title,
+              items: detectedChoice.items,
+              signal: activeAbortController?.signal,
+            });
+            if (picked) {
+              process.stdout.write(`  \x1b[32m✓ Opsi terpilih:\x1b[0m \x1b[1m\x1b[37m${picked.label}\x1b[0m\n\n`);
+              queuedUserMessage = picked.value;
+            }
+          }
         } catch (err) {
           spinner.stop();
           if (err.name === 'AbortError' || /dihentikan oleh pengguna/i.test(err?.message) || activeAbortController?.signal?.aborted) {
@@ -1982,120 +2200,52 @@ export async function startTerminalChat() {
 }
 
 /**
- * Dedicated interactive selector helper for standalone selection menus (Model / Tier)
- * Features windowed pagination (PAGE_SIZE = 6) with (x/y) indicator to prevent screen overflow.
+ * Detects if the AI output contains a confirmation or choice question.
  */
-async function selectModelInteractive({ title, items, initialIndex = 0 }) {
-  if (!items || items.length === 0) return null;
-  if (!process.stdin.isTTY) return items[0];
+export function detectChoiceOptions(text) {
+  if (!text || typeof text !== 'string') return null;
 
-  const PAGE_SIZE = 6;
-  let selectedIndex = Math.max(0, Math.min(initialIndex, items.length - 1));
-  let scrollOffset = Math.floor(selectedIndex / PAGE_SIZE) * PAGE_SIZE;
-  let linesRendered = 0;
+  // Case 1: Yes/No confirmation prompt (e.g. "Silakan jawab YA ... atau TIDAK ...", "Apakah Anda yakin ...?")
+  const hasYesNoPrompt = (
+    /(?:jawab|ketik|pilih)\s+[`"']?(?:ya|yes)[`"']?\s+.*?(?:atau|atow)\s+[`"']?(?:tidak|no)[`"']?/i.test(text) ||
+    /apakah anda yakin.*?(?:menghapus|melanjutkan|mengubah|eksekusi).*?\?/i.test(text) ||
+    /(?:konfirmasi|persetujuan).*?(?:ya|tidak)/i.test(text)
+  );
 
-  function render(isFirst = false) {
-    if (!isFirst && linesRendered > 0) {
-      process.stdout.write(`\x1b[${linesRendered}A\r\x1b[J`);
-    }
-
-    if (selectedIndex < scrollOffset) {
-      scrollOffset = selectedIndex;
-    } else if (selectedIndex >= scrollOffset + PAGE_SIZE) {
-      scrollOffset = selectedIndex - PAGE_SIZE + 1;
-    }
-
-    const visibleItems = items.slice(scrollOffset, scrollOffset + PAGE_SIZE);
-    let out = `\x1b[1m\x1b[36m${title}\x1b[0m \x1b[90m(Gunakan ↑ / ↓ lalu Enter, Esc untuk batal)\x1b[0m\x1b[K\n`;
-    let count = 1;
-
-    visibleItems.forEach((item, idx) => {
-      const realIdx = scrollOffset + idx;
-      const isSelected = realIdx === selectedIndex;
-      const cursor = isSelected ? `\x1b[36m→ \x1b[0m` : `  `;
-      const label = isSelected
-        ? `\x1b[1m\x1b[37m${item.label.padEnd(22)}\x1b[0m`
-        : `\x1b[37m${item.label.padEnd(22)}\x1b[0m`;
-      const detail = item.detail
-        ? (isSelected ? `\x1b[36m${item.detail}\x1b[0m` : `\x1b[90m${item.detail}\x1b[0m`)
-        : '';
-      const badge = item.badge ? ` \x1b[32m[${item.badge}]\x1b[0m` : '';
-
-      out += `${cursor}${label} ${detail}${badge}\x1b[K\n`;
-      count++;
-    });
-
-    if (items.length > PAGE_SIZE) {
-      out += `  \x1b[90m(${selectedIndex + 1}/${items.length})\x1b[0m\x1b[K\n`;
-      count++;
-    }
-
-    linesRendered = count;
-    process.stdout.write(out);
-  }
-
-  function clear() {
-    if (linesRendered > 0) {
-      process.stdout.write(`\x1b[${linesRendered}A\r\x1b[J`);
-      linesRendered = 0;
-    }
-  }
-
-  render(true);
-
-  return new Promise((resolve) => {
-    const wasRaw = process.stdin.isRaw;
-    process.stdin.setRawMode(true);
-    process.stdin.resume();
-
-    const onData = (buffer) => {
-      const key = buffer.toString();
-
-      if (key === '\u0003') {
-        clear();
-        cleanup();
-        process.exit(0);
-      }
-
-      if (key === '\r' || key === '\n') {
-        clear();
-        cleanup();
-        resolve(items[selectedIndex]);
-        return;
-      }
-
-      if (key === '\u001b') {
-        clear();
-        cleanup();
-        resolve(null);
-        return;
-      }
-
-      if (key === '\u001b[A' || key === '\u001bOA' || key === 'k') {
-        selectedIndex = (selectedIndex - 1 + items.length) % items.length;
-        if (selectedIndex === items.length - 1) {
-          scrollOffset = Math.max(0, items.length - PAGE_SIZE);
-        }
-        render(false);
-        return;
-      }
-
-      if (key === '\u001b[B' || key === '\u001bOB' || key === 'j') {
-        selectedIndex = (selectedIndex + 1) % items.length;
-        if (selectedIndex === 0) {
-          scrollOffset = 0;
-        }
-        render(false);
-        return;
-      }
+  if (hasYesNoPrompt) {
+    return {
+      title: 'Pilih konfirmasi tindakan Anda:',
+      items: [
+        { label: '✓ Ya, lanjutkan', detail: 'Setujui dan lanjutkan tindakan ini', value: 'Ya, lanjutkan' },
+        { label: '✗ Tidak, batalkan', detail: 'Batalkan dan jangan lanjutkan', value: 'Tidak, batalkan' },
+      ],
     };
+  }
 
-    function cleanup() {
-      process.stdin.removeListener('data', onData);
-      process.stdin.setRawMode(wasRaw);
-      process.stdin.pause();
+  // Case 2: Numbered options in text (e.g. "1. Option A\n2. Option B\n3. Option C")
+  const numberedLines = [];
+  const lines = text.split('\n');
+  for (const line of lines) {
+    const match = line.trim().match(/^(\d+)[\.\)]\s+(.+)$/);
+    if (match) {
+      numberedLines.push({ num: match[1], text: match[2].trim() });
     }
+  }
 
-    process.stdin.on('data', onData);
-  });
+  if (numberedLines.length >= 2 && numberedLines.length <= 6) {
+    if (/pilih|silakan|mana yang|opsi|rekomendasi/i.test(text)) {
+      return {
+        title: 'Pilih salah satu opsi:',
+        items: numberedLines.map((n) => ({
+          label: n.text.slice(0, 35),
+          detail: n.text.length > 35 ? n.text.slice(35, 75) : '',
+          value: n.text,
+        })),
+      };
+    }
+  }
+
+  return null;
 }
+
+export const selectModelInteractive = selectOptionInteractive;
