@@ -1921,6 +1921,7 @@ export default function App() {
               }
             }}
             onOpenProviders={() => setCurrentView('providers')}
+            showToast={showToast}
           />
         ) : (
           <>

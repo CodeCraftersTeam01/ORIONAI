@@ -18,6 +18,21 @@ import {
 } from 'lucide-react';
 import { REASONING_TIERS, isReasoningSupported } from '../utils/modelConfig';
 
+export const AUXILIARY_TASKS_LIST = [
+  { id: 'vision', name: 'VISION', desc: 'Visual recognition & diagram inspection' },
+  { id: 'compression', name: 'COMPRESSION', desc: 'Context compaction & token pruning' },
+  { id: 'skills_hub', name: 'SKILLS HUB', desc: 'Skill discovery & runtime execution' },
+  { id: 'approval', name: 'APPROVAL', desc: 'Safety guardrail & approval workflow' },
+  { id: 'mcp', name: 'MCP', desc: 'Model Context Protocol connector' },
+  { id: 'title_gen', name: 'TITLE GEN', desc: 'Session title auto-generation' },
+  { id: 'review', name: 'REVIEW', desc: 'Diff check & solution verification' },
+  { id: 'voice_chat', name: 'VOICE CHAT', desc: 'Speech recognition & audio synthesis' },
+  { id: 'triage_specifier', name: 'TRIAGE SPECIFIER', desc: 'Intent classification & prompt routing' },
+  { id: 'kanban_decomposer', name: 'KANBAN DECOMPOSER', desc: 'Task breakdown & subtask planning' },
+  { id: 'profile_describer', name: 'PROFILE DESCRIBER', desc: 'Persona & user memory profiling' },
+  { id: 'curator', name: 'CURATOR', desc: 'Knowledge items & artifact indexing' },
+];
+
 function getModelIcon(model) {
   const id = (model.modelId || model.id || '').toLowerCase();
   const name = (model.name || '').toLowerCase();
@@ -39,6 +54,7 @@ export default function ModelsView({
   sessions = [],
   onNavigate,
   onOpenProviders,
+  showToast,
 }) {
   const [timeFilter, setTimeFilter] = useState('30D');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -47,15 +63,15 @@ export default function ModelsView({
   const [isMoaModalOpen, setIsMoaModalOpen] = useState(false);
   const [isChangeModelModalOpen, setIsChangeModelModalOpen] = useState(false);
 
-  // Auxiliary tasks configuration state
-  const [auxTasks, setAuxTasks] = useState([
-    { id: 'compression', name: 'Context Compression', desc: 'Auto prune token window', enabled: true },
-    { id: 'vision', name: 'Vision & Multimodal', desc: 'Process images & diagram queries', enabled: true },
-    { id: 'web_extract', name: 'Web Extractor', desc: 'Realtime page scraping & parsing', enabled: true },
-    { id: 'tts_speech', name: 'TTS & Voice Synthesis', desc: 'Multilingual Edge & HF speech', enabled: true },
-    { id: 'code_runner', name: 'Code Sandbox & Exec', desc: 'Terminal command inspection', enabled: true },
-    { id: 'memory', name: 'Long-term Memory', desc: 'Adaptive session recall', enabled: true },
-  ]);
+  // Auxiliary tasks assignment state (persisted to localStorage)
+  const [auxAssignments, setAuxAssignments] = useState(() => {
+    try {
+      const saved = localStorage.getItem('orion_aux_assignments');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -242,6 +258,50 @@ export default function ModelsView({
     onSelectModel?.(modelId);
     setActiveDropdownModelId(null);
     setIsChangeModelModalOpen(false);
+    const target = modelsList.find((m) => m.id === modelId);
+    if (showToast) {
+      showToast(`Model utama diatur ke: ${target?.displayName || target?.name || modelId}`);
+    }
+  };
+
+  const handleAssignAllAux = (modelId) => {
+    const updated = {};
+    AUXILIARY_TASKS_LIST.forEach((t) => {
+      updated[t.id] = modelId;
+    });
+    setAuxAssignments(updated);
+    try {
+      localStorage.setItem('orion_aux_assignments', JSON.stringify(updated));
+    } catch {}
+    setActiveDropdownModelId(null);
+    const target = modelsList.find((m) => m.id === modelId);
+    if (showToast) {
+      showToast(`${target?.displayName || target?.name || 'Model'} ditugaskan ke semua 12 Auxiliary Tasks`);
+    }
+  };
+
+  const handleAssignAuxTask = (taskId, modelId) => {
+    const isAlreadyAssigned = auxAssignments[taskId] === modelId;
+    const updated = { ...auxAssignments };
+    if (isAlreadyAssigned) {
+      delete updated[taskId];
+    } else {
+      updated[taskId] = modelId;
+    }
+    setAuxAssignments(updated);
+    try {
+      localStorage.setItem('orion_aux_assignments', JSON.stringify(updated));
+    } catch {}
+    setActiveDropdownModelId(null);
+    const task = AUXILIARY_TASKS_LIST.find((t) => t.id === taskId);
+    const target = modelsList.find((m) => m.id === modelId);
+    if (showToast) {
+      showToast(
+        isAlreadyAssigned
+          ? `Tugas ${task?.name || taskId} dikembalikan ke Auto`
+          : `${target?.displayName || target?.name || 'Model'} ditugaskan untuk ${task?.name || taskId}`
+      );
+    }
   };
 
   const handleStartSession = (modelId) => {
@@ -335,9 +395,15 @@ export default function ModelsView({
                     <span>AUXILIARY TASKS</span>
                   </div>
                   <div className="setting-row-spec">
-                    <span className="spec-count">{auxTasks.filter((t) => t.enabled).length * 2} tasks</span>
+                    <span className="spec-count">12 tasks</span>
                     <span className="spec-dot">·</span>
-                    <span className="spec-mode">all auto</span>
+                    <span className="spec-mode">
+                      {Object.keys(auxAssignments).length === 12
+                        ? 'all configured'
+                        : Object.keys(auxAssignments).length > 0
+                        ? `${Object.keys(auxAssignments).length} custom, ${12 - Object.keys(auxAssignments).length} auto`
+                        : 'all auto'}
+                    </span>
                   </div>
                 </div>
 
@@ -425,6 +491,10 @@ export default function ModelsView({
 
             const sessionCount = modelStats[model.id] || 0;
             const isDropdownOpen = activeDropdownModelId === model.id;
+            const isAllAuxAssigned = AUXILIARY_TASKS_LIST.every((t) => auxAssignments[t.id] === model.id);
+            const assignedCountForModel = AUXILIARY_TASKS_LIST.filter(
+              (t) => auxAssignments[t.id] === model.id
+            ).length;
 
             return (
               <div
@@ -450,9 +520,8 @@ export default function ModelsView({
                 {/* Card Middle: Badge Tag & Dropdown Action */}
                 <div className="tile-mid-row">
                   <div className="tile-badge-wrap">
-                    <span className="tile-badge-pill">{model.badge}</span>
-                    <span className="tile-endpoint-text" title={model.endpoint}>
-                      {model.endpoint}
+                    <span className="tile-badge-pill" title={model.endpoint}>
+                      {model.isOfficial ? 'Official' : model.badge || 'custom'}
                     </span>
                   </div>
 
@@ -464,51 +533,63 @@ export default function ModelsView({
                         e.stopPropagation();
                         setActiveDropdownModelId(isDropdownOpen ? null : model.id);
                       }}
+                      aria-haspopup="true"
+                      aria-expanded={isDropdownOpen}
                     >
                       <span>USE AS</span>
-                      <ChevronDown size={12} className="use-as-chevron" />
+                      <ChevronDown size={11} className="use-as-chevron" />
                     </button>
 
                     {isDropdownOpen && (
-                      <div className="models-popover-menu">
+                      <div className="models-popover-menu" onClick={(e) => e.stopPropagation()}>
+                        {/* 1. Main Model Option */}
                         <button
                           type="button"
-                          className="models-popover-item"
+                          className={`models-popover-item ${isCurrentMain ? 'is-selected' : ''}`}
                           onClick={() => handleSetMainModel(model.id)}
                         >
                           <div className="popover-item-left">
-                            <Star size={13} className="popover-icon" />
-                            <span>Set as Main Model</span>
+                            <span className="popover-star-glyph">☆</span>
+                            <span className="popover-item-title">MAIN MODEL</span>
                           </div>
-                          {isCurrentMain && <Check size={14} className="popover-check" />}
+                          {isCurrentMain && <Check size={13} className="popover-check" />}
                         </button>
 
+                        {/* 2. Section Header: AUXILIARY TASK */}
+                        <div className="popover-section-label">
+                          AUXILIARY TASK
+                        </div>
+
+                        {/* 3. All Auxiliary Tasks Option */}
                         <button
                           type="button"
-                          className="models-popover-item"
-                          onClick={() => handleStartSession(model.id)}
+                          className={`models-popover-item ${isAllAuxAssigned ? 'is-selected' : ''}`}
+                          onClick={() => handleAssignAllAux(model.id)}
                         >
                           <div className="popover-item-left">
-                            <ArrowRight size={13} className="popover-icon" />
-                            <span>Start New Chat</span>
+                            <span className="popover-item-title">ALL AUXILIARY TASKS</span>
                           </div>
+                          {isAllAuxAssigned && <Check size={13} className="popover-check" />}
                         </button>
 
-                        {onOpenProviders && (
-                          <button
-                            type="button"
-                            className="models-popover-item"
-                            onClick={() => {
-                              setActiveDropdownModelId(null);
-                              onOpenProviders();
-                            }}
-                          >
-                            <div className="popover-item-left">
-                              <Settings size={13} className="popover-icon" />
-                              <span>Manage Provider</span>
-                            </div>
-                          </button>
-                        )}
+                        {/* 4. 12 Auxiliary Tasks */}
+                        {AUXILIARY_TASKS_LIST.map((task) => {
+                          const isAssigned = auxAssignments[task.id] === model.id;
+                          return (
+                            <button
+                              key={task.id}
+                              type="button"
+                              className={`models-popover-item ${isAssigned ? 'is-selected' : ''}`}
+                              onClick={() => handleAssignAuxTask(task.id, model.id)}
+                              title={task.desc}
+                            >
+                              <div className="popover-item-left">
+                                <span className="popover-item-title">{task.name}</span>
+                              </div>
+                              {isAssigned && <Check size={13} className="popover-check" />}
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -516,16 +597,20 @@ export default function ModelsView({
 
                 {/* Card Bottom: Relative Timestamp */}
                 <div className="tile-bottom-row">
-                  <span className="tile-time-ago">
-                    {isCurrentMain ? (
-                      <span className="active-dot-pill">
-                        <span className="pulse-dot" />
-                        <span>Active now</span>
-                      </span>
-                    ) : (
-                      `${model.baseDaysAgo}d ago`
-                    )}
-                  </span>
+                  {isCurrentMain ? (
+                    <span className="active-dot-pill">
+                      <span className="pulse-dot" />
+                      <span>Active now</span>
+                    </span>
+                  ) : assignedCountForModel > 0 ? (
+                    <span className="tile-time-ago" title={`${assignedCountForModel} auxiliary task assigned`}>
+                      {`${assignedCountForModel} task${assignedCountForModel > 1 ? 's' : ''}`}
+                    </span>
+                  ) : (
+                    <span className="tile-time-ago">
+                      {`${model.baseDaysAgo}d ago`}
+                    </span>
+                  )}
                 </div>
               </div>
             );
@@ -621,34 +706,47 @@ export default function ModelsView({
 
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
               <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                Tugas latar belakang untuk ekstraksi web, kompresi konteks, dan sintesis suara bekerja otomatis.
+                12 tugas latar belakang untuk penglihatan gambar, peringkasan memori, suara, dan koordinasi agen.
               </p>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {auxTasks.map((task) => (
-                  <div key={task.id} className="provider-saved-row" style={{ padding: '0.75rem 1rem' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                        {task.name}
-                      </span>
-                      <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-                        {task.desc}
-                      </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '55vh', overflowY: 'auto' }}>
+                {AUXILIARY_TASKS_LIST.map((task) => {
+                  const assignedModelId = auxAssignments[task.id];
+                  const assignedModel = modelsList.find((m) => m.id === assignedModelId);
+                  return (
+                    <div key={task.id} className="provider-saved-row" style={{ padding: '0.75rem 1rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ fontSize: '0.82rem', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+                            {task.name}
+                          </span>
+                          {assignedModel ? (
+                            <span className="tile-badge-pill" style={{ color: '#3b82f6', borderColor: 'rgba(59, 130, 246, 0.4)' }}>
+                              {assignedModel.displayName || assignedModel.name}
+                            </span>
+                          ) : (
+                            <span className="tile-badge-pill">Auto</span>
+                          )}
+                        </div>
+                        <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                          {task.desc}
+                        </span>
+                      </div>
+
+                      {assignedModel && (
+                        <button
+                          type="button"
+                          className="provider-action-btn"
+                          style={{ fontSize: '0.72rem', padding: '0.2rem 0.5rem' }}
+                          onClick={() => handleAssignAuxTask(task.id, assignedModelId)}
+                          title="Reset ke Auto"
+                        >
+                          Reset
+                        </button>
+                      )}
                     </div>
-                    <label className="hermes-toggle-switch">
-                      <input
-                        type="checkbox"
-                        checked={task.enabled}
-                        onChange={() => {
-                          setAuxTasks((prev) =>
-                            prev.map((t) => (t.id === task.id ? { ...t, enabled: !t.enabled } : t))
-                          );
-                        }}
-                      />
-                      <span className="toggle-slider" />
-                    </label>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

@@ -7130,16 +7130,17 @@ svg[aria-roledescription="error"] {
   font-family: var(--font-mono);
   font-size: 0.68rem;
   font-weight: 600;
-  padding: 2px 7px;
+  padding: 3px 8px;
   border-radius: 5px;
-  background: rgba(0, 0, 0, 0.04);
+  background: rgba(0, 0, 0, 0.03);
   border: 1px solid var(--border-subtle);
   color: var(--text-secondary);
   flex-shrink: 0;
+  letter-spacing: 0.02em;
 }
 
 [data-theme='dark'] .tile-badge-pill {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .tile-endpoint-text {
@@ -7150,23 +7151,30 @@ svg[aria-roledescription="error"] {
   white-space: nowrap;
 }
 
-/* Action Dropdown */
+/* Action Dropdown Button (USE AS) */
+.model-action-menu-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
 .tile-btn-use-as {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  background: var(--bg-surface);
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: 7px;
+  border-radius: 6px;
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.04em;
-  padding: 0.32rem 0.72rem;
+  padding: 0.32rem 0.65rem;
   cursor: pointer;
   transition: all 0.15s ease;
   flex-shrink: 0;
+  white-space: nowrap !important;
+  min-width: max-content;
 }
 
 .tile-btn-use-as:hover,
@@ -7177,27 +7185,63 @@ svg[aria-roledescription="error"] {
 
 .use-as-chevron {
   color: var(--text-muted);
+  transition: transform 0.15s ease;
 }
 
+.tile-btn-use-as.is-active .use-as-chevron {
+  transform: rotate(180deg);
+}
+
+/* Popover Dropdown Menu */
 .models-popover-menu {
   position: absolute;
-  top: calc(100% + 5px);
+  top: calc(100% + 6px);
   right: 0;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: 10px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16), 0 2px 6px rgba(0, 0, 0, 0.06);
   padding: 0.35rem;
-  z-index: 60;
-  min-width: 185px;
+  z-index: 100;
+  min-width: 200px;
+  max-width: 240px;
+  max-height: 290px;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.15rem;
   animation: messageEntry 0.15s ease-out;
 }
 
 [data-theme='dark'] .models-popover-menu {
   background: var(--bg-surface);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.models-popover-menu::-webkit-scrollbar {
+  width: 4px;
+}
+.models-popover-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+.models-popover-menu::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 4px;
+}
+.models-popover-menu::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
+
+.popover-section-label {
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  padding: 0.45rem 0.65rem 0.2rem;
+  text-transform: uppercase;
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 0.25rem;
 }
 
 .models-popover-item {
@@ -7207,19 +7251,43 @@ svg[aria-roledescription="error"] {
   width: 100%;
   background: transparent;
   border: none;
-  border-radius: 6px;
-  padding: 0.5rem 0.75rem;
+  border-radius: 5px;
+  padding: 0.42rem 0.65rem;
   color: var(--text-primary);
-  font-family: var(--font-sans);
-  font-size: 0.78rem;
-  font-weight: 500;
+  font-family: var(--font-mono);
+  font-size: 0.73rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
   cursor: pointer;
-  transition: background 0.12s ease;
+  transition: all 0.12s ease;
   text-align: left;
+  white-space: nowrap;
 }
 
 .models-popover-item:hover {
   background: var(--bg-surface-hover);
+  color: var(--text-primary);
+}
+
+.models-popover-item.is-selected {
+  background: rgba(59, 130, 246, 0.08);
+  color: #3b82f6;
+}
+
+[data-theme='dark'] .models-popover-item.is-selected {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+}
+
+.popover-star-glyph {
+  font-size: 0.84rem;
+  color: #f59e0b;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.popover-item-title {
+  text-transform: uppercase;
 }
 
 .popover-item-left {
@@ -7234,6 +7302,7 @@ svg[aria-roledescription="error"] {
 
 .popover-check {
   color: #3b82f6;
+  flex-shrink: 0;
 }
 
 /* Tile Bottom Row */
