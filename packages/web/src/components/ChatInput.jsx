@@ -11,7 +11,6 @@ import {
   Loader2,
   Square,
   AudioWaveform,
-  Bot,
 } from 'lucide-react';
 import { processFile, formatFileSize } from '../utils/fileHelpers';
 import ModelSelector from './ModelSelector';
@@ -242,22 +241,6 @@ export default function ChatInput({
             disabled={isGenerating}
           />
 
-          {/* Agent Mode Toggle Button */}
-          {setIsAgentMode && (
-            <button
-              type="button"
-              className={`btn-agent-mode-toggle ${isAgentMode ? 'active' : ''}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsAgentMode(!isAgentMode);
-              }}
-              title={isAgentMode ? 'Mode Agent Aktif: Memiliki akses ke filesystem, tool coding & terminal' : 'Mode Asisten: Percakapan teks standar tanpa tool eksekusi'}
-              aria-label="Toggle Agent Mode"
-            >
-              <Bot size={13} />
-              <span>Agent</span>
-            </button>
-          )}
 
           {/* Model Selector Pill (Right, before Send Button) */}
           {setSelectedModel && (
