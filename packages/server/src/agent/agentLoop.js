@@ -160,6 +160,7 @@ export async function runAgentLoop({
       onEvent({
         type: 'agent_thought',
         content,
+        thought: content,
         step,
       });
     }
@@ -195,11 +196,20 @@ export async function runAgentLoop({
       // Check safety guard
       const evaluation = safetyGuard.evaluateToolCall(fnName, fnArgs);
 
+      const toolCallObj = {
+        id: callId,
+        name: fnName,
+        tool: fnName,
+        args: fnArgs,
+        risk: { reason: evaluation.reason, level: evaluation.riskLevel },
+      };
+
       onEvent({
         type: 'tool_call_start',
         toolCallId: callId,
         tool: fnName,
         args: fnArgs,
+        toolCall: toolCallObj,
         needsApproval: evaluation.needsApproval,
         riskLevel: evaluation.riskLevel,
         reason: evaluation.reason,
@@ -212,6 +222,7 @@ export async function runAgentLoop({
           toolCallId: callId,
           tool: fnName,
           args: fnArgs,
+          toolCall: toolCallObj,
           reason: evaluation.reason,
         });
 
@@ -236,6 +247,8 @@ export async function runAgentLoop({
             type: 'tool_call_rejected',
             toolCallId: callId,
             tool: fnName,
+            args: fnArgs,
+            toolCall: toolCallObj,
             result: rejectedResult,
           });
 
@@ -255,6 +268,7 @@ export async function runAgentLoop({
         toolCallId: callId,
         tool: fnName,
         args: fnArgs,
+        toolCall: toolCallObj,
       });
 
       const result = await executeTool(fnName, fnArgs);
@@ -263,6 +277,8 @@ export async function runAgentLoop({
         type: 'tool_call_complete',
         toolCallId: callId,
         tool: fnName,
+        args: fnArgs,
+        toolCall: toolCallObj,
         result,
         isError: Boolean(result?.error),
       });
@@ -279,6 +295,8 @@ export async function runAgentLoop({
   onEvent({
     type: 'agent_done',
     finalAnswer: finalAnswer || 'Tugas telah selesai diproses.',
+    content: finalAnswer || 'Tugas telah selesai diproses.',
+    chunk: finalAnswer || 'Tugas telah selesai diproses.',
     stepsCount: step,
   });
 

@@ -26,10 +26,11 @@ function copyToClipboard(text) {
 function promptCliApproval(toolCall) {
   return new Promise((resolve) => {
     process.stdout.write(`\n\x1b[33m╭── ⚠️  PERSETUJUAN DIPERLUKAN (SAFETY GUARD) ──────────────────────────\x1b[0m\n`);
-    process.stdout.write(`\x1b[33m│\x1b[0m Tool: \x1b[1m\x1b[36m${toolCall.name}\x1b[0m\n`);
-    const target = toolCall.args?.path || toolCall.args?.command || JSON.stringify(toolCall.args || {});
+    process.stdout.write(`\x1b[33m│\x1b[0m Tool: \x1b[1m\x1b[36m${toolCall?.name || toolCall?.tool || 'tool'}\x1b[0m\n`);
+    const toolArgs = toolCall?.args || {};
+    const target = toolArgs.path || toolArgs.command || toolArgs.query || (Object.keys(toolArgs).length ? JSON.stringify(toolArgs) : '');
     process.stdout.write(`\x1b[33m│\x1b[0m Target: \x1b[37m${target}\x1b[0m\n`);
-    process.stdout.write(`\x1b[33m│\x1b[0m Alasan: \x1b[90m${toolCall.risk?.reason || 'Operasi sensitif / berdampak sistem'}\x1b[0m\n`);
+    process.stdout.write(`\x1b[33m│\x1b[0m Alasan: \x1b[90m${toolCall?.risk?.reason || toolCall?.reason || 'Operasi sensitif / berdampak sistem'}\x1b[0m\n`);
     process.stdout.write(`\x1b[33m╰────────────────────────────────────────────────────────────────────────\x1b[0m\n`);
     process.stdout.write(`\x1b[1m\x1b[33mSetujui tindakan ini? [y/N]: \x1b[0m`);
 
@@ -1273,26 +1274,46 @@ export async function startTerminalChat() {
                 }
 
                 if (event.type === 'agent_thought') {
-                  process.stdout.write(`\n${c.dim}${c.cyan}✦ Penalaran Agent:${c.reset}\n${c.gray}${event.thought}${c.reset}\n`);
+                  const th = event.thought || event.content || '';
+                  if (th && th.trim()) {
+                    process.stdout.write(`\n${c.dim}${c.cyan}✦ Penalaran Agent:${c.reset}\n${c.gray}${th.trim()}${c.reset}\n`);
+                  }
                 } else if (event.type === 'tool_call_start') {
-                  const target = event.toolCall.args?.path || event.toolCall.args?.command || '';
-                  process.stdout.write(`\n\x1b[38;5;75m⚡ Tool: \x1b[1m\x1b[37m${event.toolCall.name}\x1b[0m ${target ? `\x1b[90m(${target})\x1b[0m` : ''}\n`);
+                  const toolName = event.tool || event.toolCall?.name || 'tool';
+                  const toolArgs = event.args || event.toolCall?.args || {};
+                  const target = toolArgs.path || toolArgs.command || toolArgs.query || (Object.keys(toolArgs).length ? JSON.stringify(toolArgs) : '');
+                  process.stdout.write(`\n\x1b[38;5;75m⚡ Tool: \x1b[1m\x1b[37m${toolName}\x1b[0m ${target ? `\x1b[90m(${target})\x1b[0m` : ''}\n`);
                 } else if (event.type === 'tool_call_waiting_approval') {
-                  const approved = await promptCliApproval(event.toolCall);
-                  resolveApproval(event.toolCall.id, approved);
+                  const callId = event.toolCallId || event.toolCall?.id;
+                  const toolName = event.tool || event.toolCall?.name || 'tool';
+                  const toolArgs = event.args || event.toolCall?.args || {};
+                  const reason = event.reason || event.toolCall?.risk?.reason || 'Operasi sensitif';
+                  const approved = await promptCliApproval({ id: callId, name: toolName, args: toolArgs, risk: { reason } });
+                  resolveApproval(callId, approved);
                 } else if (event.type === 'tool_call_running') {
                   process.stdout.write(`  \x1b[90m↳ Menjalankan...\x1b[0m\n`);
                 } else if (event.type === 'tool_call_complete') {
-                  process.stdout.write(`  \x1b[32m✓ Selesai\x1b[0m\n`);
+                  const isErr = event.isError || Boolean(event.result?.error);
+                  if (isErr) {
+                    process.stdout.write(`  \x1b[31m✗ Error: ${event.result?.error || 'Eksekusi gagal'}\x1b[0m\n`);
+                  } else {
+                    const preview = event.result?.message || (event.result?.path ? `File: ${event.result.path}` : '');
+                    process.stdout.write(`  \x1b[32m✓ Selesai\x1b[0m ${preview ? `\x1b[90m— ${preview}\x1b[0m` : ''}\n`);
+                  }
                 } else if (event.type === 'tool_call_rejected') {
                   process.stdout.write(`  \x1b[31m✗ Ditolak pengguna\x1b[0m\n`);
                 } else if (event.type === 'tool_call_error') {
-                  process.stdout.write(`  \x1b[31m✗ Error: ${event.error}\x1b[0m\n`);
+                  process.stdout.write(`  \x1b[31m✗ Error: ${event.error || event.message}\x1b[0m\n`);
                 } else if (event.type === 'agent_chunk') {
                   assistantReply += event.chunk;
                   streamWordBuffer += event.chunk;
                   flushWordBuffer();
                 } else if (event.type === 'agent_done') {
+                  const finalTxt = event.finalAnswer || event.content || '';
+                  if (finalTxt && !assistantReply.includes(finalTxt)) {
+                    assistantReply += finalTxt;
+                    streamWordBuffer += finalTxt;
+                  }
                   flushWordBuffer(true);
                   if (headingLevel > 0 || isBold || isInlineCode) {
                     process.stdout.write('\x1b[0m');
