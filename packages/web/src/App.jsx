@@ -484,6 +484,9 @@ export default function App() {
   const voiceTranscriptAccumulatorRef = useRef('');
   const voiceIsProcessingQueryRef = useRef(false);
   const voiceAbortControllerRef = useRef(null);
+  const voiceTtsAudioRef = useRef(null);
+  const voiceTtsBlobUrlRef = useRef(null);
+  const voiceTtsAnimIntervalRef = useRef(null);
 
   const isVoiceCallingRef = useRef(false);
   isVoiceCallingRef.current = isVoiceCalling;
@@ -582,7 +585,20 @@ export default function App() {
       voiceSilenceTimerRef.current = null;
     }
 
-    // 1. Temporarily mute user mic so background noise doesn't interfere while agent thinks & speaks
+    // 1. Stop any currently playing TTS audio before starting a new turn
+    if (voiceTtsAnimIntervalRef.current) {
+      clearInterval(voiceTtsAnimIntervalRef.current);
+      voiceTtsAnimIntervalRef.current = null;
+    }
+    if (voiceTtsAudioRef.current) {
+      try {
+        voiceTtsAudioRef.current.pause();
+        voiceTtsAudioRef.current.currentTime = 0;
+      } catch {}
+      voiceTtsAudioRef.current = null;
+    }
+
+    // 2. Temporarily mute user mic so background noise doesn't interfere while agent thinks & speaks
     if (voiceMediaStreamRef.current) {
       voiceMediaStreamRef.current.getAudioTracks().forEach((t) => { t.enabled = false; });
     }
@@ -591,7 +607,7 @@ export default function App() {
     }
     setVoiceAudioLevel(0);
 
-    // 2. Set Agent Status to Thinking (keep prior response visible until next answer starts)
+    // 3. Set Agent Status to Thinking (keep prior response visible until next answer is ready)
     setVoiceAgentStatus('thinking');
     setVoiceUserTranscript(queryText);
 
@@ -630,9 +646,7 @@ export default function App() {
         throw new Error('Gagal menghubungi AI');
       }
 
-      // Hold agent status as 'thinking' so the animated thinking cue is clearly visible until first token
-      let hasStartedSpeaking = false;
-
+      // Collect complete LLM response while agent remains in "thinking" state
       const reader = res.body.getReader();
       const decoder = new TextDecoder('utf-8');
       let buffer = '';
@@ -657,21 +671,6 @@ export default function App() {
             const token = parsed.chunk || parsed.token || parsed.delta || parsed.content || '';
             if (token) {
               accumulatedReply += token;
-              // Clean out think tags, markdown, and fix glued spacing
-              const rawClean = accumulatedReply
-                .replace(/<think>[\s\S]*?<\/think>/gi, '')
-                .replace(/<think>[\s\S]*$/gi, '')
-                .replace(/[*#_`~]/g, '');
-              const cleanText = cleanIndonesianText(rawClean);
-              if (cleanText) {
-                if (!hasStartedSpeaking) {
-                  hasStartedSpeaking = true;
-                  setVoiceResponseTurn((prev) => prev + 1);
-                  setVoiceAgentStatus('speaking');
-                  setVoiceUserTranscript('');
-                }
-                setVoiceAgentResponse(cleanText);
-              }
             }
           } catch (e) {
             if (e.message && !e.message.includes('JSON') && !e.message.includes('Unexpected')) {
@@ -679,13 +678,6 @@ export default function App() {
             }
           }
         }
-      }
-
-      if (!hasStartedSpeaking) {
-        hasStartedSpeaking = true;
-        setVoiceResponseTurn((prev) => prev + 1);
-        setVoiceAgentStatus('speaking');
-        setVoiceUserTranscript('');
       }
 
       let finalAnswer = cleanIndonesianText(
@@ -714,11 +706,12 @@ export default function App() {
           if (fallbackRes.ok) {
             const json = await fallbackRes.json();
             const fallbackContent = json.data?.content || json.reply || '';
-            finalAnswer = fallbackContent
-              .replace(/<think>[\s\S]*?<\/think>/gi, '')
-              .replace(/<think>[\s\S]*$/gi, '')
-              .replace(/[*#_`~]/g, '')
-              .trim();
+            finalAnswer = cleanIndonesianText(
+              fallbackContent
+                .replace(/<think>[\s\S]*?<\/think>/gi, '')
+                .replace(/<think>[\s\S]*$/gi, '')
+                .replace(/[*#_`~]/g, '')
+            );
           }
         } catch {}
       }
@@ -726,8 +719,6 @@ export default function App() {
       if (!finalAnswer) {
         finalAnswer = 'Halo, saya mendengar Anda. Ada yang bisa saya bantu?';
       }
-
-      setVoiceAgentResponse(finalAnswer);
 
       // Record this exchange in active session messages
       const userMsg = {
@@ -747,23 +738,108 @@ export default function App() {
         prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [...s.messages, userMsg, aiMsg] } : s))
       );
 
-      // 4. Brief natural pause before mic seamlessly re-opens for the next user utterance
-      await new Promise((resolve) => setTimeout(resolve, 400));
+      // 4. Synthesize voice audio (multi-female) while still in thinking state ("menyusun suara")
+      let audioBlob = null;
+      try {
+        const ttsRes = await fetch('/api/tts/speak', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: finalAnswer,
+            voice: 'multi-female',
+          }),
+          signal: controller.signal,
+        });
+        if (ttsRes.ok) {
+          audioBlob = await ttsRes.blob();
+        }
+      } catch (ttsErr) {
+        if (ttsErr.name !== 'AbortError') {
+          console.warn('TTS fetch notice:', ttsErr.message);
+        }
+      }
+
+      if (!isVoiceCallingRef.current) return;
+
+      // 5. Munculkan teks dan audionya ketika sudah selesai!
+      setVoiceResponseTurn((prev) => prev + 1);
+      setVoiceAgentResponse(finalAnswer);
+      setVoiceUserTranscript('');
+      setVoiceAgentStatus('speaking');
+
+      if (audioBlob && audioBlob.size > 0) {
+        if (voiceTtsBlobUrlRef.current) {
+          try { URL.revokeObjectURL(voiceTtsBlobUrlRef.current); } catch {}
+        }
+        const audioUrl = URL.createObjectURL(audioBlob);
+        voiceTtsBlobUrlRef.current = audioUrl;
+
+        const audio = new Audio(audioUrl);
+        voiceTtsAudioRef.current = audio;
+
+        // Animate organic aurora waves while Orion speaks
+        voiceTtsAnimIntervalRef.current = setInterval(() => {
+          if (voiceTtsAudioRef.current && !voiceTtsAudioRef.current.paused) {
+            const simLevel = 0.28 + 0.32 * Math.sin(Date.now() / 150) + 0.16 * Math.cos(Date.now() / 95);
+            setVoiceAudioLevel(Math.max(0.16, Math.min(0.85, simLevel)));
+          }
+        }, 50);
+
+        await new Promise((resolve) => {
+          audio.onended = () => {
+            if (voiceTtsAnimIntervalRef.current) {
+              clearInterval(voiceTtsAnimIntervalRef.current);
+              voiceTtsAnimIntervalRef.current = null;
+            }
+            setVoiceAudioLevel(0);
+            resolve();
+          };
+          audio.onerror = (err) => {
+            console.warn('Audio playback error:', err);
+            if (voiceTtsAnimIntervalRef.current) {
+              clearInterval(voiceTtsAnimIntervalRef.current);
+              voiceTtsAnimIntervalRef.current = null;
+            }
+            setVoiceAudioLevel(0);
+            resolve();
+          };
+          audio.play().catch((playErr) => {
+            console.warn('Audio playback start notice:', playErr);
+            if (voiceTtsAnimIntervalRef.current) {
+              clearInterval(voiceTtsAnimIntervalRef.current);
+              voiceTtsAnimIntervalRef.current = null;
+            }
+            setVoiceAudioLevel(0);
+            resolve();
+          });
+        });
+      } else {
+        // Fallback duration if audio not available
+        await new Promise((resolve) => setTimeout(resolve, Math.min(4500, Math.max(1600, finalAnswer.length * 50))));
+      }
+
+      // Small natural pause before mic turns back on
+      await new Promise((resolve) => setTimeout(resolve, 350));
 
     } catch (err) {
       if (err.name !== 'AbortError') {
+        console.error('Voice processing error:', err);
         setVoiceResponseTurn((prev) => prev + 1);
         setVoiceUserTranscript('');
         setVoiceAgentResponse('Maaf, suara kurang jelas. Bisa tolong diulangi?');
       }
     } finally {
-      // 5. Re-open microphone and resume listening while keeping current response visible
+      if (voiceTtsAnimIntervalRef.current) {
+        clearInterval(voiceTtsAnimIntervalRef.current);
+        voiceTtsAnimIntervalRef.current = null;
+      }
+      // 6. Selesai bicara: mikrofon dibuka kembali untuk pertanyaan berikutnya, teks tetap terlihat
       if (isVoiceCallingRef.current) {
         voiceIsProcessingQueryRef.current = false;
         voiceTranscriptAccumulatorRef.current = '';
         setVoiceUserTranscript('');
-        // Retain voiceAgentResponse so text stays on screen until replaced by next reply
         setVoiceAgentStatus('listening');
+        setVoiceAudioLevel(0);
 
         // Unmute audio tracks if not manually muted by user
         if (voiceMediaStreamRef.current && !isVoiceMutedRef.current) {
@@ -876,6 +952,21 @@ export default function App() {
 
   const handleEndVoiceCalling = () => {
     playCosmicEndCallSound();
+    if (voiceTtsAnimIntervalRef.current) {
+      clearInterval(voiceTtsAnimIntervalRef.current);
+      voiceTtsAnimIntervalRef.current = null;
+    }
+    if (voiceTtsAudioRef.current) {
+      try {
+        voiceTtsAudioRef.current.pause();
+        voiceTtsAudioRef.current.currentTime = 0;
+      } catch {}
+      voiceTtsAudioRef.current = null;
+    }
+    if (voiceTtsBlobUrlRef.current) {
+      try { URL.revokeObjectURL(voiceTtsBlobUrlRef.current); } catch {}
+      voiceTtsBlobUrlRef.current = null;
+    }
     setIsVoiceCalling(false);
     setVoiceAudioLevel(0);
     setIsVoiceMuted(false);

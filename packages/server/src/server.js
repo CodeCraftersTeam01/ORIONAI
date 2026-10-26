@@ -7,6 +7,7 @@ import apiRoutes from './routes/apiRoutes.js';
 import itemRoutes from './routes/itemRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import logRoutes from './routes/logRoutes.js';
+import ttsRoutes from './routes/ttsRoutes.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 import { logger } from './services/loggerService.js';
 
@@ -104,6 +105,7 @@ app.use('/api', apiRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/items', itemRoutes);
 app.use('/api/logs', logRoutes);
+app.use('/api/tts', ttsRoutes);
 
 // SPA routing: any non-API GET request serves web index.html if dist exists
 if (hasDist) {
