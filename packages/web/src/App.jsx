@@ -36,6 +36,7 @@ import {
   MessageSquare,
   Terminal,
   Eye,
+  HelpCircle,
 } from 'lucide-react';
 import AuroraBackground from './components/AuroraBackground';
 import OrionLogo from './components/OrionLogo';
@@ -120,8 +121,42 @@ function formatUserFacingError(errMessage) {
     return '⚠️ **Batas Permintaan Tercapai (Rate Limit)**\n\nTerlalu banyak permintaan dalam waktu singkat atau kuota habis. Silakan tunggu beberapa saat sebelum mencoba lagi.';
   }
 
-  // 4. Default clean error message
+// 4. Default clean error message
   return `⚠️ **Terjadi Kendala Layanan**\n\n${errMessage}`;
+}
+
+function detectConfirmationQuestion(text) {
+  if (!text || typeof text !== 'string') return false;
+  const t = text.trim();
+  const lines = t.split('\n').map((l) => l.trim()).filter(Boolean);
+  const lastLine = lines[lines.length - 1] || '';
+
+  // Match questions asking for user approval, confirmation, permission, or execution choice
+  const pattern = /(?:apakah\s+(?:anda|kamu)|yakin\s+ingin|mengizinkan|mengonfirmasi|meng\u786e\u8ba4|setuju|mau\s+melanjutkan|apakah\s+ingin|bolehkah\s+saya|ingin\s+saya\s+lanjutkan|apakah\s+anda\s+setuju|konfirmasi|apakah\s+sudah\s+sesuai|do\s+you\s+want\s+to\s+proceed|should\s+i\s+proceed)[^.!?\n]*\?\s*$/i;
+
+  return pattern.test(lastLine) || pattern.test(t);
+}
+
+function extractNumberedOptions(text) {
+  if (!text || typeof text !== 'string') return [];
+  const lines = text.split('\n');
+  const options = [];
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('|')) continue;
+    const m = trimmed.match(/^(?:\[?(\d+)\]?|\(?(\d+)\)?)\s*[\.\):-]?\s+(.+)$/);
+    if (m) {
+      const num = parseInt(m[1] || m[2], 10);
+      const optText = m[3].trim().replace(/^\*\*|\*\*$/g, '');
+      if (optText.length > 0 && optText.length < 80) {
+        options.push({ num, text: optText, raw: trimmed });
+      }
+    }
+  }
+  if (options.length >= 2 && options.length <= 5) {
+    return options;
+  }
+  return [];
 }
 
 const DYNAMIC_RECOMMENDATIONS_POOL = [
@@ -2430,7 +2465,69 @@ export default function App() {
                                 />
                               ) : null
                             ) : (
-                              <FormattedMessage content={msg.content} isStreaming={isStreamingThis} />
+                              <>
+                                <FormattedMessage content={msg.content} isStreaming={isStreamingThis} />
+                                {msg.role === 'assistant' &&
+                                  index === messages.length - 1 &&
+                                  !isGenerating &&
+                                  !(Array.isArray(msg.toolCalls) && msg.toolCalls.some((tc) => tc.status === 'waiting_approval' || tc.status === 'waiting_choice')) && (
+                                    (() => {
+                                      const numberedOpts = extractNumberedOptions(msg.content);
+                                      if (numberedOpts.length > 0) {
+                                        return (
+                                          <div className="agent-text-confirmation-box">
+                                            <div className="agent-confirmation-desc">
+                                              <Terminal size={13} />
+                                              <span>Pilihan Respons (Klik opsi atau ketik angka):</span>
+                                            </div>
+                                            <div className="agent-confirmation-actions">
+                                              {numberedOpts.map((opt) => (
+                                                <button
+                                                  key={opt.num}
+                                                  type="button"
+                                                  className="agent-confirmation-btn"
+                                                  onClick={() => handleSendMessage(`${opt.num}. ${opt.text}`)}
+                                                >
+                                                  <span className="agent-opt-badge">[{opt.num}]</span>
+                                                  <span className="agent-confirmation-text">{opt.text}</span>
+                                                </button>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        );
+                                      }
+                                      if (detectConfirmationQuestion(msg.content)) {
+                                        return (
+                                          <div className="agent-text-confirmation-box">
+                                            <div className="agent-confirmation-desc">
+                                              <HelpCircle size={13} />
+                                              <span>Konfirmasi Tindakan Diperlukan:</span>
+                                            </div>
+                                            <div className="agent-confirmation-actions">
+                                              <button
+                                                type="button"
+                                                className="agent-confirmation-btn approve-opt"
+                                                onClick={() => handleSendMessage('Ya, saya setuju dan mengizinkan. Silakan lanjutkan.')}
+                                              >
+                                                <span className="agent-opt-badge approve-badge">[1]</span>
+                                                <span className="agent-confirmation-text">✓ Setuju (Lanjutkan)</span>
+                                              </button>
+                                              <button
+                                                type="button"
+                                                className="agent-confirmation-btn reject-opt"
+                                                onClick={() => handleSendMessage('Tidak, batalkan tindakan ini.')}
+                                              >
+                                                <span className="agent-opt-badge reject-badge">[2]</span>
+                                                <span className="agent-confirmation-text">✗ Tolak (Batalkan)</span>
+                                              </button>
+                                            </div>
+                                          </div>
+                                        );
+                                      }
+                                      return null;
+                                    })()
+                                  )}
+                              </>
                             )}
                           </div>
                         )}

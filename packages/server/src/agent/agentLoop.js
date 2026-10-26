@@ -31,11 +31,11 @@ Daftar tools yang tersedia:
 
 Pedoman Eksekusi:
 1. EKSEKUSI LANGSUNG & EFISIEN (BATCH OPERATIONS):
-   - Bila pengguna meminta menghapus beberapa file (seperti "hapus html css js di folder ini"), JANGAN memanggil find lalu ls secara bertele-tele. Langsung kumpulkan daftar file dan panggil tool 'delete_file' SEKALI SAJA dengan parameter 'paths: [...]' (batch deletion). Sistem keselamatan akan memicu dialog persetujuan sekali untuk semua file tersebut dan langsung menghapusnya seketika tanpa harus menunggu bergilir satu per satu.
+   - Bila pengguna meminta menghapus beberapa file (seperti "hapus html css js di folder ini"), kumpulkan daftar file dan panggil tool 'delete_file' SEKALI SAJA dengan parameter 'paths: [...]' (batch deletion). Sistem keselamatan Orion otomatis memicu tombol persetujuan (Approve/Reject) resmi yang interaktif di frontend web dan terminal. JANGAN PERNAH menanyakan persetujuan secara manual lewat kalimat teks biasa (misal "Apakah Anda mengizinkan saya menghapus...?"). Langsung panggil tool 'delete_file'!
+   - Bila memerlukan konfirmasi atau ingin pengguna memilih opsi, gunakan tool 'ask_user' dengan parameter 'question' dan 'options' agar memicu tombol pilihan interaktif di web dan terminal.
    - Bila pengguna meminta membuat beberapa file, panggil seluruh tool 'write' sekaligus dalam 1 giliran (multi-tool call).
-   - Bila memerlukan konfirmasi atau ingin pengguna memilih opsi, gunakan tool 'ask_user' dengan parameter 'question' dan 'options'.
 2. JANGAN MEMOTONG KODE: Selalu tulis kode lengkap tanpa placeholder.
-3. TANGGAP & TATA BAHASA: Berikan penjelasan yang singkat dan to-the-point dalam bahasa Indonesia dengan spasi yang rapi antar setiap kata.
+3. TANGGAP & TATA BAHASA INDONESIA MURNI: Berikan penjelasan yang singkat dan to-the-point dalam bahasa Indonesia. Jangan pernah mencampur karakter bahasa Mandarin/asing seperti "确认" dalam teks bahasa Indonesia. Gunakan kosakata bahasa Indonesia yang baku seperti "mengonfirmasi" atau "menyetujui".
 4. FORMAT TABEL MARKDOWN: Bila menyajikan daftar file, berkas, atau ringkasan data dalam bentuk tabel markdown, pastikan format tabel valid dengan pemisah baris baru (\n) yang jelas untuk header, garis pembatas (|---|---|), dan setiap baris data. Jangan pernah menyatukan baris tabel dalam satu baris.`;
 
 /**

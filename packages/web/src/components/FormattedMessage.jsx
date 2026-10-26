@@ -279,7 +279,11 @@ export function cleanIndonesianFormatting(text) {
     return `${p1} ${p2}`;
   });
 
-  // 10. Dictionary of known glued Indonesian phrases
+  // 10. Fix foreign/Chinese hallucination characters mixed into Indonesian prose (e.g. meng确认 -> mengonfirmasi)
+  res = res.replace(/meng\u786e\u8ba4/gi, 'mengonfirmasi');
+  res = res.replace(/\u786e\u8ba4/g, 'konfirmasi');
+
+  // 11. Dictionary of known glued Indonesian phrases
   const SQUISHED_MAP = [
     [/\bSenangbertemudengan\b/gi, 'Senang bertemu dengan'],
     [/\bbertemudengan\b/gi, 'bertemu dengan'],
@@ -338,10 +342,30 @@ export function cleanIndonesianFormatting(text) {
 function repairGluedMarkdownTables(text) {
   if (!text || typeof text !== 'string') return text;
 
+  // 0. Normalize delimiters that lack pipes (e.g. "No | Nama File | Ukuran\n--------" -> "| No | Nama File | Ukuran |\n| --- | --- | --- |")
+  let result = text.replace(
+    /(^|\n)([^\n|]*\|[^\n]*)\n\s*(-{3,})\s*(?=\n|$)/g,
+    (m, pre, header, dashes) => {
+      const headerClean = header.trim().replace(/^\|+/, '').replace(/\|+$/, '');
+      const cells = headerClean.split('|').map((c) => c.trim());
+      if (cells.length >= 2) {
+        const cleanHeader = '| ' + cells.join(' | ') + ' |';
+        const cleanDelim = '| ' + cells.map(() => '---').join(' | ') + ' |';
+        return `${pre}${cleanHeader}\n${cleanDelim}`;
+      }
+      return m;
+    }
+  );
+
+  // Separate trailing non-table text glued to the last pipe of a table row
+  result = result.replace(
+    /(^|\n)(\|(?:\s*[^|\n]+\s*\|){2,})\s*([^\s\n|][^|\n]*)$/gm,
+    '$1$2\n\n$3'
+  );
+
   // Regex to match markdown table delimiter row (e.g. |---|---| or ||-------|-------||)
   const delimRegex = /\|+(\s*:?-{2,}:?\s*\|+)+/g;
   let match;
-  let result = text;
 
   while ((match = delimRegex.exec(result)) !== null) {
     const delimFull = match[0];

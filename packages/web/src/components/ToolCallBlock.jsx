@@ -224,42 +224,48 @@ export default function ToolCallBlock({
         </div>
       )}
 
-      {/* Interactive Approval Banner */}
+      {/* Interactive Approval Banner (Terminal-style Dynamic Options) */}
       {status === 'waiting_approval' && (
         <div className="agent-tool-approval-box">
           <div className="agent-approval-desc">
             <ShieldAlert size={16} className="agent-approval-icon" />
             <div className="agent-approval-text">
-              <strong>Tindakan ini memerlukan izin Anda:</strong>
-              <p>{toolCall.reason || 'Sistem mendeteksi operasi ini berpotensi mengubah file penting atau mengeksekusi perintah terminal.'}</p>
+              <strong>Tindakan ini memerlukan persetujuan Anda:</strong>
+              <p>{toolCall.reason || 'Sistem mendeteksi operasi ini berpotensi mengubah file atau mengeksekusi perintah penting.'}</p>
             </div>
           </div>
 
-          <div className="agent-approval-actions">
+          <div className="agent-choice-options-list">
             <button
               type="button"
-              className="agent-btn-approve"
+              className="agent-btn-choice-opt approve-opt"
               onClick={(e) => {
                 e.stopPropagation();
                 onApprove?.(toolCall.id);
               }}
               disabled={isApproving}
             >
-              <Check size={13} />
-              <span>{isApproving ? 'Memproses...' : 'Setujui & Jalankan'}</span>
+              <span className="agent-choice-opt-badge approve-badge">1</span>
+              <div className="agent-choice-opt-info">
+                <span className="agent-choice-opt-title">✓ Setuju (Lanjutkan)</span>
+                <span className="agent-choice-opt-sub">Izinkan operasi ini dieksekusi di proyek</span>
+              </div>
             </button>
 
             <button
               type="button"
-              className="agent-btn-reject"
+              className="agent-btn-choice-opt reject-opt"
               onClick={(e) => {
                 e.stopPropagation();
                 onReject?.(toolCall.id);
               }}
               disabled={isApproving}
             >
-              <XCircle size={13} />
-              <span>Tolak</span>
+              <span className="agent-choice-opt-badge reject-badge">2</span>
+              <div className="agent-choice-opt-info">
+                <span className="agent-choice-opt-title">✗ Tolak (Batalkan)</span>
+                <span className="agent-choice-opt-sub">Batalkan operasi ini</span>
+              </div>
             </button>
           </div>
         </div>

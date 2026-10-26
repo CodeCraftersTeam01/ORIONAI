@@ -8214,6 +8214,143 @@ svg[aria-roledescription="error"] {
   }
 }
 
+/* Assistant Text Confirmation Box (Interactive dynamic buttons for AI text questions) */
+.agent-text-confirmation-box {
+  margin-top: 0.85rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 8px;
+  background: var(--bg-surface, rgba(255, 255, 255, 0.7));
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  animation: fadeIn 0.2s ease-out;
+}
+
+[data-theme='dark'] .agent-text-confirmation-box {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.09);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.agent-confirmation-desc {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.agent-confirmation-desc svg {
+  color: #f59e0b;
+  flex-shrink: 0;
+}
+
+[data-theme='dark'] .agent-confirmation-desc svg {
+  color: #fbbf24;
+}
+
+.agent-confirmation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.agent-confirmation-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 6px;
+  background: var(--bg-surface-hover, rgba(0, 0, 0, 0.04));
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.agent-confirmation-btn:hover {
+  background: var(--bg-surface-active, rgba(0, 0, 0, 0.08));
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+[data-theme='dark'] .agent-confirmation-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme='dark'] .agent-confirmation-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.agent-confirmation-btn.approve-opt {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #059669;
+}
+
+.agent-confirmation-btn.approve-opt:hover {
+  background: #059669;
+  color: #ffffff;
+  border-color: #059669;
+}
+
+[data-theme='dark'] .agent-confirmation-btn.approve-opt {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #34d399;
+}
+
+[data-theme='dark'] .agent-confirmation-btn.approve-opt:hover {
+  background: #10b981;
+  color: #064e3b;
+  border-color: #10b981;
+}
+
+.agent-confirmation-btn.reject-opt {
+  background: rgba(239, 68, 68, 0.06);
+  border-color: rgba(239, 68, 68, 0.25);
+  color: #dc2626;
+}
+
+.agent-confirmation-btn.reject-opt:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+[data-theme='dark'] .agent-confirmation-btn.reject-opt {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #f87171;
+}
+
+[data-theme='dark'] .agent-confirmation-btn.reject-opt:hover {
+  background: rgba(239, 68, 68, 0.22);
+  border-color: rgba(239, 68, 68, 0.6);
+}
+
+.agent-opt-badge {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.75rem;
+  font-weight: 700;
+  opacity: 0.75;
+}
+
+.agent-confirmation-btn:hover .agent-opt-badge {
+  opacity: 1;
+}
+
+.agent-confirmation-text {
+  line-height: 1.3;
+}
+
 /* ==========================================================================
    PROJECT SELECTOR (Top Bar above Chat Input - Clean & Natural Anti-Slop)
    ========================================================================== */
