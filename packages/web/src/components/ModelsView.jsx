@@ -499,7 +499,8 @@ export default function ModelsView({
             return (
               <div
                 key={model.id}
-                className={`models-tile-card ${isCurrentMain ? 'is-active-card' : ''}`}
+                className={`models-tile-card ${isCurrentMain ? 'is-active-card' : ''} ${isDropdownOpen ? 'has-dropdown-open' : ''}`}
+                style={isDropdownOpen ? { zIndex: 100 } : undefined}
               >
                 {/* Card Top: Number, Model Name & Session Count */}
                 <div className="tile-top-row">
@@ -520,7 +521,10 @@ export default function ModelsView({
                 {/* Card Middle: Badge Tag & Dropdown Action */}
                 <div className="tile-mid-row">
                   <div className="tile-badge-wrap">
-                    <span className="tile-badge-pill" title={model.endpoint}>
+                    <span
+                      className={`tile-badge-pill ${model.isOfficial ? 'is-official' : ''}`}
+                      title={model.endpoint}
+                    >
                       {model.isOfficial ? 'Official' : model.badge || 'custom'}
                     </span>
                   </div>

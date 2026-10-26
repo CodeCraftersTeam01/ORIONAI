@@ -7009,13 +7009,14 @@ svg[aria-roledescription="error"] {
 .models-tile-card {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: 14px;
+  border-radius: 12px;
   padding: 1.15rem 1.25rem 1rem;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
   position: relative;
+  z-index: 1;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
 }
@@ -7030,9 +7031,18 @@ svg[aria-roledescription="error"] {
   box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.07);
 }
 
+.models-tile-card.has-dropdown-open {
+  z-index: 100 !important;
+}
+
 .models-tile-card.is-active-card {
-  border-color: rgba(59, 130, 246, 0.65);
-  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.35), 0 8px 24px -4px rgba(59, 130, 246, 0.1);
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.25), 0 4px 16px -2px rgba(37, 99, 235, 0.08);
+}
+
+[data-theme='dark'] .models-tile-card.is-active-card {
+  border-color: rgba(96, 165, 250, 0.5);
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.2), 0 8px 24px -4px rgba(0, 0, 0, 0.4);
 }
 
 /* Tile Top Row */
@@ -7130,17 +7140,25 @@ svg[aria-roledescription="error"] {
   font-family: var(--font-mono);
   font-size: 0.68rem;
   font-weight: 600;
-  padding: 3px 8px;
-  border-radius: 5px;
-  background: rgba(0, 0, 0, 0.03);
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   color: var(--text-secondary);
   flex-shrink: 0;
   letter-spacing: 0.02em;
 }
 
-[data-theme='dark'] .tile-badge-pill {
-  background: rgba(255, 255, 255, 0.05);
+.tile-badge-pill.is-official {
+  background: rgba(37, 99, 235, 0.07);
+  border-color: rgba(37, 99, 235, 0.2);
+  color: #2563eb;
+}
+
+[data-theme='dark'] .tile-badge-pill.is-official {
+  background: rgba(96, 165, 250, 0.12);
+  border-color: rgba(96, 165, 250, 0.25);
+  color: #93c5fd;
 }
 
 .tile-endpoint-text {
@@ -7155,6 +7173,7 @@ svg[aria-roledescription="error"] {
 .model-action-menu-wrap {
   position: relative;
   display: inline-flex;
+  z-index: 110;
 }
 
 .tile-btn-use-as {
@@ -7167,8 +7186,8 @@ svg[aria-roledescription="error"] {
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-weight: 600;
+  letter-spacing: 0.03em;
   padding: 0.32rem 0.65rem;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -7177,19 +7196,25 @@ svg[aria-roledescription="error"] {
   min-width: max-content;
 }
 
-.tile-btn-use-as:hover,
-.tile-btn-use-as.is-active {
+.tile-btn-use-as:hover {
   background: var(--bg-surface-hover);
   border-color: var(--border-strong);
+}
+
+.tile-btn-use-as.is-active {
+  background: var(--text-primary);
+  color: var(--bg-card);
+  border-color: var(--text-primary);
+}
+
+.tile-btn-use-as.is-active .use-as-chevron {
+  color: var(--bg-card);
+  transform: rotate(180deg);
 }
 
 .use-as-chevron {
   color: var(--text-muted);
   transition: transform 0.15s ease;
-}
-
-.tile-btn-use-as.is-active .use-as-chevron {
-  transform: rotate(180deg);
 }
 
 /* Popover Dropdown Menu */
@@ -7198,14 +7223,14 @@ svg[aria-roledescription="error"] {
   top: calc(100% + 6px);
   right: 0;
   background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16), 0 2px 6px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(0, 0, 0, 0.04);
   padding: 0.35rem;
-  z-index: 100;
-  min-width: 200px;
-  max-width: 240px;
-  max-height: 290px;
+  z-index: 120;
+  min-width: 215px;
+  max-width: 250px;
+  max-height: 280px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -7214,8 +7239,9 @@ svg[aria-roledescription="error"] {
 }
 
 [data-theme='dark'] .models-popover-menu {
-  background: var(--bg-surface);
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+  background: #18181b;
+  border-color: #333338;
+  box-shadow: 0 20px 48px -4px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
 .models-popover-menu::-webkit-scrollbar {
@@ -7234,11 +7260,11 @@ svg[aria-roledescription="error"] {
 
 .popover-section-label {
   font-family: var(--font-mono);
-  font-size: 0.64rem;
+  font-size: 0.62rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.09em;
   color: var(--text-muted);
-  padding: 0.45rem 0.65rem 0.2rem;
+  padding: 0.5rem 0.65rem 0.2rem;
   text-transform: uppercase;
   border-top: 1px solid var(--border-subtle);
   margin-top: 0.25rem;
@@ -7252,11 +7278,11 @@ svg[aria-roledescription="error"] {
   background: transparent;
   border: none;
   border-radius: 5px;
-  padding: 0.42rem 0.65rem;
+  padding: 0.44rem 0.65rem;
   color: var(--text-primary);
   font-family: var(--font-mono);
-  font-size: 0.73rem;
-  font-weight: 600;
+  font-size: 0.72rem;
+  font-weight: 500;
   letter-spacing: 0.03em;
   cursor: pointer;
   transition: all 0.12s ease;
@@ -7270,20 +7296,25 @@ svg[aria-roledescription="error"] {
 }
 
 .models-popover-item.is-selected {
-  background: rgba(59, 130, 246, 0.08);
-  color: #3b82f6;
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-primary);
+  font-weight: 700;
 }
 
 [data-theme='dark'] .models-popover-item.is-selected {
-  background: rgba(59, 130, 246, 0.15);
-  color: #60a5fa;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
 }
 
 .popover-star-glyph {
   font-size: 0.84rem;
-  color: #f59e0b;
+  color: #d97706;
   font-weight: 700;
   line-height: 1;
+}
+
+[data-theme='dark'] .popover-star-glyph {
+  color: #fbbf24;
 }
 
 .popover-item-title {
@@ -7301,8 +7332,12 @@ svg[aria-roledescription="error"] {
 }
 
 .popover-check {
-  color: #3b82f6;
+  color: #2563eb;
   flex-shrink: 0;
+}
+
+[data-theme='dark'] .popover-check {
+  color: #60a5fa;
 }
 
 /* Tile Bottom Row */
