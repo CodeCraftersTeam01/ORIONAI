@@ -15,18 +15,25 @@ export function resolveApproval(toolCallId, approved) {
   return false;
 }
 
-const AGENT_SYSTEM_PROMPT = `Anda adalah Orion Agent, agen pemrograman kecerdasan kosmik yang otonom, presisi, dan tangkas (seperti pi agent).
-Anda memiliki akses langsung ke perkakas sistem (tools) untuk memeriksa file, membaca, menulis, mengedit, menghapus, serta menjalankan perintah terminal di workspace proyek pengguna.
+const AGENT_SYSTEM_PROMPT = `Anda adalah Orion Agent, agen rekayasa kode otonom yang presisi, tangkas, dan pantang berhenti sebelum tugas selesai (seperti Pi Agent).
+Anda memiliki akses langsung ke tools untuk membaca, menulis, membuat, mengedit file, dan menjalankan perintah terminal.
 
-ATURAN OPERASIONAL AGENT:
-1. Analisis Kebutuhan: Pahami tujuan pengguna secara mendalam sebelum bertindak.
-2. Eksplorasi Terlebih Dahulu: Jika belum mengetahui struktur proyek atau letak kode, gunakan 'list_dir', 'find_files', atau 'grep_search'.
-3. Baca Sebelum Mengedit: Sebelum memodifikasi file apa pun, selalu gunakan 'read_file' untuk memastikan konteks dan isi baris yang sebenarnya.
-4. Presisi Kode: Saat menggunakan 'edit_file', pastikan 'target_content' persis sama dengan kode di file aslinya (termasuk spasi/indentasi).
-5. Eksekusi Mandiri: Gunakan tool secara berulang dan terstruktur hingga tugas pengguna benar-benar tuntas. Jangan meminta pengguna melakukan hal yang bisa Anda selesaikan sendiri lewat tool.
-6. Validasi & Uji: Bila melakukan perubahan kode, jika relevan jalankan pemeriksaan atau tes melalui 'run_command' (misal: npm test, build, lint).
-7. Konfirmasi Pengamanan: Operasi penghapusan file (delete_file), modifikasi file sensitif (.env, auth, package.json), atau perintah terminal destruktif akan otomatis meminta persetujuan pengguna oleh sistem pengamanan. Anda tidak perlu ragu memanggilnya jika memang dibutuhkan pengguna.
-8. Bahasa: Gunakan bahasa Indonesia yang santun, profesional, lugas, dan bebas dari basa-basi yang tidak perlu.`;
+STRATEGI EKSEKUSI TOOL (PI-STYLE):
+1. FOKUS & BERTAHAP (1-3 TOOL PER GILIRAN):
+   - Jangan memanggil terlalu banyak tool sekaligus. Panggil 1 sampai maksimal 3 tool per giliran secara terfokus.
+   - Eksekusi langkah demi langkah: periksa lingkungan -> siapkan direktori/file -> tulis kode -> verifikasi -> selesai.
+
+2. TUNTASKAN SELURUH KEBUTUHAN PENGGUNA TANPA BERHENTI DI TENGAH:
+   - Jika pengguna meminta membuat sistem atau proyek (misalnya: "buatkan file html css js dashboard full system crud"):
+     * Tahap 1: Periksa direktori atau siapkan folder tujuan.
+     * Tahap 2: Tulis file HTML lengkap ('write_file') dengan struktur UI dan elemen CRUD.
+     * Tahap 3: Tulis file CSS ('write_file') yang modern, responsif, dan rapi.
+     * Tahap 4: Tulis file JavaScript ('write_file') fungsional dengan logika CRUD lengkap (Create, Read, Update, Delete).
+     * Tahap 5: Pastikan semua file telah tertulis nyata di disk, lalu berikan kesimpulan akhir kepada pengguna.
+   - JANGAN PERNAH berhenti di tengah jalan hanya setelah 'list_dir' atau 'find_files'! Lanjutkan giliran berikutnya untuk memanggil 'write_file' sampai SEMUA file yang diminta selesai dibuat.
+
+3. MANDIRI: Anda yang menulis file dan mengeksekusi perintah. Jangan meminta pengguna membuat file yang bisa Anda buat sendiri lewat tool.
+4. BAHASA: Gunakan bahasa Indonesia yang santun, profesional, dan lugas.`;
 
 /**
  * Fallback parser to extract tool calls from models that format tools in XML/Markdown
@@ -231,7 +238,17 @@ export async function runAgentLoop({
     }
 
     // Consolidate fragmented/chunked tool calls (crucial for upstream router deltas)
-    const toolCalls = consolidateToolCalls(rawToolCalls);
+    const allToolCalls = consolidateToolCalls(rawToolCalls);
+
+    // Ensure all tool calls have unique IDs
+    allToolCalls.forEach((tc, idx) => {
+      if (!tc.id) {
+        tc.id = `call_${Date.now()}_${step}_${idx}`;
+      }
+    });
+
+    // Enforce user requirement: maximum 3 tool calls per step, executed sequentially 1-by-1
+    const toolCalls = allToolCalls.slice(0, 3);
 
     // Emit thoughts or intermediate explanations if present
     if (content) {
@@ -247,20 +264,24 @@ export async function runAgentLoop({
     if (toolCalls.length === 0) {
       completed = true;
       finalAnswer = content;
-      messages.push({ role: 'assistant', content });
+      messages.push({ role: 'assistant', content: content || '' });
       break;
     }
 
     // Push assistant message with tool calls into history
     messages.push({
       role: 'assistant',
-      content: content || null,
+      content: content || '',
       tool_calls: toolCalls,
     });
 
-    // Execute each tool call
+    const totalToolsInStep = toolCalls.length;
+    let toolIndexInStep = 0;
+
+    // Execute each tool call 1 by 1
     for (const tc of toolCalls) {
-      const callId = tc.id || `call_${Date.now()}`;
+      toolIndexInStep++;
+      const callId = tc.id;
       const fnName = tc.function?.name;
       let fnArgs = {};
       const rawArgString = typeof tc.function?.arguments === 'string' ? tc.function.arguments.trim() : '';
@@ -306,12 +327,17 @@ export async function runAgentLoop({
         risk: { reason: evaluation.reason, level: evaluation.riskLevel },
       };
 
+      // State: START / QUEUED
       onEvent({
         type: 'tool_call_start',
         toolCallId: callId,
         tool: fnName,
         args: fnArgs,
         toolCall: toolCallObj,
+        toolIndex: toolIndexInStep,
+        totalTools: totalToolsInStep,
+        step,
+        maxSteps,
         needsApproval: evaluation.needsApproval,
         riskLevel: evaluation.riskLevel,
         reason: evaluation.reason,
@@ -325,6 +351,8 @@ export async function runAgentLoop({
           tool: fnName,
           args: fnArgs,
           toolCall: toolCallObj,
+          toolIndex: toolIndexInStep,
+          totalTools: totalToolsInStep,
           reason: evaluation.reason,
         });
 
@@ -372,6 +400,8 @@ export async function runAgentLoop({
             tool: fnName,
             args: fnArgs,
             toolCall: toolCallObj,
+            toolIndex: toolIndexInStep,
+            totalTools: totalToolsInStep,
             result: rejectedResult,
           });
 
@@ -385,34 +415,50 @@ export async function runAgentLoop({
         }
       }
 
-      // Execute tool
+      // State: RUNNING
       onEvent({
         type: 'tool_call_running',
         toolCallId: callId,
         tool: fnName,
         args: fnArgs,
         toolCall: toolCallObj,
+        toolIndex: toolIndexInStep,
+        totalTools: totalToolsInStep,
+        step,
       });
 
       const result = await executeTool(fnName, fnArgs);
 
+      // State: COMPLETE
       onEvent({
         type: 'tool_call_complete',
         toolCallId: callId,
         tool: fnName,
         args: fnArgs,
         toolCall: toolCallObj,
+        toolIndex: toolIndexInStep,
+        totalTools: totalToolsInStep,
         result,
         isError: Boolean(result?.error),
+        step,
       });
 
       messages.push({
         role: 'tool',
         tool_call_id: callId,
         name: fnName,
-        content: JSON.stringify(result),
+        content: JSON.stringify(result) || '{}',
       });
     }
+
+    // State: STEP_COMPLETED -> Finished executing tools for this step, proceed to next step
+    onEvent({
+      type: 'agent_step_complete',
+      step,
+      maxSteps,
+      toolsExecuted: totalToolsInStep,
+      message: `Tahap ${step} selesai. Melanjutkan ke tahap berikutnya...`,
+    });
   }
 
   onEvent({
