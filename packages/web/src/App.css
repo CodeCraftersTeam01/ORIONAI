@@ -5498,7 +5498,7 @@ svg[aria-roledescription="error"] {
 }
 
 /* ==========================================================================
-   HERMES-INSPIRED LOGS DASHBOARD (Zero AI Slop - Professional Terminal HUD)
+   ORION SYSTEM & GATEWAY LOGS (Clean, Non-AI-Slop, Developer Console)
    ========================================================================== */
 .logs-view-container {
   display: flex;
@@ -5506,12 +5506,12 @@ svg[aria-roledescription="error"] {
   flex: 1;
   height: 100%;
   width: 100%;
-  max-width: 1380px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 1.5rem 2rem 2rem;
   box-sizing: border-box;
   overflow-y: auto;
-  gap: 1.25rem;
+  gap: 1.15rem;
   color: var(--text-primary);
   font-family: var(--font-sans);
 }
@@ -5521,9 +5521,10 @@ svg[aria-roledescription="error"] {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 0.85rem;
+  padding-bottom: 0.9rem;
   border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
+  gap: 1rem;
 }
 
 .logs-header-left {
@@ -5532,46 +5533,106 @@ svg[aria-roledescription="error"] {
   gap: 0.85rem;
 }
 
+.logs-title-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
 .logs-main-title {
-  font-size: 1.45rem;
+  font-size: 1.35rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
   margin: 0;
   color: var(--text-primary);
 }
 
-.logs-badge-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.25rem 0.65rem;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-full);
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  font-weight: 500;
-  color: var(--text-secondary);
-  letter-spacing: 0.04em;
+.logs-subtitle {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.35;
 }
 
-.logs-badge-pill .pill-dot {
-  opacity: 0.4;
-  font-size: 0.65rem;
+.logs-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+/* Subtle Status Indicator (No glowing endless pulse) */
+.logs-status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+}
+
+.logs-status-dot {
+  width: 6.5px;
+  height: 6.5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.logs-status-dot.is-live {
+  background: #10b981;
+}
+
+.logs-status-dot.is-paused {
+  background: var(--text-muted);
+}
+
+.logs-status-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+}
+
+.logs-btn-toggle-auto {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.65rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.logs-btn-toggle-auto:hover {
+  background: var(--bg-surface-hover);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.logs-btn-toggle-auto.active {
+  background: var(--accent-solid);
+  color: var(--bg-app);
+  border-color: var(--accent-solid);
+  font-weight: 600;
 }
 
 .btn-logs-refresh {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-sm);
-  background: transparent;
+  width: 29px;
+  height: 29px;
+  border-radius: 6px;
+  background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.18s ease;
+  transition: all 0.15s ease;
 }
 
 .btn-logs-refresh:hover {
@@ -5584,162 +5645,122 @@ svg[aria-roledescription="error"] {
   animation: orionSpin 0.75s linear infinite;
 }
 
-/* Auto-refresh switch */
-.logs-header-right {
+/* ==========================================================================
+   Unified Toolbar (Sleek Segmented Tabs + Controls, Zero AI Slop)
+   ========================================================================== */
+.logs-toolbar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
-.logs-auto-refresh-switch {
+/* Segmented File Tabs */
+.logs-file-tabs {
   display: inline-flex;
   align-items: center;
-  gap: 0.65rem;
-  cursor: pointer;
-  user-select: none;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
 }
 
-.logs-auto-refresh-switch .switch-label {
+.logs-file-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.32rem 0.75rem;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
   font-size: 0.72rem;
   font-weight: 600;
-  letter-spacing: 0.06em;
-  color: var(--text-secondary);
-  font-family: var(--font-mono);
-}
-
-.toggle-switch-track {
-  width: 34px;
-  height: 18px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-strong);
-  border-radius: 999px;
-  position: relative;
-  transition: all 0.2s ease;
-}
-
-.toggle-switch-track.active {
-  background: #10b981;
-  border-color: #059669;
-}
-
-.toggle-switch-thumb {
-  width: 12px;
-  height: 12px;
-  background: #ffffff;
-  border-radius: 50%;
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-}
-
-.toggle-switch-track.active .toggle-switch-thumb {
-  transform: translateX(16px);
-}
-
-/* ==========================================================================
-   Filters Matrix (FILE / LEVEL / COMPONENT / LINES)
-   ========================================================================== */
-.logs-filters-matrix {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.85rem 1rem;
-  background: rgba(18, 18, 20, 0.6);
-  backdrop-filter: blur(8px);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  flex-shrink: 0;
-}
-
-[data-theme='light'] .logs-filters-matrix {
-  background: rgba(245, 244, 240, 0.8);
-}
-
-.filter-row {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-}
-
-.filter-row-label {
-  width: 90px;
-  flex-shrink: 0;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-}
-
-.filter-button-group {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  flex-wrap: wrap;
-}
-
-/* Filter Buttons: Hermes reference has inactive dark-boxed, active cream */
-.filter-btn {
-  padding: 0.25rem 0.65rem;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-xs);
-  font-family: var(--font-mono);
-  font-size: 0.73rem;
-  font-weight: 500;
   letter-spacing: 0.03em;
-  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
-.filter-btn:hover {
-  background: var(--bg-surface-hover);
+.logs-file-tab:hover {
   color: var(--text-primary);
 }
 
-.filter-btn.active {
-  background: #ece9df;
-  color: #121316;
-  border-color: #ece9df;
-  font-weight: 700;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+.logs-file-tab.active {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
 }
 
-[data-theme='light'] .filter-btn.active {
-  background: #18191c;
-  color: #f7f6f2;
-  border-color: #18191c;
+[data-theme='dark'] .logs-file-tab.active {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: none;
 }
 
-/* Row 4: Lines & Search combo */
-.filter-row-inline-search {
-  justify-content: space-between;
-  gap: 1rem;
+.logs-error-counter {
+  font-size: 0.64rem;
+  padding: 0.06rem 0.35rem;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  line-height: 1.2;
 }
 
-.filter-lines-subwrap {
+/* Toolbar Controls */
+.logs-toolbar-controls {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.logs-filter-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 0.22rem 0.55rem;
+}
+
+.logs-filter-label {
+  font-size: 0.68rem;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.logs-filter-select {
+  border: none;
+  background: transparent;
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  cursor: pointer;
+  outline: none;
+  padding: 0.1rem 0;
 }
 
 .logs-search-box {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  background: var(--bg-surface);
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  padding: 0.2rem 0.55rem;
-  width: 260px;
-  transition: all 0.2s ease;
+  border-radius: 6px;
+  padding: 0.25rem 0.65rem;
+  width: 220px;
+  transition: all 0.15s ease;
 }
 
 .logs-search-box:focus-within {
-  border-color: var(--border-focus);
-  box-shadow: 0 0 0 2px rgba(245, 244, 239, 0.08);
+  border-color: var(--border-strong);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.04);
 }
 
 .logs-search-box .search-icon {
@@ -5751,7 +5772,7 @@ svg[aria-roledescription="error"] {
   background: transparent;
   border: none;
   outline: none;
-  font-size: 0.74rem;
+  font-size: 0.73rem;
   color: var(--text-primary);
   width: 100%;
   font-family: var(--font-sans);
@@ -5759,7 +5780,7 @@ svg[aria-roledescription="error"] {
 
 .logs-search-input::placeholder {
   color: var(--text-muted);
-  font-size: 0.72rem;
+  font-size: 0.71rem;
 }
 
 .clear-search-btn {
@@ -5777,66 +5798,70 @@ svg[aria-roledescription="error"] {
 }
 
 /* ==========================================================================
-   Terminal Card & Monospace Window
+   Studio Terminal Card (Refined, balanced contrast, no jarring pitch-black)
    ========================================================================== */
 .logs-terminal-card {
   display: flex;
   flex-direction: column;
   flex: 1;
-  min-height: 480px;
-  background: #090b0e;
-  border: 1px solid #1f232b;
-  border-radius: var(--radius-md);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  min-height: 520px;
+  background: #111318;
+  border: 1px solid #242833;
+  border-radius: 10px;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.1);
   overflow: hidden;
-}
-
-[data-theme='light'] .logs-terminal-card {
-  background: #121418;
-  border-color: #292d36;
 }
 
 .terminal-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.65rem 1rem;
-  background: #0d1015;
-  border-bottom: 1px solid #1a1e26;
+  padding: 0.55rem 0.95rem;
+  background: #171922;
+  border-bottom: 1px solid #232734;
   flex-shrink: 0;
 }
 
 .terminal-title-group {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.6rem;
 }
 
-.terminal-file-icon {
-  color: #717886;
+.terminal-active-file-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.terminal-file-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
 }
 
 .terminal-filename {
   font-family: var(--font-mono);
-  font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  color: #e5e7eb;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: #f1f5f9;
 }
 
 .terminal-count-badge {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
-  color: #8b929e;
-  padding: 0.15rem 0.45rem;
+  font-size: 0.67rem;
+  color: #94a3b8;
+  padding: 0.1rem 0.4rem;
   background: rgba(255, 255, 255, 0.05);
-  border-radius: var(--radius-xs);
+  border-radius: 4px;
 }
 
 .terminal-actions-group {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
 }
 
 .terminal-quick-stats {
@@ -5845,10 +5870,10 @@ svg[aria-roledescription="error"] {
   gap: 0.4rem;
   font-family: var(--font-mono);
   font-size: 0.68rem;
-  color: #7b828f;
-  margin-right: 0.5rem;
+  color: #94a3b8;
+  margin-right: 0.4rem;
   padding-right: 0.6rem;
-  border-right: 1px solid #232833;
+  border-right: 1px solid #282d3b;
 }
 
 .terminal-quick-stats .stat-sep {
@@ -5859,11 +5884,11 @@ svg[aria-roledescription="error"] {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.25rem 0.55rem;
+  padding: 0.28rem 0.55rem;
   background: rgba(255, 255, 255, 0.04);
-  border: 1px solid #252b36;
-  border-radius: var(--radius-xs);
-  color: #c4c9d4;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  color: #cbd5e1;
   font-family: var(--font-mono);
   font-size: 0.7rem;
   font-weight: 500;
@@ -5874,17 +5899,17 @@ svg[aria-roledescription="error"] {
 .terminal-action-btn:hover {
   background: rgba(255, 255, 255, 0.09);
   color: #ffffff;
-  border-color: #3b4353;
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .terminal-action-btn.btn-danger:hover {
   background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
+  color: #f87171;
   border-color: rgba(239, 68, 68, 0.35);
 }
 
 .terminal-action-btn .text-emerald {
-  color: #10b981;
+  color: #34d399;
 }
 
 /* Terminal Body Content */
@@ -5894,84 +5919,86 @@ svg[aria-roledescription="error"] {
   overflow-x: auto;
   padding: 0.75rem 1rem;
   font-family: var(--font-mono);
-  font-size: 0.77rem;
-  line-height: 1.55;
-  background: #080a0d;
-  color: #c6cad3;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  background: #0d0f14;
+  color: #cbd5e1;
 }
 
 /* Log Line Item */
 .log-line-item {
   display: flex;
   align-items: baseline;
-  gap: 0.55rem;
-  padding: 0.12rem 0;
+  gap: 0.6rem;
+  padding: 0.12rem 0.35rem;
   white-space: pre-wrap;
   word-break: break-word;
-  border-radius: 2px;
+  border-radius: 3px;
+  transition: background 0.1s ease;
 }
 
 .log-line-item:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.035);
 }
 
 .log-col-time {
-  color: #5c6370;
+  color: #64748b;
   flex-shrink: 0;
   font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .log-col-level {
   flex-shrink: 0;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  padding: 0.05rem 0.3rem;
-  border-radius: 2px;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 0.05rem 0.35rem;
+  border-radius: 3px;
 }
 
 .log-col-level.level-info {
-  color: #61afef;
-  background: rgba(97, 175, 239, 0.1);
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.1);
 }
 
 .log-col-level.level-warn {
-  color: #e5c07b;
-  background: rgba(229, 192, 123, 0.12);
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
 }
 
 .log-col-level.level-error {
-  color: #e06c75;
-  background: rgba(224, 108, 117, 0.14);
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.12);
 }
 
 .log-col-level.level-debug {
-  color: #98c379;
-  background: rgba(152, 195, 121, 0.1);
+  color: #a3e635;
+  background: rgba(163, 230, 53, 0.1);
 }
 
 .log-col-component {
-  color: #abb2bf;
-  font-weight: 600;
+  color: #94a3b8;
+  font-weight: 500;
   flex-shrink: 0;
 }
 
 .log-col-sep {
-  color: #4b5263;
+  color: #475569;
   flex-shrink: 0;
 }
 
 .log-col-message {
-  color: #d7dae0;
+  color: #e2e8f0;
   flex: 1;
 }
 
 .log-line-item.level-error .log-col-message {
-  color: #ff7b72;
+  color: #fca5a5;
 }
 
 .log-line-item.level-warn .log-col-message {
-  color: #e3b341;
+  color: #fde68a;
 }
 
 /* HTTP log chunks */
@@ -5983,39 +6010,39 @@ svg[aria-roledescription="error"] {
 }
 
 .http-method-tag {
-  color: #79c0ff;
-  font-weight: 700;
+  color: #818cf8;
+  font-weight: 600;
 }
 
 .http-path-tag {
-  color: #e6edf3;
+  color: #f1f5f9;
 }
 
 .http-status-tag {
-  font-weight: 700;
-  padding: 0.05rem 0.3rem;
-  border-radius: 2px;
-  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.05rem 0.32rem;
+  border-radius: 3px;
+  font-size: 0.69rem;
 }
 
 .http-status-tag.status-ok {
-  color: #56d364;
-  background: rgba(86, 211, 100, 0.12);
+  color: #34d399;
+  background: rgba(52, 211, 153, 0.1);
 }
 
 .http-status-tag.status-client-err {
-  color: #e3b341;
-  background: rgba(227, 179, 65, 0.12);
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
 }
 
 .http-status-tag.status-server-err {
-  color: #f85149;
-  background: rgba(248, 81, 73, 0.15);
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.14);
 }
 
 .http-duration-tag {
-  color: #8b949e;
-  font-size: 0.7rem;
+  color: #64748b;
+  font-size: 0.69rem;
 }
 
 /* Empty State */
@@ -6024,26 +6051,26 @@ svg[aria-roledescription="error"] {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 4rem 1rem;
-  color: #596172;
+  padding: 4.5rem 1rem;
+  color: #64748b;
   text-align: center;
 }
 
 .logs-empty-state .empty-icon {
   margin-bottom: 0.75rem;
-  opacity: 0.5;
+  opacity: 0.45;
 }
 
 .logs-empty-state .empty-title {
   font-size: 0.88rem;
   font-weight: 600;
-  color: #8993a4;
+  color: #94a3b8;
   margin: 0 0 0.25rem 0;
 }
 
 .logs-empty-state .empty-desc {
   font-size: 0.74rem;
-  color: #596172;
+  color: #64748b;
   margin: 0;
   max-width: 360px;
 }
@@ -6053,30 +6080,30 @@ svg[aria-roledescription="error"] {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.45rem 1rem;
-  background: #0b0d11;
-  border-top: 1px solid #181c23;
+  padding: 0.45rem 0.95rem;
+  background: #14171e;
+  border-top: 1px solid #20242e;
   flex-shrink: 0;
   font-family: var(--font-mono);
   font-size: 0.68rem;
-  color: #6c7380;
+  color: #64748b;
 }
 
 .autoscroll-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.45rem;
   cursor: pointer;
   user-select: none;
 }
 
 .autoscroll-toggle input[type="checkbox"] {
   cursor: pointer;
-  accent-color: #3b82f6;
+  accent-color: var(--accent-solid);
 }
 
 .footer-last-sync {
-  color: #525965;
+  color: #64748b;
 }
 
 @media (max-width: 768px) {
@@ -6084,9 +6111,13 @@ svg[aria-roledescription="error"] {
     padding: 1rem;
     gap: 0.85rem;
   }
-  .filter-row-inline-search {
+  .logs-toolbar {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
+  }
+  .logs-toolbar-controls {
+    flex-direction: column;
+    align-items: stretch;
   }
   .logs-search-box {
     width: 100%;

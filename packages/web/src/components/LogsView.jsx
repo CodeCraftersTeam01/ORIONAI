@@ -137,121 +137,110 @@ export default function LogsView({ onClose }) {
 
   return (
     <div className="logs-view-container animate-fade-in">
-      {/* Top Header matching Image 2 */}
+      {/* Sleek Header */}
       <header className="logs-header-bar">
         <div className="logs-header-left">
-          <h1 className="logs-main-title">Logs</h1>
-          <div className="logs-badge-pill">
-            <span className="pill-part">{selectedFile.toUpperCase()}</span>
-            <span className="pill-dot">•</span>
-            <span className="pill-part">{selectedLevel}</span>
-            <span className="pill-dot">•</span>
-            <span className="pill-part">{selectedComponent}</span>
+          <div className="logs-title-stack">
+            <h1 className="logs-main-title">System & Gateway Logs</h1>
+            <p className="logs-subtitle">Monitor aktivitas gateway, agent, dan eksekusi sistem secara real-time</p>
           </div>
+        </div>
+
+        <div className="logs-header-right">
+          <div className="logs-status-indicator" title={autoRefresh ? 'Pembaruan otomatis aktif (setiap 1.5s)' : 'Pembaruan otomatis dijeda'}>
+            <span className={`logs-status-dot ${autoRefresh ? 'is-live' : 'is-paused'}`} />
+            <span className="logs-status-label">{autoRefresh ? 'Live Stream' : 'Paused'}</span>
+          </div>
+
+          <button
+            type="button"
+            className={`logs-btn-toggle-auto ${autoRefresh ? 'active' : ''}`}
+            onClick={() => setAutoRefresh(!autoRefresh)}
+            title={autoRefresh ? 'Jeda pembaruan otomatis' : 'Aktifkan pembaruan otomatis'}
+          >
+            {autoRefresh ? 'Auto-refresh On' : 'Auto-refresh Off'}
+          </button>
 
           <button
             type="button"
             className={`btn-logs-refresh ${isLoading ? 'is-spinning' : ''}`}
             onClick={() => fetchLogs(false)}
-            title="Refresh log manual"
-            aria-label="Refresh log"
+            title="Muat ulang log manual"
+            aria-label="Muat ulang log"
           >
-            <RefreshCw size={14} />
+            <RefreshCw size={13} />
           </button>
-        </div>
-
-        <div className="logs-header-right">
-          <label className="logs-auto-refresh-switch" title="Toggle Auto-Refresh">
-            <span className="switch-label">AUTO-REFRESH</span>
-            <div
-              className={`toggle-switch-track ${autoRefresh ? 'active' : ''}`}
-              onClick={() => setAutoRefresh(!autoRefresh)}
-              role="switch"
-              aria-checked={autoRefresh}
-              tabIndex={0}
-            >
-              <div className="toggle-switch-thumb" />
-            </div>
-          </label>
         </div>
       </header>
 
-      {/* 4 Filter Rows matching Image 2 */}
-      <section className="logs-filters-matrix">
-        {/* Row 1: FILE */}
-        <div className="filter-row">
-          <span className="filter-row-label">FILE</span>
-          <div className="filter-button-group">
-            {fileOptions.map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                className={`filter-btn ${selectedFile === opt.id ? 'active' : ''}`}
-                onClick={() => setSelectedFile(opt.id)}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
+      {/* Unified Filter & Search Toolbar (Clean, non-cluttered, no 4-row pill dump) */}
+      <section className="logs-toolbar">
+        {/* Left: Target Log Tabs */}
+        <div className="logs-file-tabs">
+          {fileOptions.map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              className={`logs-file-tab ${selectedFile === opt.id ? 'active' : ''}`}
+              onClick={() => setSelectedFile(opt.id)}
+            >
+              <span>{opt.label}</span>
+              {opt.id === 'errors' && stats?.errorCount > 0 && (
+                <span className="logs-error-counter">{stats.errorCount}</span>
+              )}
+            </button>
+          ))}
         </div>
 
-        {/* Row 2: LEVEL */}
-        <div className="filter-row">
-          <span className="filter-row-label">LEVEL</span>
-          <div className="filter-button-group">
-            {levelOptions.map((lvl) => (
-              <button
-                key={lvl}
-                type="button"
-                className={`filter-btn ${selectedLevel === lvl ? 'active' : ''}`}
-                onClick={() => setSelectedLevel(lvl)}
-              >
-                {lvl}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Row 3: COMPONENT */}
-        <div className="filter-row">
-          <span className="filter-row-label">COMPONENT</span>
-          <div className="filter-button-group">
-            {componentOptions.map((cmp) => (
-              <button
-                key={cmp}
-                type="button"
-                className={`filter-btn ${selectedComponent === cmp ? 'active' : ''}`}
-                onClick={() => setSelectedComponent(cmp)}
-              >
-                {cmp}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Row 4: LINES & SEARCH */}
-        <div className="filter-row filter-row-inline-search">
-          <div className="filter-lines-subwrap">
-            <span className="filter-row-label">LINES</span>
-            <div className="filter-button-group">
-              {linesOptions.map((num) => (
-                <button
-                  key={num}
-                  type="button"
-                  className={`filter-btn ${selectedLines === num ? 'active' : ''}`}
-                  onClick={() => setSelectedLines(num)}
-                >
-                  {num}
-                </button>
+        {/* Right: Dropdowns & Search */}
+        <div className="logs-toolbar-controls">
+          <div className="logs-filter-group">
+            <label className="logs-filter-label" htmlFor="logs-level-select">Level</label>
+            <select
+              id="logs-level-select"
+              value={selectedLevel}
+              onChange={(e) => setSelectedLevel(e.target.value)}
+              className="logs-filter-select"
+            >
+              {levelOptions.map((lvl) => (
+                <option key={lvl} value={lvl}>{lvl === 'ALL' ? 'Semua Level' : lvl}</option>
               ))}
-            </div>
+            </select>
+          </div>
+
+          <div className="logs-filter-group">
+            <label className="logs-filter-label" htmlFor="logs-component-select">Komponen</label>
+            <select
+              id="logs-component-select"
+              value={selectedComponent}
+              onChange={(e) => setSelectedComponent(e.target.value)}
+              className="logs-filter-select"
+            >
+              {componentOptions.map((cmp) => (
+                <option key={cmp} value={cmp}>{cmp === 'ALL' ? 'Semua Komponen' : cmp}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="logs-filter-group">
+            <label className="logs-filter-label" htmlFor="logs-lines-select">Batas</label>
+            <select
+              id="logs-lines-select"
+              value={selectedLines}
+              onChange={(e) => setSelectedLines(Number(e.target.value))}
+              className="logs-filter-select"
+            >
+              {linesOptions.map((num) => (
+                <option key={num} value={num}>{num} baris</option>
+              ))}
+            </select>
           </div>
 
           <div className="logs-search-box">
             <Search size={13} className="search-icon" />
             <input
               type="text"
-              placeholder="Cari log atau filter teks..."
+              placeholder="Cari log atau endpoint..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="logs-search-input"
@@ -261,6 +250,7 @@ export default function LogsView({ onClose }) {
                 type="button"
                 className="clear-search-btn"
                 onClick={() => setSearchQuery('')}
+                title="Hapus pencarian"
               >
                 ×
               </button>
@@ -269,27 +259,29 @@ export default function LogsView({ onClose }) {
         </div>
       </section>
 
-      {/* Main Terminal Box Container matching Image 2 */}
+      {/* Main Terminal Box Container */}
       <section className="logs-terminal-card">
-        {/* Card Header (e.g. AGENT.LOG) */}
+        {/* Terminal Header */}
         <div className="terminal-card-header">
           <div className="terminal-title-group">
-            <FileText size={15} className="terminal-file-icon" />
-            <span className="terminal-filename">{selectedFile.toUpperCase()}.LOG</span>
+            <div className="terminal-active-file-pill">
+              <span className="terminal-file-dot" />
+              <span className="terminal-filename">{selectedFile}.log</span>
+            </div>
             <span className="terminal-count-badge">
-              {logs.length} baris {logs.length === selectedLines ? `(dibatasi ${selectedLines})` : ''}
+              {logs.length} baris {logs.length === selectedLines ? `(limit ${selectedLines})` : ''}
             </span>
           </div>
 
           <div className="terminal-actions-group">
             {stats && (
               <div className="terminal-quick-stats">
-                <span className="stat-item" title="Resident Memory Usage">
-                  RSS: {stats.rssMb} MB
+                <span className="stat-item" title="Resident Set Size (Memory)">
+                  {stats.rssMb} MB RSS
                 </span>
                 <span className="stat-sep">•</span>
                 <span className="stat-item" title="Uptime Server">
-                  Uptime: {Math.floor(stats.uptimeSeconds / 60)}m
+                  {Math.floor(stats.uptimeSeconds / 60)}m uptime
                 </span>
               </div>
             )}
@@ -298,9 +290,9 @@ export default function LogsView({ onClose }) {
               type="button"
               className="terminal-action-btn"
               onClick={handleCopyLogs}
-              title="Salin seluruh log"
+              title="Salin seluruh log ke clipboard"
             >
-              {copied ? <Check size={13} className="text-emerald" /> : <Copy size={13} />}
+              {copied ? <Check size={12} className="text-emerald" /> : <Copy size={12} />}
               <span>{copied ? 'Tersalin' : 'Salin'}</span>
             </button>
 
@@ -308,9 +300,9 @@ export default function LogsView({ onClose }) {
               type="button"
               className="terminal-action-btn"
               onClick={handleDownloadLogs}
-              title="Download file .log"
+              title="Unduh file log mentah"
             >
-              <Download size={13} />
+              <Download size={12} />
               <span>Unduh</span>
             </button>
 
@@ -318,9 +310,9 @@ export default function LogsView({ onClose }) {
               type="button"
               className="terminal-action-btn btn-danger"
               onClick={handleClearLogs}
-              title="Bersihkan log aktif"
+              title="Bersihkan log saat ini"
             >
-              <Trash2 size={13} />
+              <Trash2 size={12} />
               <span>Bersihkan</span>
             </button>
           </div>
@@ -334,7 +326,7 @@ export default function LogsView({ onClose }) {
         >
           {logs.length === 0 ? (
             <div className="logs-empty-state">
-              <Terminal size={32} className="empty-icon" />
+              <Terminal size={28} className="empty-icon" />
               <p className="empty-title">Tidak ada catatan log yang cocok</p>
               <p className="empty-desc">
                 Coba sesuaikan filter level, komponen, atau bersihkan kata pencarian.
@@ -403,7 +395,7 @@ export default function LogsView({ onClose }) {
           </label>
 
           <span className="footer-last-sync">
-            Terakhir diperbarui: {lastRefreshedAt.toLocaleTimeString()}
+            Diperbarui {lastRefreshedAt.toLocaleTimeString()}
           </span>
         </div>
       </section>
