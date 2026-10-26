@@ -184,10 +184,34 @@ export const TOOL_DEFINITIONS = [
   },
 ];
 
+function normalizeToolArgs(toolName, rawArgs = {}) {
+  const args = { ...rawArgs };
+
+  // Normalize path
+  if (!args.path) {
+    args.path = args.filepath || args.file_path || args.filename || args.file || args.file_name || '';
+  }
+
+  // Normalize content
+  if (args.content === undefined) {
+    if (args.text !== undefined) args.content = args.text;
+    else if (args.data !== undefined) args.content = args.data;
+    else if (args.body !== undefined) args.content = args.body;
+  }
+
+  // Normalize command
+  if (!args.command) {
+    args.command = args.cmd || args.script || '';
+  }
+
+  return args;
+}
+
 /**
  * Executes a tool by name with arguments and returns formatted result
  */
-export async function executeTool(toolName, args = {}) {
+export async function executeTool(toolName, rawArgs = {}) {
+  const args = normalizeToolArgs(toolName, rawArgs);
   try {
     switch (toolName) {
       case 'read_file': {
@@ -229,6 +253,9 @@ export async function executeTool(toolName, args = {}) {
       }
 
       case 'write_file': {
+        if (!args.path || !args.path.trim()) {
+          return { error: "Gagal menjalankan tool 'write_file': Path file tidak boleh kosong." };
+        }
         const fullPath = safetyGuard.resolveSafePath(args.path);
         const dir = path.dirname(fullPath);
         if (!fs.existsSync(dir)) {

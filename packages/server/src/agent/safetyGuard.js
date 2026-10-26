@@ -102,18 +102,20 @@ export class SafetyGuard {
    * @returns {{ needsApproval: boolean, riskLevel: 'safe'|'medium'|'high', reason?: string }}
    */
   evaluateToolCall(toolName, args = {}) {
+    const filePath = args?.path || args?.filename || args?.file_path || args?.file || '';
+    const cmd = (args?.command || args?.cmd || '').trim();
+
     switch (toolName) {
       case 'delete_file':
         return {
           needsApproval: true,
           riskLevel: 'high',
-          reason: `Menghapus file '${args.path}' bersifat permanen dan tidak dapat dibatalkan.`,
+          reason: `Menghapus file '${filePath || 'tidak diketahui'}' bersifat permanen dan tidak dapat dibatalkan.`,
         };
 
       case 'write_file':
       case 'edit_file': {
-        const filePath = args.path || '';
-        if (this.isCriticalFile(filePath)) {
+        if (filePath && this.isCriticalFile(filePath)) {
           return {
             needsApproval: true,
             riskLevel: 'medium',

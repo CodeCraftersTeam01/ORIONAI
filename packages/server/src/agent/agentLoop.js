@@ -55,6 +55,79 @@ function extractFallbackToolCalls(text) {
 }
 
 /**
+ * Consolidate chunked or delta tool calls emitted by proxies/streaming APIs.
+ * Solves the critical issue where arguments are streamed in multiple array entries
+ * (e.g. chunk 0 has name: "write_file", chunk 1 has arguments: "{\"path\"...", chunk 2 has arguments: "...}").
+ */
+function consolidateToolCalls(rawCalls) {
+  if (!Array.isArray(rawCalls) || rawCalls.length === 0) return [];
+
+  const consolidated = [];
+  let currentCall = null;
+
+  for (const tc of rawCalls) {
+    if (!tc) continue;
+    const fnName = tc.function?.name || tc.name;
+    const fnArgs = tc.function?.arguments !== undefined
+      ? tc.function.arguments
+      : (tc.arguments !== undefined ? tc.arguments : '');
+    const callId = tc.id;
+    const index = tc.index;
+
+    // 1. Try to find existing by index
+    let existing = null;
+    if (index !== undefined && index !== null) {
+      existing = consolidated.find((c) => c.index === index);
+    }
+    // 2. Try to find existing by id
+    if (!existing && callId) {
+      existing = consolidated.find((c) => c.id === callId);
+    }
+
+    if (existing) {
+      if (fnName && (!existing.function.name || existing.function.name === 'undefined')) {
+        existing.function.name = fnName;
+      }
+      if (fnArgs) {
+        if (typeof existing.function.arguments === 'string' && typeof fnArgs === 'string') {
+          existing.function.arguments += fnArgs;
+        } else if (typeof fnArgs === 'object') {
+          existing.function.arguments = JSON.stringify(fnArgs);
+        }
+      }
+      continue;
+    }
+
+    // 3. If chunk has NO function name and currentCall exists, append to currentCall
+    if ((!fnName || fnName === 'undefined') && currentCall) {
+      if (fnArgs) {
+        if (typeof currentCall.function.arguments === 'string' && typeof fnArgs === 'string') {
+          currentCall.function.arguments += fnArgs;
+        } else if (typeof fnArgs === 'object') {
+          currentCall.function.arguments = JSON.stringify(fnArgs);
+        }
+      }
+      continue;
+    }
+
+    // 4. Otherwise, new tool call entry
+    currentCall = {
+      id: callId || `call_${Date.now()}_${consolidated.length}`,
+      index: index !== undefined ? index : consolidated.length,
+      type: 'function',
+      function: {
+        name: fnName || '',
+        arguments: typeof fnArgs === 'string' ? fnArgs : (typeof fnArgs === 'object' ? JSON.stringify(fnArgs) : ''),
+      },
+    };
+    consolidated.push(currentCall);
+  }
+
+  // Filter and return only tool calls with a valid function name
+  return consolidated.filter((c) => Boolean(c.function?.name && c.function.name !== 'undefined' && c.function.name.trim() !== ''));
+}
+
+/**
  * Runs the autonomous agent loop until the goal is achieved or max steps reached
  */
 export async function runAgentLoop({
@@ -148,12 +221,15 @@ export async function runAgentLoop({
     const messageRes = choice?.message || {};
 
     let content = messageRes.content || '';
-    let toolCalls = messageRes.tool_calls || [];
+    let rawToolCalls = messageRes.tool_calls || [];
 
     // Fallback extraction if model outputs markdown tool calls
-    if (toolCalls.length === 0 && content) {
-      toolCalls = extractFallbackToolCalls(content);
+    if (rawToolCalls.length === 0 && content) {
+      rawToolCalls = extractFallbackToolCalls(content);
     }
+
+    // Consolidate fragmented/chunked tool calls (crucial for upstream router deltas)
+    const toolCalls = consolidateToolCalls(rawToolCalls);
 
     // Emit thoughts or intermediate explanations if present
     if (content) {
@@ -185,12 +261,36 @@ export async function runAgentLoop({
       const callId = tc.id || `call_${Date.now()}`;
       const fnName = tc.function?.name;
       let fnArgs = {};
+      const rawArgString = typeof tc.function?.arguments === 'string' ? tc.function.arguments.trim() : '';
+
       try {
-        fnArgs = typeof tc.function?.arguments === 'string'
-          ? JSON.parse(tc.function.arguments)
-          : tc.function?.arguments || {};
+        if (typeof tc.function?.arguments === 'object' && tc.function?.arguments !== null) {
+          fnArgs = tc.function.arguments;
+        } else if (rawArgString) {
+          fnArgs = JSON.parse(rawArgString);
+        }
       } catch (parseErr) {
-        fnArgs = { raw: tc.function?.arguments };
+        // Try repairing common formatting issues (unescaped newlines or single quotes)
+        try {
+          const repaired = rawArgString
+            .replace(/\r?\n/g, '\\n')
+            .replace(/'/g, '"');
+          fnArgs = JSON.parse(repaired);
+        } catch {
+          fnArgs = { raw: rawArgString };
+        }
+      }
+
+      // If JSON.parse failed and left fnArgs.raw, extract fields via regex
+      if (fnArgs.raw && typeof fnArgs.raw === 'string') {
+        const pathMatch = fnArgs.raw.match(/["']?(?:path|filename|file)["']?\s*[:=]\s*["']?([^"',}\s]+)["']?/i);
+        if (pathMatch) fnArgs.path = pathMatch[1].trim();
+
+        const contentMatch = fnArgs.raw.match(/["']?(?:content|text|body)["']?\s*[:=]\s*["']?([\s\S]*?)["']?\s*(?:,\s*["']?[a-z_]+["']?\s*[:=]|\}\s*$)/i);
+        if (contentMatch) fnArgs.content = contentMatch[1];
+
+        const cmdMatch = fnArgs.raw.match(/["']?(?:command|cmd)["']?\s*[:=]\s*["']?([^"']+)["']?/i);
+        if (cmdMatch) fnArgs.command = cmdMatch[1].trim();
       }
 
       // Check safety guard
