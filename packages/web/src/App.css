@@ -1412,7 +1412,7 @@
 }
 
 .welcome-hero-container.is-chat-mode {
-  transform: translateY(-8vh);
+  transform: translateY(-5.5vh);
 }
 
 .welcome-logo-badge {
@@ -1512,8 +1512,8 @@
 }
 
 .welcome-input-slot.is-expanded {
-  height: 84px;
-  margin-bottom: 6.5rem;
+  height: 64px;
+  margin-bottom: 4.75rem;
 }
 
 /* Minimalist Dynamic Recommendations (Smooth collapse/expand transition) */
@@ -1881,7 +1881,7 @@
    -------------------------------------------------------------------------- */
 @media (min-width: 821px) {
   .chat-input-wrapper.is-centered {
-    bottom: calc(50% - 138px);
+    bottom: calc(50% - 92px + 8.5vh);
     padding: 0 1.5rem;
     background: transparent;
   }
