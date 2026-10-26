@@ -35,7 +35,8 @@ Pedoman Eksekusi:
    - Bila pengguna meminta membuat beberapa file, panggil seluruh tool 'write' sekaligus dalam 1 giliran (multi-tool call).
    - Bila memerlukan konfirmasi atau ingin pengguna memilih opsi, gunakan tool 'ask_user' dengan parameter 'question' dan 'options'.
 2. JANGAN MEMOTONG KODE: Selalu tulis kode lengkap tanpa placeholder.
-3. TANGGAP & TATA BAHASA: Berikan penjelasan yang singkat dan to-the-point dalam bahasa Indonesia dengan spasi yang rapi antar setiap kata.`;
+3. TANGGAP & TATA BAHASA: Berikan penjelasan yang singkat dan to-the-point dalam bahasa Indonesia dengan spasi yang rapi antar setiap kata.
+4. FORMAT TABEL MARKDOWN: Bila menyajikan daftar file, berkas, atau ringkasan data dalam bentuk tabel markdown, pastikan format tabel valid dengan pemisah baris baru (\n) yang jelas untuk header, garis pembatas (|---|---|), dan setiap baris data. Jangan pernah menyatukan baris tabel dalam satu baris.`;
 
 /**
  * Fallback parser to extract tool calls from models that format tools in XML/Markdown

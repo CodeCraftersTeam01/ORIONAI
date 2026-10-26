@@ -334,6 +334,135 @@ export function cleanIndonesianFormatting(text) {
   return res;
 }
 
+// Helper to unpack and repair markdown tables glued on one line or missing newlines
+function repairGluedMarkdownTables(text) {
+  if (!text || typeof text !== 'string') return text;
+
+  // Regex to match markdown table delimiter row (e.g. |---|---| or ||-------|-------||)
+  const delimRegex = /\|+(\s*:?-{2,}:?\s*\|+)+/g;
+  let match;
+  let result = text;
+
+  while ((match = delimRegex.exec(result)) !== null) {
+    const delimFull = match[0];
+    const delimIndex = match.index;
+
+    // Extract columns from delimiter
+    const delimCols = delimFull
+      .split('|')
+      .map((c) => c.trim())
+      .filter((c) => /^:?-{2,}:?$/.test(c));
+    const numCols = delimCols.length;
+    if (numCols < 2) continue;
+
+    const hasLeadingNewline = delimIndex === 0 || result[delimIndex - 1] === '\n';
+    const hasTrailingNewline =
+      delimIndex + delimFull.length >= result.length || result[delimIndex + delimFull.length] === '\n';
+
+    // 1. Extract header row from textBefore
+    const textBefore = result.slice(0, delimIndex).trimEnd();
+    let headerStart = 0;
+    let pipeCount = 0;
+    for (let i = textBefore.length - 1; i >= 0; i--) {
+      if (textBefore[i] === '\n') {
+        headerStart = i + 1;
+        break;
+      }
+      if (textBefore[i] === '|') {
+        pipeCount++;
+        if (pipeCount >= numCols) {
+          if (
+            i === 0 ||
+            textBefore[i - 1] === ':' ||
+            textBefore[i - 1] === '`' ||
+            textBefore[i - 1] === '\n' ||
+            textBefore[i - 1] === ' '
+          ) {
+            headerStart = i;
+            break;
+          }
+        }
+      }
+    }
+
+    const headerRaw = textBefore.slice(headerStart).trim();
+    const headerClean = headerRaw.replace(/^\|+/, '').replace(/\|+$/, '');
+    const headerCells = headerClean
+      .split('|')
+      .map((c) => c.trim())
+      .filter((_, idx) => idx < numCols);
+    if (headerCells.length !== numCols) continue;
+
+    const textAfter = result.slice(delimIndex + delimFull.length);
+
+    // If already properly formatted with newlines on every row, leave as-is
+    if (hasLeadingNewline && hasTrailingNewline && !textBefore.slice(headerStart).includes('\n') && textAfter.startsWith('\n')) {
+      const firstLineAfter = textAfter.trimStart().split('\n')[0] || '';
+      const pipesInFirstLine = (firstLineAfter.match(/\|/g) || []).length;
+      if (pipesInFirstLine <= numCols + 1) {
+        continue;
+      }
+    }
+
+    // 2. Extract body rows from textAfter
+    const bodyRows = [];
+    let currentCells = [];
+    let currentCellText = '';
+    let inCode = false;
+    let lastRowEndIndex = 0;
+    let i = 0;
+
+    while (i < textAfter.length) {
+      const ch = textAfter[i];
+      if (ch === '`') inCode = !inCode;
+
+      if (ch === '|' && !inCode) {
+        const trimmedCell = currentCellText.trim();
+        if (currentCells.length === 0 && trimmedCell === '') {
+          // leading pipe, ignore
+        } else {
+          currentCells.push(trimmedCell);
+        }
+        currentCellText = '';
+
+        if (currentCells.length === numCols) {
+          bodyRows.push(currentCells);
+          currentCells = [];
+          lastRowEndIndex = i + 1;
+        }
+      } else if (ch === '\n' && !inCode) {
+        if (currentCells.length === 0) {
+          if (textAfter[i + 1] === '\n') {
+            lastRowEndIndex = i;
+            break;
+          }
+        } else {
+          currentCellText += ch;
+        }
+      } else {
+        currentCellText += ch;
+      }
+      i++;
+    }
+
+    if (bodyRows.length > 0) {
+      const cleanHeaderLine = '| ' + headerCells.join(' | ') + ' |';
+      const cleanDelimLine = '| ' + delimCols.map(() => '---').join(' | ') + ' |';
+      const cleanBodyLines = bodyRows.map((row) => '| ' + row.join(' | ') + ' |').join('\n');
+      const cleanTable = `${cleanHeaderLine}\n${cleanDelimLine}\n${cleanBodyLines}`;
+
+      const preTable = textBefore.slice(0, headerStart).trim();
+      const postTable = textAfter.slice(lastRowEndIndex).trim();
+
+      const repaired = `${preTable ? preTable + '\n\n' : ''}${cleanTable}${postTable ? '\n\n' + postTable : ''}`;
+      result = repaired;
+      break;
+    }
+  }
+
+  return result;
+}
+
 function FormattedMessage({ content, isStreaming = false }) {
   if (!content) return null;
 
@@ -348,7 +477,10 @@ function FormattedMessage({ content, isStreaming = false }) {
     )
     .replace(/(```[a-zA-Z0-9_#-]+)(<|[\$\!\{])/g, '$1\n$2');
 
-  // 2. Normalize markdown headings and tables if glued together
+  // 2. Normalize markdown headings and tables
+  // - Repair tables glued onto single line or with missing newlines
+  normalizedContent = repairGluedMarkdownTables(normalizedContent);
+
   // - Heading without space: ##Penjelasan -> ## Penjelasan
   normalizedContent = normalizedContent.replace(/(^|\n)(#{1,6})([^\s#\n])/g, '$1$2 $3');
   // - Heading glued to table: ## Heading| Col1 | Col2 | -> ## Heading\n\n| Col1 | Col2 |
@@ -456,8 +588,8 @@ function FormattedMessage({ content, isStreaming = false }) {
 // Helper to parse a markdown table row into cells
 function parseTableRow(line) {
   let trimmed = line.trim();
-  if (trimmed.startsWith('|')) trimmed = trimmed.substring(1);
-  if (trimmed.endsWith('|')) trimmed = trimmed.substring(0, trimmed.length - 1);
+  // Strip all leading and trailing pipes (including double pipes like ||)
+  trimmed = trimmed.replace(/^\|+/, '').replace(/\|+$/, '');
   return trimmed.split('|').map((c) => c.trim());
 }
 
