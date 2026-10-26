@@ -627,7 +627,7 @@ export default function ModelsView({
         <div className="modal-backdrop" onClick={() => setIsChangeModelModalOpen(false)}>
           <div
             className="modal-dialog modal-content"
-            style={{ maxWidth: '520px', width: '100%' }}
+            style={{ maxWidth: '540px', width: '100%' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
@@ -646,34 +646,44 @@ export default function ModelsView({
 
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
               <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                Model utama akan digunakan secara otomatis saat Anda memulai obrolan baru.
+                Model utama akan digunakan secara otomatis saat Anda memulai sesi obrolan baru.
               </p>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '55vh', overflowY: 'auto' }}>
+              <div className="model-picker-list">
                 {modelsList.map((m) => {
                   const isSelected = selectedModel === m.id || selectedModel === m.modelId;
                   return (
                     <div
                       key={m.id}
-                      className={`provider-saved-row ${isSelected ? 'active-model-row' : ''}`}
-                      style={{ cursor: 'pointer', padding: '0.75rem 1rem' }}
+                      className={`model-picker-card ${isSelected ? 'is-active' : ''}`}
                       onClick={() => handleSetMainModel(m.id)}
                     >
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                            {m.displayName || m.name}
-                          </span>
-                          <span className="provider-card-pill">{m.badge}</span>
+                      <div className="model-picker-info">
+                        <div className="model-picker-avatar">
+                          {getModelIcon(m)}
                         </div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                          {m.providerName} · {m.endpoint}
-                        </span>
+                        <div className="model-picker-meta">
+                          <div className="model-picker-name-row">
+                            <span className="model-picker-name">
+                              {m.displayName || m.name}
+                            </span>
+                            <span className={`tile-badge-pill ${m.isOfficial ? 'is-official' : ''}`}>
+                              {m.isOfficial ? 'Official' : m.badge || 'custom'}
+                            </span>
+                          </div>
+                          <span className="model-picker-sub">
+                            {m.providerName} · {m.endpoint}
+                          </span>
+                        </div>
                       </div>
+
                       {isSelected ? (
-                        <CheckCircle2 size={18} style={{ color: '#3b82f6' }} />
+                        <div className="model-picker-badge-active">
+                          <Check size={13} />
+                          <span>Utama</span>
+                        </div>
                       ) : (
-                        <button type="button" className="provider-action-btn" style={{ fontSize: '0.75rem' }}>
+                        <button type="button" className="model-picker-select-btn">
                           Pilih
                         </button>
                       )}

@@ -808,6 +808,29 @@
   background: var(--bg-surface);
 }
 
+.msg-vision-indicator-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem;
+  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  border-radius: 9999px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #2563eb;
+  letter-spacing: 0.02em;
+  user-select: none;
+  margin-right: 0.25rem;
+}
+
+[data-theme='dark'] .msg-vision-indicator-pill {
+  background: rgba(96, 165, 250, 0.12);
+  border-color: rgba(96, 165, 250, 0.3);
+  color: #93c5fd;
+}
+
 /* ==========================================================================
    MINIMALIST THINKING INDICATOR (Simple Dots + Shine Text)
    ========================================================================== */
@@ -6685,11 +6708,12 @@ svg[aria-roledescription="error"] {
   animation: orionSpin 0.7s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Top Hero Grid */
+/* Top Hero Grid (100% Symmetrical 1fr 1fr) */
 .models-hero-grid {
   display: grid;
-  grid-template-columns: 1.15fr 0.85fr;
+  grid-template-columns: 1fr 1fr;
   gap: 1.15rem;
+  align-items: stretch;
 }
 
 @media (max-width: 900px) {
@@ -6986,20 +7010,14 @@ svg[aria-roledescription="error"] {
   color: var(--text-muted);
 }
 
-/* Bottom Models Grid */
+/* Bottom Models Grid (100% Symmetrical 2 Columns) */
 .models-cards-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.15rem;
 }
 
-@media (max-width: 980px) {
-  .models-cards-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 620px) {
+@media (max-width: 680px) {
   .models-cards-grid {
     grid-template-columns: 1fr;
   }
@@ -7014,6 +7032,8 @@ svg[aria-roledescription="error"] {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
+  min-height: 145px;
   gap: 0.9rem;
   position: relative;
   z-index: 1;
@@ -7340,12 +7360,13 @@ svg[aria-roledescription="error"] {
   color: #60a5fa;
 }
 
-/* Tile Bottom Row */
+/* Tile Bottom Row (Symmetrically aligned to bottom) */
 .tile-bottom-row {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   padding-top: 0.2rem;
+  margin-top: auto;
 }
 
 .tile-time-ago {
@@ -7374,6 +7395,148 @@ svg[aria-roledescription="error"] {
   background: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
   animation: dotPulse 2s infinite ease-in-out;
+}
+
+/* ==========================================================================
+   MODEL PICKER MODAL (PILIH MODEL UTAMA)
+   ========================================================================== */
+.model-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  max-height: 55vh;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.model-picker-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1.1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.model-picker-card:hover {
+  background: var(--bg-surface-hover);
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+.model-picker-card.is-active {
+  background: rgba(37, 99, 235, 0.04);
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.18);
+}
+
+[data-theme='dark'] .model-picker-card.is-active {
+  background: rgba(96, 165, 250, 0.08);
+  border-color: rgba(96, 165, 250, 0.4);
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.2);
+}
+
+.model-picker-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.model-picker-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.model-picker-card.is-active .model-picker-avatar {
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.08);
+  border-color: rgba(37, 99, 235, 0.2);
+}
+
+.model-picker-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.model-picker-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.model-picker-name {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.model-picker-sub {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+/* Beautiful Non-Slop Choose Button */
+.model-picker-select-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 0.38rem 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.model-picker-card:hover .model-picker-select-btn {
+  background: var(--text-primary);
+  color: var(--bg-card);
+  border-color: var(--text-primary);
+}
+
+.model-picker-badge-active {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid rgba(37, 99, 235, 0.25);
+  color: #2563eb;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+[data-theme='dark'] .model-picker-badge-active {
+  background: rgba(96, 165, 250, 0.12);
+  border-color: rgba(96, 165, 250, 0.3);
+  color: #93c5fd;
 }
 
 

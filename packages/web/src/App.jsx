@@ -35,6 +35,7 @@ import {
   ArrowLeft,
   MessageSquare,
   Terminal,
+  Eye,
 } from 'lucide-react';
 import AuroraBackground from './components/AuroraBackground';
 import OrionLogo from './components/OrionLogo';
@@ -620,8 +621,16 @@ export default function App() {
     let accumulatedReply = '';
 
     try {
-      // Use the model selected before starting the voice call
-      const modelToUse = voiceSelectedModelRef.current || selectedModelRef.current || selectedModel;
+      // Use model: check if voice_chat auxiliary task is assigned, otherwise use current model
+      let modelToUse = voiceSelectedModelRef.current || selectedModelRef.current || selectedModel;
+      try {
+        const savedAux = localStorage.getItem('orion_aux_assignments');
+        const auxAssignments = savedAux ? JSON.parse(savedAux) : {};
+        if (auxAssignments.voice_chat) {
+          modelToUse = auxAssignments.voice_chat;
+        }
+      } catch {}
+
       const { effectiveModel, activeCustomProvider, userOrionApiKey } = resolveModelAndProvider(
         modelToUse,
         customProvidersRef.current || customProviders
@@ -1423,13 +1432,41 @@ export default function App() {
       timestamp: new Date().toISOString(),
     };
 
+    // Check if attachments contain any images for Vision routing
+    const hasImages = (activeAttachments || []).some(
+      (a) => a && (
+        a.type === 'image' ||
+        a.type?.startsWith('image/') ||
+        a.category === 'image' ||
+        a.isImage ||
+        /\.(png|jpe?g|webp|gif|svg|bmp)$/i.test(a.name || '') ||
+        (typeof a.data === 'string' && a.data.startsWith('data:image/'))
+      )
+    );
+
+    let modelToUseForMessage = selectedModel;
+    let isVisionRouted = false;
+
+    if (hasImages) {
+      try {
+        const savedAux = localStorage.getItem('orion_aux_assignments');
+        const auxAssignments = savedAux ? JSON.parse(savedAux) : {};
+        if (auxAssignments.vision) {
+          modelToUseForMessage = auxAssignments.vision;
+          isVisionRouted = true;
+        }
+      } catch (e) {
+        console.warn('Gagal membaca penugasan vision:', e);
+      }
+    }
+
     const { effectiveModel, activeCustomProvider, userOrionApiKey } = resolveModelAndProvider(
-      selectedModel,
+      modelToUseForMessage,
       customProviders
     );
 
     const modelSupportsReasoning = isReasoningSupported(
-      selectedModel,
+      modelToUseForMessage,
       activeCustomProvider?.modelId || activeCustomProvider?.name || ''
     );
     const activeReasoningTier = modelSupportsReasoning ? reasoningTier : null;
@@ -1439,7 +1476,8 @@ export default function App() {
       id: aiMessageId,
       role: 'assistant',
       content: '',
-      model: effectiveModel || selectedModel,
+      model: effectiveModel || modelToUseForMessage,
+      isVisionTask: isVisionRouted,
       reasoningTier: activeReasoningTier,
       customProvider: activeCustomProvider,
       timestamp: new Date().toISOString(),
@@ -1501,7 +1539,7 @@ export default function App() {
           message: displayPrompt,
           history: activeSession ? activeSession.messages : [],
           attachments: activeAttachments,
-          model: effectiveModel || selectedModel,
+          model: effectiveModel || modelToUseForMessage,
           reasoningTier: activeReasoningTier,
           customProvider: activeCustomProvider,
           orionApiKey: userOrionApiKey,
@@ -1590,7 +1628,7 @@ export default function App() {
           body: JSON.stringify({
             message: userText,
             history: activeSession ? activeSession.messages : [],
-            model: selectedModel,
+            model: effectiveModel || modelToUseForMessage,
             reasoningTier: activeReasoningTier,
             customProvider: activeCustomProvider,
             orionApiKey: userOrionApiKey,
@@ -2083,6 +2121,15 @@ export default function App() {
                       {/* Action Bar for AI Message */}
                       {msg.role === 'assistant' && msg.content !== '' && (
                         <div className="message-actions-bar">
+                          {msg.isVisionTask && (
+                            <span
+                              className="msg-vision-indicator-pill"
+                              title={`Diproses oleh model vision: ${msg.model}`}
+                            >
+                              <Eye size={11} />
+                              <span>Vision · {msg.model?.includes('::') ? msg.model.split('::')[1] : msg.model}</span>
+                            </span>
+                          )}
                           <button
                             type="button"
                             className="msg-action-btn"
