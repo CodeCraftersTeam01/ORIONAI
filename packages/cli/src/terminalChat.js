@@ -340,7 +340,12 @@ export async function promptCliApproval(toolCall, signal = null) {
   process.stdout.write(`\n\x1b[33m╭── ⚠️  PERSETUJUAN DIPERLUKAN (SAFETY GUARD) ──────────────────────────\x1b[0m\n`);
   process.stdout.write(`\x1b[33m│\x1b[0m Tool: \x1b[1m\x1b[36m${toolCall?.name || toolCall?.tool || 'tool'}\x1b[0m\n`);
   const toolArgs = toolCall?.args || {};
-  const target = toolArgs.path || toolArgs.command || toolArgs.query || (Object.keys(toolArgs).length ? JSON.stringify(toolArgs) : '');
+  let target = '';
+  if (Array.isArray(toolArgs.paths) && toolArgs.paths.length > 0) {
+    target = `${toolArgs.paths.length} file (${toolArgs.paths.join(', ')})`;
+  } else {
+    target = toolArgs.path || toolArgs.command || toolArgs.query || (Object.keys(toolArgs).length ? JSON.stringify(toolArgs) : '');
+  }
   process.stdout.write(`\x1b[33m│\x1b[0m Target: \x1b[37m${target}\x1b[0m\n`);
   process.stdout.write(`\x1b[33m│\x1b[0m Alasan: \x1b[90m${toolCall?.risk?.reason || toolCall?.reason || 'Operasi sensitif / berdampak sistem'}\x1b[0m\n`);
   process.stdout.write(`\x1b[33m╰────────────────────────────────────────────────────────────────────────\x1b[0m\n`);
@@ -1699,6 +1704,9 @@ export async function startTerminalChat() {
                     { id: callId, name: toolName, args: toolArgs, risk: { reason } },
                     activeAbortController?.signal
                   );
+                  if (approved) {
+                    spinner.start(`Mengeksekusi ${toolName}...`);
+                  }
                   resolveApproval(callId, approved);
                 } else if (event.type === 'tool_call_waiting_choice') {
                   spinner.stop();

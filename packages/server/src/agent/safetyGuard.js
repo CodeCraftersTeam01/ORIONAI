@@ -116,12 +116,16 @@ export class SafetyGuard {
     const cmd = (args?.command || args?.cmd || '').trim();
 
     switch (toolName) {
-      case 'delete_file':
+      case 'delete_file': {
+        const fileTarget = Array.isArray(args?.paths) && args.paths.length > 0
+          ? `${args.paths.length} file (${args.paths.slice(0, 3).join(', ')}${args.paths.length > 3 ? '...' : ''})`
+          : (filePath || 'file');
         return {
           needsApproval: true,
           riskLevel: 'high',
-          reason: `Menghapus file '${filePath || 'tidak diketahui'}' bersifat permanen dan tidak dapat dibatalkan.`,
+          reason: `Menghapus '${fileTarget}' bersifat permanen dan tidak dapat dibatalkan.`,
         };
+      }
 
       case 'write_file':
       case 'edit_file': {

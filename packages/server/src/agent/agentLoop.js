@@ -9,7 +9,7 @@ export function resolveApproval(toolCallId, approved) {
   const pending = pendingApprovals.get(toolCallId);
   if (pending) {
     pendingApprovals.delete(toolCallId);
-    pending.resolve(Boolean(approved));
+    pending.resolve(approved);
     return true;
   }
   return false;
@@ -26,16 +26,16 @@ Daftar tools yang tersedia:
 - ls: Melihat isi direktori. Parameter: path (string opsional).
 - find: Mencari file dengan pola/glob. Parameter: pattern (string), path (string opsional).
 - grep: Mencari teks di dalam file. Parameter: pattern (string), path (string opsional).
-- delete_file: Menghapus file dalam direktori proyek. Parameter: path (string). Sistem keselamatan (Safety Guard) akan otomatis meminta persetujuan pengguna dengan menu interaktif.
+- delete_file: Menghapus satu atau banyak file sekaligus dalam direktori proyek. Parameter: path (string untuk 1 file) atau paths (array of strings untuk banyak file). Sistem keselamatan akan meminta persetujuan 1 kali untuk seluruh file tersebut.
 - ask_user: Menampilkan pertanyaan pilihan opsi interaktif kepada pengguna yang dapat dipilih menggunakan tombol panah keyboard (Up/Down) dan Enter. Parameter: question (string), options (array of strings).
 
 Pedoman Eksekusi:
-1. EKSEKUSI LANGSUNG & PERSETUJUAN:
-   - Bila pengguna meminta menghapus file (contoh: "tolong hapus test.txt"), panggil tool 'delete_file' langsung dengan path file tersebut. JANGAN hanya menanyakan konfirmasi lewat teks biasa, karena tool 'delete_file' otomatis memicu dialog persetujuan interaktif dari sistem keselamatan.
-   - Bila Anda memerlukan pilihan atau konfirmasi dari pengguna (seperti memilih teknologi, opsi arsitektur, atau preferensi desain), WAJIB panggil tool 'ask_user' dengan parameter 'question' dan 'options' (array pilihan dinamis).
-2. JANGAN MEMOTONG KODE: Selalu tulis kode lengkap tanpa placeholder seperti "// implementasi nanti".
-3. MULTI-TOOL DALAM 1 GILIRAN (CEPAT & SEKALIGUS): Bila pengguna meminta membuat beberapa file sekaligus (seperti file HTML, CSS, dan JavaScript untuk dashboard), PANGGIL SELURUH TOOL 'write' SEKALIGUS DALAM 1 GILIRAN (multi-tool call) agar seluruh file langsung dibuat seketika tanpa harus menunggu bergilir satu per satu.
-4. TANGGAP & TATA BAHASA: Berikan penjelasan yang singkat dan to-the-point dalam bahasa Indonesia. Selalu gunakan spasi yang jelas dan tepat antar setiap kata (contoh: "akan menghapus", "tidak dapat", "yakin ingin", "YA untuk melanjutkan").`;
+1. EKSEKUSI LANGSUNG & EFISIEN (BATCH OPERATIONS):
+   - Bila pengguna meminta menghapus beberapa file (seperti "hapus html css js di folder ini"), JANGAN memanggil find lalu ls secara bertele-tele. Langsung kumpulkan daftar file dan panggil tool 'delete_file' SEKALI SAJA dengan parameter 'paths: [...]' (batch deletion). Sistem keselamatan akan memicu dialog persetujuan sekali untuk semua file tersebut dan langsung menghapusnya seketika tanpa harus menunggu bergilir satu per satu.
+   - Bila pengguna meminta membuat beberapa file, panggil seluruh tool 'write' sekaligus dalam 1 giliran (multi-tool call).
+   - Bila memerlukan konfirmasi atau ingin pengguna memilih opsi, gunakan tool 'ask_user' dengan parameter 'question' dan 'options'.
+2. JANGAN MEMOTONG KODE: Selalu tulis kode lengkap tanpa placeholder.
+3. TANGGAP & TATA BAHASA: Berikan penjelasan yang singkat dan to-the-point dalam bahasa Indonesia dengan spasi yang rapi antar setiap kata.`;
 
 /**
  * Fallback parser to extract tool calls from models that format tools in XML/Markdown
@@ -417,6 +417,39 @@ export async function runAgentLoop({
 
       // If approval is needed, pause and wait for user permission
       if (evaluation.needsApproval) {
+        let approvalResolver;
+        const approvalPromise = new Promise((resolve) => {
+          approvalResolver = resolve;
+        });
+
+        const onAbort = () => {
+          if (pendingApprovals.has(callId)) {
+            pendingApprovals.delete(callId);
+            approvalResolver(false);
+          }
+        };
+
+        if (signal?.aborted) throw new Error('Operasi agent dihentikan oleh pengguna.');
+        signal?.addEventListener('abort', onAbort, { once: true });
+
+        pendingApprovals.set(callId, {
+          resolve: (val) => {
+            signal?.removeEventListener('abort', onAbort);
+            approvalResolver(val);
+          },
+          toolCall: { name: fnName, args: fnArgs },
+        });
+
+        // Auto-timeout after 5 minutes if no response
+        const timeoutId = setTimeout(() => {
+          if (pendingApprovals.has(callId)) {
+            pendingApprovals.delete(callId);
+            signal?.removeEventListener('abort', onAbort);
+            approvalResolver(false);
+          }
+        }, 5 * 60 * 1000);
+
+        // State: WAITING APPROVAL - Emitted AFTER pendingApprovals has been set!
         await onEvent({
           type: 'tool_call_waiting_approval',
           toolCallId: callId,
@@ -428,34 +461,8 @@ export async function runAgentLoop({
           reason: evaluation.reason,
         });
 
-        const approved = await new Promise((resolve) => {
-          const onAbort = () => {
-            if (pendingApprovals.has(callId)) {
-              pendingApprovals.delete(callId);
-              resolve(false);
-            }
-          };
-
-          if (signal?.aborted) return resolve(false);
-          signal?.addEventListener('abort', onAbort, { once: true });
-
-          pendingApprovals.set(callId, {
-            resolve: (val) => {
-              signal?.removeEventListener('abort', onAbort);
-              resolve(val);
-            },
-            toolCall: { name: fnName, args: fnArgs },
-          });
-
-          // Auto-timeout after 5 minutes if no response
-          setTimeout(() => {
-            if (pendingApprovals.has(callId)) {
-              pendingApprovals.delete(callId);
-              signal?.removeEventListener('abort', onAbort);
-              resolve(false);
-            }
-          }, 5 * 60 * 1000);
-        });
+        const approved = await approvalPromise;
+        clearTimeout(timeoutId);
 
         if (signal?.aborted) {
           throw new Error('Operasi agent dihentikan oleh pengguna.');
@@ -495,6 +502,29 @@ export async function runAgentLoop({
           options = ['Ya, lanjutkan', 'Tidak, batalkan'];
         }
 
+        let choiceResolver;
+        const choicePromise = new Promise((resolve) => {
+          choiceResolver = resolve;
+        });
+
+        const onAbort = () => {
+          if (pendingApprovals.has(callId)) {
+            pendingApprovals.delete(callId);
+            choiceResolver({ selected: 'Dibatalkan', index: -1, cancelled: true });
+          }
+        };
+
+        if (signal?.aborted) return { success: false, selected: 'Dibatalkan' };
+        signal?.addEventListener('abort', onAbort, { once: true });
+
+        pendingApprovals.set(callId, {
+          resolve: (val) => {
+            signal?.removeEventListener('abort', onAbort);
+            choiceResolver(val);
+          },
+          toolCall: { name: fnName, args: fnArgs },
+        });
+
         await onEvent({
           type: 'tool_call_waiting_choice',
           toolCallId: callId,
@@ -504,25 +534,7 @@ export async function runAgentLoop({
           step,
         });
 
-        const chosen = await new Promise((resolve) => {
-          const onAbort = () => {
-            if (pendingApprovals.has(callId)) {
-              pendingApprovals.delete(callId);
-              resolve({ selected: 'Dibatalkan', index: -1, cancelled: true });
-            }
-          };
-
-          if (signal?.aborted) return resolve({ selected: 'Dibatalkan', index: -1, cancelled: true });
-          signal?.addEventListener('abort', onAbort, { once: true });
-
-          pendingApprovals.set(callId, {
-            resolve: (val) => {
-              signal?.removeEventListener('abort', onAbort);
-              resolve(val);
-            },
-            toolCall: { name: fnName, args: fnArgs },
-          });
-        });
+        const chosen = await choicePromise;
 
         const selectedText = typeof chosen === 'string' ? chosen : (chosen?.selected || chosen?.label || options[0]);
         const result = {

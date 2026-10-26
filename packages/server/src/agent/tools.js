@@ -173,16 +173,20 @@ export const TOOL_DEFINITIONS = [
     type: 'function',
     function: {
       name: 'delete_file',
-      description: 'Menghapus file tertentu dalam workspace. MEMERLUKAN PERSETUJUAN PENGGUNA.',
+      description: 'Menghapus satu atau banyak file sekaligus dalam workspace. Mendukung parameter path (1 file) atau paths (array banyak file).',
       parameters: {
         type: 'object',
         properties: {
           path: {
             type: 'string',
-            description: 'Lokasi relatif file yang ingin dihapus.',
+            description: 'Lokasi file yang ingin dihapus (bila hanya 1 file).',
+          },
+          paths: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Daftar lokasi file yang ingin dihapus sekaligus dalam 1 kali eksekusi (batch deletion).',
           },
         },
-        required: ['path'],
       },
     },
   },
@@ -536,15 +540,43 @@ export async function executeTool(name, rawArgs = {}) {
       }
 
       case 'delete_file': {
-        const fullPath = safetyGuard.resolveSafePath(args.path);
-        if (!fs.existsSync(fullPath)) {
-          return { error: `File tidak ditemukan: ${args.path}` };
+        const pathsToDelete = Array.isArray(args.paths) && args.paths.length > 0
+          ? args.paths
+          : (args.path ? [args.path] : []);
+
+        if (pathsToDelete.length === 0) {
+          return { error: 'Path file tidak boleh kosong.' };
         }
-        fs.unlinkSync(fullPath);
+
+        const deleted = [];
+        const notFound = [];
+
+        for (const p of pathsToDelete) {
+          try {
+            const fullPath = safetyGuard.resolveSafePath(p);
+            if (fs.existsSync(fullPath)) {
+              const stat = fs.statSync(fullPath);
+              if (stat.isDirectory()) {
+                fs.rmSync(fullPath, { recursive: true, force: true });
+              } else {
+                fs.unlinkSync(fullPath);
+              }
+              deleted.push(p);
+            } else {
+              notFound.push(p);
+            }
+          } catch (delErr) {
+            return { error: `Gagal menghapus '${p}': ${delErr.message}` };
+          }
+        }
+
         return {
-          success: true,
-          path: args.path,
-          message: `File '${args.path}' berhasil dihapus.`,
+          success: deleted.length > 0,
+          deleted,
+          notFound,
+          message: deleted.length > 1
+            ? `Berhasil menghapus ${deleted.length} file: ${deleted.join(', ')}.`
+            : `File '${deleted[0] || pathsToDelete[0]}' berhasil dihapus.`,
         };
       }
 
