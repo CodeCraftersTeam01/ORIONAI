@@ -100,6 +100,18 @@ export default function Sidebar({
 
               <button
                 type="button"
+                className={`sidebar-nav-item ${currentView === 'models' ? 'active' : ''}`}
+                onClick={() => {
+                  onNavigate?.('models');
+                  if (window.innerWidth < 768) onCloseMobile();
+                }}
+              >
+                <Sparkles size={16} className="nav-item-icon" />
+                <span className="nav-item-label">Models</span>
+              </button>
+
+              <button
+                type="button"
                 className={`sidebar-nav-item ${currentView === 'logs' ? 'active' : ''}`}
                 onClick={() => {
                   onNavigate?.('logs');

@@ -63,6 +63,7 @@ import FormattedMessage from './components/FormattedMessage';
 import SettingsModal from './components/SettingsModal';
 import ManageProvidersModal from './components/ManageProvidersModal';
 import LogsView from './components/LogsView';
+import ModelsView from './components/ModelsView';
 import ThinkingIndicator from './components/ThinkingIndicator';
 import { soundEffects } from './utils/soundEffects';
 import { formatFileSize } from './utils/fileHelpers';
@@ -1792,6 +1793,9 @@ export default function App() {
             {currentView === 'providers' && (
               <span className="session-active-title">Kelola Provider AI</span>
             )}
+            {currentView === 'models' && (
+              <span className="session-active-title">Models</span>
+            )}
             {currentView === 'settings' && (
               <span className="session-active-title">Pengaturan</span>
             )}
@@ -1895,6 +1899,29 @@ export default function App() {
           />
         ) : currentView === 'logs' ? (
           <LogsView onClose={() => setCurrentView('dashboard')} />
+        ) : currentView === 'models' ? (
+          <ModelsView
+            onClose={() => setCurrentView('dashboard')}
+            selectedModel={selectedModel}
+            onSelectModel={(modId) => {
+              handleModelChange(modId);
+            }}
+            reasoningTier={reasoningTier}
+            onSelectReasoningTier={(tierId) => {
+              handleReasoningTierChange(tierId);
+            }}
+            customProviders={customProviders}
+            sessions={sessions}
+            onNavigate={(view) => {
+              if (view === 'chat') {
+                handleNewSession();
+                setCurrentView('chat');
+              } else {
+                setCurrentView(view);
+              }
+            }}
+            onOpenProviders={() => setCurrentView('providers')}
+          />
         ) : (
           <>
             {/* Message Stream or Unified Spatial Hero (Seamless shared elements) */}
