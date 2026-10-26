@@ -67,6 +67,7 @@ import ManageProvidersModal from './components/ManageProvidersModal';
 import LogsView from './components/LogsView';
 import ModelsView from './components/ModelsView';
 import ThinkingIndicator from './components/ThinkingIndicator';
+import ToolCallBlock from './components/ToolCallBlock';
 import { soundEffects } from './utils/soundEffects';
 import { formatFileSize } from './utils/fileHelpers';
 import { isReasoningSupported } from './utils/modelConfig';
@@ -408,6 +409,52 @@ export default function App() {
     isInitialized: true,
     user: localStorage.getItem('orion_auth_user') || null,
   });
+
+  // Agent Mode State (Autonomous Tool Calling like Pi Agent)
+  const [isAgentMode, setIsAgentMode] = useState(() => {
+    const saved = localStorage.getItem('orion_agent_mode');
+    return saved !== null ? saved === 'true' : true;
+  });
+
+  const handleToggleAgentMode = (newVal) => {
+    setIsAgentMode(newVal);
+    localStorage.setItem('orion_agent_mode', String(newVal));
+  };
+
+  const handleApproveTool = async (toolCallId) => {
+    try {
+      await fetch('/api/agent/approve', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(localStorage.getItem('orion_auth_token')
+            ? { Authorization: `Bearer ${localStorage.getItem('orion_auth_token')}` }
+            : {}),
+        },
+        body: JSON.stringify({ toolCallId, approved: true }),
+      });
+      soundEffects.playSend();
+    } catch (err) {
+      console.error('Gagal menyetujui tool:', err);
+    }
+  };
+
+  const handleRejectTool = async (toolCallId) => {
+    try {
+      await fetch('/api/agent/approve', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(localStorage.getItem('orion_auth_token')
+            ? { Authorization: `Bearer ${localStorage.getItem('orion_auth_token')}` }
+            : {}),
+        },
+        body: JSON.stringify({ toolCallId, approved: false }),
+      });
+    } catch (err) {
+      console.error('Gagal menolak tool:', err);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -1575,16 +1622,23 @@ export default function App() {
     abortControllerRef.current = controller;
 
     let accumulated = '';
+    let toolCallsList = [];
     let rafId = null;
 
-    const commitUpdate = (text) => {
+    const commitUpdate = (text, toolCalls = null) => {
       setSessions((prev) =>
         prev.map((s) => {
           if (s.id === activeSessionId) {
             return {
               ...s,
               messages: s.messages.map((m) =>
-                m.id === aiMessageId ? { ...m, content: text } : m
+                m.id === aiMessageId
+                  ? {
+                      ...m,
+                      content: text,
+                      ...(toolCalls !== null ? { toolCalls } : {}),
+                    }
+                  : m
               ),
             };
           }
@@ -1594,7 +1648,8 @@ export default function App() {
     };
 
     try {
-      const res = await fetch('/api/chat/stream', {
+      const endpoint = isAgentMode ? '/api/agent/run' : '/api/chat/stream';
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1631,7 +1686,7 @@ export default function App() {
             rafId = requestAnimationFrame(() => {
               rafId = null;
               lastCommit = performance.now();
-              commitUpdate(accumulated);
+              commitUpdate(accumulated, toolCallsList);
             });
           }
           return;
@@ -1641,7 +1696,7 @@ export default function App() {
           rafId = null;
         }
         lastCommit = now;
-        commitUpdate(text);
+        commitUpdate(text, toolCallsList);
       };
 
       while (true) {
@@ -1662,12 +1717,60 @@ export default function App() {
 
           try {
             const parsed = JSON.parse(dataStr);
-            if (parsed.error) {
-              throw new Error(parsed.error);
+            if (parsed.error || parsed.message && parsed.type === 'agent_error') {
+              throw new Error(parsed.error || parsed.message);
             }
-            if (parsed.chunk) {
-              accumulated += parsed.chunk;
-              hasNewChunk = true;
+
+            if (isAgentMode) {
+              if (parsed.type === 'tool_call_start') {
+                toolCallsList = [
+                  ...toolCallsList.filter((tc) => tc.id !== parsed.toolCallId),
+                  {
+                    id: parsed.toolCallId,
+                    tool: parsed.tool,
+                    args: parsed.args,
+                    status: parsed.needsApproval ? 'waiting_approval' : 'running',
+                    reason: parsed.reason,
+                  },
+                ];
+                commitUpdate(accumulated, toolCallsList);
+              } else if (parsed.type === 'tool_call_waiting_approval') {
+                toolCallsList = toolCallsList.map((tc) =>
+                  tc.id === parsed.toolCallId
+                    ? { ...tc, status: 'waiting_approval', reason: parsed.reason }
+                    : tc
+                );
+                commitUpdate(accumulated, toolCallsList);
+              } else if (parsed.type === 'tool_call_running') {
+                toolCallsList = toolCallsList.map((tc) =>
+                  tc.id === parsed.toolCallId ? { ...tc, status: 'running' } : tc
+                );
+                commitUpdate(accumulated, toolCallsList);
+              } else if (parsed.type === 'tool_call_complete') {
+                toolCallsList = toolCallsList.map((tc) =>
+                  tc.id === parsed.toolCallId
+                    ? { ...tc, status: parsed.isError ? 'error' : 'completed', result: parsed.result }
+                    : tc
+                );
+                commitUpdate(accumulated, toolCallsList);
+              } else if (parsed.type === 'tool_call_rejected') {
+                toolCallsList = toolCallsList.map((tc) =>
+                  tc.id === parsed.toolCallId ? { ...tc, status: 'rejected' } : tc
+                );
+                commitUpdate(accumulated, toolCallsList);
+              } else if (parsed.type === 'agent_thought') {
+                // If message is still empty, show progress
+              } else if (parsed.type === 'agent_done') {
+                accumulated = parsed.finalAnswer;
+                commitUpdate(accumulated, toolCallsList);
+              } else if (parsed.type === 'stream_end') {
+                break;
+              }
+            } else {
+              if (parsed.chunk) {
+                accumulated += parsed.chunk;
+                hasNewChunk = true;
+              }
             }
           } catch (e) {
             if (e.message && !e.message.includes('JSON') && !e.message.includes('Unexpected')) {
@@ -1685,10 +1788,10 @@ export default function App() {
         cancelAnimationFrame(rafId);
         rafId = null;
       }
-      commitUpdate(accumulated);
+      commitUpdate(accumulated, toolCallsList);
 
       // Fallback if stream was empty
-      if (!accumulated.trim()) {
+      if (!accumulated.trim() && toolCallsList.length === 0) {
         const fallbackRes = await fetch('/api/chat/message', {
           method: 'POST',
           headers: {
@@ -1710,7 +1813,7 @@ export default function App() {
         if (fallbackRes.ok) {
           const json = await fallbackRes.json();
           accumulated = json.data.content;
-          commitUpdate(accumulated);
+          commitUpdate(accumulated, toolCallsList);
         } else {
           const errJson = await fallbackRes.json().catch(() => ({}));
           throw new Error(errJson.message || `Layanan AI mengembalikan HTTP ${fallbackRes.status}`);
@@ -2200,15 +2303,31 @@ export default function App() {
                             )}
                             {msg.content && <div className="user-text-content">{msg.content}</div>}
                           </div>
-                        ) : msg.content === '' ? (
-                          isGenerating && isStreamingThis ? (
-                            <ThinkingIndicator
-                              model={msg.model || selectedModel}
-                              reasoningTier={msg.reasoningTier || reasoningTier}
-                            />
-                          ) : null
                         ) : (
-                          <FormattedMessage content={msg.content} isStreaming={isStreamingThis} />
+                          <div className="ai-message-wrapper">
+                            {Array.isArray(msg.toolCalls) && msg.toolCalls.length > 0 && (
+                              <div className="agent-tool-calls-container">
+                                {msg.toolCalls.map((tc) => (
+                                  <ToolCallBlock
+                                    key={tc.id}
+                                    toolCall={tc}
+                                    onApprove={handleApproveTool}
+                                    onReject={handleRejectTool}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                            {msg.content === '' ? (
+                              isGenerating && isStreamingThis && (!msg.toolCalls || msg.toolCalls.length === 0) ? (
+                                <ThinkingIndicator
+                                  model={msg.model || selectedModel}
+                                  reasoningTier={msg.reasoningTier || reasoningTier}
+                                />
+                              ) : null
+                            ) : (
+                              <FormattedMessage content={msg.content} isStreaming={isStreamingThis} />
+                            )}
+                          </div>
                         )}
                       </div>
 
@@ -2284,6 +2403,8 @@ export default function App() {
           setReasoningTier={handleReasoningTierChange}
           customProviders={customProviders}
           onOpenManageProviders={() => setCurrentView('providers')}
+          isAgentMode={isAgentMode}
+          setIsAgentMode={handleToggleAgentMode}
         />
 
         {/* Ambient Voice Calling Overlay with Equalizer Wave Visualizer */}

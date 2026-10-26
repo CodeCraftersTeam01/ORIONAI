@@ -9,6 +9,7 @@ import chatRoutes from './routes/chatRoutes.js';
 import logRoutes from './routes/logRoutes.js';
 import ttsRoutes from './routes/ttsRoutes.js';
 import authRoutes from './routes/authRoutes.js';
+import agentRoutes from './routes/agentRoutes.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 import { logger } from './services/loggerService.js';
 
@@ -105,6 +106,7 @@ if (hasDist) {
 app.use('/api/auth', authRoutes);
 app.use('/api', apiRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/agent', agentRoutes);
 app.use('/api/items', itemRoutes);
 app.use('/api/logs', logRoutes);
 app.use('/api/tts', ttsRoutes);

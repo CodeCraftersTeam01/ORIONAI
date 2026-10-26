@@ -7675,6 +7675,402 @@ svg[aria-roledescription="error"] {
   color: var(--text-primary);
 }
 
+/* ==========================================================================
+   AGENT MODE & AUTONOMOUS TOOL CALLING (Pi Agent Style)
+   ========================================================================== */
+.btn-agent-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.73rem;
+  font-weight: 500;
+  border: 1px solid var(--border-subtle);
+  background: rgba(0, 0, 0, 0.03);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: inherit;
+}
+
+[data-theme='dark'] .btn-agent-mode-toggle {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.btn-agent-mode-toggle:hover {
+  color: var(--text-primary);
+  border-color: var(--border-medium);
+}
+
+.btn-agent-mode-toggle.is-active {
+  background: var(--text-primary);
+  color: var(--bg-app);
+  border-color: var(--text-primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+.agent-mode-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.85;
+}
+
+.agent-tool-calls-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
+  width: 100%;
+}
+
+.agent-tool-card {
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(0, 0, 0, 0.02);
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', sans-serif;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+[data-theme='dark'] .agent-tool-card {
+  background: rgba(255, 255, 255, 0.025);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.agent-tool-card.waiting_approval {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.03);
+}
+
+.agent-tool-card.running {
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+.agent-tool-card.error,
+.agent-tool-card.rejected {
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.agent-tool-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.55rem 0.85rem;
+  cursor: pointer;
+  user-select: none;
+  gap: 0.5rem;
+}
+
+.agent-tool-header:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+[data-theme='dark'] .agent-tool-header:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.agent-tool-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.agent-tool-icon {
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.agent-tool-name {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.agent-tool-target-pill {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  background: rgba(0, 0, 0, 0.04);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 320px;
+}
+
+[data-theme='dark'] .agent-tool-target-pill {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.agent-tool-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.agent-tool-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 500;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-muted);
+}
+
+[data-theme='dark'] .agent-tool-badge {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.agent-tool-badge.waiting_approval {
+  background: rgba(245, 158, 11, 0.15);
+  color: #d97706;
+}
+
+[data-theme='dark'] .agent-tool-badge.waiting_approval {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+
+.agent-tool-badge.running {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+}
+
+[data-theme='dark'] .agent-tool-badge.running {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+
+.agent-tool-badge.completed {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+[data-theme='dark'] .agent-tool-badge.completed {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+.agent-tool-badge.error,
+.agent-tool-badge.rejected {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+}
+
+[data-theme='dark'] .agent-tool-badge.error,
+[data-theme='dark'] .agent-tool-badge.rejected {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.agent-tool-spin {
+  animation: orionSpin 0.9s linear infinite;
+}
+
+.agent-tool-approval-box {
+  padding: 0.75rem 0.85rem;
+  border-top: 1px dashed rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.agent-approval-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+
+.agent-approval-icon {
+  color: #d97706;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+[data-theme='dark'] .agent-approval-icon {
+  color: #fbbf24;
+}
+
+.agent-approval-body {
+  flex: 1;
+}
+
+.agent-approval-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.agent-approval-reason {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-bottom: 0.6rem;
+}
+
+.agent-approval-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.agent-btn-approve {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: #059669;
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.agent-btn-approve:hover {
+  background: #047857;
+  transform: translateY(-1px);
+}
+
+.agent-btn-reject {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.agent-btn-reject:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.agent-tool-body {
+  padding: 0.65rem 0.85rem;
+  border-top: 1px solid var(--border-subtle);
+  background: rgba(0, 0, 0, 0.015);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+[data-theme='dark'] .agent-tool-body {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.agent-tool-section-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 0.2rem;
+}
+
+.agent-tool-stdout {
+  margin: 0;
+  padding: 0.5rem 0.65rem;
+  border-radius: 6px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.74rem;
+  line-height: 1.45;
+  color: var(--text-primary);
+  overflow-x: auto;
+  max-height: 280px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.agent-tool-error-text {
+  font-size: 0.75rem;
+  color: #dc2626;
+  line-height: 1.4;
+}
+
+[data-theme='dark'] .agent-tool-error-text {
+  color: #f87171;
+}
+
+.agent-tool-diff-preview {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.agent-tool-diff-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.agent-tool-diff-box {
+  margin: 0;
+  padding: 0.45rem 0.55rem;
+  border-radius: 6px;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.72rem;
+  line-height: 1.4;
+  overflow-x: auto;
+  max-height: 180px;
+  white-space: pre-wrap;
+}
+
+.agent-tool-diff-box.target {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #dc2626;
+}
+
+[data-theme='dark'] .agent-tool-diff-box.target {
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+}
+
+.agent-tool-diff-box.replacement {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  color: #059669;
+}
+
+[data-theme='dark'] .agent-tool-diff-box.replacement {
+  background: rgba(16, 185, 129, 0.12);
+  color: #6ee7b7;
+}
+
+@media (max-width: 640px) {
+  .agent-tool-diff-preview {
+    grid-template-columns: 1fr;
+  }
+  .agent-tool-target-pill {
+    max-width: 140px;
+  }
+}
+
+
 
 
 

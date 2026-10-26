@@ -4,6 +4,7 @@ import os from 'os';
 import path from 'path';
 import { execSync } from 'child_process';
 import { streamChatCompletion } from '../../server/src/services/aiService.js';
+import { runAgentLoop, resolveApproval } from '../../server/src/agent/agentLoop.js';
 
 function copyToClipboard(text) {
   try {
@@ -20,6 +21,49 @@ function copyToClipboard(text) {
   } catch {
     return false;
   }
+}
+
+function promptCliApproval(toolCall) {
+  return new Promise((resolve) => {
+    process.stdout.write(`\n\x1b[33m╭── ⚠️  PERSETUJUAN DIPERLUKAN (SAFETY GUARD) ──────────────────────────\x1b[0m\n`);
+    process.stdout.write(`\x1b[33m│\x1b[0m Tool: \x1b[1m\x1b[36m${toolCall.name}\x1b[0m\n`);
+    const target = toolCall.args?.path || toolCall.args?.command || JSON.stringify(toolCall.args || {});
+    process.stdout.write(`\x1b[33m│\x1b[0m Target: \x1b[37m${target}\x1b[0m\n`);
+    process.stdout.write(`\x1b[33m│\x1b[0m Alasan: \x1b[90m${toolCall.risk?.reason || 'Operasi sensitif / berdampak sistem'}\x1b[0m\n`);
+    process.stdout.write(`\x1b[33m╰────────────────────────────────────────────────────────────────────────\x1b[0m\n`);
+    process.stdout.write(`\x1b[1m\x1b[33mSetujui tindakan ini? [y/N]: \x1b[0m`);
+
+    const wasRaw = process.stdin.isRaw;
+    if (process.stdin.setRawMode) {
+      process.stdin.setRawMode(true);
+    }
+    process.stdin.resume();
+
+    const onKey = (buf) => {
+      const char = buf.toString();
+      if (char === '\u0003') {
+        cleanup();
+        process.exit(0);
+      }
+      cleanup();
+      if (char.toLowerCase() === 'y') {
+        process.stdout.write(`\x1b[32mSetuju (Ya)\x1b[0m\n\n`);
+        resolve(true);
+      } else {
+        process.stdout.write(`\x1b[31mTolak (Tidak)\x1b[0m\n\n`);
+        resolve(false);
+      }
+    };
+
+    function cleanup() {
+      process.stdin.removeListener('data', onKey);
+      if (process.stdin.setRawMode) {
+        process.stdin.setRawMode(wasRaw);
+      }
+    }
+
+    process.stdin.on('data', onKey);
+  });
 }
 
 function runShellCommand(cmdStr, isSilent = false) {
@@ -140,6 +184,7 @@ function loadSyncedConfig() {
   let selectedModel = 'orion';
   let reasoningTier = 'medium';
   let apiKey = '';
+  let agentMode = true;
 
   try {
     if (fs.existsSync(providersPath)) {
@@ -147,6 +192,7 @@ function loadSyncedConfig() {
       providers = data.providers || [];
       if (data.selectedModel) selectedModel = data.selectedModel;
       if (data.reasoningTier) reasoningTier = data.reasoningTier;
+      if (data.agentMode !== undefined) agentMode = data.agentMode;
     }
   } catch {}
 
@@ -196,10 +242,10 @@ function loadSyncedConfig() {
     ];
   }
 
-  return { providers, selectedModel, reasoningTier, apiKey };
+  return { providers, selectedModel, reasoningTier, apiKey, agentMode };
 }
 
-function saveSyncedConfig({ providers, selectedModel, reasoningTier, apiKey }) {
+function saveSyncedConfig({ providers, selectedModel, reasoningTier, apiKey, agentMode }) {
   ensureConfigDir();
   try {
     let existingData = {};
@@ -232,6 +278,7 @@ function saveSyncedConfig({ providers, selectedModel, reasoningTier, apiKey }) {
       providers: updatedProviders,
       selectedModel: selectedModel || existingData.selectedModel || 'orion',
       reasoningTier: reasoningTier || existingData.reasoningTier || 'medium',
+      agentMode: agentMode !== undefined ? agentMode : (existingData.agentMode !== undefined ? existingData.agentMode : true),
       updatedAt: Date.now(),
     };
     fs.writeFileSync(providersPath, JSON.stringify(updated, null, 2), 'utf8');
@@ -438,6 +485,7 @@ export function printHeader(modelId, tier, hasKey = false) {
 }
 
 const COMMAND_ITEMS = [
+  { label: 'agent', detail: 'Toggle mode AI Agent otonom (tool call & terminal)', action: 'agent' },
   { label: 'reload', detail: 'Muat ulang konfigurasi, provider & environment (/reload)', action: 'reload' },
   { label: 'settings', detail: 'Buka menu pengaturan & preferensi aktif', action: 'settings' },
   { label: 'model', detail: '<provider/model> — Pilih & beralih model AI (Ctrl+L)', action: 'model' },
@@ -465,7 +513,7 @@ const COMMAND_ITEMS = [
  * - Pi status footer bar showing cwd (~), active model/tier, context token estimate, and API key status
  * - Fast keyboard shortcuts: Ctrl+L (Model), Shift+Tab (Tier), !cmd (Shell), Tab (Autocomplete)
  */
-function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, userApiKey, history }) {
+function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, userApiKey, history, isAgentMode }) {
   return new Promise((resolve) => {
     let buffer = '';
     let menuOpen = false;
@@ -563,7 +611,8 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
       linesBelow++;
 
       // Pi Status Footer Line 3: agent status indicator (no trailing newline so cursor stays on footer row)
-      out += `\x1b[90m● 🌌 orion-core: \x1b[33m⚡ READY\x1b[0m\x1b[K`;
+      const agentBadge = isAgentMode ? `\x1b[36m⚡ AGENT (Tools Active)\x1b[0m` : `\x1b[90m💬 Chat\x1b[0m`;
+      out += `\x1b[90m● 🌌 orion-core: ${agentBadge}\x1b[K`;
 
       // Calculate exact line offset dynamically from rendered output
       const parts = out.split('\n');
@@ -805,6 +854,7 @@ export async function startTerminalChat() {
   let currentModel = syncedConfig.selectedModel || 'orion';
   let reasoningTier = syncedConfig.reasoningTier || 'medium';
   let userApiKey = syncedConfig.apiKey || '';
+  let isAgentMode = syncedConfig.agentMode !== undefined ? syncedConfig.agentMode : true;
   let history = [];
   let isGenerating = false;
   let activeAbortController = null;
@@ -830,6 +880,9 @@ export async function startTerminalChat() {
     if (freshConfig.reasoningTier && freshConfig.reasoningTier !== reasoningTier) {
       reasoningTier = freshConfig.reasoningTier;
     }
+    if (freshConfig.agentMode !== undefined && freshConfig.agentMode !== isAgentMode) {
+      isAgentMode = freshConfig.agentMode;
+    }
 
     const inputResult = await readInteractivePrompt({
       syncedConfig: freshConfig,
@@ -837,6 +890,7 @@ export async function startTerminalChat() {
       reasoningTier,
       userApiKey,
       history,
+      isAgentMode,
     });
 
     if (inputResult.type === 'empty') {
@@ -1199,103 +1253,180 @@ export async function startTerminalChat() {
         }
       }
 
-      try {
-        await new Promise((resolveStream, rejectStream) => {
-          streamChatCompletion({
-            message: userMessage,
-            history: history.slice(0, -1),
-            model: currentModel,
-            reasoningTier: reasoningTier,
-            customProvider: activeCustomProvider,
-            orionApiKey: userApiKey,
-            signal: activeAbortController.signal,
-            onChunk: (chunk) => {
-              if (!hasReceivedFirstChunk) {
-                hasReceivedFirstChunk = true;
-                clearInterval(spinnerTimer);
-                process.stdout.write('\r\x1b[K'); // Clears the Working... line completely
-              }
-
-              assistantReply += chunk;
-
-              if (chunk.includes('<think>')) {
-                inThinking = true;
-                process.stdout.write(`\n${c.dim}${c.cyan}✦ Penalaran Internal (Thinking):${c.reset}\n${c.gray}`);
-                const afterTag = chunk.replace('<think>', '');
-                if (afterTag) {
-                  streamWordBuffer += afterTag;
-                  flushWordBuffer();
+      if (isAgentMode) {
+        try {
+          await new Promise((resolveAgent, rejectAgent) => {
+            runAgentLoop({
+              message: userMessage,
+              history: history.slice(0, -1),
+              model: currentModel,
+              reasoningTier: reasoningTier,
+              customProvider: activeCustomProvider,
+              orionApiKey: userApiKey,
+              signal: activeAbortController.signal,
+              autoApprove: false,
+              onEvent: async (event) => {
+                if (!hasReceivedFirstChunk) {
+                  hasReceivedFirstChunk = true;
+                  clearInterval(spinnerTimer);
+                  process.stdout.write('\r\x1b[K');
                 }
-              } else if (chunk.includes('</think>')) {
-                inThinking = false;
-                process.stdout.write(`${c.reset}\n\n`);
-                const afterClose = chunk.replace('</think>', '');
-                if (afterClose) {
-                  streamWordBuffer += afterClose;
+
+                if (event.type === 'agent_thought') {
+                  process.stdout.write(`\n${c.dim}${c.cyan}✦ Penalaran Agent:${c.reset}\n${c.gray}${event.thought}${c.reset}\n`);
+                } else if (event.type === 'tool_call_start') {
+                  const target = event.toolCall.args?.path || event.toolCall.args?.command || '';
+                  process.stdout.write(`\n\x1b[38;5;75m⚡ Tool: \x1b[1m\x1b[37m${event.toolCall.name}\x1b[0m ${target ? `\x1b[90m(${target})\x1b[0m` : ''}\n`);
+                } else if (event.type === 'tool_call_waiting_approval') {
+                  const approved = await promptCliApproval(event.toolCall);
+                  resolveApproval(event.toolCall.id, approved);
+                } else if (event.type === 'tool_call_running') {
+                  process.stdout.write(`  \x1b[90m↳ Menjalankan...\x1b[0m\n`);
+                } else if (event.type === 'tool_call_complete') {
+                  process.stdout.write(`  \x1b[32m✓ Selesai\x1b[0m\n`);
+                } else if (event.type === 'tool_call_rejected') {
+                  process.stdout.write(`  \x1b[31m✗ Ditolak pengguna\x1b[0m\n`);
+                } else if (event.type === 'tool_call_error') {
+                  process.stdout.write(`  \x1b[31m✗ Error: ${event.error}\x1b[0m\n`);
+                } else if (event.type === 'agent_chunk') {
+                  assistantReply += event.chunk;
+                  streamWordBuffer += event.chunk;
                   flushWordBuffer();
+                } else if (event.type === 'agent_done') {
+                  flushWordBuffer(true);
+                  if (headingLevel > 0 || isBold || isInlineCode) {
+                    process.stdout.write('\x1b[0m');
+                    headingLevel = 0;
+                    isBold = false;
+                    isInlineCode = false;
+                  }
+                  resolveAgent();
                 }
-              } else {
-                streamWordBuffer += chunk;
-                flushWordBuffer();
-              }
-            },
-            onDone: () => {
+              },
+            }).catch((err) => {
               if (!hasReceivedFirstChunk) {
                 hasReceivedFirstChunk = true;
                 clearInterval(spinnerTimer);
                 process.stdout.write('\r\x1b[K');
               }
-              // Flush any remaining characters in streamWordBuffer
-              flushWordBuffer(true);
+              rejectAgent(err);
+            });
+          });
 
-              if (pendingSurrogate) {
-                process.stdout.write(pendingSurrogate);
-                pendingSurrogate = '';
-              }
-              if (headingLevel > 0 || isBold || isInlineCode) {
-                process.stdout.write('\x1b[0m');
-                headingLevel = 0;
-                isBold = false;
-                isInlineCode = false;
-              }
-              resolveStream();
-            },
-            onError: (err) => {
+          history.push({ role: 'assistant', content: assistantReply });
+          process.stdout.write('\n\n');
+        } catch (err) {
+          if (err.name === 'AbortError') {
+            process.stdout.write(`\n${c.yellow}⚠️  Respon dihentikan oleh pengguna.${c.reset}\n\n`);
+          } else if (/api\s*key/i.test(err.message)) {
+            process.stdout.write(`\n${c.yellow}⚠️  ${err.message}${c.reset}\n${c.gray}Ketik ${c.cyan}/login <api_key_anda>${c.gray} untuk memasukkan API Key Orion.${c.reset}\n\n`);
+          } else {
+            process.stdout.write(`\n${c.red}❌ Terjadi kesalahan: ${err.message}${c.reset}\n\n`);
+          }
+        } finally {
+          clearInterval(spinnerTimer);
+          isGenerating = false;
+          activeAbortController = null;
+        }
+      } else {
+        try {
+          await new Promise((resolveStream, rejectStream) => {
+            streamChatCompletion({
+              message: userMessage,
+              history: history.slice(0, -1),
+              model: currentModel,
+              reasoningTier: reasoningTier,
+              customProvider: activeCustomProvider,
+              orionApiKey: userApiKey,
+              signal: activeAbortController.signal,
+              onChunk: (chunk) => {
+                if (!hasReceivedFirstChunk) {
+                  hasReceivedFirstChunk = true;
+                  clearInterval(spinnerTimer);
+                  process.stdout.write('\r\x1b[K'); // Clears the Working... line completely
+                }
+
+                assistantReply += chunk;
+
+                if (chunk.includes('<think>')) {
+                  inThinking = true;
+                  process.stdout.write(`\n${c.dim}${c.cyan}✦ Penalaran Internal (Thinking):${c.reset}\n${c.gray}`);
+                  const afterTag = chunk.replace('<think>', '');
+                  if (afterTag) {
+                    streamWordBuffer += afterTag;
+                    flushWordBuffer();
+                  }
+                } else if (chunk.includes('</think>')) {
+                  inThinking = false;
+                  process.stdout.write(`${c.reset}\n\n`);
+                  const afterClose = chunk.replace('</think>', '');
+                  if (afterClose) {
+                    streamWordBuffer += afterClose;
+                    flushWordBuffer();
+                  }
+                } else {
+                  streamWordBuffer += chunk;
+                  flushWordBuffer();
+                }
+              },
+              onDone: () => {
+                if (!hasReceivedFirstChunk) {
+                  hasReceivedFirstChunk = true;
+                  clearInterval(spinnerTimer);
+                  process.stdout.write('\r\x1b[K');
+                }
+                // Flush any remaining characters in streamWordBuffer
+                flushWordBuffer(true);
+
+                if (pendingSurrogate) {
+                  process.stdout.write(pendingSurrogate);
+                  pendingSurrogate = '';
+                }
+                if (headingLevel > 0 || isBold || isInlineCode) {
+                  process.stdout.write('\x1b[0m');
+                  headingLevel = 0;
+                  isBold = false;
+                  isInlineCode = false;
+                }
+                resolveStream();
+              },
+              onError: (err) => {
+                if (!hasReceivedFirstChunk) {
+                  hasReceivedFirstChunk = true;
+                  clearInterval(spinnerTimer);
+                  process.stdout.write('\r\x1b[K');
+                }
+                if (isBold) {
+                  process.stdout.write('\x1b[0m');
+                  isBold = false;
+                }
+                rejectStream(err);
+              },
+            }).catch((err) => {
               if (!hasReceivedFirstChunk) {
                 hasReceivedFirstChunk = true;
                 clearInterval(spinnerTimer);
                 process.stdout.write('\r\x1b[K');
-              }
-              if (isBold) {
-                process.stdout.write('\x1b[0m');
-                isBold = false;
               }
               rejectStream(err);
-            },
-          }).catch((err) => {
-            if (!hasReceivedFirstChunk) {
-              hasReceivedFirstChunk = true;
-              clearInterval(spinnerTimer);
-              process.stdout.write('\r\x1b[K');
-            }
-            rejectStream(err);
+            });
           });
-        });
 
-        history.push({ role: 'assistant', content: assistantReply });
-        process.stdout.write('\n\n');
-      } catch (err) {
-        if (err.name === 'AbortError') {
-          process.stdout.write(`\n${c.yellow}⚠️  Respon dihentikan oleh pengguna.${c.reset}\n\n`);
-        } else if (/api\s*key/i.test(err.message)) {
-          process.stdout.write(`\n${c.yellow}⚠️  ${err.message}${c.reset}\n${c.gray}Ketik ${c.cyan}/login <api_key_anda>${c.gray} untuk memasukkan API Key Orion.${c.reset}\n\n`);
-        } else {
-          process.stdout.write(`\n${c.red}❌ Terjadi kesalahan: ${err.message}${c.reset}\n\n`);
+          history.push({ role: 'assistant', content: assistantReply });
+          process.stdout.write('\n\n');
+        } catch (err) {
+          if (err.name === 'AbortError') {
+            process.stdout.write(`\n${c.yellow}⚠️  Respon dihentikan oleh pengguna.${c.reset}\n\n`);
+          } else if (/api\s*key/i.test(err.message)) {
+            process.stdout.write(`\n${c.yellow}⚠️  ${err.message}${c.reset}\n${c.gray}Ketik ${c.cyan}/login <api_key_anda>${c.gray} untuk memasukkan API Key Orion.${c.reset}\n\n`);
+          } else {
+            process.stdout.write(`\n${c.red}❌ Terjadi kesalahan: ${err.message}${c.reset}\n\n`);
+          }
+        } finally {
+          clearInterval(spinnerTimer);
+          isGenerating = false;
+          activeAbortController = null;
         }
-      } finally {
-        clearInterval(spinnerTimer);
-        isGenerating = false;
-        activeAbortController = null;
       }
     }
   }
@@ -1309,6 +1440,16 @@ export async function startTerminalChat() {
     if (action === '/exit' || action === '/quit' || action === '/q') {
       console.log(`\n${c.brightCyan}✦ Terima kasih telah menggunakan Orion Agent. Sampai jumpa!${c.reset}\n`);
       return true; // exit loop
+    }
+
+    if (action === '/agent') {
+      if (arg === 'on') isAgentMode = true;
+      else if (arg === 'off') isAgentMode = false;
+      else isAgentMode = !isAgentMode;
+
+      saveSyncedConfig({ agentMode: isAgentMode });
+      console.log(`\n${c.bold}✦ Mode AI Agent (Pi-Style):${c.reset} ${isAgentMode ? `${c.green}AKTIF (Tool Calling: read, write, edit, delete, run_command)` : `${c.yellow}NONAKTIF (Mode Chat Standar)`}${c.reset}\n`);
+      return false;
     }
 
     if (action === '/reload' || action === '/rel') {
@@ -1491,6 +1632,7 @@ export async function startTerminalChat() {
 
     if (action === '/help' || action === '/h' || action === '/?') {
       console.log(`\n${c.bold}${c.brightCyan}✦ Panduan Perintah Orion Terminal Chat (Pi Style):${c.reset}`);
+      console.log(`  ${c.yellow}/agent${c.reset} [on/off]           Aktifkan/nonaktifkan mode AI Agent otonom (tool calls)`);
       console.log(`  ${c.yellow}/model${c.reset} [nama]            Pilih model AI interaktif (atau gunakan Ctrl+L)`);
       console.log(`  ${c.yellow}/thinking, /tier${c.reset} [level]  Atur penalaran (low/medium/high, atau Shift+Tab)`);
       console.log(`  ${c.yellow}!perintah${c.reset}                Jalankan perintah shell terminal (hasil masuk konteks)`);

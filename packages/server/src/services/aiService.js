@@ -371,7 +371,7 @@ function buildMessagesPayload({ message, history = [], attachments = [], modelId
 /**
  * Helper to prepare request targets for built-in or custom providers
  */
-function resolveEndpointAndHeaders(customProvider, config, userOrionApiKey) {
+export function resolveEndpointAndHeaders(customProvider, config, userOrionApiKey) {
   let targetUrl;
   let targetApiKey;
   let targetModel;
