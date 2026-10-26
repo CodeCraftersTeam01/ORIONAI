@@ -1412,7 +1412,7 @@
 }
 
 .welcome-hero-container.is-chat-mode {
-  transform: translateY(-5.5vh);
+  transform: translateY(-8vh);
 }
 
 .welcome-logo-badge {
@@ -1512,8 +1512,8 @@
 }
 
 .welcome-input-slot.is-expanded {
-  height: 54px;
-  margin-bottom: 4.25rem;
+  height: 84px;
+  margin-bottom: 6.5rem;
 }
 
 /* Minimalist Dynamic Recommendations (Smooth collapse/expand transition) */
@@ -1881,7 +1881,7 @@
    -------------------------------------------------------------------------- */
 @media (min-width: 821px) {
   .chat-input-wrapper.is-centered {
-    bottom: calc(50% - 92px + 10.5vh);
+    bottom: calc(50% - 138px);
     padding: 0 1.5rem;
     background: transparent;
   }
@@ -8071,7 +8071,7 @@ svg[aria-roledescription="error"] {
 }
 
 /* ==========================================================================
-   PROJECT SELECTOR (Top Bar above Chat Input - Image 2 Style)
+   PROJECT SELECTOR (Top Bar above Chat Input - Clean & Natural Anti-Slop)
    ========================================================================== */
 .chat-input-top-bar {
   max-width: 740px;
@@ -8079,7 +8079,7 @@ svg[aria-roledescription="error"] {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  padding: 0 0.5rem 0.5rem;
+  padding: 0 0.85rem 0.65rem;
   pointer-events: auto;
   z-index: 52;
 }
@@ -8091,60 +8091,53 @@ svg[aria-roledescription="error"] {
   position: relative;
 }
 
+/* Subtle, unforced trigger matching native workspace selector in modern tools */
 .project-selector-pill {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  padding: 0.35rem 0.75rem 0.35rem 0.65rem;
-  border-radius: 9999px;
+  padding: 0.3rem 0.55rem 0.3rem 0.45rem;
+  border-radius: 7px;
   font-size: 0.8125rem;
-  font-weight: 500;
+  font-weight: 450;
   cursor: pointer;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  border: 1px solid transparent;
   color: #a1a1aa;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.16s ease;
+  user-select: none;
 }
 
 .project-selector-pill:hover {
-  background: rgba(255, 255, 255, 0.09);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
   color: #f4f4f5;
-  transform: translateY(-1px);
 }
 
 .project-selector-pill.has-project {
-  background: rgba(14, 165, 233, 0.08);
-  border-color: rgba(56, 189, 248, 0.3);
-  color: #e0f2fe;
+  color: #e4e4e7;
+  font-weight: 500;
 }
 
 .project-selector-pill.has-project:hover {
-  background: rgba(14, 165, 233, 0.14);
-  border-color: rgba(56, 189, 248, 0.45);
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.12);
   color: #ffffff;
-  box-shadow: 0 4px 14px rgba(14, 165, 233, 0.2);
 }
 
 .project-selector-pill .project-pill-icon {
-  color: #38bdf8;
-  flex-shrink: 0;
-  transition: transform 0.2s ease;
-}
-
-.project-selector-pill.no-project .project-pill-icon {
   color: #71717a;
+  flex-shrink: 0;
+  transition: color 0.16s ease;
 }
 
-.project-selector-pill:hover .project-pill-icon {
-  transform: scale(1.08);
+.project-selector-pill:hover .project-pill-icon,
+.project-selector-pill.has-project .project-pill-icon {
+  color: #38bdf8;
 }
 
 .project-selector-pill .project-pill-label {
-  max-width: 220px;
+  max-width: 240px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -8154,11 +8147,11 @@ svg[aria-roledescription="error"] {
 .project-selector-pill .project-pill-chevron {
   color: #71717a;
   flex-shrink: 0;
-  transition: transform 0.2s ease, color 0.2s ease;
+  transition: transform 0.16s ease, color 0.16s ease;
 }
 
 .project-selector-pill:hover .project-pill-chevron {
-  color: #e4e4e7;
+  color: #d4d4d8;
   transform: translateY(1px);
 }
 
@@ -8166,88 +8159,81 @@ svg[aria-roledescription="error"] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #a1a1aa;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #71717a;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .btn-clear-project-pill:hover {
-  background: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.35);
-  color: #fca5a5;
-  transform: scale(1.08);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #f4f4f5;
 }
 
-/* Light theme overrides for project selector pill */
+/* Light theme overrides */
 [data-theme='light'] .project-selector-pill {
-  background: rgba(0, 0, 0, 0.04);
-  border-color: rgba(0, 0, 0, 0.08);
-  color: #52525b;
+  color: #71717a;
 }
 
 [data-theme='light'] .project-selector-pill:hover {
-  background: rgba(0, 0, 0, 0.07);
-  border-color: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.08);
   color: #18181b;
 }
 
 [data-theme='light'] .project-selector-pill.has-project {
-  background: rgba(2, 132, 199, 0.08);
-  border-color: rgba(2, 132, 199, 0.25);
-  color: #0369a1;
+  color: #0f172a;
 }
 
 /* ==========================================================================
-   PROJECT DIRECTORY MODAL
+   PROJECT DIRECTORY MODAL (Clean, Solid, Anti-Slop)
    ========================================================================== */
 .project-modal-backdrop {
   position: fixed;
   inset: 0;
   z-index: 2000;
-  background: rgba(0, 0, 0, 0.72);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
-  animation: modalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: modalFadeIn 0.2s ease-out;
 }
 
 @keyframes modalFadeIn {
   from {
     opacity: 0;
-    backdrop-filter: blur(0px);
   }
   to {
     opacity: 1;
-    backdrop-filter: blur(14px);
   }
 }
 
 .project-modal-container {
-  width: 740px;
+  width: 720px;
   max-width: 95vw;
-  height: 600px;
-  max-height: 88vh;
-  background: #121216;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 20px;
+  height: 580px;
+  max-height: 86vh;
+  background: #141417;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05);
-  animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.7);
+  animation: modalSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes modalSlideUp {
   from {
-    transform: translateY(20px) scale(0.97);
+    transform: translateY(14px) scale(0.98);
     opacity: 0;
   }
   to {
@@ -8258,8 +8244,8 @@ svg[aria-roledescription="error"] {
 
 /* Modal Header */
 .project-modal-header {
-  padding: 1.25rem 1.5rem 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 1.15rem 1.4rem 0.9rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -8269,24 +8255,25 @@ svg[aria-roledescription="error"] {
 .header-title-group {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
+  gap: 0.75rem;
 }
 
 .header-icon-badge {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: rgba(14, 165, 233, 0.1);
-  border: 1px solid rgba(56, 189, 248, 0.25);
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
+  color: #a1a1aa;
   flex-shrink: 0;
 }
 
 .project-modal-title {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 600;
   color: #f4f4f5;
   letter-spacing: -0.015em;
@@ -8294,17 +8281,17 @@ svg[aria-roledescription="error"] {
 
 .project-modal-subtitle {
   margin: 0.15rem 0 0;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: #71717a;
 }
 
 .btn-close-modal {
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #a1a1aa;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #71717a;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -8313,15 +8300,15 @@ svg[aria-roledescription="error"] {
 }
 
 .btn-close-modal:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f4f4f5;
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 /* Quick Access Bar */
 .project-quick-access-bar {
-  padding: 0.65rem 1.5rem;
-  background: rgba(255, 255, 255, 0.02);
+  padding: 0.55rem 1.4rem;
+  background: rgba(255, 255, 255, 0.015);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
   align-items: center;
@@ -8330,10 +8317,10 @@ svg[aria-roledescription="error"] {
 }
 
 .quick-access-label {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   color: #71717a;
   flex-shrink: 0;
 }
@@ -8341,7 +8328,7 @@ svg[aria-roledescription="error"] {
 .quick-access-chips {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.4rem;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -8354,76 +8341,76 @@ svg[aria-roledescription="error"] {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.25rem 0.6rem;
+  padding: 0.22rem 0.55rem;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   color: #a1a1aa;
-  font-size: 0.775rem;
+  font-size: 0.75rem;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.15s ease;
+  transition: all 0.14s ease;
 }
 
 .qa-chip:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.07);
   color: #f4f4f5;
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .qa-chip.active {
-  background: rgba(14, 165, 233, 0.12);
-  border-color: rgba(56, 189, 248, 0.35);
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(56, 189, 248, 0.4);
   color: #38bdf8;
 }
 
 .qa-chip.qa-default {
-  border-color: rgba(16, 185, 129, 0.3);
-  background: rgba(16, 185, 129, 0.07);
-  color: #6ee7b7;
+  border-color: rgba(52, 211, 153, 0.25);
+  background: rgba(52, 211, 153, 0.05);
+  color: #a7f3d0;
 }
 
 .qa-badge {
   font-size: 0.65rem;
-  padding: 0.1rem 0.35rem;
+  padding: 0.08rem 0.3rem;
   border-radius: 4px;
-  background: rgba(16, 185, 129, 0.2);
+  background: rgba(52, 211, 153, 0.15);
   color: #a7f3d0;
-  font-weight: 600;
+  font-weight: 550;
 }
 
 /* Navigation Toolbar & Breadcrumbs */
 .project-navigation-toolbar {
-  padding: 0.65rem 1.5rem;
-  background: rgba(0, 0, 0, 0.2);
+  padding: 0.55rem 1.4rem;
+  background: rgba(0, 0, 0, 0.15);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.6rem;
 }
 
 .nav-btn-parent {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.35rem 0.65rem;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 0.3rem;
+  padding: 0.3rem 0.55rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   color: #d4d4d8;
-  font-size: 0.8rem;
+  font-size: 0.775rem;
   cursor: pointer;
   flex-shrink: 0;
-  transition: all 0.15s ease;
+  transition: all 0.14s ease;
 }
 
 .nav-btn-parent:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
   color: #ffffff;
 }
 
 .nav-btn-parent:disabled {
-  opacity: 0.4;
+  opacity: 0.35;
   cursor: not-allowed;
 }
 
@@ -8440,19 +8427,19 @@ svg[aria-roledescription="error"] {
 .breadcrumbs-track {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.2rem;
   white-space: nowrap;
 }
 
 .bc-item {
   background: none;
   border: none;
-  padding: 0.25rem 0.45rem;
+  padding: 0.2rem 0.4rem;
   border-radius: 5px;
-  font-size: 0.8rem;
+  font-size: 0.775rem;
   color: #a1a1aa;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.14s ease;
 }
 
 .bc-item:hover {
@@ -8461,7 +8448,7 @@ svg[aria-roledescription="error"] {
 }
 
 .bc-item.bc-active {
-  color: #38bdf8;
+  color: #f4f4f5;
   font-weight: 600;
 }
 
@@ -8471,31 +8458,31 @@ svg[aria-roledescription="error"] {
 }
 
 .nav-btn-refresh {
-  width: 28px;
-  height: 28px;
-  border-radius: 7px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  color: #a1a1aa;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #71717a;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
-  transition: all 0.15s ease;
+  transition: all 0.14s ease;
 }
 
 .nav-btn-refresh:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
   color: #ffffff;
 }
 
 /* Search Toolbar */
 .project-search-toolbar {
-  padding: 0.65rem 1.5rem;
+  padding: 0.55rem 1.4rem;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.65rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -8515,20 +8502,19 @@ svg[aria-roledescription="error"] {
 
 .folder-search-input {
   width: 100%;
-  padding: 0.45rem 2rem 0.45rem 2.25rem;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.4rem 2rem 0.4rem 2.2rem;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   color: #f4f4f5;
-  font-size: 0.8125rem;
+  font-size: 0.8rem;
   outline: none;
-  transition: all 0.15s ease;
+  transition: all 0.14s ease;
 }
 
 .folder-search-input:focus {
-  background: rgba(255, 255, 255, 0.07);
-  border-color: rgba(56, 189, 248, 0.4);
-  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .btn-clear-search {
@@ -8549,46 +8535,46 @@ svg[aria-roledescription="error"] {
 .btn-new-folder {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.45rem 0.75rem;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 0.35rem;
+  padding: 0.4rem 0.65rem;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   color: #d4d4d8;
-  font-size: 0.8125rem;
+  font-size: 0.775rem;
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.15s ease;
+  transition: all 0.14s ease;
 }
 
 .btn-new-folder:hover {
-  background: rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.08);
   color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.14);
 }
 
 .inline-new-folder-form {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.3rem;
 }
 
 .new-folder-name-input {
-  width: 140px;
-  padding: 0.35rem 0.6rem;
+  width: 130px;
+  padding: 0.3rem 0.55rem;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(56, 189, 248, 0.4);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   color: #f4f4f5;
-  font-size: 0.8rem;
+  font-size: 0.775rem;
   outline: none;
 }
 
 .btn-save-new-folder,
 .btn-cancel-new-folder {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 6px;
   display: flex;
   align-items: center;
@@ -8598,16 +8584,12 @@ svg[aria-roledescription="error"] {
 }
 
 .btn-save-new-folder {
-  background: #0284c7;
-  color: #ffffff;
-}
-
-.btn-save-new-folder:hover:not(:disabled) {
-  background: #0369a1;
+  background: #f4f4f5;
+  color: #09090b;
 }
 
 .btn-cancel-new-folder {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.07);
   color: #a1a1aa;
 }
 
@@ -8615,22 +8597,22 @@ svg[aria-roledescription="error"] {
 .project-folders-view {
   flex: 1;
   overflow-y: auto;
-  padding: 1rem 1.5rem;
-  background: rgba(0, 0, 0, 0.15);
+  padding: 0.85rem 1.4rem;
+  background: rgba(0, 0, 0, 0.1);
 }
 
 .folders-loading-state,
 .folders-error-state,
 .folders-empty-state {
   height: 100%;
-  min-height: 200px;
+  min-height: 180px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
   color: #71717a;
-  gap: 0.65rem;
+  gap: 0.55rem;
 }
 
 .folders-empty-state .empty-icon {
@@ -8645,37 +8627,35 @@ svg[aria-roledescription="error"] {
 
 .folders-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.55rem;
 }
 
 .folder-item-card {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
-  padding: 0.65rem 0.85rem;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  gap: 0.6rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.05);
   cursor: pointer;
-  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.15s ease;
   user-select: none;
 }
 
 .folder-item-card:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.14);
-  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.055);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 .folder-item-card.is-selected {
-  background: rgba(14, 165, 233, 0.12);
-  border-color: rgba(56, 189, 248, 0.45);
-  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.2), 0 4px 12px rgba(14, 165, 233, 0.15);
+  background: rgba(56, 189, 248, 0.08);
+  border-color: rgba(56, 189, 248, 0.4);
 }
 
 .folder-item-card.is-project-card {
-  border-color: rgba(56, 189, 248, 0.2);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .folder-icon-wrapper {
@@ -8690,11 +8670,11 @@ svg[aria-roledescription="error"] {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.15rem;
 }
 
 .folder-name {
-  font-size: 0.8125rem;
+  font-size: 0.8rem;
   font-weight: 500;
   color: #f4f4f5;
   overflow: hidden;
@@ -8705,47 +8685,47 @@ svg[aria-roledescription="error"] {
 .proj-badge {
   display: inline-block;
   align-self: flex-start;
-  font-size: 0.65rem;
-  font-weight: 600;
-  padding: 0.08rem 0.4rem;
-  border-radius: 4px;
+  font-size: 0.625rem;
+  font-weight: 550;
+  padding: 0.06rem 0.35rem;
+  border-radius: 3px;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
 }
 
 .badge-node {
-  background: rgba(34, 197, 94, 0.15);
+  background: rgba(34, 197, 94, 0.12);
   color: #86efac;
 }
 
 .badge-python {
-  background: rgba(59, 130, 246, 0.15);
+  background: rgba(59, 130, 246, 0.12);
   color: #93c5fd;
 }
 
 .badge-go {
-  background: rgba(6, 182, 212, 0.15);
+  background: rgba(6, 182, 212, 0.12);
   color: #67e8f9;
 }
 
 .badge-rust {
-  background: rgba(249, 115, 22, 0.15);
+  background: rgba(249, 115, 22, 0.12);
   color: #fdba74;
 }
 
 .badge-git {
-  background: rgba(168, 85, 247, 0.15);
+  background: rgba(168, 85, 247, 0.12);
   color: #d8b4fe;
 }
 
 /* Recent Workspaces Footer Section */
 .recent-workspaces-section {
-  padding: 0.65rem 1.5rem;
-  background: rgba(255, 255, 255, 0.02);
+  padding: 0.55rem 1.4rem;
+  background: rgba(255, 255, 255, 0.015);
   border-top: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.6rem;
   overflow-x: auto;
 }
 
@@ -8753,18 +8733,18 @@ svg[aria-roledescription="error"] {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 600;
   color: #71717a;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   flex-shrink: 0;
 }
 
 .recent-chips-list {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.4rem;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -8773,28 +8753,28 @@ svg[aria-roledescription="error"] {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.22rem 0.55rem;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 0.2rem 0.5rem;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   color: #d4d4d8;
-  font-size: 0.775rem;
+  font-size: 0.75rem;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.15s ease;
+  transition: all 0.14s ease;
 }
 
 .recent-chip:hover {
-  background: rgba(14, 165, 233, 0.12);
-  border-color: rgba(56, 189, 248, 0.35);
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.12);
   color: #ffffff;
 }
 
 /* Modal Bottom Actions */
 .project-modal-footer {
-  padding: 1rem 1.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(18, 18, 22, 0.98);
+  padding: 0.85rem 1.4rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: #141417;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -8806,21 +8786,21 @@ svg[aria-roledescription="error"] {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.35rem;
   overflow: hidden;
 }
 
 .path-caption {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: #71717a;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   font-weight: 600;
   flex-shrink: 0;
 }
 
 .path-text {
-  font-size: 0.8125rem;
+  font-size: 0.8rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -8829,53 +8809,52 @@ svg[aria-roledescription="error"] {
 .footer-actions {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.55rem;
   flex-shrink: 0;
 }
 
 .btn-cancel-modal {
-  padding: 0.55rem 1rem;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: #a1a1aa;
-  font-size: 0.825rem;
+  font-size: 0.8rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .btn-cancel-modal:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
   color: #f4f4f5;
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 .btn-confirm-project {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  padding: 0.55rem 1.25rem;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
-  border: 1px solid rgba(56, 189, 248, 0.35);
-  color: #ffffff;
-  font-size: 0.825rem;
-  font-weight: 600;
+  gap: 0.4rem;
+  padding: 0.45rem 1.15rem;
+  border-radius: 8px;
+  background: #f4f4f5;
+  border: 1px solid #ffffff;
+  color: #09090b;
+  font-size: 0.8rem;
+  font-weight: 550;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.3);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.15s ease;
 }
 
 .btn-confirm-project:hover {
+  background: #ffffff;
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(2, 132, 199, 0.45);
-  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
 }
 
 @media (max-width: 640px) {
   .project-modal-container {
     height: 94vh;
-    border-radius: 14px;
+    border-radius: 12px;
   }
   .folders-grid {
     grid-template-columns: 1fr;
@@ -8888,6 +8867,7 @@ svg[aria-roledescription="error"] {
     justify-content: flex-end;
   }
 }
+
 
 
 
