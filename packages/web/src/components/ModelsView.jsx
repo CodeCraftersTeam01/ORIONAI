@@ -1,19 +1,49 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   RotateCw,
-  Star,
-  Settings,
-  ChevronDown,
-  Check,
   Sparkles,
+  Zap,
+  Cpu,
   Layers,
-  ArrowRight,
-  Sliders,
+  Bot,
+  Settings,
+  Check,
   CheckCircle2,
   X,
-  ExternalLink,
+  Sliders,
+  ArrowRight,
 } from 'lucide-react';
 import { REASONING_TIERS, isReasoningSupported } from '../utils/modelConfig';
+
+function getModelIcon(model) {
+  const id = (model.modelId || model.id || '').toLowerCase();
+  const name = (model.name || '').toLowerCase();
+
+  if (id.includes('orion') || name.includes('orion')) return <Sparkles size={17} />;
+  if (id.includes('agnes') || name.includes('agnes') || id.includes('flash')) return <Zap size={17} />;
+  if (id.includes('nemotron') || id.includes('gemma') || id.includes('llama')) return <Cpu size={17} />;
+  if (id.includes('claude')) return <Layers size={17} />;
+  return <Bot size={17} />;
+}
+
+function getModelDescription(model) {
+  const id = (model.modelId || model.id || '').toLowerCase();
+  const name = (model.name || '').toLowerCase();
+
+  if (id === 'orion' || name.includes('orion engine')) {
+    return 'Model flagship untuk analisis mendalam, reasoning cerdas, dan coding.';
+  }
+  if (id.includes('agnes') || name.includes('agnes')) {
+    return 'Respon ultra cepat dan ekspresif untuk percakapan harian serta asisten.';
+  }
+  if (id.includes('nemotron')) {
+    return 'Penalaran terstruktur dan instruksi kompleks bertenaga GPU cluster.';
+  }
+  if (id.includes('gemma')) {
+    return 'Model ringan dan efisien dari keluarga Google open weights.';
+  }
+  return `Model AI terintegrasi dari ${model.providerName || 'Provider Aktif'}.`;
+}
 
 export default function ModelsView({
   onClose,
@@ -26,33 +56,9 @@ export default function ModelsView({
   onNavigate,
   onOpenProviders,
 }) {
-  const [timeFilter, setTimeFilter] = useState('30D'); // '7D' | '30D' | '90D'
+  const [timeFilter, setTimeFilter] = useState('30D');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [activeDropdownModelId, setActiveDropdownModelId] = useState(null);
-  const [isAuxModalOpen, setIsAuxModalOpen] = useState(false);
   const [isMoaModalOpen, setIsMoaModalOpen] = useState(false);
-  const [isChangeModelModalOpen, setIsChangeModelModalOpen] = useState(false);
-
-  // Auxiliary tasks configuration state
-  const [auxTasks, setAuxTasks] = useState([
-    { id: 'compression', name: 'Context Compression', desc: 'Auto prune token window', enabled: true },
-    { id: 'vision', name: 'Vision & Multimodal', desc: 'Process images & diagram queries', enabled: true },
-    { id: 'web_extract', name: 'Web Extractor', desc: 'Realtime page scraping & parsing', enabled: true },
-    { id: 'tts_speech', name: 'TTS & Voice Synthesis', desc: 'Multilingual Edge & HF speech', enabled: true },
-    { id: 'code_runner', name: 'Code Sandbox & Exec', desc: 'Terminal command inspection', enabled: true },
-    { id: 'memory', name: 'Long-term Memory', desc: 'Adaptive session recall', enabled: true },
-  ]);
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handleOutsideClick = (e) => {
-      if (!e.target.closest('.model-action-menu-wrap')) {
-        setActiveDropdownModelId(null);
-      }
-    };
-    window.addEventListener('click', handleOutsideClick);
-    return () => window.removeEventListener('click', handleOutsideClick);
-  }, []);
 
   // Filter sessions based on time window
   const filteredSessions = useMemo(() => {
@@ -60,25 +66,25 @@ export default function ModelsView({
     const days = timeFilter === '7D' ? 7 : timeFilter === '30D' ? 30 : 90;
     const cutoff = now - days * 24 * 60 * 60 * 1000;
 
-    return sessions.filter((s) => {
+    return (sessions || []).filter((s) => {
       const sTime = s.updatedAt || s.createdAt ? new Date(s.updatedAt || s.createdAt).getTime() : now;
       return sTime >= cutoff;
     });
   }, [sessions, timeFilter]);
 
-  // Clean, deduplicated models extraction consistent with ModelSelector
+  // Clean, strictly unique models list (consistent with ModelSelector & Provider page)
   const modelsList = useMemo(() => {
     const list = [];
     const seenModelKeys = new Set();
 
-    // Check if customProviders contains an official provider with models
-    const hasOfficialProvider = (customProviders || []).some(
+    // Check if official provider exists in customProviders
+    const hasOfficial = (customProviders || []).some(
       (p) => p && (p.templateId === 'orion' || p.id === 'orion' || p.name?.toLowerCase().includes('official'))
     );
 
-    // 1. If no providers or no official provider configured, supply standard official fallback models
-    if (!customProviders || customProviders.length === 0 || !hasOfficialProvider) {
-      const defaultOfficialModels = [
+    // 1. Fallback official defaults if not present
+    if (!customProviders || customProviders.length === 0 || !hasOfficial) {
+      const defaultOfficial = [
         {
           id: 'orion::orion',
           modelId: 'orion',
@@ -89,7 +95,6 @@ export default function ModelsView({
           badge: 'Official',
           endpoint: 'pi.leopard-gila.ts.net',
           supportsReasoning: true,
-          baseDaysAgo: 2,
           isOfficial: true,
         },
         {
@@ -102,30 +107,29 @@ export default function ModelsView({
           badge: 'Official',
           endpoint: 'pi.leopard-gila.ts.net',
           supportsReasoning: false,
-          baseDaysAgo: 9,
           isOfficial: true,
         },
         {
           id: 'orion::nemotron-3',
           modelId: 'nvidia/nemotron-3-ultra-550b-a55b:free',
-          name: 'NEMOTRON-3-SUPER',
-          displayName: 'Nemotron-3 Super 120B',
+          name: 'NEMOTRON-3',
+          displayName: 'Nemotron-3 Super',
           providerName: 'Orion AI (Official)',
           providerId: 'orion',
           badge: 'Official',
           endpoint: 'pi.leopard-gila.ts.net',
           supportsReasoning: true,
-          baseDaysAgo: 13,
           isOfficial: true,
         },
       ];
-      defaultOfficialModels.forEach((m) => {
+
+      defaultOfficial.forEach((m) => {
         seenModelKeys.add(m.modelId.toLowerCase());
         list.push(m);
       });
     }
 
-    // 2. Iterate custom providers and include their enabled models
+    // 2. Extract enabled models from all configured providers
     (customProviders || []).forEach((prov) => {
       if (!prov) return;
       const enabledModels = (prov.models || []).filter((m) => Boolean(m && m.enabled));
@@ -136,7 +140,7 @@ export default function ModelsView({
         prov.templateId === 'orion' || prov.id === 'orion' || rawName.toLowerCase().includes('official');
       const groupName = isOfficial ? 'Orion AI (Official)' : rawName;
 
-      // Format clean badge (strip https://, ports or protocol details)
+      // Clean badge
       let cleanBadge = isOfficial ? 'Official' : 'Custom';
       if (!isOfficial && prov.baseUrl) {
         try {
@@ -152,16 +156,12 @@ export default function ModelsView({
         const modName = typeof m === 'string' ? m : m.displayName || m.name || modId;
         const cleanModId = (modId || '').toLowerCase().trim();
 
-        // Skip legacy router duplicates
         if (cleanModId === 'orion-auto' || cleanModId === 'orion auto router') return;
 
-        // Deduplicate across list
         const dedupKey = `${prov.id}::${cleanModId}`;
         if (seenModelKeys.has(dedupKey) || seenModelKeys.has(cleanModId)) return;
         seenModelKeys.add(dedupKey);
         seenModelKeys.add(cleanModId);
-
-        const supportsReasoning = isReasoningSupported(modId, modName, m.supportsReasoning);
 
         let endpointClean = 'pi.leopard-gila.ts.net';
         if (!isOfficial && prov.baseUrl) {
@@ -181,8 +181,7 @@ export default function ModelsView({
           providerId: prov.id,
           badge: cleanBadge,
           endpoint: endpointClean,
-          supportsReasoning,
-          baseDaysAgo: Math.min(25, 2 + list.length * 3),
+          supportsReasoning: isReasoningSupported(modId, modName, m.supportsReasoning),
           isOfficial,
         });
       });
@@ -191,7 +190,7 @@ export default function ModelsView({
     return list;
   }, [customProviders]);
 
-  // Calculate session count per model
+  // Session count per model
   const modelStats = useMemo(() => {
     const counts = {};
     modelsList.forEach((m) => {
@@ -206,7 +205,7 @@ export default function ModelsView({
     return counts;
   }, [modelsList, filteredSessions]);
 
-  // Find currently active main model metadata
+  // Current active main model
   const currentMainModel = useMemo(() => {
     const found = modelsList.find((m) => m.id === selectedModel || m.modelId === selectedModel);
     if (found) return found;
@@ -214,52 +213,41 @@ export default function ModelsView({
     return modelsList[0] || {
       id: 'orion::orion',
       modelId: 'orion',
-      displayName: 'Orion',
+      displayName: 'Orion Engine',
       endpoint: 'pi.leopard-gila.ts.net',
       badge: 'Official',
     };
   }, [modelsList, selectedModel]);
 
-  // Trigger manual refresh with visual spin
   const handleRefresh = () => {
     setIsRefreshing(true);
     setTimeout(() => {
       setIsRefreshing(false);
-    }, 600);
+    }, 500);
   };
 
   const handleSetMainModel = (modelId) => {
     onSelectModel?.(modelId);
-    setActiveDropdownModelId(null);
-    setIsChangeModelModalOpen(false);
   };
 
-  const handleStartSessionWithModel = (modelId) => {
+  const handleStartSession = (modelId) => {
     onSelectModel?.(modelId);
-    setActiveDropdownModelId(null);
-    if (onNavigate) {
-      onNavigate('chat');
-    }
+    if (onNavigate) onNavigate('chat');
   };
-
-  // Metrics
-  const modelsWithActivity = modelsList.filter((m) => (modelStats[m.id] || 0) > 0).length;
-  const modelsUsedDisplay = Math.max(1, modelsWithActivity);
-  const totalSessionsDisplay = Math.max(filteredSessions.length, 1);
 
   return (
     <div className="page-view-container models-page-view animate-page-enter">
-      <div className="models-page-content is-page-mode">
+      <div className="provider-page-content is-page-mode">
         {/* ================= HEADER BAR ================= */}
-        <div className="page-view-header models-header-bar">
+        <div className="page-view-header modal-header">
           <div className="provider-header-title-box">
             <h2 className="page-view-title">Models</h2>
             <p className="page-view-subtitle">
-              Katalog dan konfigurasi model AI untuk sesi obrolan serta pemrosesan cerdas
+              Pilih model AI aktif untuk interaksi obrolan serta atur tingkat reasoning
             </p>
           </div>
 
-          <div className="models-header-controls">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
             <div className="models-time-filters">
               {['7D', '30D', '90D'].map((filter) => (
                 <button
@@ -275,385 +263,164 @@ export default function ModelsView({
 
             <button
               type="button"
-              className={`models-btn-refresh ${isRefreshing ? 'is-spinning' : ''}`}
+              className={`provider-btn-icon ${isRefreshing ? 'is-spinning' : ''}`}
               onClick={handleRefresh}
               title="Perbarui status model"
               aria-label="Refresh"
             >
-              <RotateCw size={15} />
+              <RotateCw size={13} />
             </button>
           </div>
         </div>
 
-        {/* ================= TOP TWO CARDS ================= */}
-        <div className="models-top-cards-row">
-          {/* Left Card: MODEL SETTINGS */}
-          <div className="models-card models-settings-card">
-            <div className="models-card-header">
-              <div className="models-card-header-left">
-                <Sliders size={14} className="models-header-icon-symbol" />
-                <span className="models-card-title">MODEL SETTINGS</span>
-              </div>
-              <span className="models-card-subtitle-badge">applies to new sessions</span>
-            </div>
-
-            <div className="models-settings-list">
-              {/* 1. Main Model */}
-              <div className="models-setting-item">
-                <div className="models-setting-info">
-                  <div className="models-setting-label-row">
-                    <Star size={13} className="models-star-icon" />
-                    <span className="models-setting-label">MAIN MODEL</span>
-                  </div>
-                  <div className="models-setting-value" title={currentMainModel.id}>
-                    <span className="models-val-badge">{currentMainModel.badge}</span>
-                    <span className="models-val-sep">·</span>
-                    <span className="models-val-name">{currentMainModel.displayName || currentMainModel.modelId}</span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="models-btn-action-primary"
-                  onClick={() => setIsChangeModelModalOpen(true)}
-                >
-                  CHANGE
-                </button>
-              </div>
-
-              {/* 2. Auxiliary Tasks */}
-              <div className="models-setting-item">
-                <div className="models-setting-info">
-                  <div className="models-setting-label-row">
-                    <Settings size={13} className="models-cog-icon" />
-                    <span className="models-setting-label">AUXILIARY TASKS</span>
-                  </div>
-                  <div className="models-setting-value">
-                    <span className="models-task-count">
-                      {auxTasks.filter((t) => t.enabled).length * 2} tasks
-                    </span>
-                    <span className="models-val-sep">·</span>
-                    <span className="models-task-mode">all auto</span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="models-btn-action-outline"
-                  onClick={() => setIsAuxModalOpen(true)}
-                >
-                  CONFIGURE
-                </button>
-              </div>
-
-              {/* 3. Mixture of Agents / Reasoning */}
-              <div className="models-setting-item">
-                <div className="models-setting-info">
-                  <div className="models-setting-label-row">
-                    <Layers size={13} className="models-moa-icon" />
-                    <span className="models-setting-label">MIXTURE OF AGENTS</span>
-                  </div>
-                  <div className="models-setting-value">
-                    <span className="models-task-count">2 references</span>
-                    <span className="models-val-sep">·</span>
-                    <span className="models-task-mode">
-                      {reasoningTier === 'high'
-                        ? 'Deep Reasoning (High)'
-                        : reasoningTier === 'low'
-                        ? 'Fast Efficient (Low)'
-                        : 'Balanced Depth (Medium)'}
-                    </span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="models-btn-action-outline"
-                  onClick={() => setIsMoaModalOpen(true)}
-                >
-                  CONFIGURE
-                </button>
-              </div>
-            </div>
+        {/* ================= SECTION 1: MODEL UTAMA AKTIF (Heroic & Simple) ================= */}
+        <div className="provider-catalog-section">
+          <div className="provider-section-label">
+            <span>Model Utama Aktif</span>
           </div>
 
-          {/* Right Card: METRICS & SESSIONS */}
-          <div className="models-card models-analytics-card">
-            <div className="models-metric-row">
-              <span className="models-metric-num">{modelsUsedDisplay}</span>
-              <span className="models-dotted-leader" />
-              <span className="models-metric-label">MODELS USED</span>
-            </div>
-
-            <div className="models-metric-row">
-              <span className="models-metric-num">{totalSessionsDisplay}</span>
-              <span className="models-dotted-leader" />
-              <span className="models-metric-label">TOTAL SESSIONS</span>
-            </div>
-
-            <div className="models-analytics-disclaimer">
-              Token & cost analytics are hidden because the local counts exclude auxiliary calls
-              (compression, vision, web extract, ...) and provider retries, so they diverge from
-              your provider bill. Enable dashboard.show_token_analytics in Config to show the local
-              debug estimate anyway.
-            </div>
-          </div>
-        </div>
-
-        {/* ================= SECTION LABEL ================= */}
-        <div className="provider-section-label" style={{ marginTop: '0.75rem', marginBottom: '0.25rem' }}>
-          <span>Daftar Model Tersedia ({modelsList.length})</span>
-        </div>
-
-        {/* ================= BOTTOM MODELS GRID ================= */}
-        <div className="models-grid">
-          {modelsList.map((model, index) => {
-            const isCurrentMain =
-              selectedModel === model.id ||
-              selectedModel === model.modelId ||
-              (selectedModel.includes('::') && selectedModel.split('::')[1] === model.modelId);
-
-            const sessionCount = modelStats[model.id] || 0;
-            const isDropdownOpen = activeDropdownModelId === model.id;
-
-            return (
+          <div className="provider-saved-row" style={{ padding: '0.95rem 1.15rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.95rem', minWidth: 0 }}>
               <div
-                key={model.id}
-                className={`models-card-item ${isCurrentMain ? 'is-active-main' : ''}`}
+                className="provider-card-left-icon"
+                style={{
+                  color: '#3b82f6',
+                  background: 'rgba(59, 130, 246, 0.08)',
+                  borderColor: 'rgba(59, 130, 246, 0.25)',
+                }}
               >
-                {/* Card Top: Number, Model Name & Session Count */}
-                <div className="models-card-top">
-                  <div className="models-title-wrap">
-                    <span className="models-card-index">#{index + 1}</span>
-                    <h3 className="models-card-name" title={model.displayName || model.name}>
-                      {model.name}
-                    </h3>
-                  </div>
+                {getModelIcon(currentMainModel)}
+              </div>
 
-                  <div className="models-session-stat">
-                    <span className="models-session-count-number">{sessionCount}</span>
-                    <span className="models-session-count-label">sessions</span>
-                  </div>
+              <div className="provider-saved-main">
+                <div className="provider-saved-title-row">
+                  <span className="provider-saved-name" style={{ fontSize: '0.96rem' }}>
+                    {currentMainModel.displayName || currentMainModel.name}
+                  </span>
+                  <span className="provider-saved-active-tag">Sedang Digunakan</span>
+                  <span className="provider-card-pill">{currentMainModel.badge}</span>
                 </div>
-
-                {/* Card Middle: Badge & Action Dropdown */}
-                <div className="models-card-mid">
-                  <div className="models-badge-wrap">
-                    <span className="models-badge-pill">{model.badge}</span>
-                  </div>
-
-                  <div className="model-action-menu-wrap">
-                    <button
-                      type="button"
-                      className={`models-btn-use-as ${isDropdownOpen ? 'menu-open' : ''}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveDropdownModelId(isDropdownOpen ? null : model.id);
-                      }}
-                    >
-                      <span>USE AS</span>
-                      <ChevronDown size={13} className="models-chevron" />
-                    </button>
-
-                    {isDropdownOpen && (
-                      <div className="models-dropdown-menu">
-                        <button
-                          type="button"
-                          className="models-dropdown-item"
-                          onClick={() => handleSetMainModel(model.id)}
-                        >
-                          <div className="dropdown-item-left">
-                            <Star size={13} className="dropdown-icon" />
-                            <span>Set as Main Model</span>
-                          </div>
-                          {isCurrentMain && <Check size={14} className="dropdown-check-icon" />}
-                        </button>
-
-                        <button
-                          type="button"
-                          className="models-dropdown-item"
-                          onClick={() => handleStartSessionWithModel(model.id)}
-                        >
-                          <div className="dropdown-item-left">
-                            <ArrowRight size={13} className="dropdown-icon" />
-                            <span>Start New Chat</span>
-                          </div>
-                        </button>
-
-                        {onOpenProviders && (
-                          <button
-                            type="button"
-                            className="models-dropdown-item"
-                            onClick={() => {
-                              setActiveDropdownModelId(null);
-                              onOpenProviders();
-                            }}
-                          >
-                            <div className="dropdown-item-left">
-                              <Settings size={13} className="dropdown-icon" />
-                              <span>Manage Provider</span>
-                            </div>
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Card Bottom: Relative Timestamp */}
-                <div className="models-card-bottom">
-                  <span className="models-time-ago-text">
-                    {isCurrentMain ? 'Active now' : `${model.baseDaysAgo}d ago`}
+                <div className="provider-saved-meta">
+                  <code className="provider-code-chip">{currentMainModel.endpoint}</code>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                    Reasoning: <strong>{reasoningTier.toUpperCase()}</strong> ·{' '}
+                    {modelStats[currentMainModel.id] || 0} sesi aktif
                   </span>
                 </div>
               </div>
-            );
-          })}
+            </div>
+
+            <div className="provider-saved-actions" style={{ gap: '0.5rem' }}>
+              <button
+                type="button"
+                className="provider-btn-select"
+                onClick={() => setIsMoaModalOpen(true)}
+                title="Atur reasoning tier & konfigurasi"
+              >
+                Konfigurasi
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ================= SECTION 2: DAFTAR SEMUA MODEL TERSEDIA ================= */}
+        <div className="provider-catalog-section" style={{ marginTop: '0.5rem' }}>
+          <div
+            className="provider-section-label"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+          >
+            <span>Daftar Model Tersedia ({modelsList.length})</span>
+            <span style={{ textTransform: 'none', color: 'var(--text-muted)', fontSize: '0.74rem' }}>
+              Klik kartu untuk memilih model
+            </span>
+          </div>
+
+          <div className="provider-cards-stack">
+            {modelsList.map((model) => {
+              const isCurrentMain =
+                selectedModel === model.id ||
+                selectedModel === model.modelId ||
+                (selectedModel.includes('::') && selectedModel.split('::')[1] === model.modelId);
+
+              const sessionCount = modelStats[model.id] || 0;
+
+              return (
+                <div
+                  key={model.id}
+                  className="provider-template-card"
+                  style={{
+                    borderColor: isCurrentMain ? 'rgba(59, 130, 246, 0.65)' : undefined,
+                    background: isCurrentMain ? 'rgba(59, 130, 246, 0.04)' : undefined,
+                    boxShadow: isCurrentMain ? '0 4px 16px rgba(59, 130, 246, 0.08)' : undefined,
+                  }}
+                  onClick={() => handleSetMainModel(model.id)}
+                >
+                  <div
+                    className="provider-card-left-icon"
+                    style={{
+                      color: isCurrentMain ? '#3b82f6' : undefined,
+                      borderColor: isCurrentMain ? 'rgba(59, 130, 246, 0.35)' : undefined,
+                      background: isCurrentMain ? 'rgba(59, 130, 246, 0.1)' : undefined,
+                    }}
+                  >
+                    {getModelIcon(model)}
+                  </div>
+
+                  <div className="provider-card-center-text">
+                    <div className="provider-card-name-row">
+                      <span className="provider-card-title">{model.displayName || model.name}</span>
+                      <span className="provider-card-pill">{model.badge}</span>
+                      {isCurrentMain && (
+                        <span className="provider-saved-active-tag" style={{ marginLeft: 'auto' }}>
+                          ✓ Aktif
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="provider-card-desc">{getModelDescription(model)}</p>
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginTop: '0.25rem',
+                      }}
+                    >
+                      <span className="provider-card-url-hint">
+                        Endpoint: <code>{model.endpoint}</code>
+                      </span>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                          {sessionCount} sesi
+                        </span>
+                        {!isCurrentMain && (
+                          <button
+                            type="button"
+                            className="provider-btn-select"
+                            style={{ padding: '0.2rem 0.65rem', fontSize: '0.72rem' }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStartSession(model.id);
+                            }}
+                          >
+                            Chat <ArrowRight size={11} style={{ marginLeft: '2px' }} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      {/* ================= MODAL: CHANGE MAIN MODEL ================= */}
-      {isChangeModelModalOpen && (
-        <div
-          className="modal-backdrop"
-          onClick={() => setIsChangeModelModalOpen(false)}
-        >
-          <div
-            className="modal-dialog modal-content"
-            style={{ maxWidth: '520px', width: '100%' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="modal-header">
-              <div className="modal-header-left" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Star size={16} style={{ color: 'var(--text-primary)' }} />
-                <h3 className="modal-title">Pilih Model Utama</h3>
-              </div>
-              <button
-                type="button"
-                className="modal-close-btn"
-                onClick={() => setIsChangeModelModalOpen(false)}
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-              <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                Model utama akan digunakan secara otomatis saat Anda memulai obrolan baru.
-              </p>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '55vh', overflowY: 'auto' }}>
-                {modelsList.map((m) => {
-                  const isSelected = selectedModel === m.id || selectedModel === m.modelId;
-                  return (
-                    <div
-                      key={m.id}
-                      className={`provider-saved-row ${isSelected ? 'active-model-row' : ''}`}
-                      style={{ cursor: 'pointer', padding: '0.75rem 1rem' }}
-                      onClick={() => handleSetMainModel(m.id)}
-                    >
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                            {m.displayName || m.name}
-                          </span>
-                          <span className="provider-card-pill">{m.badge}</span>
-                        </div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                          {m.providerName} · {m.endpoint}
-                        </span>
-                      </div>
-                      {isSelected ? (
-                        <CheckCircle2 size={18} style={{ color: '#3b82f6' }} />
-                      ) : (
-                        <button type="button" className="provider-action-btn" style={{ fontSize: '0.75rem' }}>
-                          Pilih
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ================= MODAL: AUXILIARY TASKS ================= */}
-      {isAuxModalOpen && (
-        <div
-          className="modal-backdrop"
-          onClick={() => setIsAuxModalOpen(false)}
-        >
-          <div
-            className="modal-dialog modal-content"
-            style={{ maxWidth: '520px', width: '100%' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="modal-header">
-              <div className="modal-header-left" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Settings size={16} style={{ color: 'var(--text-primary)' }} />
-                <h3 className="modal-title">Konfigurasi Auxiliary Tasks</h3>
-              </div>
-              <button
-                type="button"
-                className="modal-close-btn"
-                onClick={() => setIsAuxModalOpen(false)}
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-              <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                Tugas latar belakang untuk ekstraksi web, kompresi konteks, dan sintesis suara bekerja otomatis.
-              </p>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {auxTasks.map((task) => (
-                  <div key={task.id} className="provider-saved-row" style={{ padding: '0.75rem 1rem' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                        {task.name}
-                      </span>
-                      <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-                        {task.desc}
-                      </span>
-                    </div>
-                    <label className="hermes-toggle-switch">
-                      <input
-                        type="checkbox"
-                        checked={task.enabled}
-                        onChange={() => {
-                          setAuxTasks((prev) =>
-                            prev.map((t) => (t.id === task.id ? { ...t, enabled: !t.enabled } : t))
-                          );
-                        }}
-                      />
-                      <span className="toggle-slider" />
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', padding: '0.85rem 1.25rem' }}>
-              <button
-                type="button"
-                className="btn-primary-action"
-                style={{ padding: '0.45rem 1.1rem', borderRadius: '8px', fontSize: '0.8rem' }}
-                onClick={() => setIsAuxModalOpen(false)}
-              >
-                Selesai
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ================= MODAL: MIXTURE OF AGENTS & REASONING ================= */}
+      {/* ================= MODAL: REASONING & KONFIGURASI ================= */}
       {isMoaModalOpen && (
-        <div
-          className="modal-backdrop"
-          onClick={() => setIsMoaModalOpen(false)}
-        >
+        <div className="modal-backdrop" onClick={() => setIsMoaModalOpen(false)}>
           <div
             className="modal-dialog modal-content"
             style={{ maxWidth: '520px', width: '100%' }}
@@ -661,8 +428,8 @@ export default function ModelsView({
           >
             <div className="modal-header">
               <div className="modal-header-left" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Layers size={16} style={{ color: 'var(--text-primary)' }} />
-                <h3 className="modal-title">Mixture of Agents & Reasoning</h3>
+                <Sliders size={16} style={{ color: 'var(--text-primary)' }} />
+                <h3 className="modal-title">Konfigurasi Reasoning Model</h3>
               </div>
               <button
                 type="button"
@@ -673,9 +440,9 @@ export default function ModelsView({
               </button>
             </div>
 
-            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                Tingkat kedalaman reasoning untuk model yang mendukung proses berpikir.
+                Pilih tingkat kedalaman proses berpikir (reasoning / thinking) untuk model AI yang mendukung.
               </p>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.65rem' }}>
@@ -684,40 +451,49 @@ export default function ModelsView({
                   return (
                     <div
                       key={tier.id}
-                      className={`provider-saved-row ${isSelected ? 'active-model-row' : ''}`}
+                      className="provider-saved-row"
                       style={{
                         flexDirection: 'column',
                         alignItems: 'flex-start',
-                        padding: '0.75rem',
+                        padding: '0.85rem',
                         cursor: 'pointer',
                         borderColor: isSelected ? '#3b82f6' : undefined,
                         background: isSelected ? 'rgba(59, 130, 246, 0.05)' : undefined,
                       }}
                       onClick={() => onSelectReasoningTier?.(tier.id)}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: '0.2rem' }}>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          width: '100%',
+                          marginBottom: '0.25rem',
+                        }}
+                      >
+                        <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                           {tier.name}
                         </span>
                         {isSelected && <Check size={14} style={{ color: '#3b82f6' }} />}
                       </div>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                        {tier.desc}
-                      </span>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{tier.desc}</span>
                     </div>
                   );
                 })}
               </div>
             </div>
 
-            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', padding: '0.85rem 1.25rem' }}>
+            <div
+              className="modal-footer"
+              style={{ display: 'flex', justifyContent: 'flex-end', padding: '0.85rem 1.25rem' }}
+            >
               <button
                 type="button"
                 className="btn-primary-action"
-                style={{ padding: '0.45rem 1.1rem', borderRadius: '8px', fontSize: '0.8rem' }}
+                style={{ padding: '0.45rem 1.15rem', borderRadius: '8px', fontSize: '0.8rem' }}
                 onClick={() => setIsMoaModalOpen(false)}
               >
-                Simpan Konfigurasi
+                Selesai
               </button>
             </div>
           </div>
