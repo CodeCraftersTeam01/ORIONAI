@@ -10,6 +10,168 @@ export const TOOL_DEFINITIONS = [
   {
     type: 'function',
     function: {
+      name: 'write',
+      description: "Write content to a file. Creates the file if it doesn't exist, overwrites if it does. Automatically creates parent directories.",
+      parameters: {
+        type: 'object',
+        properties: {
+          path: {
+            type: 'string',
+            description: 'Path to the file to write (relative or absolute)',
+          },
+          content: {
+            type: 'string',
+            description: 'Content to write to the file',
+          },
+        },
+        required: ['path', 'content'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'read',
+      description: 'Read the contents of a file. Supports text files and line ranges or offset/limit.',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: {
+            type: 'string',
+            description: 'Path to the file to read (relative or absolute)',
+          },
+          offset: {
+            type: 'integer',
+            description: 'Line offset to start reading from (1-indexed, optional)',
+          },
+          limit: {
+            type: 'integer',
+            description: 'Maximum number of lines to read (optional)',
+          },
+        },
+        required: ['path'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'edit',
+      description: 'Edit a single file using exact text replacement. Supports single target replacement or edits[] array with {oldText, newText}.',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: {
+            type: 'string',
+            description: 'Path to the file to edit',
+          },
+          edits: {
+            type: 'array',
+            description: 'List of edits to apply to the file',
+            items: {
+              type: 'object',
+              properties: {
+                oldText: { type: 'string', description: 'Exact text in the file to replace' },
+                newText: { type: 'string', description: 'New text to insert' },
+              },
+              required: ['oldText', 'newText'],
+            },
+          },
+          target_content: {
+            type: 'string',
+            description: 'Exact text in the file to replace (if not using edits array)',
+          },
+          replacement_content: {
+            type: 'string',
+            description: 'New replacement text',
+          },
+        },
+        required: ['path'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'bash',
+      description: 'Execute a bash command in the current working directory. Returns stdout and stderr.',
+      parameters: {
+        type: 'object',
+        properties: {
+          command: {
+            type: 'string',
+            description: 'Command to run in bash shell',
+          },
+          timeout: {
+            type: 'integer',
+            description: 'Timeout in seconds (optional)',
+          },
+        },
+        required: ['command'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'ls',
+      description: 'List directory contents (sorted, shows folders and files).',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: {
+            type: 'string',
+            description: 'Directory path to list (default: ".")',
+          },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'find',
+      description: 'Find files by glob pattern or name.',
+      parameters: {
+        type: 'object',
+        properties: {
+          pattern: {
+            type: 'string',
+            description: 'File name pattern or glob to search for',
+          },
+          path: {
+            type: 'string',
+            description: 'Starting directory (default: ".")',
+          },
+        },
+        required: ['pattern'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'grep',
+      description: 'Search file contents for a pattern.',
+      parameters: {
+        type: 'object',
+        properties: {
+          pattern: {
+            type: 'string',
+            description: 'Pattern or text to search for',
+          },
+          path: {
+            type: 'string',
+            description: 'Directory to search (default: ".")',
+          },
+        },
+        required: ['pattern'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'read_file',
       description: 'Membaca isi berkas teks dalam workspace. Bisa menentukan rentang baris tertentu.',
       parameters: {
@@ -199,6 +361,14 @@ function normalizeToolArgs(toolName, rawArgs = {}) {
     else if (args.body !== undefined) args.content = args.body;
   }
 
+  // Normalize edit targets
+  if (!args.target_content) {
+    args.target_content = args.oldText || args.old_str || args.old_content || '';
+  }
+  if (!args.replacement_content) {
+    args.replacement_content = args.newText || args.new_str || args.new_content || '';
+  }
+
   // Normalize command
   if (!args.command) {
     args.command = args.cmd || args.script || '';
@@ -210,7 +380,16 @@ function normalizeToolArgs(toolName, rawArgs = {}) {
 /**
  * Executes a tool by name with arguments and returns formatted result
  */
-export async function executeTool(toolName, rawArgs = {}) {
+export async function executeTool(name, rawArgs = {}) {
+  let toolName = name?.toLowerCase() || '';
+  if (toolName === 'write') toolName = 'write_file';
+  if (toolName === 'read') toolName = 'read_file';
+  if (toolName === 'edit') toolName = 'edit_file';
+  if (toolName === 'bash' || toolName === 'sh') toolName = 'run_command';
+  if (toolName === 'ls') toolName = 'list_dir';
+  if (toolName === 'find') toolName = 'find_files';
+  if (toolName === 'grep') toolName = 'grep_search';
+
   const args = normalizeToolArgs(toolName, rawArgs);
   try {
     switch (toolName) {
@@ -230,10 +409,16 @@ export async function executeTool(toolName, rawArgs = {}) {
         let startLine = 1;
         let endLine = lines.length;
 
-        if (args.start_line && args.start_line > 0) {
+        // Support Pi style offset & limit or Orion style start_line & end_line
+        if (args.offset && args.offset > 0) {
+          startLine = Math.min(args.offset, lines.length);
+        } else if (args.start_line && args.start_line > 0) {
           startLine = Math.min(args.start_line, lines.length);
         }
-        if (args.end_line && args.end_line >= startLine) {
+
+        if (args.limit && args.limit > 0) {
+          endLine = Math.min(startLine + args.limit - 1, lines.length);
+        } else if (args.end_line && args.end_line >= startLine) {
           endLine = Math.min(args.end_line, lines.length);
         }
 
@@ -277,11 +462,33 @@ export async function executeTool(toolName, rawArgs = {}) {
           return { error: `File tidak ditemukan: ${args.path}` };
         }
         const originalContent = fs.readFileSync(fullPath, 'utf8');
+
+        // Pi Agent multi-edit support via edits[]
+        if (Array.isArray(args.edits) && args.edits.length > 0) {
+          let updatedContent = originalContent;
+          for (let i = 0; i < args.edits.length; i++) {
+            const edit = args.edits[i];
+            const target = edit.oldText || edit.old_str || edit.target_content;
+            const replacement = edit.newText !== undefined ? edit.newText : (edit.new_str !== undefined ? edit.new_str : edit.replacement_content);
+            if (!target) continue;
+            if (!updatedContent.includes(target)) {
+              return { error: `oldText ke-${i + 1} tidak ditemukan di file '${args.path}'. Pastikan teks cocok persis.` };
+            }
+            updatedContent = updatedContent.replace(target, replacement);
+          }
+          fs.writeFileSync(fullPath, updatedContent, 'utf8');
+          return {
+            success: true,
+            path: args.path,
+            message: `Berhasil menerapkan ${args.edits.length} perubahan di '${args.path}'.`,
+          };
+        }
+
         const target = args.target_content;
         const replacement = args.replacement_content;
 
         if (!target) {
-          return { error: 'target_content tidak boleh kosong.' };
+          return { error: 'target_content atau edits[] tidak boleh kosong.' };
         }
 
         const occurrences = originalContent.split(target).length - 1;

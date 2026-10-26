@@ -101,7 +101,17 @@ export class SafetyGuard {
    * Evaluates if a tool invocation requires user confirmation
    * @returns {{ needsApproval: boolean, riskLevel: 'safe'|'medium'|'high', reason?: string }}
    */
-  evaluateToolCall(toolName, args = {}) {
+  evaluateToolCall(name, rawArgs = {}) {
+    let toolName = name?.toLowerCase() || '';
+    if (toolName === 'write') toolName = 'write_file';
+    if (toolName === 'read') toolName = 'read_file';
+    if (toolName === 'edit') toolName = 'edit_file';
+    if (toolName === 'bash' || toolName === 'sh') toolName = 'run_command';
+    if (toolName === 'ls') toolName = 'list_dir';
+    if (toolName === 'find') toolName = 'find_files';
+    if (toolName === 'grep') toolName = 'grep_search';
+
+    const args = { ...rawArgs };
     const filePath = args?.path || args?.filename || args?.file_path || args?.file || '';
     const cmd = (args?.command || args?.cmd || '').trim();
 
@@ -126,7 +136,6 @@ export class SafetyGuard {
       }
 
       case 'run_command': {
-        const cmd = (args.command || '').trim();
         for (const pattern of DANGEROUS_COMMAND_PATTERNS) {
           if (pattern.test(cmd)) {
             return {

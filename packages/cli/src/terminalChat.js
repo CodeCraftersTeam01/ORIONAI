@@ -1481,12 +1481,31 @@ export async function startTerminalChat() {
                 } else if (event.type === 'tool_call_start') {
                   spinner.clear();
                   await streamer.flush();
-                  const toolName = event.tool || event.toolCall?.name || 'tool';
+                  const rawTool = event.tool || event.toolCall?.name || 'tool';
                   const toolArgs = event.args || event.toolCall?.args || {};
-                  const target = toolArgs.path || toolArgs.command || toolArgs.query || (Object.keys(toolArgs).length ? JSON.stringify(toolArgs) : '');
                   const stepLabel = event.toolIndex && event.totalTools ? `[${event.toolIndex}/${event.totalTools}] ` : '';
-                  process.stdout.write(`\n\x1b[38;5;75m⚡ Tool ${stepLabel}\x1b[1m\x1b[37m${toolName}\x1b[0m ${target ? `\x1b[90m(${target})\x1b[0m` : ''}\n`);
-                  spinner.start(`Menjalankan ${toolName}...`);
+                  
+                  // Render Pi-style call header
+                  if (rawTool === 'bash' || rawTool === 'run_command') {
+                    const cmd = toolArgs.command || toolArgs.cmd || '...';
+                    process.stdout.write(`\n\x1b[38;5;75m⚡ Tool ${stepLabel}\x1b[1m\x1b[37m$ ${cmd}\x1b[0m\n`);
+                  } else if (rawTool === 'write' || rawTool === 'write_file') {
+                    const p = toolArgs.path || toolArgs.file_path || '...';
+                    process.stdout.write(`\n\x1b[38;5;75m⚡ Tool ${stepLabel}\x1b[1m\x1b[37mwrite\x1b[0m \x1b[38;5;81m${p}\x1b[0m\n`);
+                  } else if (rawTool === 'read' || rawTool === 'read_file') {
+                    const p = toolArgs.path || '...';
+                    process.stdout.write(`\n\x1b[38;5;75m⚡ Tool ${stepLabel}\x1b[1m\x1b[37mread\x1b[0m \x1b[38;5;81m${p}\x1b[0m\n`);
+                  } else if (rawTool === 'edit' || rawTool === 'edit_file') {
+                    const p = toolArgs.path || '...';
+                    process.stdout.write(`\n\x1b[38;5;75m⚡ Tool ${stepLabel}\x1b[1m\x1b[37medit\x1b[0m \x1b[38;5;81m${p}\x1b[0m\n`);
+                  } else if (rawTool === 'ls' || rawTool === 'list_dir') {
+                    const p = toolArgs.path || '.';
+                    process.stdout.write(`\n\x1b[38;5;75m⚡ Tool ${stepLabel}\x1b[1m\x1b[37mls\x1b[0m \x1b[38;5;81m${p}\x1b[0m\n`);
+                  } else {
+                    const target = toolArgs.path || toolArgs.command || toolArgs.query || (Object.keys(toolArgs).length ? JSON.stringify(toolArgs) : '');
+                    process.stdout.write(`\n\x1b[38;5;75m⚡ Tool ${stepLabel}\x1b[1m\x1b[37m${rawTool}\x1b[0m ${target ? `\x1b[90m(${target})\x1b[0m` : ''}\n`);
+                  }
+                  spinner.start(`Menjalankan ${rawTool}...`);
                 } else if (event.type === 'tool_call_waiting_approval') {
                   spinner.stop();
                   await streamer.flush();
@@ -1506,23 +1525,53 @@ export async function startTerminalChat() {
                   await streamer.flush();
                   const isErr = event.isError || Boolean(event.result?.error);
                   const tookText = event.durationSec ? ` \x1b[38;5;244m(Took ${event.durationSec}s)\x1b[0m` : '';
+                  const toolName = event.tool || '';
+
                   if (isErr) {
                     process.stdout.write(`  \x1b[31m✗ Error:${tookText} ${event.result?.error || 'Eksekusi gagal'}\x1b[0m\n`);
                   } else {
-                    const preview = event.result?.message || (event.result?.path ? `File: ${event.result.path}` : '');
-                    process.stdout.write(`  \x1b[32m✓ Selesai\x1b[0m${tookText} ${preview ? `\x1b[90m— ${preview}\x1b[0m` : ''}\n`);
-                    // Pi-style snippet preview of written files or command output
-                    if (event.tool === 'write_file' && event.args?.content) {
+                    const previewMsg = event.result?.message || (event.result?.path ? `File: ${event.result.path}` : '');
+                    process.stdout.write(`  \x1b[32m✓ Selesai\x1b[0m${tookText}${previewMsg ? ` \x1b[90m— ${previewMsg}\x1b[0m` : ''}\n`);
+                    
+                    // Pi-style snippet preview of written files
+                    if ((toolName === 'write' || toolName === 'write_file') && event.args?.content) {
                       const lines = event.args.content.split('\n');
-                      const snippet = lines.slice(0, 5).map((l) => `    \x1b[38;5;244m${l}\x1b[0m`).join('\n');
+                      const previewLines = lines.slice(0, 10);
+                      const snippet = previewLines.map((l, i) => `    \x1b[38;5;240m${String(i + 1).padStart(2)} |\x1b[0m \x1b[38;5;250m${l}\x1b[0m`).join('\n');
                       process.stdout.write(`${snippet}\n`);
-                      if (lines.length > 5) {
-                        process.stdout.write(`    \x1b[38;5;240m... (${lines.length - 5} baris kode lagi tersimpan)\x1b[0m\n`);
+                      if (lines.length > 10) {
+                        process.stdout.write(`    \x1b[38;5;242m... (${lines.length - 10} baris kode lagi tersimpan, total ${lines.length} baris)\x1b[0m\n`);
                       }
-                    } else if (event.tool === 'run_command' && event.result?.output) {
-                      const lines = event.result.output.trim().split('\n');
-                      const snippet = lines.slice(0, 5).map((l) => `    \x1b[38;5;244m${l}\x1b[0m`).join('\n');
+                    } else if ((toolName === 'bash' || toolName === 'run_command') && (event.result?.stdout || event.result?.output)) {
+                      const out = (event.result.stdout || event.result.output || '').trim();
+                      if (out) {
+                        const lines = out.split('\n');
+                        const previewLines = lines.slice(0, 8);
+                        const snippet = previewLines.map((l) => `    \x1b[38;5;244m${l}\x1b[0m`).join('\n');
+                        process.stdout.write(`${snippet}\n`);
+                        if (lines.length > 8) {
+                          process.stdout.write(`    \x1b[38;5;242m... (${lines.length - 8} baris output lagi)\x1b[0m\n`);
+                        }
+                      }
+                    } else if ((toolName === 'ls' || toolName === 'list_dir') && Array.isArray(event.result?.entries)) {
+                      const entries = event.result.entries;
+                      if (entries.length > 0) {
+                        const formattedEntries = entries.slice(0, 12).map((e) => {
+                          return e.type === 'directory' ? `\x1b[38;5;39m📁 ${e.name}/\x1b[0m` : `\x1b[38;5;250m📄 ${e.name}\x1b[0m`;
+                        }).join('  ');
+                        process.stdout.write(`    ${formattedEntries}\n`);
+                        if (entries.length > 12) {
+                          process.stdout.write(`    \x1b[38;5;242m... (+${entries.length - 12} file/folder lainnya)\x1b[0m\n`);
+                        }
+                      }
+                    } else if ((toolName === 'read' || toolName === 'read_file') && event.result?.content) {
+                      const lines = (event.result.content || '').split('\n');
+                      const previewLines = lines.slice(0, 6);
+                      const snippet = previewLines.map((l) => `    \x1b[38;5;244m${l}\x1b[0m`).join('\n');
                       process.stdout.write(`${snippet}\n`);
+                      if (lines.length > 6) {
+                        process.stdout.write(`    \x1b[38;5;242m... (${lines.length - 6} baris lagi)\x1b[0m\n`);
+                      }
                     }
                   }
                   spinner.start('Melanjutkan proses...');
