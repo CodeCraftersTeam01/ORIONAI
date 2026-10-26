@@ -187,17 +187,17 @@ function fetchEdgeTtsAudio(payload) {
 }
 
 /**
- * Synthesize speech: Try remote HF endpoint, then fallback seamlessly to local edge-tts
+ * Synthesize speech: Try ultra-fast local edge-tts first (~1.2s), fallback to remote HF endpoint
  */
 async function synthesizeSpeech(payload) {
   try {
-    return await fetchEdgeTtsAudio(payload);
-  } catch (remoteError) {
+    return await generateLocalEdgeTts(payload.input, payload.voice, payload.rate, payload.pitch);
+  } catch (localError) {
     try {
-      return await generateLocalEdgeTts(payload.input, payload.voice, payload.rate, payload.pitch);
-    } catch (localError) {
-      console.error('❌ [TTS Synthesis Error]:', localError.message);
-      throw remoteError;
+      return await fetchEdgeTtsAudio(payload);
+    } catch (remoteError) {
+      console.error('❌ [TTS Synthesis Error]:', remoteError.message);
+      throw localError;
     }
   }
 }

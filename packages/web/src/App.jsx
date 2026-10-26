@@ -487,6 +487,7 @@ export default function App() {
   const voiceTtsAudioRef = useRef(null);
   const voiceTtsBlobUrlRef = useRef(null);
   const voiceTtsAnimIntervalRef = useRef(null);
+  const voiceTtsSourceRef = useRef(null);
 
   const isVoiceCallingRef = useRef(false);
   isVoiceCallingRef.current = isVoiceCalling;
@@ -769,51 +770,102 @@ export default function App() {
       setVoiceAgentStatus('speaking');
 
       if (audioBlob && audioBlob.size > 0) {
-        if (voiceTtsBlobUrlRef.current) {
-          try { URL.revokeObjectURL(voiceTtsBlobUrlRef.current); } catch {}
-        }
-        const audioUrl = URL.createObjectURL(audioBlob);
-        voiceTtsBlobUrlRef.current = audioUrl;
+        let playedViaWebAudio = false;
 
-        const audio = new Audio(audioUrl);
-        voiceTtsAudioRef.current = audio;
+        // Primary: Web Audio API buffer playback (Safari & Chrome autoplay immune)
+        if (voiceAudioContextRef.current && voiceAudioContextRef.current.state !== 'closed') {
+          try {
+            const audioCtx = voiceAudioContextRef.current;
+            if (audioCtx.state === 'suspended') {
+              await audioCtx.resume();
+            }
 
-        // Animate organic aurora waves while Orion speaks
-        voiceTtsAnimIntervalRef.current = setInterval(() => {
-          if (voiceTtsAudioRef.current && !voiceTtsAudioRef.current.paused) {
-            const simLevel = 0.28 + 0.32 * Math.sin(Date.now() / 150) + 0.16 * Math.cos(Date.now() / 95);
-            setVoiceAudioLevel(Math.max(0.16, Math.min(0.85, simLevel)));
+            const arrayBuf = await audioBlob.arrayBuffer();
+            const decodedBuffer = await new Promise((resolveDecode, rejectDecode) => {
+              const res = audioCtx.decodeAudioData(arrayBuf, resolveDecode, rejectDecode);
+              if (res && typeof res.then === 'function') {
+                res.then(resolveDecode).catch(rejectDecode);
+              }
+            });
+
+            const source = audioCtx.createBufferSource();
+            source.buffer = decodedBuffer;
+            voiceTtsSourceRef.current = source;
+
+            // Connect output to speaker
+            source.connect(audioCtx.destination);
+
+            // Animate organic aurora waves while Orion speaks
+            voiceTtsAnimIntervalRef.current = setInterval(() => {
+              const simLevel = 0.28 + 0.32 * Math.sin(Date.now() / 150) + 0.16 * Math.cos(Date.now() / 95);
+              setVoiceAudioLevel(Math.max(0.16, Math.min(0.85, simLevel)));
+            }, 50);
+
+            await new Promise((resolvePlay) => {
+              source.onended = () => {
+                if (voiceTtsAnimIntervalRef.current) {
+                  clearInterval(voiceTtsAnimIntervalRef.current);
+                  voiceTtsAnimIntervalRef.current = null;
+                }
+                voiceTtsSourceRef.current = null;
+                setVoiceAudioLevel(0);
+                resolvePlay();
+              };
+              source.start(0);
+            });
+            playedViaWebAudio = true;
+          } catch (webAudioErr) {
+            console.warn('Web Audio decode notice, falling back to HTMLAudio:', webAudioErr);
           }
-        }, 50);
+        }
 
-        await new Promise((resolve) => {
-          audio.onended = () => {
-            if (voiceTtsAnimIntervalRef.current) {
-              clearInterval(voiceTtsAnimIntervalRef.current);
-              voiceTtsAnimIntervalRef.current = null;
+        // Secondary Fallback: HTML Audio Element
+        if (!playedViaWebAudio) {
+          if (voiceTtsBlobUrlRef.current) {
+            try { URL.revokeObjectURL(voiceTtsBlobUrlRef.current); } catch {}
+          }
+          const audioUrl = URL.createObjectURL(audioBlob);
+          voiceTtsBlobUrlRef.current = audioUrl;
+
+          const audio = new Audio(audioUrl);
+          voiceTtsAudioRef.current = audio;
+
+          voiceTtsAnimIntervalRef.current = setInterval(() => {
+            if (voiceTtsAudioRef.current && !voiceTtsAudioRef.current.paused) {
+              const simLevel = 0.28 + 0.32 * Math.sin(Date.now() / 150) + 0.16 * Math.cos(Date.now() / 95);
+              setVoiceAudioLevel(Math.max(0.16, Math.min(0.85, simLevel)));
             }
-            setVoiceAudioLevel(0);
-            resolve();
-          };
-          audio.onerror = (err) => {
-            console.warn('Audio playback error:', err);
-            if (voiceTtsAnimIntervalRef.current) {
-              clearInterval(voiceTtsAnimIntervalRef.current);
-              voiceTtsAnimIntervalRef.current = null;
-            }
-            setVoiceAudioLevel(0);
-            resolve();
-          };
-          audio.play().catch((playErr) => {
-            console.warn('Audio playback start notice:', playErr);
-            if (voiceTtsAnimIntervalRef.current) {
-              clearInterval(voiceTtsAnimIntervalRef.current);
-              voiceTtsAnimIntervalRef.current = null;
-            }
-            setVoiceAudioLevel(0);
-            resolve();
+          }, 50);
+
+          await new Promise((resolve) => {
+            audio.onended = () => {
+              if (voiceTtsAnimIntervalRef.current) {
+                clearInterval(voiceTtsAnimIntervalRef.current);
+                voiceTtsAnimIntervalRef.current = null;
+              }
+              setVoiceAudioLevel(0);
+              resolve();
+            };
+            audio.onerror = (err) => {
+              console.warn('Audio playback error:', err);
+              if (voiceTtsAnimIntervalRef.current) {
+                clearInterval(voiceTtsAnimIntervalRef.current);
+                voiceTtsAnimIntervalRef.current = null;
+              }
+              setVoiceAudioLevel(0);
+              resolve();
+            };
+            audio.play().catch((playErr) => {
+              console.warn('Audio playback start notice:', playErr);
+              if (voiceTtsAnimIntervalRef.current) {
+                clearInterval(voiceTtsAnimIntervalRef.current);
+                voiceTtsAnimIntervalRef.current = null;
+              }
+              setVoiceAudioLevel(0);
+              resolve();
+            });
           });
-        });
+        }
       } else {
         // Fallback duration if audio not available
         await new Promise((resolve) => setTimeout(resolve, Math.min(4500, Math.max(1600, finalAnswer.length * 50))));
@@ -953,6 +1005,12 @@ export default function App() {
 
   const handleEndVoiceCalling = () => {
     playCosmicEndCallSound();
+    if (voiceTtsSourceRef.current) {
+      try {
+        voiceTtsSourceRef.current.stop();
+      } catch {}
+      voiceTtsSourceRef.current = null;
+    }
     if (voiceTtsAnimIntervalRef.current) {
       clearInterval(voiceTtsAnimIntervalRef.current);
       voiceTtsAnimIntervalRef.current = null;
