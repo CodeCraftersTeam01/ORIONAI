@@ -554,7 +554,7 @@ export default function ManageProvidersModal({
 
   const modalContent = (
     <div
-      className={isPage ? "provider-page-content is-page-mode" : "modal-dialog provider-modal-dialog provider-modal-large"}
+      className={isPage ? "provider-page-view-content" : "modal-dialog provider-modal-dialog provider-modal-large"}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
@@ -649,8 +649,8 @@ export default function ManageProvidersModal({
         </div>
       )}
 
-        {/* Modal Body */}
-        <div className="modal-body provider-modal-body">
+        {/* Modal / Page Body */}
+        <div className={isPage ? "provider-page-view-body" : "modal-body provider-modal-body"}>
           {/* =========================================================================
               VIEW 1: CATALOG OF PROVIDERS & TEMPLATES
              ========================================================================= */}
