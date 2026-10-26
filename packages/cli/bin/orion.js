@@ -279,7 +279,7 @@ if (args.includes('--setup') || args[0] === 'setup' || args[0] === 'init' || arg
 }
 
 // First-time setup guard: if not configured and running in interactive terminal, prompt user
-if (!isAuthInitialized() && !isDaemonInternal && process.stdin.isTTY) {
+if (!isAuthInitialized() && !isDaemonInternal && !isBackgroundMode && process.stdin.isTTY) {
   const setupOk = await runCliSetupWizard();
   if (!setupOk) {
     console.error('Setup dibatalkan.');
