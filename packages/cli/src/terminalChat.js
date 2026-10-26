@@ -1470,6 +1470,8 @@ export async function startTerminalChat() {
               onEvent: async (event) => {
                 if (event.type === 'agent_step') {
                   spinner.update(`[Tahap ${event.step}/${event.maxSteps}] Menganalisis & merancang tindakan...`);
+                } else if (event.type === 'agent_thought_chunk') {
+                  spinner.update(`[Tahap ${event.step}] Merancang kode & tindakan...`);
                 } else if (event.type === 'agent_thought') {
                   spinner.clear();
                   await streamer.flush();

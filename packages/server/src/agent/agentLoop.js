@@ -15,25 +15,23 @@ export function resolveApproval(toolCallId, approved) {
   return false;
 }
 
-const AGENT_SYSTEM_PROMPT = `Anda adalah Orion Agent, agen rekayasa kode otonom yang presisi, tangkas, dan pantang berhenti sebelum tugas selesai (seperti Pi Agent).
-Anda memiliki akses langsung ke tools untuk membaca, menulis, membuat, mengedit file, dan menjalankan perintah terminal.
+const AGENT_SYSTEM_PROMPT = `Anda adalah Orion Agent, agen rekayasa kode otonom (arsitektur Pi Agent).
+Anda membantu pengguna dengan membaca berkas, menjalankan perintah terminal, mengedit kode, dan menulis file secara tuntas.
 
-STRATEGI EKSEKUSI TOOL (PI-STYLE):
-1. FOKUS & BERTAHAP (1-3 TOOL PER GILIRAN):
-   - Jangan memanggil terlalu banyak tool sekaligus. Panggil 1 sampai maksimal 3 tool per giliran secara terfokus.
-   - Eksekusi langkah demi langkah: periksa lingkungan -> siapkan direktori/file -> tulis kode -> verifikasi -> selesai.
+Daftar tools yang tersedia:
+- write: Menulis atau membuat file baru dengan isi lengkap. Parameter: path (string), content (string).
+- read: Membaca isi file teks. Parameter: path (string), offset (integer opsional), limit (integer opsional).
+- edit: Mengedit file secara presisi dengan exact replacement. Parameter: path (string), edits (array [{oldText, newText}]).
+- bash: Menjalankan perintah terminal/shell di direktori aktif. Parameter: command (string), timeout (integer opsional).
+- ls: Melihat isi direktori. Parameter: path (string opsional).
+- find: Mencari file dengan pola/glob. Parameter: pattern (string), path (string opsional).
+- grep: Mencari teks di dalam file. Parameter: pattern (string), path (string opsional).
 
-2. TUNTASKAN SELURUH KEBUTUHAN PENGGUNA TANPA BERHENTI DI TENGAH:
-   - Jika pengguna meminta membuat sistem atau proyek (misalnya: "buatkan file html css js dashboard full system crud"):
-     * Tahap 1: Periksa direktori atau siapkan folder tujuan.
-     * Tahap 2: Tulis file HTML lengkap ('write_file') dengan struktur UI dan elemen CRUD.
-     * Tahap 3: Tulis file CSS ('write_file') yang modern, responsif, dan rapi.
-     * Tahap 4: Tulis file JavaScript ('write_file') fungsional dengan logika CRUD lengkap (Create, Read, Update, Delete).
-     * Tahap 5: Pastikan semua file telah tertulis nyata di disk, lalu berikan kesimpulan akhir kepada pengguna.
-   - JANGAN PERNAH berhenti di tengah jalan hanya setelah 'list_dir' atau 'find_files'! Lanjutkan giliran berikutnya untuk memanggil 'write_file' sampai SEMUA file yang diminta selesai dibuat.
-
-3. MANDIRI: Anda yang menulis file dan mengeksekusi perintah. Jangan meminta pengguna membuat file yang bisa Anda buat sendiri lewat tool.
-4. BAHASA: Gunakan bahasa Indonesia yang santun, profesional, dan lugas.`;
+Pedoman Eksekusi:
+1. EKSEKUSI LANGSUNG: Bila pengguna meminta membuat file (misal HTML, CSS, JS dashboard), panggil tool 'write' langsung dengan path dan content kode yang utuh, indah, dan fungsional.
+2. JANGAN MEMOTONG KODE: Selalu tulis kode lengkap tanpa placeholder seperti "// implementasi nanti".
+3. FILE LENGKAP: Jika pengguna meminta beberapa file sekaligus (seperti file html, css, dan js terpisah), buat seluruh file tersebut menggunakan tool 'write' secara bertahap sampai semuanya selesai.
+4. TANGGAP & RINGKAS: Berikan penjelasan yang singkat dan to-the-point dalam bahasa Indonesia.`;
 
 /**
  * Fallback parser to extract tool calls from models that format tools in XML/Markdown
@@ -196,12 +194,13 @@ export async function runAgentLoop({
       maxSteps,
     });
 
-    // Make API request with Tool calling enabled
+    // Make API request with Tool calling enabled and streaming for instant responsiveness
     const requestBody = {
       model: endpointInfo.targetModel,
       messages: messages,
       tools: TOOL_DEFINITIONS,
       tool_choice: 'auto',
+      stream: true,
       temperature: endpointInfo.temperature,
     };
 
@@ -225,29 +224,97 @@ export async function runAgentLoop({
       throw new Error(`AI API Error (${response.status}): ${errText}`);
     }
 
-    const resJson = await response.json();
-    const choice = resJson.choices?.[0];
-    const messageRes = choice?.message || {};
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let buffer = '';
+    const streamedToolCalls = [];
+    let content = '';
+    let reasoning = '';
 
-    let content = messageRes.content || '';
-    let rawToolCalls = messageRes.tool_calls || [];
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
 
-    // Fallback extraction if model outputs markdown tool calls
-    if (rawToolCalls.length === 0 && content) {
-      rawToolCalls = extractFallbackToolCalls(content);
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith('data:')) continue;
+        const dataStr = trimmed.replace(/^data:\s*/, '');
+        if (dataStr === '[DONE]') break;
+
+        try {
+          const parsed = JSON.parse(dataStr);
+          const delta = parsed.choices?.[0]?.delta || {};
+
+          if (delta.reasoning_content || delta.reasoning || delta.thinking) {
+            const rChunk = delta.reasoning_content || delta.reasoning || delta.thinking;
+            reasoning += rChunk;
+            await onEvent({
+              type: 'agent_thought_chunk',
+              chunk: rChunk,
+              step,
+            });
+          }
+
+          if (delta.content) {
+            content += delta.content;
+            await onEvent({
+              type: 'agent_chunk',
+              chunk: delta.content,
+              step,
+            });
+          }
+
+          if (Array.isArray(delta.tool_calls)) {
+            for (const tc of delta.tool_calls) {
+              const idx = tc.index ?? 0;
+              if (!streamedToolCalls[idx]) {
+                streamedToolCalls[idx] = {
+                  id: tc.id || `call_${Date.now()}_${step}_${idx}`,
+                  type: 'function',
+                  function: { name: '', arguments: '' },
+                };
+              }
+              if (tc.id) streamedToolCalls[idx].id = tc.id;
+              if (tc.function?.name && !streamedToolCalls[idx].function.name) {
+                streamedToolCalls[idx].function.name = tc.function.name;
+              }
+              if (tc.function?.arguments) {
+                streamedToolCalls[idx].function.arguments += tc.function.arguments;
+              }
+            }
+          }
+        } catch {
+          // ignore keep-alive or JSON parse fragments
+        }
+      }
     }
 
-    // Consolidate fragmented/chunked tool calls (crucial for upstream router deltas)
-    const allToolCalls = consolidateToolCalls(rawToolCalls);
+    // Filter valid tool calls
+    let validToolCalls = streamedToolCalls.filter(tc => tc && tc.function && tc.function.name);
 
-    // Ensure all tool calls have unique IDs
+    // Fallback extraction if model output tool calls in markdown/text
+    if (validToolCalls.length === 0 && content) {
+      validToolCalls = extractFallbackToolCalls(content);
+    }
+
+    // Consolidate fragmented calls
+    const allToolCalls = consolidateToolCalls(validToolCalls);
+
+    // Ensure all tool calls have unique IDs and type='function'
     allToolCalls.forEach((tc, idx) => {
       if (!tc.id) {
         tc.id = `call_${Date.now()}_${step}_${idx}`;
       }
+      if (!tc.type) {
+        tc.type = 'function';
+      }
     });
 
-    // Enforce user requirement: maximum 3 tool calls per step, executed sequentially 1-by-1
+    // Enforce max 3 tool calls per step
     const toolCalls = allToolCalls.slice(0, 3);
 
     // Emit thoughts or intermediate explanations if present
@@ -328,7 +395,7 @@ export async function runAgentLoop({
       };
 
       // State: START / QUEUED
-      onEvent({
+      await onEvent({
         type: 'tool_call_start',
         toolCallId: callId,
         tool: fnName,
@@ -345,7 +412,7 @@ export async function runAgentLoop({
 
       // If approval is needed, pause and wait for user permission
       if (evaluation.needsApproval) {
-        onEvent({
+        await onEvent({
           type: 'tool_call_waiting_approval',
           toolCallId: callId,
           tool: fnName,
@@ -394,7 +461,7 @@ export async function runAgentLoop({
             error: 'Tindakan ini ditolak oleh pengguna. Silakan cari solusi alternatif atau jelaskan kepada pengguna.',
           };
 
-          onEvent({
+          await onEvent({
             type: 'tool_call_rejected',
             toolCallId: callId,
             tool: fnName,
@@ -417,7 +484,7 @@ export async function runAgentLoop({
 
       const toolStartTime = Date.now();
       // State: RUNNING
-      onEvent({
+      await onEvent({
         type: 'tool_call_running',
         toolCallId: callId,
         tool: fnName,
@@ -432,7 +499,7 @@ export async function runAgentLoop({
       const durationMs = Date.now() - toolStartTime;
 
       // State: COMPLETE
-      onEvent({
+      await onEvent({
         type: 'tool_call_complete',
         toolCallId: callId,
         tool: fnName,
@@ -456,7 +523,7 @@ export async function runAgentLoop({
     }
 
     // State: STEP_COMPLETED -> Finished executing tools for this step, proceed to next step
-    onEvent({
+    await onEvent({
       type: 'agent_step_complete',
       step,
       maxSteps,
@@ -465,7 +532,7 @@ export async function runAgentLoop({
     });
   }
 
-  onEvent({
+  await onEvent({
     type: 'agent_done',
     finalAnswer: finalAnswer || 'Tugas telah selesai diproses.',
     content: finalAnswer || 'Tugas telah selesai diproses.',

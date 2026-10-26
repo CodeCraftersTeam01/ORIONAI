@@ -172,77 +172,6 @@ export const TOOL_DEFINITIONS = [
   {
     type: 'function',
     function: {
-      name: 'read_file',
-      description: 'Membaca isi berkas teks dalam workspace. Bisa menentukan rentang baris tertentu.',
-      parameters: {
-        type: 'object',
-        properties: {
-          path: {
-            type: 'string',
-            description: 'Lokasi relatif file dari workspace root (contoh: "src/index.js").',
-          },
-          start_line: {
-            type: 'integer',
-            description: 'Nomor baris awal (1-indexed, opsional).',
-          },
-          end_line: {
-            type: 'integer',
-            description: 'Nomor baris akhir (1-indexed, opsional).',
-          },
-        },
-        required: ['path'],
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'write_file',
-      description: 'Menulis atau membuat file baru dengan isi yang diberikan. Otomatis membuat folder induk jika belum ada.',
-      parameters: {
-        type: 'object',
-        properties: {
-          path: {
-            type: 'string',
-            description: 'Lokasi relatif file yang akan ditulis.',
-          },
-          content: {
-            type: 'string',
-            description: 'Isi lengkap teks yang akan ditulis ke file.',
-          },
-        },
-        required: ['path', 'content'],
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'edit_file',
-      description: 'Mengubah bagian tertentu dari sebuah file dengan mengganti target_content menjadi replacement_content secara presisi.',
-      parameters: {
-        type: 'object',
-        properties: {
-          path: {
-            type: 'string',
-            description: 'Lokasi relatif file yang akan diedit.',
-          },
-          target_content: {
-            type: 'string',
-            description: 'Kutipan teks eksak dalam file yang ingin digantikan.',
-          },
-          replacement_content: {
-            type: 'string',
-            description: 'Teks pengganti baru.',
-          },
-        },
-        required: ['path', 'target_content', 'replacement_content'],
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
       name: 'delete_file',
       description: 'Menghapus file tertentu dalam workspace. MEMERLUKAN PERSETUJUAN PENGGUNA.',
       parameters: {
@@ -254,93 +183,6 @@ export const TOOL_DEFINITIONS = [
           },
         },
         required: ['path'],
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'list_dir',
-      description: 'Melihat daftar file dan subfolder dalam sebuah direktori.',
-      parameters: {
-        type: 'object',
-        properties: {
-          path: {
-            type: 'string',
-            description: 'Lokasi relatif folder (kosongkan atau gunakan "." untuk root workspace).',
-          },
-          recursive: {
-            type: 'boolean',
-            description: 'Jika true, menampilkan hingga 2 tingkat kedalaman subfolder.',
-          },
-        },
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'find_files',
-      description: 'Mencari file berdasarkan pola nama atau ekstensi (contoh: "*.jsx", "src/**/test*").',
-      parameters: {
-        type: 'object',
-        properties: {
-          pattern: {
-            type: 'string',
-            description: 'Pola nama file atau ekstensi yang dicari.',
-          },
-          path: {
-            type: 'string',
-            description: 'Folder awal pencarian (default: ".").',
-          },
-        },
-        required: ['pattern'],
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'grep_search',
-      description: 'Mencari kemunculan kata atau pola teks di dalam seluruh file proyek.',
-      parameters: {
-        type: 'object',
-        properties: {
-          query: {
-            type: 'string',
-            description: 'Kata kunci atau teks yang dicari di dalam isi file.',
-          },
-          path: {
-            type: 'string',
-            description: 'Direktori tempat pencarian (default: ".").',
-          },
-          case_sensitive: {
-            type: 'boolean',
-            description: 'Apakah pencarian sensitif terhadap huruf besar/kecil (default: false).',
-          },
-        },
-        required: ['query'],
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'run_command',
-      description: 'Menjalankan perintah terminal/bash di lingkungan workspace proyek (misal npm test, git status, node script). Perintah berisiko memerlukan persetujuan.',
-      parameters: {
-        type: 'object',
-        properties: {
-          command: {
-            type: 'string',
-            description: 'Perintah shell lengkap yang akan dieksekusi.',
-          },
-          timeout_ms: {
-            type: 'integer',
-            description: 'Batas waktu eksekusi dalam milidetik (default: 60000).',
-          },
-        },
-        required: ['command'],
       },
     },
   },
@@ -382,13 +224,13 @@ function normalizeToolArgs(toolName, rawArgs = {}) {
  */
 export async function executeTool(name, rawArgs = {}) {
   let toolName = name?.toLowerCase() || '';
-  if (toolName === 'write') toolName = 'write_file';
-  if (toolName === 'read') toolName = 'read_file';
-  if (toolName === 'edit') toolName = 'edit_file';
-  if (toolName === 'bash' || toolName === 'sh') toolName = 'run_command';
-  if (toolName === 'ls') toolName = 'list_dir';
-  if (toolName === 'find') toolName = 'find_files';
-  if (toolName === 'grep') toolName = 'grep_search';
+  if (toolName === 'write' || toolName.startsWith('write') || toolName === 'write_file') toolName = 'write_file';
+  else if (toolName === 'read' || toolName.startsWith('read') || toolName === 'read_file') toolName = 'read_file';
+  else if (toolName === 'edit' || toolName.startsWith('edit') || toolName === 'edit_file') toolName = 'edit_file';
+  else if (toolName === 'bash' || toolName === 'sh' || toolName.startsWith('run_command')) toolName = 'run_command';
+  else if (toolName === 'ls' || toolName.startsWith('list') || toolName === 'list_dir') toolName = 'list_dir';
+  else if (toolName === 'find' || toolName.startsWith('find') || toolName === 'find_files') toolName = 'find_files';
+  else if (toolName === 'grep' || toolName.startsWith('grep') || toolName === 'grep_search') toolName = 'grep_search';
 
   const args = normalizeToolArgs(toolName, rawArgs);
   try {
