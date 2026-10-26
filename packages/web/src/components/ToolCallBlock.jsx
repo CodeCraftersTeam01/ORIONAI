@@ -14,39 +14,53 @@ import {
   ChevronRight,
   Loader2,
   ShieldAlert,
+  HelpCircle,
 } from 'lucide-react';
 
 export default function ToolCallBlock({
   toolCall,
   onApprove,
   onReject,
+  onChooseOption,
   isApproving = false,
 }) {
   const [isExpanded, setIsExpanded] = useState(
-    toolCall.status === 'waiting_approval' || toolCall.status === 'running'
+    toolCall.status === 'waiting_approval' ||
+      toolCall.status === 'waiting_choice' ||
+      toolCall.status === 'running'
   );
 
   const getToolMeta = (name) => {
     switch (name) {
+      case 'ask_user':
+        return {
+          label: 'Pertanyaan AI',
+          icon: <HelpCircle size={14} />,
+          badge: 'TANYA',
+        };
       case 'run_command':
+      case 'bash':
         return {
           label: 'Terminal Command',
           icon: <Terminal size={14} />,
           badge: 'BASH',
         };
       case 'read_file':
+      case 'read':
         return {
           label: 'Baca File',
           icon: <FileText size={14} />,
           badge: 'READ',
         };
       case 'write_file':
+      case 'write':
         return {
           label: 'Tulis File',
           icon: <FilePlus size={14} />,
           badge: 'WRITE',
         };
       case 'edit_file':
+      case 'edit':
         return {
           label: 'Edit Kode',
           icon: <FileEdit size={14} />,
@@ -59,18 +73,21 @@ export default function ToolCallBlock({
           badge: 'DELETE',
         };
       case 'list_dir':
+      case 'ls':
         return {
           label: 'Daftar Folder',
           icon: <Folder size={14} />,
           badge: 'DIR',
         };
       case 'find_files':
+      case 'find':
         return {
           label: 'Cari File',
           icon: <Search size={14} />,
           badge: 'FIND',
         };
       case 'grep_search':
+      case 'grep':
         return {
           label: 'Cari Kode',
           icon: <Search size={14} />,
@@ -91,6 +108,13 @@ export default function ToolCallBlock({
 
   const renderStatusBadge = () => {
     switch (status) {
+      case 'waiting_choice':
+        return (
+          <span className="agent-tool-badge badge-choice">
+            <HelpCircle size={11} />
+            <span>Pilih Respons</span>
+          </span>
+        );
       case 'waiting_approval':
         return (
           <span className="agent-tool-badge badge-warning">
@@ -152,12 +176,53 @@ export default function ToolCallBlock({
           {args.command && (
             <code className="agent-tool-target-pill">{args.command.slice(0, 40)}{args.command.length > 40 ? '...' : ''}</code>
           )}
+          {(args.question || toolCall.question) && (
+            <code className="agent-tool-target-pill">{args.question || toolCall.question}</code>
+          )}
         </div>
 
         <div className="agent-tool-header-right">
           {renderStatusBadge()}
         </div>
       </div>
+
+      {/* Interactive Choice Box for ask_user */}
+      {status === 'waiting_choice' && (
+        <div className="agent-tool-choice-box">
+          <div className="agent-choice-desc">
+            <HelpCircle size={16} className="agent-choice-icon" />
+            <div className="agent-choice-text">
+              <strong>{toolCall.question || args.question || 'AI memerlukan tanggapan Anda:'}</strong>
+              <p>Pilih salah satu opsi di bawah untuk melanjutkan eksekusi:</p>
+            </div>
+          </div>
+
+          <div className="agent-choice-options-list">
+            {(toolCall.options || args.options || ['Ya, lanjutkan', 'Tidak, batalkan']).map((opt, idx) => {
+              const optLabel = typeof opt === 'string' ? opt : opt.label || opt.value || `Opsi ${idx + 1}`;
+              const optDesc = typeof opt === 'object' ? opt.description || opt.detail : null;
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  className="agent-btn-choice-opt"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChooseOption?.(toolCall.id, optLabel, idx);
+                  }}
+                  disabled={isApproving}
+                >
+                  <span className="agent-choice-opt-badge">{idx + 1}</span>
+                  <div className="agent-choice-opt-info">
+                    <span className="agent-choice-opt-title">{optLabel}</span>
+                    {optDesc && <span className="agent-choice-opt-sub">{optDesc}</span>}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Interactive Approval Banner */}
       {status === 'waiting_approval' && (
@@ -235,6 +300,9 @@ export default function ToolCallBlock({
               <pre className="agent-output-content">
                 {toolCall.result.error && (
                   <span className="text-error">{toolCall.result.error}\n</span>
+                )}
+                {toolCall.result.selected && (
+                  <span className="text-success">✓ Opsi terpilih: {toolCall.result.selected}\n</span>
                 )}
                 {toolCall.result.stdout && (
                   <span>{toolCall.result.stdout}</span>

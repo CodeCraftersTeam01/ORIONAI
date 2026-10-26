@@ -14,26 +14,43 @@ router.get('/tools', (req, res) => {
   });
 });
 
-// POST /api/agent/approve - Approve or reject pending tool execution
-router.post('/approve', (req, res) => {
-  const { toolCallId, approved } = req.body;
+// POST /api/agent/approve & /api/agent/choice - Approve, reject, or submit choice for pending tool execution
+router.post(['/approve', '/choice'], (req, res) => {
+  const { toolCallId, approved, choice, selected, index } = req.body;
   if (!toolCallId) {
     return res.status(400).json({ success: false, message: 'toolCallId wajib diisi.' });
   }
 
-  const resolved = resolveApproval(toolCallId, Boolean(approved));
+  let resolvePayload;
+  if (selected !== undefined || choice !== undefined) {
+    const chosenText = selected !== undefined ? selected : choice;
+    resolvePayload = {
+      selected: chosenText,
+      index: index ?? 0,
+      cancelled: approved === false,
+    };
+  } else {
+    resolvePayload = Boolean(approved);
+  }
+
+  const resolved = resolveApproval(toolCallId, resolvePayload);
   if (!resolved) {
     return res.status(404).json({
       success: false,
-      message: 'Permintaan persetujuan tidak ditemukan atau sudah kadaluarsa.',
+      message: 'Permintaan persetujuan/pilihan tidak ditemukan atau sudah kadaluarsa.',
     });
   }
 
   res.json({
     success: true,
     toolCallId,
-    approved: Boolean(approved),
-    message: approved ? 'Tindakan telah disetujui.' : 'Tindakan telah ditolak.',
+    resolved: resolvePayload,
+    message:
+      typeof resolvePayload === 'object'
+        ? `Opsi '${resolvePayload.selected}' berhasil dipilih.`
+        : resolvePayload
+          ? 'Tindakan telah disetujui.'
+          : 'Tindakan telah ditolak.',
   });
 });
 

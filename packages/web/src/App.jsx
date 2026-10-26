@@ -458,6 +458,50 @@ export default function App() {
     }
   };
 
+  const handleChooseOption = async (toolCallId, option, index) => {
+    try {
+      const selectedText = typeof option === 'string' ? option : option.label || option.value;
+      await fetch('/api/agent/approve', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(localStorage.getItem('orion_auth_token')
+            ? { Authorization: `Bearer ${localStorage.getItem('orion_auth_token')}` }
+            : {}),
+        },
+        body: JSON.stringify({
+          toolCallId,
+          selected: selectedText,
+          index: index ?? 0,
+          approved: true,
+        }),
+      });
+      soundEffects.playSend();
+
+      // Immediately reflect selected option in local state
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === currentSessionId
+            ? {
+                ...s,
+                messages: s.messages.map((m) => ({
+                  ...m,
+                  toolCalls: (m.toolCalls || []).map((tc) =>
+                    tc.id === toolCallId
+                      ? { ...tc, status: 'completed', result: { selected: selectedText } }
+                      : tc
+                  ),
+                })),
+              }
+            : s
+        )
+      );
+    } catch (err) {
+      console.error('Gagal memilih opsi tool:', err);
+      showToast('Gagal mengirim opsi: ' + err.message);
+    }
+  };
+
   useEffect(() => {
     let isMounted = true;
     const checkAuthStatus = async () => {
@@ -1789,6 +1833,18 @@ export default function App() {
                     : tc
                 );
                 commitUpdate(accumulated, toolCallsList);
+              } else if (parsed.type === 'tool_call_waiting_choice') {
+                toolCallsList = toolCallsList.map((tc) =>
+                  tc.id === parsed.toolCallId
+                    ? {
+                        ...tc,
+                        status: 'waiting_choice',
+                        question: parsed.question,
+                        options: parsed.options,
+                      }
+                    : tc
+                );
+                commitUpdate(accumulated, toolCallsList);
               } else if (parsed.type === 'tool_call_running') {
                 toolCallsList = toolCallsList.map((tc) =>
                   tc.id === parsed.toolCallId ? { ...tc, status: 'running' } : tc
@@ -2361,6 +2417,7 @@ export default function App() {
                                     toolCall={tc}
                                     onApprove={handleApproveTool}
                                     onReject={handleRejectTool}
+                                    onChooseOption={handleChooseOption}
                                   />
                                 ))}
                               </div>
