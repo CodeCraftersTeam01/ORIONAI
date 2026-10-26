@@ -1526,8 +1526,8 @@ export async function startTerminalChat() {
                   spinner.stop();
                   await streamer.flush();
                   const isErr = event.isError || Boolean(event.result?.error);
-                  const tookText = event.durationSec ? ` \x1b[38;5;244m(Took ${event.durationSec}s)\x1b[0m` : '';
-                  const toolName = event.tool || '';
+                  const isCommand = toolName === 'bash' || toolName === 'run_command';
+                  const tookText = (isCommand || (event.durationMs && event.durationMs > 500)) ? ` \x1b[38;5;244m(Took ${event.durationSec}s)\x1b[0m` : '';
 
                   if (isErr) {
                     process.stdout.write(`  \x1b[31m✗ Error:${tookText} ${event.result?.error || 'Eksekusi gagal'}\x1b[0m\n`);
@@ -1576,7 +1576,7 @@ export async function startTerminalChat() {
                       }
                     }
                   }
-                  spinner.start('Melanjutkan proses...');
+                  spinner.start('AI sedang merancang langkah selanjutnya...');
                 } else if (event.type === 'tool_call_rejected') {
                   spinner.stop();
                   await streamer.flush();
@@ -1590,7 +1590,7 @@ export async function startTerminalChat() {
                 } else if (event.type === 'agent_step_complete') {
                   spinner.stop();
                   process.stdout.write(`  \x1b[38;5;39m↳ Selesai Tahap ${event.step}.\x1b[0m \x1b[90mLanjut ke Tahap ${event.step + 1}...\x1b[0m\n`);
-                  spinner.start(`[Tahap ${event.step + 1}] Memproses hasil & merancang kode selanjutnya...`);
+                  spinner.start(`[Tahap ${event.step + 1}] AI sedang merancang kode berikutnya...`);
                 } else if (event.type === 'agent_chunk') {
                   spinner.stop();
                   assistantReply += event.chunk;

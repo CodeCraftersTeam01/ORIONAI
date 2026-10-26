@@ -30,7 +30,7 @@ Daftar tools yang tersedia:
 Pedoman Eksekusi:
 1. EKSEKUSI LANGSUNG: Bila pengguna meminta membuat file (misal HTML, CSS, JS dashboard), panggil tool 'write' langsung dengan path dan content kode yang utuh, indah, dan fungsional.
 2. JANGAN MEMOTONG KODE: Selalu tulis kode lengkap tanpa placeholder seperti "// implementasi nanti".
-3. FILE LENGKAP: Jika pengguna meminta beberapa file sekaligus (seperti file html, css, dan js terpisah), buat seluruh file tersebut menggunakan tool 'write' secara bertahap sampai semuanya selesai.
+3. MULTI-TOOL DALAM 1 GILIRAN (CEPAT & SEKALIGUS): Bila pengguna meminta membuat beberapa file sekaligus (seperti file HTML, CSS, dan JavaScript untuk dashboard), PANGGIL SELURUH TOOL 'write' SEKALIGUS DALAM 1 GILIRAN (multi-tool call). Panggil tool write untuk HTML, write untuk CSS, dan write untuk JS bersamaan dalam 1 langkah agar seluruh file langsung dibuat seketika tanpa harus menunggu bergilir satu per satu.
 4. TANGGAP & RINGKAS: Berikan penjelasan yang singkat dan to-the-point dalam bahasa Indonesia.`;
 
 /**
