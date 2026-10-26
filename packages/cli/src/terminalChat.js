@@ -134,25 +134,38 @@ class AgentSpinner {
     this.timer = null;
     this.active = false;
     this.label = 'Working...';
+    this.startTime = Date.now();
+    this.showTimer = true;
   }
 
-  start(label = 'Working...') {
+  start(label = 'Working...', showTimer = true) {
     this.label = label;
+    this.startTime = Date.now();
+    this.showTimer = showTimer;
     if (this.active) return;
     this.active = true;
     this.timer = setInterval(() => {
       if (this.active) {
-        process.stdout.write(`\r\x1b[K\x1b[38;5;39m${this.frames[this.idx]}\x1b[0m \x1b[38;5;244m${this.label}\x1b[0m \x1b[38;5;240m(Tekan \x1b[38;5;248mEsc\x1b[38;5;240m untuk batal)\x1b[0m`);
+        const elapsed = ((Date.now() - this.startTime) / 1000).toFixed(1);
+        const timerText = this.showTimer ? ` \x1b[38;5;244m(${elapsed}s)\x1b[0m` : '';
+        process.stdout.write(`\r\x1b[K\x1b[38;5;39m${this.frames[this.idx]}\x1b[0m \x1b[38;5;244m${this.label}\x1b[0m${timerText} \x1b[38;5;240m(Tekan \x1b[38;5;248mEsc\x1b[38;5;240m untuk batal)\x1b[0m`);
         this.idx = (this.idx + 1) % this.frames.length;
       }
     }, 80);
   }
 
-  update(label) {
+  update(label, resetTimer = true) {
     this.label = label;
+    if (resetTimer) {
+      this.startTime = Date.now();
+    }
     if (!this.active) {
       this.start(label);
     }
+  }
+
+  getElapsedSeconds() {
+    return ((Date.now() - this.startTime) / 1000).toFixed(1);
   }
 
   clear() {
@@ -1451,11 +1464,12 @@ export async function startTerminalChat() {
               reasoningTier: reasoningTier,
               customProvider: activeCustomProvider,
               orionApiKey: userApiKey,
+              workspaceRoot: process.cwd(),
               signal: activeAbortController.signal,
               autoApprove: false,
               onEvent: async (event) => {
                 if (event.type === 'agent_step') {
-                  spinner.update(`Tahap ${event.step}/${event.maxSteps}: Menganalisis...`);
+                  spinner.update(`[Tahap ${event.step}/${event.maxSteps}] Menganalisis & merancang tindakan...`);
                 } else if (event.type === 'agent_thought') {
                   spinner.clear();
                   await streamer.flush();
@@ -1491,18 +1505,19 @@ export async function startTerminalChat() {
                   spinner.stop();
                   await streamer.flush();
                   const isErr = event.isError || Boolean(event.result?.error);
+                  const tookText = event.durationSec ? ` \x1b[38;5;244m(Took ${event.durationSec}s)\x1b[0m` : '';
                   if (isErr) {
-                    process.stdout.write(`  \x1b[31m✗ Error: ${event.result?.error || 'Eksekusi gagal'}\x1b[0m\n`);
+                    process.stdout.write(`  \x1b[31m✗ Error:${tookText} ${event.result?.error || 'Eksekusi gagal'}\x1b[0m\n`);
                   } else {
                     const preview = event.result?.message || (event.result?.path ? `File: ${event.result.path}` : '');
-                    process.stdout.write(`  \x1b[32m✓ Selesai\x1b[0m ${preview ? `\x1b[90m— ${preview}\x1b[0m` : ''}\n`);
+                    process.stdout.write(`  \x1b[32m✓ Selesai\x1b[0m${tookText} ${preview ? `\x1b[90m— ${preview}\x1b[0m` : ''}\n`);
                     // Pi-style snippet preview of written files or command output
                     if (event.tool === 'write_file' && event.args?.content) {
                       const lines = event.args.content.split('\n');
                       const snippet = lines.slice(0, 5).map((l) => `    \x1b[38;5;244m${l}\x1b[0m`).join('\n');
                       process.stdout.write(`${snippet}\n`);
                       if (lines.length > 5) {
-                        process.stdout.write(`    \x1b[38;5;240m... (${lines.length - 5} baris lagi tersimpan)\x1b[0m\n`);
+                        process.stdout.write(`    \x1b[38;5;240m... (${lines.length - 5} baris kode lagi tersimpan)\x1b[0m\n`);
                       }
                     } else if (event.tool === 'run_command' && event.result?.output) {
                       const lines = event.result.output.trim().split('\n');
@@ -1522,7 +1537,9 @@ export async function startTerminalChat() {
                   process.stdout.write(`  \x1b[31m✗ Error: ${event.error || event.message}\x1b[0m\n`);
                   spinner.start('Melanjutkan...');
                 } else if (event.type === 'agent_step_complete') {
-                  spinner.start('Menganalisis hasil tool & merancang kode selanjutnya...');
+                  spinner.stop();
+                  process.stdout.write(`  \x1b[38;5;39m↳ Selesai Tahap ${event.step}.\x1b[0m \x1b[90mLanjut ke Tahap ${event.step + 1}...\x1b[0m\n`);
+                  spinner.start(`[Tahap ${event.step + 1}] Memproses hasil & merancang kode selanjutnya...`);
                 } else if (event.type === 'agent_chunk') {
                   spinner.stop();
                   assistantReply += event.chunk;

@@ -415,6 +415,7 @@ export async function runAgentLoop({
         }
       }
 
+      const toolStartTime = Date.now();
       // State: RUNNING
       onEvent({
         type: 'tool_call_running',
@@ -428,6 +429,7 @@ export async function runAgentLoop({
       });
 
       const result = await executeTool(fnName, fnArgs);
+      const durationMs = Date.now() - toolStartTime;
 
       // State: COMPLETE
       onEvent({
@@ -438,6 +440,8 @@ export async function runAgentLoop({
         toolCall: toolCallObj,
         toolIndex: toolIndexInStep,
         totalTools: totalToolsInStep,
+        durationMs,
+        durationSec: (durationMs / 1000).toFixed(1),
         result,
         isError: Boolean(result?.error),
         step,
