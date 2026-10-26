@@ -1,20 +1,17 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   RotateCw,
   Star,
   Settings,
-  PlusCircle,
   ChevronDown,
   Check,
   Sparkles,
-  Cpu,
   Layers,
   ArrowRight,
-  ExternalLink,
   Sliders,
   CheckCircle2,
   X,
-  Info,
+  ExternalLink,
 } from 'lucide-react';
 import { REASONING_TIERS, isReasoningSupported } from '../utils/modelConfig';
 
@@ -69,177 +66,127 @@ export default function ModelsView({
     });
   }, [sessions, timeFilter]);
 
-  // Compile all available models across official & custom providers
+  // Clean, deduplicated models extraction consistent with ModelSelector
   const modelsList = useMemo(() => {
     const list = [];
-    const seenIds = new Set();
+    const seenModelKeys = new Set();
 
-    // 1. Built-in Official Models
-    const officialDefaults = [
-      {
-        id: 'orion::orion',
-        modelId: 'orion',
-        name: 'ORION',
-        displayName: 'Orion Engine',
-        providerName: 'Orion AI (Official)',
-        providerId: 'orion',
-        badge: 'custom',
-        endpoint: 'pi.leopard-gila.ts.net',
-        supportsReasoning: true,
-        baseDaysAgo: 2,
-        isOfficial: true,
-      },
-      {
-        id: 'orion::agnes-2.5-flash',
-        modelId: 'agnes-2.5-flash',
-        name: 'AGNES-2.5-FLASH',
-        displayName: 'Agnes 2.5 Flash',
-        providerName: 'Orion AI (Official)',
-        providerId: 'orion',
-        badge: 'auto',
-        endpoint: 'pi.leopard-gila.ts.net',
-        supportsReasoning: false,
-        baseDaysAgo: 9,
-        isOfficial: true,
-      },
-      {
-        id: 'orion::nemotron-3',
-        modelId: 'nvidia/nemotron-3-ultra-550b-a55b:free',
-        name: 'NEMOTRON-3-SUPER-120B-A1...',
-        displayName: 'Nemotron-3 Super 120B',
-        providerName: 'Orion AI (Official)',
-        providerId: 'orion',
-        badge: 'auto',
-        endpoint: 'pi.leopard-gila.ts.net',
-        supportsReasoning: true,
-        baseDaysAgo: 13,
-        isOfficial: true,
-      },
-    ];
+    // Check if customProviders contains an official provider with models
+    const hasOfficialProvider = (customProviders || []).some(
+      (p) => p && (p.templateId === 'orion' || p.id === 'orion' || p.name?.toLowerCase().includes('official'))
+    );
 
-    officialDefaults.forEach((m) => {
-      seenIds.add(m.id);
-      seenIds.add(m.modelId);
-      list.push(m);
-    });
+    // 1. If no providers or no official provider configured, supply standard official fallback models
+    if (!customProviders || customProviders.length === 0 || !hasOfficialProvider) {
+      const defaultOfficialModels = [
+        {
+          id: 'orion::orion',
+          modelId: 'orion',
+          name: 'ORION',
+          displayName: 'Orion Engine',
+          providerName: 'Orion AI (Official)',
+          providerId: 'orion',
+          badge: 'Official',
+          endpoint: 'pi.leopard-gila.ts.net',
+          supportsReasoning: true,
+          baseDaysAgo: 2,
+          isOfficial: true,
+        },
+        {
+          id: 'orion::agnes-2.5-flash',
+          modelId: 'agnes-2.5-flash',
+          name: 'AGNES-2.5-FLASH',
+          displayName: 'Agnes 2.5 Flash',
+          providerName: 'Orion AI (Official)',
+          providerId: 'orion',
+          badge: 'Official',
+          endpoint: 'pi.leopard-gila.ts.net',
+          supportsReasoning: false,
+          baseDaysAgo: 9,
+          isOfficial: true,
+        },
+        {
+          id: 'orion::nemotron-3',
+          modelId: 'nvidia/nemotron-3-ultra-550b-a55b:free',
+          name: 'NEMOTRON-3-SUPER',
+          displayName: 'Nemotron-3 Super 120B',
+          providerName: 'Orion AI (Official)',
+          providerId: 'orion',
+          badge: 'Official',
+          endpoint: 'pi.leopard-gila.ts.net',
+          supportsReasoning: true,
+          baseDaysAgo: 13,
+          isOfficial: true,
+        },
+      ];
+      defaultOfficialModels.forEach((m) => {
+        seenModelKeys.add(m.modelId.toLowerCase());
+        list.push(m);
+      });
+    }
 
-    // 2. Custom Providers Models
+    // 2. Iterate custom providers and include their enabled models
     (customProviders || []).forEach((prov) => {
+      if (!prov) return;
       const enabledModels = (prov.models || []).filter((m) => Boolean(m && m.enabled));
-      const provName = prov.displayName || prov.name || 'Custom Provider';
-      const isOfficial = prov.templateId === 'orion' || prov.id === 'orion' || provName.toLowerCase().includes('official');
+      if (enabledModels.length === 0) return;
+
+      const rawName = prov.displayName || prov.name || 'Provider';
+      const isOfficial =
+        prov.templateId === 'orion' || prov.id === 'orion' || rawName.toLowerCase().includes('official');
+      const groupName = isOfficial ? 'Orion AI (Official)' : rawName;
+
+      // Format clean badge (strip https://, ports or protocol details)
+      let cleanBadge = isOfficial ? 'Official' : 'Custom';
+      if (!isOfficial && prov.baseUrl) {
+        try {
+          const url = new URL(prov.baseUrl);
+          cleanBadge = url.host || prov.templateId || 'Custom';
+        } catch {
+          cleanBadge = prov.templateId || 'Custom';
+        }
+      }
 
       enabledModels.forEach((m) => {
         const modId = typeof m === 'string' ? m : m.id;
         const modName = typeof m === 'string' ? m : m.displayName || m.name || modId;
-        const uniqueKey = `${prov.id}::${modId}`;
+        const cleanModId = (modId || '').toLowerCase().trim();
 
-        if (seenIds.has(uniqueKey)) return;
-        seenIds.add(uniqueKey);
+        // Skip legacy router duplicates
+        if (cleanModId === 'orion-auto' || cleanModId === 'orion auto router') return;
 
-        let badge = 'custom';
-        if (prov.baseUrl) {
+        // Deduplicate across list
+        const dedupKey = `${prov.id}::${cleanModId}`;
+        if (seenModelKeys.has(dedupKey) || seenModelKeys.has(cleanModId)) return;
+        seenModelKeys.add(dedupKey);
+        seenModelKeys.add(cleanModId);
+
+        const supportsReasoning = isReasoningSupported(modId, modName, m.supportsReasoning);
+
+        let endpointClean = 'pi.leopard-gila.ts.net';
+        if (!isOfficial && prov.baseUrl) {
           try {
-            const url = new URL(prov.baseUrl);
-            badge = `custom:${url.host}`;
+            endpointClean = prov.baseUrl.replace(/^https?:\/\//i, '').split('/')[0];
           } catch {
-            badge = prov.id.includes('ollama') ? 'ollama' : 'custom';
+            endpointClean = 'custom';
           }
         }
 
         list.push({
-          id: uniqueKey,
+          id: `${prov.id}::${modId}`,
           modelId: modId,
           name: modName.toUpperCase().replace(/\s+/g, '-'),
           displayName: modName,
-          providerName: provName,
+          providerName: groupName,
           providerId: prov.id,
-          badge: isOfficial ? 'auto' : badge,
-          endpoint: prov.baseUrl || 'custom-gateway',
-          supportsReasoning: isReasoningSupported(modId, modName, m.supportsReasoning),
-          baseDaysAgo: Math.min(25, 3 + (list.length * 4)),
+          badge: cleanBadge,
+          endpoint: endpointClean,
+          supportsReasoning,
+          baseDaysAgo: Math.min(25, 2 + list.length * 3),
           isOfficial,
         });
       });
     });
-
-    // 3. Fallback representative entries if list is short to match Hermes dashboard richness
-    if (list.length < 8) {
-      const extraHermesCards = [
-        {
-          id: 'custom::remote-orion-gateway',
-          modelId: 'remote-orion',
-          name: 'ORION',
-          displayName: 'Orion Remote Gateway',
-          providerName: 'Custom Tailscale Gateway',
-          providerId: 'custom-ts',
-          badge: 'custom:100.104.200.89:20128',
-          endpoint: '100.104.200.89:20128',
-          supportsReasoning: true,
-          baseDaysAgo: 9,
-          isOfficial: false,
-        },
-        {
-          id: 'custom::orion-cluster-worker',
-          modelId: 'orion-cluster',
-          name: 'ORION',
-          displayName: 'Orion Cluster Node',
-          providerName: 'Local Node Cluster',
-          providerId: 'custom-cluster',
-          badge: 'custom',
-          endpoint: 'cluster.local',
-          supportsReasoning: true,
-          baseDaysAgo: 13,
-          isOfficial: false,
-        },
-        {
-          id: 'auto::orion-fallback-router',
-          modelId: 'orion-fallback',
-          name: 'ORION',
-          displayName: 'Orion Dynamic Router',
-          providerName: 'Auto Fallback Engine',
-          providerId: 'auto-router',
-          badge: 'auto',
-          endpoint: 'pi.leopard-gila.ts.net',
-          supportsReasoning: true,
-          baseDaysAgo: 13,
-          isOfficial: true,
-        },
-        {
-          id: 'custom::orion-aux-worker',
-          modelId: 'orion-aux',
-          name: 'ORION',
-          displayName: 'Orion Auxiliary Worker',
-          providerName: 'Orion Background Task',
-          providerId: 'aux-worker',
-          badge: 'auto',
-          endpoint: 'localhost:5001',
-          supportsReasoning: false,
-          baseDaysAgo: 18,
-          isOfficial: true,
-        },
-        {
-          id: 'custom::orion-fast-router',
-          modelId: 'orion-fast',
-          name: 'ORION',
-          displayName: 'Orion Low Latency',
-          providerName: 'Edge Router',
-          providerId: 'edge-router',
-          badge: 'auto',
-          endpoint: 'pi.leopard-gila.ts.net',
-          supportsReasoning: true,
-          baseDaysAgo: 21,
-          isOfficial: true,
-        },
-      ];
-
-      extraHermesCards.forEach((c) => {
-        if (!seenIds.has(c.id) && list.length < 8) {
-          seenIds.add(c.id);
-          list.push(c);
-        }
-      });
-    }
 
     return list;
   }, [customProviders]);
@@ -247,28 +194,15 @@ export default function ModelsView({
   // Calculate session count per model
   const modelStats = useMemo(() => {
     const counts = {};
-    const totalSessions = Math.max(filteredSessions.length, 9);
-
-    modelsList.forEach((m, idx) => {
-      // Find actual matching sessions
-      let count = filteredSessions.filter((s) => {
-        return (
-          s.model === m.id ||
-          s.model === m.modelId ||
-          (s.messages || []).some((msg) => msg.model === m.id || msg.model === m.modelId)
-        ).length;
-      });
-
-      // Provide realistic minimum count matching Hermes reference screenshot
-      if (count === 0) {
-        if (idx === 0) count = Math.max(2, Math.floor(totalSessions * 0.4));
-        else if (idx < 6) count = 1;
-        else count = 1;
-      }
-
-      counts[m.id] = count;
+    modelsList.forEach((m) => {
+      const matchCount = filteredSessions.filter((s) => {
+        if (s.model === m.id || s.model === m.modelId) return true;
+        return (s.messages || []).some(
+          (msg) => msg.model === m.id || msg.model === m.modelId
+        );
+      }).length;
+      counts[m.id] = matchCount;
     });
-
     return counts;
   }, [modelsList, filteredSessions]);
 
@@ -277,13 +211,12 @@ export default function ModelsView({
     const found = modelsList.find((m) => m.id === selectedModel || m.modelId === selectedModel);
     if (found) return found;
 
-    // Fallback to first model
     return modelsList[0] || {
       id: 'orion::orion',
       modelId: 'orion',
       displayName: 'Orion',
       endpoint: 'pi.leopard-gila.ts.net',
-      badge: 'custom',
+      badge: 'Official',
     };
   }, [modelsList, selectedModel]);
 
@@ -292,7 +225,7 @@ export default function ModelsView({
     setIsRefreshing(true);
     setTimeout(() => {
       setIsRefreshing(false);
-    }, 700);
+    }, 600);
   };
 
   const handleSetMainModel = (modelId) => {
@@ -309,317 +242,329 @@ export default function ModelsView({
     }
   };
 
-  const totalModelsUsed = Math.min(modelsList.length, 4);
-  const totalSessionsDisplay = Math.max(filteredSessions.length, 9);
+  // Metrics
+  const modelsWithActivity = modelsList.filter((m) => (modelStats[m.id] || 0) > 0).length;
+  const modelsUsedDisplay = Math.max(1, modelsWithActivity);
+  const totalSessionsDisplay = Math.max(filteredSessions.length, 1);
 
   return (
-    <div className="hermes-models-page-container">
-      {/* ================= HEADER BAR ================= */}
-      <div className="hermes-models-header">
-        <div className="hermes-models-title-wrap">
-          <h1 className="hermes-models-title">Models</h1>
-        </div>
-
-        <div className="hermes-models-controls">
-          <div className="hermes-time-filters">
-            {['7D', '30D', '90D'].map((filter) => (
-              <button
-                key={filter}
-                type="button"
-                className={`hermes-time-btn ${timeFilter === filter ? 'active' : ''}`}
-                onClick={() => setTimeFilter(filter)}
-              >
-                {filter}
-              </button>
-            ))}
+    <div className="page-view-container models-page-view animate-page-enter">
+      <div className="models-page-content is-page-mode">
+        {/* ================= HEADER BAR ================= */}
+        <div className="page-view-header models-header-bar">
+          <div className="provider-header-title-box">
+            <h2 className="page-view-title">Models</h2>
+            <p className="page-view-subtitle">
+              Katalog dan konfigurasi model AI untuk sesi obrolan serta pemrosesan cerdas
+            </p>
           </div>
 
-          <button
-            type="button"
-            className={`hermes-btn-refresh ${isRefreshing ? 'is-spinning' : ''}`}
-            onClick={handleRefresh}
-            title="Refresh models and metrics"
-            aria-label="Refresh"
-          >
-            <RotateCw size={15} />
-          </button>
-        </div>
-      </div>
-
-      {/* ================= TOP TWO CARDS ================= */}
-      <div className="hermes-top-cards-row">
-        {/* Left Card: MODEL SETTINGS */}
-        <div className="hermes-card hermes-settings-card">
-          <div className="hermes-card-header">
-            <div className="hermes-card-header-left">
-              <span className="hermes-header-icon-symbol">⊸</span>
-              <span className="hermes-card-title">MODEL SETTINGS</span>
-            </div>
-            <span className="hermes-card-subtitle-badge">applies to new sessions</span>
-          </div>
-
-          <div className="hermes-settings-list">
-            {/* 1. Main Model */}
-            <div className="hermes-setting-item">
-              <div className="hermes-setting-info">
-                <div className="hermes-setting-label-row">
-                  <span className="hermes-star-icon">☆</span>
-                  <span className="hermes-setting-label">MAIN MODEL</span>
-                </div>
-                <div className="hermes-setting-value" title={currentMainModel.id}>
-                  <span className="hermes-val-badge">
-                    {currentMainModel.badge.startsWith('custom:')
-                      ? currentMainModel.badge
-                      : `custom:${currentMainModel.endpoint}`}
-                  </span>
-                  <span className="hermes-val-sep">·</span>
-                  <span className="hermes-val-name">{currentMainModel.modelId}</span>
-                </div>
-              </div>
-              <button
-                type="button"
-                className="hermes-btn-action-cream"
-                onClick={() => setIsChangeModelModalOpen(true)}
-              >
-                CHANGE
-              </button>
+          <div className="models-header-controls">
+            <div className="models-time-filters">
+              {['7D', '30D', '90D'].map((filter) => (
+                <button
+                  key={filter}
+                  type="button"
+                  className={`models-time-btn ${timeFilter === filter ? 'active' : ''}`}
+                  onClick={() => setTimeFilter(filter)}
+                >
+                  {filter}
+                </button>
+              ))}
             </div>
 
-            {/* 2. Auxiliary Tasks */}
-            <div className="hermes-setting-item">
-              <div className="hermes-setting-info">
-                <div className="hermes-setting-label-row">
-                  <span className="hermes-cog-icon">⚙</span>
-                  <span className="hermes-setting-label">AUXILIARY TASKS</span>
-                </div>
-                <div className="hermes-setting-value">
-                  <span className="hermes-task-count">
-                    {auxTasks.filter((t) => t.enabled).length * 2} tasks
-                  </span>
-                  <span className="hermes-val-sep">·</span>
-                  <span className="hermes-task-mode">all auto</span>
-                </div>
-              </div>
-              <button
-                type="button"
-                className="hermes-btn-action-outline"
-                onClick={() => setIsAuxModalOpen(true)}
-              >
-                CONFIGURE
-              </button>
-            </div>
-
-            {/* 3. Mixture of Agents / Reasoning */}
-            <div className="hermes-setting-item">
-              <div className="hermes-setting-info">
-                <div className="hermes-setting-label-row">
-                  <span className="hermes-plus-circle-icon">⨁</span>
-                  <span className="hermes-setting-label">MIXTURE OF AGENTS</span>
-                </div>
-                <div className="hermes-setting-value">
-                  <span className="hermes-task-count">2 references</span>
-                  <span className="hermes-val-sep">·</span>
-                  <span className="hermes-task-mode">
-                    {reasoningTier === 'high'
-                      ? 'deep-reasoning-tier/high'
-                      : reasoningTier === 'low'
-                      ? 'openrouter/fast-tier-4.5'
-                      : 'openrouter/claude-opus-4.8'}
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                className="hermes-btn-action-outline"
-                onClick={() => setIsMoaModalOpen(true)}
-              >
-                CONFIGURE
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Card: METRICS & SESSIONS */}
-        <div className="hermes-card hermes-analytics-card">
-          <div className="hermes-metric-row">
-            <span className="hermes-metric-num">{totalModelsUsed}</span>
-            <span className="hermes-dotted-leader" />
-            <span className="hermes-metric-label">MODELS USED</span>
-          </div>
-
-          <div className="hermes-metric-row">
-            <span className="hermes-metric-num">{totalSessionsDisplay}</span>
-            <span className="hermes-dotted-leader" />
-            <span className="hermes-metric-label">TOTAL SESSIONS</span>
-          </div>
-
-          <div className="hermes-analytics-disclaimer">
-            Token & cost analytics are hidden because the local counts exclude auxiliary calls
-            (compression, vision, web extract, ...) and provider retries, so they diverge from
-            your provider bill. Enable dashboard.show_token_analytics in Config to show the local
-            debug estimate anyway.
-          </div>
-        </div>
-      </div>
-
-      {/* ================= BOTTOM MODELS GRID ================= */}
-      <div className="hermes-models-grid">
-        {modelsList.map((model, index) => {
-          const isCurrentMain =
-            selectedModel === model.id ||
-            selectedModel === model.modelId ||
-            (selectedModel.includes('::') && selectedModel.split('::')[1] === model.modelId);
-
-          const sessionCount = modelStats[model.id] || 1;
-          const isDropdownOpen = activeDropdownModelId === model.id;
-
-          return (
-            <div
-              key={model.id}
-              className={`hermes-model-card ${isCurrentMain ? 'is-active-main' : ''}`}
+            <button
+              type="button"
+              className={`models-btn-refresh ${isRefreshing ? 'is-spinning' : ''}`}
+              onClick={handleRefresh}
+              title="Perbarui status model"
+              aria-label="Refresh"
             >
-              {/* Card Top: Number, Model Name & Session Count */}
-              <div className="hermes-model-card-top">
-                <div className="hermes-model-title-wrap">
-                  <span className="hermes-model-index">#{index + 1}</span>
-                  <h3 className="hermes-model-name" title={model.displayName || model.name}>
-                    {model.name}
-                  </h3>
-                </div>
+              <RotateCw size={15} />
+            </button>
+          </div>
+        </div>
 
-                <div className="hermes-model-session-stat">
-                  <span className="hermes-session-count-number">{sessionCount}</span>
-                  <span className="hermes-session-count-label">sessions</span>
+        {/* ================= TOP TWO CARDS ================= */}
+        <div className="models-top-cards-row">
+          {/* Left Card: MODEL SETTINGS */}
+          <div className="models-card models-settings-card">
+            <div className="models-card-header">
+              <div className="models-card-header-left">
+                <Sliders size={14} className="models-header-icon-symbol" />
+                <span className="models-card-title">MODEL SETTINGS</span>
+              </div>
+              <span className="models-card-subtitle-badge">applies to new sessions</span>
+            </div>
+
+            <div className="models-settings-list">
+              {/* 1. Main Model */}
+              <div className="models-setting-item">
+                <div className="models-setting-info">
+                  <div className="models-setting-label-row">
+                    <Star size={13} className="models-star-icon" />
+                    <span className="models-setting-label">MAIN MODEL</span>
+                  </div>
+                  <div className="models-setting-value" title={currentMainModel.id}>
+                    <span className="models-val-badge">{currentMainModel.badge}</span>
+                    <span className="models-val-sep">·</span>
+                    <span className="models-val-name">{currentMainModel.displayName || currentMainModel.modelId}</span>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  className="models-btn-action-primary"
+                  onClick={() => setIsChangeModelModalOpen(true)}
+                >
+                  CHANGE
+                </button>
               </div>
 
-              {/* Card Middle: Badge & Action Dropdown */}
-              <div className="hermes-model-card-mid">
-                <div className="hermes-model-badge-wrap">
-                  <span className="hermes-badge-tag">{model.badge}</span>
+              {/* 2. Auxiliary Tasks */}
+              <div className="models-setting-item">
+                <div className="models-setting-info">
+                  <div className="models-setting-label-row">
+                    <Settings size={13} className="models-cog-icon" />
+                    <span className="models-setting-label">AUXILIARY TASKS</span>
+                  </div>
+                  <div className="models-setting-value">
+                    <span className="models-task-count">
+                      {auxTasks.filter((t) => t.enabled).length * 2} tasks
+                    </span>
+                    <span className="models-val-sep">·</span>
+                    <span className="models-task-mode">all auto</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="models-btn-action-outline"
+                  onClick={() => setIsAuxModalOpen(true)}
+                >
+                  CONFIGURE
+                </button>
+              </div>
+
+              {/* 3. Mixture of Agents / Reasoning */}
+              <div className="models-setting-item">
+                <div className="models-setting-info">
+                  <div className="models-setting-label-row">
+                    <Layers size={13} className="models-moa-icon" />
+                    <span className="models-setting-label">MIXTURE OF AGENTS</span>
+                  </div>
+                  <div className="models-setting-value">
+                    <span className="models-task-count">2 references</span>
+                    <span className="models-val-sep">·</span>
+                    <span className="models-task-mode">
+                      {reasoningTier === 'high'
+                        ? 'Deep Reasoning (High)'
+                        : reasoningTier === 'low'
+                        ? 'Fast Efficient (Low)'
+                        : 'Balanced Depth (Medium)'}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="models-btn-action-outline"
+                  onClick={() => setIsMoaModalOpen(true)}
+                >
+                  CONFIGURE
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Card: METRICS & SESSIONS */}
+          <div className="models-card models-analytics-card">
+            <div className="models-metric-row">
+              <span className="models-metric-num">{modelsUsedDisplay}</span>
+              <span className="models-dotted-leader" />
+              <span className="models-metric-label">MODELS USED</span>
+            </div>
+
+            <div className="models-metric-row">
+              <span className="models-metric-num">{totalSessionsDisplay}</span>
+              <span className="models-dotted-leader" />
+              <span className="models-metric-label">TOTAL SESSIONS</span>
+            </div>
+
+            <div className="models-analytics-disclaimer">
+              Token & cost analytics are hidden because the local counts exclude auxiliary calls
+              (compression, vision, web extract, ...) and provider retries, so they diverge from
+              your provider bill. Enable dashboard.show_token_analytics in Config to show the local
+              debug estimate anyway.
+            </div>
+          </div>
+        </div>
+
+        {/* ================= SECTION LABEL ================= */}
+        <div className="provider-section-label" style={{ marginTop: '0.75rem', marginBottom: '0.25rem' }}>
+          <span>Daftar Model Tersedia ({modelsList.length})</span>
+        </div>
+
+        {/* ================= BOTTOM MODELS GRID ================= */}
+        <div className="models-grid">
+          {modelsList.map((model, index) => {
+            const isCurrentMain =
+              selectedModel === model.id ||
+              selectedModel === model.modelId ||
+              (selectedModel.includes('::') && selectedModel.split('::')[1] === model.modelId);
+
+            const sessionCount = modelStats[model.id] || 0;
+            const isDropdownOpen = activeDropdownModelId === model.id;
+
+            return (
+              <div
+                key={model.id}
+                className={`models-card-item ${isCurrentMain ? 'is-active-main' : ''}`}
+              >
+                {/* Card Top: Number, Model Name & Session Count */}
+                <div className="models-card-top">
+                  <div className="models-title-wrap">
+                    <span className="models-card-index">#{index + 1}</span>
+                    <h3 className="models-card-name" title={model.displayName || model.name}>
+                      {model.name}
+                    </h3>
+                  </div>
+
+                  <div className="models-session-stat">
+                    <span className="models-session-count-number">{sessionCount}</span>
+                    <span className="models-session-count-label">sessions</span>
+                  </div>
                 </div>
 
-                <div className="model-action-menu-wrap">
-                  <button
-                    type="button"
-                    className={`hermes-btn-use-as ${isDropdownOpen ? 'menu-open' : ''}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActiveDropdownModelId(isDropdownOpen ? null : model.id);
-                    }}
-                  >
-                    <span>USE AS</span>
-                    <span className="hermes-chevron-down">⌵</span>
-                  </button>
+                {/* Card Middle: Badge & Action Dropdown */}
+                <div className="models-card-mid">
+                  <div className="models-badge-wrap">
+                    <span className="models-badge-pill">{model.badge}</span>
+                  </div>
 
-                  {isDropdownOpen && (
-                    <div className="hermes-dropdown-popup">
-                      <button
-                        type="button"
-                        className="hermes-dropdown-item"
-                        onClick={() => handleSetMainModel(model.id)}
-                      >
-                        <div className="dropdown-item-left">
-                          <Star size={13} className="dropdown-icon" />
-                          <span>Set as Main Model</span>
-                        </div>
-                        {isCurrentMain && <Check size={14} className="dropdown-check-icon" />}
-                      </button>
+                  <div className="model-action-menu-wrap">
+                    <button
+                      type="button"
+                      className={`models-btn-use-as ${isDropdownOpen ? 'menu-open' : ''}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveDropdownModelId(isDropdownOpen ? null : model.id);
+                      }}
+                    >
+                      <span>USE AS</span>
+                      <ChevronDown size={13} className="models-chevron" />
+                    </button>
 
-                      <button
-                        type="button"
-                        className="hermes-dropdown-item"
-                        onClick={() => handleStartSessionWithModel(model.id)}
-                      >
-                        <div className="dropdown-item-left">
-                          <ArrowRight size={13} className="dropdown-icon" />
-                          <span>Start New Chat</span>
-                        </div>
-                      </button>
-
-                      {onOpenProviders && (
+                    {isDropdownOpen && (
+                      <div className="models-dropdown-menu">
                         <button
                           type="button"
-                          className="hermes-dropdown-item"
-                          onClick={() => {
-                            setActiveDropdownModelId(null);
-                            onOpenProviders();
-                          }}
+                          className="models-dropdown-item"
+                          onClick={() => handleSetMainModel(model.id)}
                         >
                           <div className="dropdown-item-left">
-                            <Settings size={13} className="dropdown-icon" />
-                            <span>Manage Provider</span>
+                            <Star size={13} className="dropdown-icon" />
+                            <span>Set as Main Model</span>
+                          </div>
+                          {isCurrentMain && <Check size={14} className="dropdown-check-icon" />}
+                        </button>
+
+                        <button
+                          type="button"
+                          className="models-dropdown-item"
+                          onClick={() => handleStartSessionWithModel(model.id)}
+                        >
+                          <div className="dropdown-item-left">
+                            <ArrowRight size={13} className="dropdown-icon" />
+                            <span>Start New Chat</span>
                           </div>
                         </button>
-                      )}
-                    </div>
-                  )}
+
+                        {onOpenProviders && (
+                          <button
+                            type="button"
+                            className="models-dropdown-item"
+                            onClick={() => {
+                              setActiveDropdownModelId(null);
+                              onOpenProviders();
+                            }}
+                          >
+                            <div className="dropdown-item-left">
+                              <Settings size={13} className="dropdown-icon" />
+                              <span>Manage Provider</span>
+                            </div>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Card Bottom: Relative Timestamp */}
+                <div className="models-card-bottom">
+                  <span className="models-time-ago-text">
+                    {isCurrentMain ? 'Active now' : `${model.baseDaysAgo}d ago`}
+                  </span>
                 </div>
               </div>
-
-              {/* Card Bottom: Relative Timestamp */}
-              <div className="hermes-model-card-bottom">
-                <span className="hermes-time-ago-text">
-                  {isCurrentMain ? 'Active now' : `${model.baseDaysAgo}d ago`}
-                </span>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
       {/* ================= MODAL: CHANGE MAIN MODEL ================= */}
       {isChangeModelModalOpen && (
         <div
-          className="hermes-modal-backdrop"
+          className="modal-backdrop"
           onClick={() => setIsChangeModelModalOpen(false)}
         >
           <div
-            className="hermes-modal-box"
+            className="modal-dialog modal-content"
+            style={{ maxWidth: '520px', width: '100%' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="hermes-modal-header">
-              <div className="hermes-modal-title-group">
-                <Star size={16} className="modal-title-icon" />
-                <h3 className="hermes-modal-title">Select Main Model</h3>
+            <div className="modal-header">
+              <div className="modal-header-left" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Star size={16} style={{ color: 'var(--text-primary)' }} />
+                <h3 className="modal-title">Pilih Model Utama</h3>
               </div>
               <button
                 type="button"
-                className="hermes-modal-close"
+                className="modal-close-btn"
                 onClick={() => setIsChangeModelModalOpen(false)}
               >
                 <X size={16} />
               </button>
             </div>
 
-            <div className="hermes-modal-body">
-              <p className="hermes-modal-desc">
-                Select default model applied to all incoming chats and autonomous sessions.
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                Model utama akan digunakan secara otomatis saat Anda memulai obrolan baru.
               </p>
 
-              <div className="hermes-modal-model-list">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '55vh', overflowY: 'auto' }}>
                 {modelsList.map((m) => {
                   const isSelected = selectedModel === m.id || selectedModel === m.modelId;
                   return (
                     <div
                       key={m.id}
-                      className={`hermes-modal-model-item ${isSelected ? 'selected' : ''}`}
+                      className={`provider-saved-row ${isSelected ? 'active-model-row' : ''}`}
+                      style={{ cursor: 'pointer', padding: '0.75rem 1rem' }}
                       onClick={() => handleSetMainModel(m.id)}
                     >
-                      <div className="modal-model-meta">
-                        <div className="modal-model-name-row">
-                          <span className="modal-model-name">{m.displayName || m.name}</span>
-                          <span className="modal-model-badge">{m.badge}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                            {m.displayName || m.name}
+                          </span>
+                          <span className="provider-card-pill">{m.badge}</span>
                         </div>
-                        <span className="modal-model-provider">
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                           {m.providerName} · {m.endpoint}
                         </span>
                       </div>
                       {isSelected ? (
-                        <CheckCircle2 size={16} className="selected-check" />
+                        <CheckCircle2 size={18} style={{ color: '#3b82f6' }} />
                       ) : (
-                        <button type="button" className="btn-select-model-simple">
-                          Select
+                        <button type="button" className="provider-action-btn" style={{ fontSize: '0.75rem' }}>
+                          Pilih
                         </button>
                       )}
                     </div>
@@ -634,39 +579,43 @@ export default function ModelsView({
       {/* ================= MODAL: AUXILIARY TASKS ================= */}
       {isAuxModalOpen && (
         <div
-          className="hermes-modal-backdrop"
+          className="modal-backdrop"
           onClick={() => setIsAuxModalOpen(false)}
         >
           <div
-            className="hermes-modal-box"
+            className="modal-dialog modal-content"
+            style={{ maxWidth: '520px', width: '100%' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="hermes-modal-header">
-              <div className="hermes-modal-title-group">
-                <Settings size={16} className="modal-title-icon" />
-                <h3 className="hermes-modal-title">Configure Auxiliary Tasks</h3>
+            <div className="modal-header">
+              <div className="modal-header-left" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Settings size={16} style={{ color: 'var(--text-primary)' }} />
+                <h3 className="modal-title">Konfigurasi Auxiliary Tasks</h3>
               </div>
               <button
                 type="button"
-                className="hermes-modal-close"
+                className="modal-close-btn"
                 onClick={() => setIsAuxModalOpen(false)}
               >
                 <X size={16} />
               </button>
             </div>
 
-            <div className="hermes-modal-body">
-              <p className="hermes-modal-desc">
-                Auxiliary tasks handle background extraction, token compression, audio synthesis,
-                and browser tasks without affecting your primary model budget.
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                Tugas latar belakang untuk ekstraksi web, kompresi konteks, dan sintesis suara bekerja otomatis.
               </p>
 
-              <div className="hermes-aux-task-list">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {auxTasks.map((task) => (
-                  <div key={task.id} className="hermes-aux-task-item">
-                    <div className="aux-task-info">
-                      <span className="aux-task-name">{task.name}</span>
-                      <span className="aux-task-desc">{task.desc}</span>
+                  <div key={task.id} className="provider-saved-row" style={{ padding: '0.75rem 1rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {task.name}
+                      </span>
+                      <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                        {task.desc}
+                      </span>
                     </div>
                     <label className="hermes-toggle-switch">
                       <input
@@ -685,13 +634,14 @@ export default function ModelsView({
               </div>
             </div>
 
-            <div className="hermes-modal-footer">
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', padding: '0.85rem 1.25rem' }}>
               <button
                 type="button"
-                className="hermes-btn-action-cream"
+                className="btn-primary-action"
+                style={{ padding: '0.45rem 1.1rem', borderRadius: '8px', fontSize: '0.8rem' }}
                 onClick={() => setIsAuxModalOpen(false)}
               >
-                Done
+                Selesai
               </button>
             </div>
           </div>
@@ -701,59 +651,73 @@ export default function ModelsView({
       {/* ================= MODAL: MIXTURE OF AGENTS & REASONING ================= */}
       {isMoaModalOpen && (
         <div
-          className="hermes-modal-backdrop"
+          className="modal-backdrop"
           onClick={() => setIsMoaModalOpen(false)}
         >
           <div
-            className="hermes-modal-box"
+            className="modal-dialog modal-content"
+            style={{ maxWidth: '520px', width: '100%' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="hermes-modal-header">
-              <div className="hermes-modal-title-group">
-                <PlusCircle size={16} className="modal-title-icon" />
-                <h3 className="hermes-modal-title">Mixture of Agents & Reasoning</h3>
+            <div className="modal-header">
+              <div className="modal-header-left" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Layers size={16} style={{ color: 'var(--text-primary)' }} />
+                <h3 className="modal-title">Mixture of Agents & Reasoning</h3>
               </div>
               <button
                 type="button"
-                className="hermes-modal-close"
+                className="modal-close-btn"
                 onClick={() => setIsMoaModalOpen(false)}
               >
                 <X size={16} />
               </button>
             </div>
 
-            <div className="hermes-modal-body">
-              <p className="hermes-modal-desc">
-                Select reasoning depth budget and fallback routing tier for complex problem solving.
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                Tingkat kedalaman reasoning untuk model yang mendukung proses berpikir.
               </p>
 
-              <div className="hermes-reasoning-tier-selector">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.65rem' }}>
                 {REASONING_TIERS.map((tier) => {
                   const isSelected = reasoningTier === tier.id;
                   return (
                     <div
                       key={tier.id}
-                      className={`hermes-reasoning-tier-card ${isSelected ? 'selected' : ''}`}
+                      className={`provider-saved-row ${isSelected ? 'active-model-row' : ''}`}
+                      style={{
+                        flexDirection: 'column',
+                        alignItems: 'flex-start',
+                        padding: '0.75rem',
+                        cursor: 'pointer',
+                        borderColor: isSelected ? '#3b82f6' : undefined,
+                        background: isSelected ? 'rgba(59, 130, 246, 0.05)' : undefined,
+                      }}
                       onClick={() => onSelectReasoningTier?.(tier.id)}
                     >
-                      <div className="tier-header">
-                        <span className="tier-name">{tier.name}</span>
-                        {isSelected && <Check size={14} className="tier-check" />}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: '0.2rem' }}>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                          {tier.name}
+                        </span>
+                        {isSelected && <Check size={14} style={{ color: '#3b82f6' }} />}
                       </div>
-                      <span className="tier-desc">{tier.desc}</span>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        {tier.desc}
+                      </span>
                     </div>
                   );
                 })}
               </div>
             </div>
 
-            <div className="hermes-modal-footer">
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', padding: '0.85rem 1.25rem' }}>
               <button
                 type="button"
-                className="hermes-btn-action-cream"
+                className="btn-primary-action"
+                style={{ padding: '0.45rem 1.1rem', borderRadius: '8px', fontSize: '0.8rem' }}
                 onClick={() => setIsMoaModalOpen(false)}
               >
-                Save Configuration
+                Simpan Konfigurasi
               </button>
             </div>
           </div>
