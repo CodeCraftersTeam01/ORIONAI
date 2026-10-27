@@ -1225,6 +1225,129 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
   });
 }
 
+// Render single user message container card
+function renderSingleUserBox(userMessage) {
+  const termCols = Math.max(30, (process.stdout.columns || 80) - 2);
+  const bgBox = '\x1b[48;5;236m\x1b[48;2;46;49;61m';
+  const textLight = '\x1b[38;5;253m\x1b[38;2;230;233;240m';
+  const reset = '\x1b[0m';
+  const maxTextWidth = Math.max(20, termCols - 4);
+
+  const wrappedLines = wrapText(userMessage, maxTextWidth);
+
+  let userBox = '\n';
+  userBox += `${bgBox}${' '.repeat(termCols)}${reset}\n`;
+  wrappedLines.forEach((line) => {
+    const content = '  ' + line;
+    const padLen = Math.max(0, termCols - content.length);
+    userBox += `${bgBox}${textLight}${content}${' '.repeat(padLen)}${reset}\n`;
+  });
+  userBox += `${bgBox}${' '.repeat(termCols)}${reset}\n\n`;
+  process.stdout.write(userBox);
+}
+
+// Fix glued Indonesian spellings and spacing
+function cleanIndonesianSpelling(text) {
+  if (!text || typeof text !== 'string') return text || '';
+
+  // 1. Protect inline code `...`
+  const codePlaceholders = [];
+  let res = text.replace(/`([^`\n]+)`/g, (match) => {
+    codePlaceholders.push(match);
+    return `__INLINE_CODE_${codePlaceholders.length - 1}__`;
+  });
+
+  // 2. Fix glued uppercase words / abbreviations (e.g. "YAuntukmelanjutkan" -> "YA untuk melanjutkan")
+  res = res.replace(/([A-Z]{2,})(untuk|dan|atau|jika|bila|pada|ke|di)/g, '$1 $2');
+  res = res.replace(/\b(untuk|dan|atau|jika|bila)(melanjutkan|membatalkan|menghapus|membuat|mengedit|menulis|membaca|menjalankan)\b/gi, '$1 $2');
+
+  // 3. Lowercase directly followed by Uppercase (e.g. "membantuAnda" -> "membantu Anda")
+  res = res.replace(/([a-z\u00C0-\u017F])([A-Z])/g, '$1 $2');
+
+  // 4. Glued Indonesian modal/verbs/adverbs (e.g. "akanmenghapus", "yakiningin", "tidakdapat")
+  const modalPattern = '\\b(siap|dapat|bisa|akan|telah|sudah|sedang|ingin|harus|perlu|boleh|tidak|belum|bukan|jangan|yakin)';
+  const verbPattern = '(membantu|menjawab|menjelaskan|menganalisis|merancang|menyelesaikan|memberikan|menemukan|melakukan|bekerja|bantu|pakai|gunakan|bicara|dengar|membuat|menghapus|hapus|buat|baca|edit|tulis|buka|tutup|jalankan|ingin|dapat|bisa|ada|kembali)';
+  res = res.replace(new RegExp(modalPattern + verbPattern + '\\b', 'gi'), '$1 $2');
+
+  // 5. Glued relative pronoun "yang", prepositions "dengan", "untuk", etc.
+  res = res.replace(/\byang([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'yang $1');
+  res = res.replace(/\bdengan([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'dengan $1');
+  res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,})dengan\b/gi, '$1 dengan');
+  res = res.replace(/\buntuk([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'untuk $1');
+  res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,})untuk\b/gi, '$1 untuk');
+  res = res.replace(/\badalah([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'adalah $1');
+  res = res.replace(/\bsecara([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'secara $1');
+
+  // 6. Prepositions squished with nouns
+  const prepPattern = '\\b(dari|ke|pada|untuk|dengan|tanpa|dalam|hingga|sampai|serta|sebagai)';
+  const nounPattern = '(penjelasan|perencanaan|kebutuhan|analisis|pemecahan|pertanyaan|pembuatan|pengembangan|pembelajaran|penggunaan|pelaksanaan|pekerjaan|bantuan|solusi|informasi|tugas|layanan|proses|topik|aspek|bidang|cara|aturan|keselamatan|anda|kamu|kita|saya|mereka|siapa|apa|semua|file|folder|berkas)';
+  res = res.replace(new RegExp(prepPattern + nounPattern + '\\b', 'gi'), '$1 $2');
+
+  // 7. Punctuation spacing - DO NOT break file extensions!
+  res = res.replace(/([?!,;])([a-zA-Z0-9\u00C0-\u017F])/g, '$1 $2');
+  res = res.replace(/(?<!https?|ftp|file|ws|wss):([a-zA-Z0-9\u00C0-\u017F])/g, ': $1');
+  // Only space dot after word if followed by CAPITAL letter (new sentence)
+  res = res.replace(/(?<=[a-zA-Z0-9\u00C0-\u017F])\.([A-Z\u00C0-\u017F])/g, '. $1');
+
+  // Heal accidentally spaced file extensions (e.g. "test. txt" -> "test.txt")
+  res = res.replace(/\.\s+(txt|html|css|js|jsx|ts|tsx|json|md|py|sh|png|jpg|jpeg|gif|svg|zip|tar|gz)\b/gi, '.$1');
+
+  // 8. Specific known squished phrases
+  const SQUISHED_MAP = [
+    [/\bSenangbertemudengan\b/gi, 'Senang bertemu dengan'],
+    [/\bbertemudengan\b/gi, 'bertemu dengan'],
+    [/\bSenangbertemu\b/gi, 'Senang bertemu'],
+    [/\bsiapmembantu\b/gi, 'siap membantu'],
+    [/\bterimakasih\b/gi, 'terima kasih'],
+    [/\basistenkecerdasan\b/gi, 'asisten kecerdasan'],
+    [/\bkecerdasanbuatan\b/gi, 'kecerdasan buatan'],
+    [/\bbuatanyang\b/gi, 'buatan yang'],
+    [/\byangsiap\b/gi, 'yang siap'],
+    [/\badalahasisten\b/gi, 'adalah asisten'],
+    [/\bBerderti\b/gi, 'Berdasarkan'],
+    [/\bBerdasaraturan\b/gi, 'Berdasarkan aturan'],
+    [/\baturankeselamatan\b/gi, 'aturan keselamatan'],
+    [/\btidakdapat\b/gi, 'tidak dapat'],
+    [/\byakiningin\b/gi, 'yakin ingin'],
+    [/\bakanmenghapus\b/gi, 'akan menghapus'],
+  ];
+
+  for (const [re, repl] of SQUISHED_MAP) {
+    res = res.replace(re, repl);
+  }
+
+  // Restore placeholders
+  codePlaceholders.forEach((code, idx) => {
+    res = res.replace(`__INLINE_CODE_${idx}__`, code);
+  });
+
+  return res;
+}
+
+// Render single assistant message block
+function renderSingleAssistantBox(content, model = null) {
+  const provTag = model ? ` \x1b[90m(${model.replace(/^orion::/, '')})\x1b[0m` : '';
+  process.stdout.write(`\x1b[1m\x1b[36m🌌 Orion AI${provTag}:\x1b[0m\n\n`);
+  const cleanContent = cleanIndonesianSpelling(content || '');
+  const lines = cleanContent.split('\n');
+  lines.forEach((line) => {
+    process.stdout.write(`  ${line}\n`);
+  });
+  process.stdout.write('\n');
+}
+
+// Print full message history of a session to the terminal
+function printSessionMessages(session) {
+  if (!session || !session.messages || session.messages.length === 0) return;
+  session.messages.forEach((msg) => {
+    if (msg.role === 'user') {
+      renderSingleUserBox(msg.content);
+    } else if (msg.role === 'assistant') {
+      renderSingleAssistantBox(msg.content, msg.model);
+    }
+  });
+}
+
 // Main Interactive Terminal Chat Launcher
 export async function startTerminalChat({ sessionId = null, forceNew = false, openSessionPicker = false } = {}) {
   await showSplashScreen();
@@ -1258,30 +1381,12 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
 
   // Active session status banner
   console.log(`\n${c.dim}╭────────────────────────────────────────────────────────────────────────╮${c.reset}`);
-  console.log(`  ${c.brightCyan}🌌 Sesi Aktif:${c.reset} ${c.bold}${c.white}${currentSession.title || 'Percakapan'}${c.reset} ${c.dim}(${history.length} pesan tersinkron)${c.reset}`);
-  console.log(`  ${c.dim}Status: Tersinkronisasi dua arah dengan antarmuka Web View${c.reset}`);
-  if (history.length > 0) {
-    const lastUser = [...history].reverse().find((m) => m.role === 'user');
-    const lastAsst = [...history].reverse().find((m) => m.role === 'assistant');
-    if (lastUser) {
-      const userSnippet = lastUser.content.length > 55 ? lastUser.content.slice(0, 55) + '…' : lastUser.content;
-      console.log(`  ${c.gray}Pesan Terakhir (User):${c.reset} ${c.dim}${userSnippet.replace(/[\r\n]+/g, ' ')}${c.reset}`);
-    }
-    if (lastAsst) {
-      const asstSnippet = lastAsst.content.length > 55 ? lastAsst.content.slice(0, 55) + '…' : lastAsst.content;
-      console.log(`  ${c.gray}Pesan Terakhir (AI):  ${c.reset} ${c.dim}${asstSnippet.replace(/[\r\n]+/g, ' ')}${c.reset}`);
-    }
-  } else {
-    console.log(`  ${c.gray}💡 Ketik pertanyaan atau gunakan ${c.yellow}/session${c.gray} untuk beralih sesi obrolan.${c.reset}`);
-  }
+  console.log(`  ${c.brightCyan}🌌 Sesi Aktif:${c.reset} ${c.bold}${c.white}${currentSession.title || 'Percakapan'}${c.reset} ${c.dim}(${history.length} pesan tersinkron dengan Web View)${c.reset}`);
+  console.log(`  ${c.dim}Status: Tersinkronisasi dua arah real-time dengan antarmuka Web View${c.reset}`);
   console.log(`${c.dim}╰────────────────────────────────────────────────────────────────────────╯${c.reset}\n`);
 
-  // Push prompt area to the bottom of the terminal window
-  const termRows = process.stdout.rows || 24;
-  const padLines = Math.max(0, termRows - 12);
-  if (padLines > 0) {
-    process.stdout.write('\n'.repeat(padLines));
-  }
+  // Render all existing messages in this session so CLI and Web are 100% identical
+  printSessionMessages(currentSession);
 
   let queuedUserMessage = '';
 
@@ -1311,12 +1416,26 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
       if (freshActive && freshActive.id !== currentSession.id) {
         currentSession = freshActive;
         history = (freshActive.messages || []).map((m) => ({ role: m.role, content: m.content }));
+        console.clear();
+        printHeader(currentModel, reasoningTier, !!userApiKey, currentSession.title);
+        console.log(`\n${c.brightCyan}✦ Sesi obrolan dialihkan dari Web View:${c.reset} ${c.bold}${currentSession.title}${c.reset} ${c.dim}(${history.length} pesan)${c.reset}\n`);
+        printSessionMessages(currentSession);
       } else {
         const freshSession = getSessionById(currentSession.id);
         if (freshSession) {
-          currentSession = freshSession;
-          if ((freshSession.messages || []).length !== history.length) {
-            history = freshSession.messages.map((m) => ({ role: m.role, content: m.content }));
+          const freshMsgs = freshSession.messages || [];
+          if (freshMsgs.length > history.length) {
+            // New messages sent from the Web View - render them in terminal!
+            const newMsgs = freshMsgs.slice(history.length);
+            newMsgs.forEach((msg) => {
+              if (msg.role === 'user') {
+                renderSingleUserBox(msg.content);
+              } else if (msg.role === 'assistant') {
+                renderSingleAssistantBox(msg.content, msg.model);
+              }
+            });
+            history = freshMsgs.map((m) => ({ role: m.role, content: m.content }));
+            currentSession = freshSession;
           }
         }
       }
@@ -1514,28 +1633,7 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
         if (sessAfterUser) currentSession = sessAfterUser;
       } catch {}
 
-      // Pi Chat UI: Full-width, vertically padded container card (Screenshot exact match)
-      const termCols = Math.max(30, (process.stdout.columns || 80) - 2);
-      const bgBox = '\x1b[48;5;236m\x1b[48;2;46;49;61m';
-      const textLight = '\x1b[38;5;253m\x1b[38;2;230;233;240m';
-      const reset = '\x1b[0m';
-      const maxTextWidth = Math.max(20, termCols - 4);
-
-      const wrappedLines = wrapText(userMessage, maxTextWidth);
-
-      let userBox = '\n';
-      // Top padding row
-      userBox += `${bgBox}${' '.repeat(termCols)}${reset}\n`;
-      // User message line(s)
-      wrappedLines.forEach((line) => {
-        const content = '  ' + line;
-        const padLen = Math.max(0, termCols - content.length);
-        userBox += `${bgBox}${textLight}${content}${' '.repeat(padLen)}${reset}\n`;
-      });
-      // Bottom padding row
-      userBox += `${bgBox}${' '.repeat(termCols)}${reset}\n\n`;
-
-      process.stdout.write(userBox);
+      renderSingleUserBox(userMessage);
 
       // Pi-Style Dynamic Working Spinner
       const spinner = new AgentSpinner();
@@ -2207,7 +2305,8 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
 
     if (action === '/clear') {
       console.clear();
-      printHeader(currentModel, reasoningTier, !!userApiKey);
+      printHeader(currentModel, reasoningTier, !!userApiKey, currentSession.title);
+      printSessionMessages(currentSession);
       return false;
     }
 
@@ -2263,7 +2362,12 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
         items: menuItems,
       });
 
-      if (!picked) return false;
+      if (!picked) {
+        console.clear();
+        printHeader(currentModel, reasoningTier, !!userApiKey, currentSession.title);
+        printSessionMessages(currentSession);
+        return false;
+      }
 
       if (picked.action === 'select_session') {
         const target = picked.session || getSessionById(picked.value);
@@ -2271,9 +2375,12 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
           currentSession = target;
           setActiveSessionId(currentSession.id);
           history = (currentSession.messages || []).map((m) => ({ role: m.role, content: m.content }));
+          console.clear();
+          printHeader(currentModel, reasoningTier, !!userApiKey, currentSession.title);
           console.log(
             `\n${c.green}✓ Beralih ke sesi: ${c.bold}${currentSession.title}${c.reset} ${c.dim}(${history.length} pesan tersinkron)${c.reset}\n`
           );
+          printSessionMessages(currentSession);
         }
         return false;
       }
@@ -2282,6 +2389,8 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
         currentSession = createSession({ title: 'Percakapan Baru' });
         setActiveSessionId(currentSession.id);
         history = [];
+        console.clear();
+        printHeader(currentModel, reasoningTier, !!userApiKey, currentSession.title);
         console.log(`\n${c.green}✓ Sesi baru dibuat dan tersinkron dengan antarmuka Web View!${c.reset}\n`);
         return false;
       }
@@ -2295,6 +2404,8 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
         clearSessionMessages(currentSession.id);
         history = [];
         currentSession.messages = [];
+        console.clear();
+        printHeader(currentModel, reasoningTier, !!userApiKey, currentSession.title);
         console.log(`\n${c.green}✓ Pesan dalam sesi "${currentSession.title}" telah dibersihkan.${c.reset}\n`);
         return false;
       }
@@ -2304,7 +2415,10 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
         currentSession = getSessionById(res.activeSessionId) || getActiveSession() || createSession();
         setActiveSessionId(currentSession.id);
         history = (currentSession.messages || []).map((m) => ({ role: m.role, content: m.content }));
+        console.clear();
+        printHeader(currentModel, reasoningTier, !!userApiKey, currentSession.title);
         console.log(`\n${c.yellow}✓ Sesi telah dihapus. Beralih ke sesi aktif: "${currentSession.title}".${c.reset}\n`);
+        printSessionMessages(currentSession);
         return false;
       }
 
@@ -2320,6 +2434,8 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
         currentSession = createSession({ title: 'Percakapan Baru' });
         setActiveSessionId(currentSession.id);
         history = [];
+        console.clear();
+        printHeader(currentModel, reasoningTier, !!userApiKey, currentSession.title);
         console.log(`\n${c.green}✓ Sesi baru dibuat dan tersinkron dengan antarmuka Web View!${c.reset}\n`);
         return false;
       }
@@ -2327,6 +2443,8 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
         clearSessionMessages(currentSession.id);
         history = [];
         currentSession.messages = [];
+        console.clear();
+        printHeader(currentModel, reasoningTier, !!userApiKey, currentSession.title);
         console.log(`\n${c.green}✓ Pesan dalam sesi "${currentSession.title}" telah dibersihkan.${c.reset}\n`);
         return false;
       }
@@ -2339,7 +2457,10 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
           currentSession = found;
           setActiveSessionId(currentSession.id);
           history = (currentSession.messages || []).map((m) => ({ role: m.role, content: m.content }));
-          console.log(`\n${c.green}✓ Beralih ke sesi: ${c.bold}${currentSession.title}${c.reset} ${c.dim}(${history.length} pesan)${c.reset}\n`);
+          console.clear();
+          printHeader(currentModel, reasoningTier, !!userApiKey, currentSession.title);
+          console.log(`\n${c.green}✓ Beralih ke sesi: ${c.bold}${currentSession.title}${c.reset} ${c.dim}(${history.length} pesan tersinkron)${c.reset}\n`);
+          printSessionMessages(currentSession);
           return false;
         }
       }
@@ -2457,6 +2578,8 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
       currentSession = createSession({ title: 'Percakapan Baru' });
       setActiveSessionId(currentSession.id);
       history = [];
+      console.clear();
+      printHeader(currentModel, reasoningTier, !!userApiKey, currentSession.title);
       console.log(`\n${c.green}✓ Sesi baru dibuat dan tersinkron dengan antarmuka Web View!${c.reset}\n`);
       return false;
     }
@@ -2465,6 +2588,8 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
       clearSessionMessages(currentSession.id);
       history = [];
       currentSession.messages = [];
+      console.clear();
+      printHeader(currentModel, reasoningTier, !!userApiKey, currentSession.title);
       console.log(`\n${c.green}✓ Riwayat percakapan sesi ini telah dibersihkan.${c.reset}\n`);
       return false;
     }
