@@ -1,7 +1,8 @@
 import { TOOL_DEFINITIONS, executeTool } from './tools.js';
 import { safetyGuard } from './safetyGuard.js';
-import { getModelConfig, resolveEndpointAndHeaders } from '../services/aiService.js';
+import { getModelConfig, resolveEndpointAndHeaders, resolveProviderForModel } from '../services/aiService.js';
 import { getActiveSkillsPrompt } from '../services/skillService.js';
+import { getComboById, getNextRoundRobinModel } from '../services/comboService.js';
 
 // Pending approvals registry for interactive web/cli sessions
 export const pendingApprovals = new Map();
@@ -156,8 +157,25 @@ export async function runAgentLoop({
   maxSteps = 15,
 }) {
   safetyGuard.setWorkspaceRoot(workspaceRoot);
-  const modelConfig = getModelConfig(model, reasoningTier);
-  const endpointInfo = resolveEndpointAndHeaders(customProvider, modelConfig, orionApiKey);
+
+  let effectiveModel = model;
+  let effectiveProvider = customProvider;
+
+  const combo = getComboById(model);
+  if (combo) {
+    if (combo.strategy === 'round_robin') {
+      effectiveModel = getNextRoundRobinModel(combo);
+    } else if (combo.strategy === 'fusion') {
+      effectiveModel = combo.judge || combo.models[0] || 'orion::orion';
+    } else {
+      // fallback strategy defaults to first candidate
+      effectiveModel = combo.models[0] || 'orion::orion';
+    }
+    effectiveProvider = resolveProviderForModel(effectiveModel, orionApiKey);
+  }
+
+  const modelConfig = getModelConfig(effectiveModel, reasoningTier);
+  const endpointInfo = resolveEndpointAndHeaders(effectiveProvider, modelConfig, orionApiKey);
 
   // Initialize messages payload with Agent System Prompt, Active Workspace & Active Skills
   const activeWs = safetyGuard.getWorkspaceRoot();

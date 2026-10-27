@@ -201,8 +201,11 @@ if (args.includes('--help') || args.includes('-h') || args[0] === 'help') {
 🌌 Orion Agent CLI — Platform Asisten Cerdas Kosmik (v${appVersion})
 
 Penggunaan:
-  orion                 Mulai obrolan AI interaktif langsung di terminal (Default)
+  orion                 Mulai obrolan AI interaktif di terminal (Lanjutkan sesi aktif dari View)
   orion chat, -c        Mulai obrolan AI interaktif di terminal
+  orion --new, -n       Mulai percakapan baru di terminal (tersinkron ke View)
+  orion session         Pilih & alihkan sesi obrolan (tersinkron dengan View)
+  orion --session <id>  Buka sesi obrolan tertentu berdasarkan ID
   orion --view          Jalankan service dan buka antarmuka web di browser
   orion --view --bg     Jalankan service di latar belakang dan buka di browser (Rekomendasi)
   orion --bg, -b        Jalankan service server di latar belakang (daemon)
@@ -215,6 +218,8 @@ Penggunaan:
   orion --help          Tampilkan petunjuk penggunaan ini
 
 Opsi Tambahan:
+  --new, -n             Mulai sesi obrolan baru (reset percakapan)
+  --session, -s [id]    Pilih atau tentukan ID sesi yang ingin dibuka
   --view, -o, --open    Otomatis membuka browser default ke antarmuka web
   --bg, -b, --daemon    Jalankan service di latar belakang (bebas dari terminal)
   --port, -p <nomor>    Tentukan port server (default: 5001)
@@ -225,7 +230,9 @@ Opsi Tambahan:
   --help, -h            Tampilkan bantuan ini
 
 Contoh Penggunaan:
-  orion                         # Langsung masuk ke chat interaktif di terminal
+  orion                         # Lanjutkan percakapan aktif dari Web View di terminal
+  orion --new                   # Buat percakapan baru dan lanjutkan di terminal
+  orion session                 # Pilih dari daftar sesi obrolan yang tersimpan
   orion --view                  # Buka di browser di port 5001 (foreground)
   orion --view --bg             # Jalankan di latar belakang & langsung buka di browser
   orion --restart --view --bg   # Restart service & buka ulang di latar belakang
@@ -301,6 +308,19 @@ const isServerCommand =
   isBackgroundMode ||
   isDaemonInternal;
 
+// Check session flags
+let targetSessionId = null;
+const sessionFlagIdx = args.findIndex((a) => a === '--session' || a === '-s');
+if (sessionFlagIdx !== -1 && args[sessionFlagIdx + 1] && !args[sessionFlagIdx + 1].startsWith('-')) {
+  targetSessionId = args[sessionFlagIdx + 1];
+}
+
+const forceNew = args.includes('--new') || args.includes('-n');
+const openSessionPicker =
+  args[0] === 'session' ||
+  args[0] === 'sessions' ||
+  (sessionFlagIdx !== -1 && !targetSessionId);
+
 // If no server-specific command is passed, default to interactive terminal chat!
 const isChatMode =
   !isServerCommand ||
@@ -308,10 +328,18 @@ const isChatMode =
   args.includes('--chat') ||
   args.includes('-c') ||
   args.includes('interactive') ||
-  args.includes('-i');
+  args.includes('-i') ||
+  args.includes('session') ||
+  args.includes('sessions') ||
+  sessionFlagIdx !== -1 ||
+  forceNew;
 
 if (isChatMode && !isServerCommand) {
-  await startTerminalChat();
+  await startTerminalChat({
+    sessionId: targetSessionId,
+    forceNew,
+    openSessionPicker,
+  });
   process.exit(0);
 }
 

@@ -5,6 +5,17 @@ import path from 'path';
 import { execSync } from 'child_process';
 import { streamChatCompletion } from '../../server/src/services/aiService.js';
 import { runAgentLoop, resolveApproval } from '../../server/src/agent/agentLoop.js';
+import {
+  getAllSessions,
+  getSessionById,
+  getActiveSession,
+  setActiveSessionId,
+  createSession,
+  deleteSession,
+  appendMessageToSession,
+  clearSessionMessages,
+  formatRelativeTime,
+} from '../../server/src/services/sessionService.js';
 
 function copyToClipboard(text) {
   try {
@@ -779,8 +790,11 @@ export async function showSplashScreen() {
 }
 
 // Print minimalist chat header (Pi style)
-export function printHeader(modelId, tier, hasKey = false) {
+export function printHeader(modelId, tier, hasKey = false, activeSessionTitle = null) {
   console.log(`${c.brightCyan}${c.bold}🌌 ORION AGENT TERMINAL CHAT${c.reset} ${c.dim}(Pi-Engine v1.1.0)${c.reset}`);
+  if (activeSessionTitle) {
+    console.log(`${c.gray}Sesi Aktif:${c.reset} ${c.brightWhite}${c.bold}${activeSessionTitle}${c.reset} ${c.dim}• Tersinkron dengan View (/session)${c.reset}`);
+  }
   console.log(
     `${c.gray}Pintasan:${c.reset} ${c.yellow}Ctrl+L${c.reset} ${c.dim}(Model)${c.reset} · ${c.yellow}Shift+Tab${c.reset} ${c.dim}(Reasoning)${c.reset} · ${c.yellow}!cmd${c.reset} ${c.dim}(Shell)${c.reset} · ${c.yellow}/${c.reset} ${c.dim}(Perintah)${c.reset}`
   );
@@ -793,7 +807,8 @@ const COMMAND_ITEMS = [
   { label: 'model', detail: '<provider/model> — Pilih & beralih model AI (Ctrl+L)', action: 'model' },
   { label: 'thinking', detail: 'Atur tingkat penalaran (low/medium/high, Shift+Tab)', action: 'thinking' },
   { label: 'tier', detail: 'Alias /thinking untuk tingkat penalaran', action: 'tier' },
-  { label: 'session', detail: 'Lihat info sesi, pesan riwayat & estimasi token', action: 'session' },
+  { label: 'session', detail: 'Kelola & alihkan sesi obrolan (tersinkron dengan View)', action: 'session' },
+  { label: 'sessions', detail: 'Pilih & beralih sesi obrolan aktif dari View/CLI', action: 'session' },
   { label: 'copy', detail: 'Salin respon asisten terakhir ke clipboard', action: 'copy' },
   { label: 'compact', detail: 'Kompak riwayat percakapan untuk menghemat token', action: 'compact' },
   { label: 'hotkeys', detail: 'Daftar pintasan keyboard (Ctrl+L, Shift+Tab, !cmd)', action: 'hotkeys' },
@@ -802,7 +817,7 @@ const COMMAND_ITEMS = [
   { label: 'logout', detail: 'Hapus kredensial API Key yang tersimpan', action: 'logout' },
   { label: 'key', detail: 'Alias /login untuk memasukkan API Key', action: 'key' },
   { label: 'clear', detail: 'Bersihkan layar terminal obrolan', action: 'clear' },
-  { label: 'new', detail: 'Mulai sesi obrolan baru & reset riwayat', action: 'new' },
+  { label: 'new', detail: 'Mulai sesi obrolan baru & reset riwayat (tersinkron ke View)', action: 'new' },
   { label: 'reset', detail: 'Reset riwayat percakapan sesi', action: 'reset' },
   { label: 'help', detail: 'Tampilkan panduan bantuan semua perintah', action: 'help' },
   { label: 'exit', detail: 'Keluar dari sesi terminal obrolan (/quit, /q)', action: 'exit' },
@@ -815,7 +830,7 @@ const COMMAND_ITEMS = [
  * - Pi status footer bar showing cwd (~), active model/tier, context token estimate, and API key status
  * - Fast keyboard shortcuts: Ctrl+L (Model), Shift+Tab (Tier), !cmd (Shell), Tab (Autocomplete)
  */
-function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, userApiKey, history, isAgentMode }) {
+function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, userApiKey, history, isAgentMode, sessionTitle = null }) {
   return new Promise((resolve) => {
     let buffer = '';
     let menuOpen = false;
@@ -912,9 +927,11 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
       out += `\x1b[90m${leftTokens}${' '.repeat(gap2)}${keyColor}${keyLabel}\x1b[0m\x1b[K\n`;
       linesBelow++;
 
-      // Pi Status Footer Line 3: agent status indicator (no trailing newline so cursor stays on footer row)
-      const agentBadge = isAgentMode ? `\x1b[36m⚡ AGENT (Tools Active)\x1b[0m` : `\x1b[90m💬 Chat\x1b[0m`;
-      out += `\x1b[90m● 🌌 orion-core: ${agentBadge}\x1b[K`;
+      // Pi Status Footer Line 3: agent status indicator & active session (no trailing newline so cursor stays on footer row)
+      const agentBadge = isAgentMode ? `\x1b[36m⚡ AGENT\x1b[0m` : `\x1b[90m💬 Chat\x1b[0m`;
+      const shortTitle = sessionTitle ? (sessionTitle.length > 22 ? sessionTitle.slice(0, 21) + '…' : sessionTitle) : '';
+      const sessionBadge = shortTitle ? ` \x1b[38;5;240m│\x1b[0m \x1b[38;5;244mSesi: ${shortTitle}\x1b[0m` : '';
+      out += `\x1b[90m● 🌌 orion-core: ${agentBadge}${sessionBadge}\x1b[K`;
 
       // Calculate exact line offset dynamically from rendered output
       const parts = out.split('\n');
@@ -1148,7 +1165,7 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
 }
 
 // Main Interactive Terminal Chat Launcher
-export async function startTerminalChat() {
+export async function startTerminalChat({ sessionId = null, forceNew = false, openSessionPicker = false } = {}) {
   await showSplashScreen();
 
   // Load configuration synchronized from Web app / ~/.orion/providers.json
@@ -1157,20 +1174,59 @@ export async function startTerminalChat() {
   let reasoningTier = syncedConfig.reasoningTier || 'medium';
   let userApiKey = syncedConfig.apiKey || '';
   let isAgentMode = syncedConfig.agentMode !== undefined ? syncedConfig.agentMode : true;
-  let history = [];
+
+  // Load or initialize synced chat session from ~/.orion/sessions.json
+  let currentSession = null;
+  if (forceNew) {
+    currentSession = createSession({ title: 'Sesi Terminal' });
+  } else if (sessionId) {
+    currentSession = getSessionById(sessionId) || createSession({ title: 'Sesi Terminal' });
+  } else {
+    currentSession = getActiveSession() || createSession({ title: 'Percakapan Perdana' });
+  }
+
+  setActiveSessionId(currentSession.id);
+  let history = (currentSession.messages || []).map((m) => ({
+    role: m.role,
+    content: m.content,
+  }));
   let isGenerating = false;
   let activeAbortController = null;
 
-  printHeader(currentModel, reasoningTier, !!userApiKey);
+  printHeader(currentModel, reasoningTier, !!userApiKey, currentSession.title);
+
+  // Active session status banner
+  console.log(`\n${c.dim}╭────────────────────────────────────────────────────────────────────────╮${c.reset}`);
+  console.log(`  ${c.brightCyan}🌌 Sesi Aktif:${c.reset} ${c.bold}${c.white}${currentSession.title || 'Percakapan'}${c.reset} ${c.dim}(${history.length} pesan tersinkron)${c.reset}`);
+  console.log(`  ${c.dim}Status: Tersinkronisasi dua arah dengan antarmuka Web View${c.reset}`);
+  if (history.length > 0) {
+    const lastUser = [...history].reverse().find((m) => m.role === 'user');
+    const lastAsst = [...history].reverse().find((m) => m.role === 'assistant');
+    if (lastUser) {
+      const userSnippet = lastUser.content.length > 55 ? lastUser.content.slice(0, 55) + '…' : lastUser.content;
+      console.log(`  ${c.gray}Pesan Terakhir (User):${c.reset} ${c.dim}${userSnippet.replace(/[\r\n]+/g, ' ')}${c.reset}`);
+    }
+    if (lastAsst) {
+      const asstSnippet = lastAsst.content.length > 55 ? lastAsst.content.slice(0, 55) + '…' : lastAsst.content;
+      console.log(`  ${c.gray}Pesan Terakhir (AI):  ${c.reset} ${c.dim}${asstSnippet.replace(/[\r\n]+/g, ' ')}${c.reset}`);
+    }
+  } else {
+    console.log(`  ${c.gray}💡 Ketik pertanyaan atau gunakan ${c.yellow}/session${c.gray} untuk beralih sesi obrolan.${c.reset}`);
+  }
+  console.log(`${c.dim}╰────────────────────────────────────────────────────────────────────────╯${c.reset}\n`);
 
   // Push prompt area to the bottom of the terminal window
   const termRows = process.stdout.rows || 24;
-  const padLines = Math.max(0, termRows - 10);
+  const padLines = Math.max(0, termRows - 12);
   if (padLines > 0) {
     process.stdout.write('\n'.repeat(padLines));
   }
 
   let queuedUserMessage = '';
+
+  if (openSessionPicker) {
+    await handleSessionMenuInteractive();
+  }
 
   while (true) {
     // Re-check synced config on each prompt turn to capture any new providers / keys / models added via web
@@ -1188,6 +1244,17 @@ export async function startTerminalChat() {
       isAgentMode = freshConfig.agentMode;
     }
 
+    // Refresh current session from disk if modified by web view
+    try {
+      const freshSession = getSessionById(currentSession.id);
+      if (freshSession) {
+        currentSession = freshSession;
+        if ((freshSession.messages || []).length > history.length) {
+          history = freshSession.messages.map((m) => ({ role: m.role, content: m.content }));
+        }
+      }
+    } catch {}
+
     let inputResult;
     if (queuedUserMessage) {
       inputResult = { type: 'chat', text: queuedUserMessage };
@@ -1200,6 +1267,7 @@ export async function startTerminalChat() {
         userApiKey,
         history,
         isAgentMode,
+        sessionTitle: currentSession.title,
       });
     }
 
@@ -1289,10 +1357,18 @@ export async function startTerminalChat() {
       const result = runShellCommand(cmdToRun, isSilent);
 
       if (!isSilent && result.output) {
+        const shellMsg = `[Hasil Eksekusi Terminal \`${cmdToRun}\`]:\n\`\`\`\n${result.output.trim()}\n\`\`\``;
         history.push({
           role: 'user',
-          content: `[Hasil Eksekusi Terminal \`${cmdToRun}\`]:\n\`\`\`\n${result.output.trim()}\n\`\`\``,
+          content: shellMsg,
         });
+        try {
+          const { session: sessAfterShell } = appendMessageToSession(currentSession.id, {
+            role: 'user',
+            content: shellMsg,
+          });
+          if (sessAfterShell) currentSession = sessAfterShell;
+        } catch {}
         console.log(`\n${c.green}✓ Output terminal disertakan ke memori percakapan AI.${c.reset}\n`);
       }
       continue;
@@ -1349,6 +1425,13 @@ export async function startTerminalChat() {
 
       const userMessage = inputResult.text;
       history.push({ role: 'user', content: userMessage });
+      try {
+        const { session: sessAfterUser } = appendMessageToSession(currentSession.id, {
+          role: 'user',
+          content: userMessage,
+        });
+        if (sessAfterUser) currentSession = sessAfterUser;
+      } catch {}
 
       // Pi Chat UI: Full-width, vertically padded container card (Screenshot exact match)
       const termCols = Math.max(30, (process.stdout.columns || 80) - 2);
@@ -1852,6 +1935,14 @@ export async function startTerminalChat() {
           });
 
           history.push({ role: 'assistant', content: assistantReply });
+          try {
+            const { session: sessAfterAsst } = appendMessageToSession(currentSession.id, {
+              role: 'assistant',
+              content: assistantReply,
+              model: currentModel,
+            });
+            if (sessAfterAsst) currentSession = sessAfterAsst;
+          } catch {}
           process.stdout.write('\n\n');
 
           // If AI asked a confirmation or selection question in text, offer interactive keyboard selector
@@ -1956,6 +2047,14 @@ export async function startTerminalChat() {
           });
 
           history.push({ role: 'assistant', content: assistantReply });
+          try {
+            const { session: sessAfterAsst } = appendMessageToSession(currentSession.id, {
+              role: 'assistant',
+              content: assistantReply,
+              model: currentModel,
+            });
+            if (sessAfterAsst) currentSession = sessAfterAsst;
+          } catch {}
           process.stdout.write('\n\n');
         } catch (err) {
           spinner.stop();
@@ -2031,14 +2130,18 @@ export async function startTerminalChat() {
       return false;
     }
 
-    if (action === '/session') {
+    function printSessionStats() {
       const userCount = history.filter((m) => m.role === 'user').length;
       const asstCount = history.filter((m) => m.role === 'assistant').length;
       const estTokens = Math.round(
         history.reduce((acc, m) => acc + (m.content ? m.content.length / 4 : 0), 0)
       );
-      console.log(`\n${c.bold}${c.brightCyan}✦ Informasi Sesi Obrolan Aktif (Pi Style):${c.reset}`);
-      console.log(`  ${c.gray}Folder Kerja:${c.reset}    ${c.white}${process.cwd()}${c.reset}`);
+      console.log(`\n${c.bold}${c.brightCyan}✦ Informasi Sesi Obrolan Aktif (Tersinkron dengan View):${c.reset}`);
+      console.log(`  ${c.gray}ID Sesi:${c.reset}         ${c.white}${currentSession.id}${c.reset}`);
+      console.log(`  ${c.gray}Judul Sesi:${c.reset}      ${c.bold}${c.green}${currentSession.title || 'Percakapan'}${c.reset}`);
+      console.log(`  ${c.gray}Folder Kerja:${c.reset}    ${c.white}${currentSession.projectPath || process.cwd()}${c.reset}`);
+      console.log(`  ${c.gray}Dibuat:${c.reset}          ${c.dim}${formatRelativeTime(currentSession.createdAt)}${c.reset}`);
+      console.log(`  ${c.gray}Diperbarui:${c.reset}      ${c.dim}${formatRelativeTime(currentSession.updatedAt || currentSession.createdAt)}${c.reset}`);
       console.log(`  ${c.gray}Model Aktif:${c.reset}     ${c.cyan}${currentModel}${c.reset}`);
       console.log(`  ${c.gray}Reasoning/Tier:${c.reset}  ${c.yellow}${reasoningTier}${c.reset}`);
       console.log(`  ${c.gray}Total Pesan:${c.reset}     ${c.white}${history.length}${c.reset} (${userCount} user, ${asstCount} asisten)`);
@@ -2046,6 +2149,120 @@ export async function startTerminalChat() {
       console.log(
         `  ${c.gray}Status API Key:${c.reset}   ${userApiKey ? `${c.green}● Tersambung${c.reset}` : `${c.yellow}○ Belum diatur (/login)${c.reset}`}\n`
       );
+    }
+
+    async function handleSessionMenuInteractive() {
+      const data = getAllSessions();
+      const sessions = data.sessions || [];
+
+      const sessionItems = sessions.map((s) => {
+        const msgCount = (s.messages || []).length;
+        const timeAgo = formatRelativeTime(s.updatedAt || s.createdAt);
+        const isCur = s.id === currentSession.id;
+        return {
+          label: s.title || 'Percakapan Tanpa Judul',
+          detail: `${msgCount} pesan • ${timeAgo}`,
+          badge: isCur ? 'Aktif' : '',
+          value: s.id,
+          action: 'select_session',
+          session: s,
+        };
+      });
+
+      const menuItems = [
+        ...sessionItems,
+        { label: '+ Mulai Percakapan Baru', detail: 'Buat sesi baru & reset riwayat (/new)', value: '__new__', action: 'new_session' },
+        { label: '📊 Info Statistik Sesi', detail: 'Token, rincian pesan & waktu sesi aktif', value: '__info__', action: 'info_session' },
+        { label: '🧹 Bersihkan Pesan Sesi Ini', detail: 'Hapus semua pesan dalam sesi aktif (/reset)', value: '__clear__', action: 'clear_session' },
+        { label: '🗑️  Hapus Sesi Aktif', detail: 'Hapus sesi ini dari View & CLI', value: '__delete__', action: 'delete_session' },
+      ];
+
+      const picked = await selectOptionInteractive({
+        title: '✦ Kelola Sesi Obrolan (Tersinkron dengan View):',
+        items: menuItems,
+      });
+
+      if (!picked) return false;
+
+      if (picked.action === 'select_session') {
+        const target = picked.session || getSessionById(picked.value);
+        if (target) {
+          currentSession = target;
+          setActiveSessionId(currentSession.id);
+          history = (currentSession.messages || []).map((m) => ({ role: m.role, content: m.content }));
+          console.log(
+            `\n${c.green}✓ Beralih ke sesi: ${c.bold}${currentSession.title}${c.reset} ${c.dim}(${history.length} pesan tersinkron)${c.reset}\n`
+          );
+        }
+        return false;
+      }
+
+      if (picked.action === 'new_session') {
+        currentSession = createSession({ title: 'Percakapan Baru' });
+        setActiveSessionId(currentSession.id);
+        history = [];
+        console.log(`\n${c.green}✓ Sesi baru dibuat dan tersinkron dengan antarmuka Web View!${c.reset}\n`);
+        return false;
+      }
+
+      if (picked.action === 'info_session') {
+        printSessionStats();
+        return false;
+      }
+
+      if (picked.action === 'clear_session') {
+        clearSessionMessages(currentSession.id);
+        history = [];
+        currentSession.messages = [];
+        console.log(`\n${c.green}✓ Pesan dalam sesi "${currentSession.title}" telah dibersihkan.${c.reset}\n`);
+        return false;
+      }
+
+      if (picked.action === 'delete_session') {
+        const res = deleteSession(currentSession.id);
+        currentSession = getSessionById(res.activeSessionId) || getActiveSession() || createSession();
+        setActiveSessionId(currentSession.id);
+        history = (currentSession.messages || []).map((m) => ({ role: m.role, content: m.content }));
+        console.log(`\n${c.yellow}✓ Sesi telah dihapus. Beralih ke sesi aktif: "${currentSession.title}".${c.reset}\n`);
+        return false;
+      }
+
+      return false;
+    }
+
+    if (action === '/session' || action === '/sessions' || action.startsWith('/sess')) {
+      if (arg === 'info' || arg === 'status' || arg === 'stats') {
+        printSessionStats();
+        return false;
+      }
+      if (arg === 'new') {
+        currentSession = createSession({ title: 'Percakapan Baru' });
+        setActiveSessionId(currentSession.id);
+        history = [];
+        console.log(`\n${c.green}✓ Sesi baru dibuat dan tersinkron dengan antarmuka Web View!${c.reset}\n`);
+        return false;
+      }
+      if (arg === 'clear' || arg === 'reset') {
+        clearSessionMessages(currentSession.id);
+        history = [];
+        currentSession.messages = [];
+        console.log(`\n${c.green}✓ Pesan dalam sesi "${currentSession.title}" telah dibersihkan.${c.reset}\n`);
+        return false;
+      }
+      if (arg) {
+        const data = getAllSessions();
+        const found = (data.sessions || []).find(
+          (s) => s.id.toLowerCase() === arg.toLowerCase() || s.title?.toLowerCase().includes(arg.toLowerCase())
+        );
+        if (found) {
+          currentSession = found;
+          setActiveSessionId(currentSession.id);
+          history = (currentSession.messages || []).map((m) => ({ role: m.role, content: m.content }));
+          console.log(`\n${c.green}✓ Beralih ke sesi: ${c.bold}${currentSession.title}${c.reset} ${c.dim}(${history.length} pesan)${c.reset}\n`);
+          return false;
+        }
+      }
+      await handleSessionMenuInteractive();
       return false;
     }
 
@@ -2155,9 +2372,19 @@ export async function startTerminalChat() {
       return false;
     }
 
-    if (action === '/reset' || action === '/new') {
+    if (action === '/new') {
+      currentSession = createSession({ title: 'Percakapan Baru' });
+      setActiveSessionId(currentSession.id);
       history = [];
-      console.log(`\n${c.green}✓ Riwayat percakapan telah direset.${c.reset}\n`);
+      console.log(`\n${c.green}✓ Sesi baru dibuat dan tersinkron dengan antarmuka Web View!${c.reset}\n`);
+      return false;
+    }
+
+    if (action === '/reset') {
+      clearSessionMessages(currentSession.id);
+      history = [];
+      currentSession.messages = [];
+      console.log(`\n${c.green}✓ Riwayat percakapan sesi ini telah dibersihkan.${c.reset}\n`);
       return false;
     }
 
@@ -2186,7 +2413,7 @@ export async function startTerminalChat() {
       console.log(`  ${c.yellow}/thinking, /tier${c.reset} [level]  Atur penalaran (low/medium/high, atau Shift+Tab)`);
       console.log(`  ${c.yellow}!perintah${c.reset}                Jalankan perintah shell terminal (hasil masuk konteks)`);
       console.log(`  ${c.yellow}!!perintah${c.reset}               Jalankan perintah shell diam-diam`);
-      console.log(`  ${c.yellow}/session${c.reset}                Lihat info sesi, pesan riwayat & estimasi token`);
+      console.log(`  ${c.yellow}/session, /sessions${c.reset}    Kelola & alihkan sesi obrolan (tersinkron ke View)`);
       console.log(`  ${c.yellow}/copy${c.reset}                   Salin respon asisten terakhir ke clipboard`);
       console.log(`  ${c.yellow}/compact${c.reset}                Kompak riwayat percakapan untuk menghemat token`);
       console.log(`  ${c.yellow}/export${c.reset}                 Ekspor sesi percakapan ke file JSONL`);
@@ -2196,7 +2423,8 @@ export async function startTerminalChat() {
       console.log(`  ${c.yellow}/login, /key${c.reset} [key]      Sambungkan / masukkan API Key Orion`);
       console.log(`  ${c.yellow}/logout${c.reset}                 Hapus kredensial API Key yang tersimpan`);
       console.log(`  ${c.yellow}/clear${c.reset}                  Bersihkan layar terminal obrolan`);
-      console.log(`  ${c.yellow}/new, /reset${c.reset}            Mulai sesi obrolan baru (reset riwayat)`);
+      console.log(`  ${c.yellow}/new${c.reset}                      Mulai sesi obrolan baru (tersinkron ke View)`);
+      console.log(`  ${c.yellow}/reset${c.reset}                    Bersihkan riwayat percakapan sesi ini`);
       console.log(`  ${c.yellow}/help${c.reset}                   Tampilkan panduan bantuan perintah`);
       console.log(`  ${c.yellow}/exit, /quit, /q${c.reset}        Keluar dari sesi terminal obrolan\n`);
       return false;

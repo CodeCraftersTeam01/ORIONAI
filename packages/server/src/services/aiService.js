@@ -1,7 +1,10 @@
+import fs from 'fs';
+import os from 'os';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { getActiveSkillsPromptSync } from './skillService.js';
+import { getComboById, getNextRoundRobinModel } from './comboService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -456,10 +459,93 @@ export function resolveEndpointAndHeaders(customProvider, config, userOrionApiKe
   return { targetUrl, headers, targetModel, temperature };
 }
 
+const orionConfigDir = path.join(os.homedir(), '.orion');
+const providersConfigFile = path.join(orionConfigDir, 'providers.json');
+const credentialsFile = path.join(orionConfigDir, 'credentials.json');
+
 /**
- * Perform Non-Streaming Chat Completion
+ * Dynamically resolves provider endpoint and credentials for any model identifier
  */
-export async function getChatCompletion({
+export function resolveProviderForModel(modelId, userOrionApiKey = null) {
+  if (!modelId) return null;
+
+  let savedApiKey = (userOrionApiKey && userOrionApiKey.trim()) || API_KEY || '';
+  if (fs.existsSync(credentialsFile)) {
+    try {
+      const creds = JSON.parse(fs.readFileSync(credentialsFile, 'utf8'));
+      if (creds.apiKey) savedApiKey = creds.apiKey;
+    } catch {}
+  }
+
+  let providers = [];
+  if (fs.existsSync(providersConfigFile)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(providersConfigFile, 'utf8'));
+      providers = data.providers || [];
+    } catch {}
+  }
+
+  let provId = null;
+  let modId = modelId;
+
+  if (modelId.includes('::')) {
+    const parts = modelId.split('::');
+    provId = parts[0];
+    modId = parts.slice(1).join('::');
+  }
+
+  if (provId) {
+    const parentProv = providers.find((p) => p.id === provId);
+    if (parentProv) {
+      let activeKey = parentProv.apiKeys?.find((k) => k.active)?.key || parentProv.apiKey || '';
+      if (!activeKey && (provId === 'orion' || parentProv.templateId === 'orion' || parentProv.name?.toLowerCase().includes('official'))) {
+        activeKey = savedApiKey;
+      }
+      return {
+        id: parentProv.id,
+        baseUrl: parentProv.baseUrl,
+        apiKey: activeKey,
+        modelId: modId,
+        name: parentProv.name,
+        requiresApiKey: parentProv.requiresApiKey,
+      };
+    }
+  }
+
+  // Search models array across providers
+  for (const p of providers) {
+    const match = (p.models || []).find((m) => (typeof m === 'string' ? m === modId : m.id === modId));
+    if (match) {
+      let activeKey = p.apiKeys?.find((k) => k.active)?.key || p.apiKey || '';
+      if (!activeKey && (p.id === 'orion' || p.templateId === 'orion' || p.name?.toLowerCase().includes('official'))) {
+        activeKey = savedApiKey;
+      }
+      return {
+        id: p.id,
+        baseUrl: p.baseUrl,
+        apiKey: activeKey,
+        modelId: modId,
+        name: p.name,
+        requiresApiKey: p.requiresApiKey,
+      };
+    }
+  }
+
+  // Default Orion official fallback
+  return {
+    id: 'orion',
+    baseUrl: BASE_URL,
+    apiKey: savedApiKey,
+    modelId: modId,
+    name: 'Orion AI',
+    requiresApiKey: true,
+  };
+}
+
+/**
+ * Internal single-model Non-Streaming Chat Completion
+ */
+async function getChatCompletionInternal({
   message,
   history = [],
   attachments = [],
@@ -516,9 +602,181 @@ export async function getChatCompletion({
 }
 
 /**
- * Perform Streaming Chat Completion (SSE)
+ * Execute Combo Strategies for Non-Streaming Completion
  */
-export async function streamChatCompletion({
+async function executeComboChatCompletion({
+  combo,
+  message,
+  history = [],
+  attachments = [],
+  reasoningTier = 'medium',
+  orionApiKey = null,
+  signal,
+}) {
+  const strategy = combo.strategy || 'fallback';
+
+  if (strategy === 'round_robin') {
+    const selectedModel = getNextRoundRobinModel(combo);
+    const resolvedProv = resolveProviderForModel(selectedModel, orionApiKey);
+    const result = await getChatCompletionInternal({
+      message,
+      history,
+      attachments,
+      model: selectedModel,
+      reasoningTier,
+      customProvider: resolvedProv,
+      orionApiKey,
+      signal,
+    });
+    return {
+      ...result,
+      model: `${combo.name} [Round Robin: ${selectedModel}]`,
+    };
+  }
+
+  if (strategy === 'fallback') {
+    let lastError = null;
+    for (let i = 0; i < combo.models.length; i++) {
+      const candidateModel = combo.models[i];
+      try {
+        const resolvedProv = resolveProviderForModel(candidateModel, orionApiKey);
+        const result = await getChatCompletionInternal({
+          message,
+          history,
+          attachments,
+          model: candidateModel,
+          reasoningTier,
+          customProvider: resolvedProv,
+          orionApiKey,
+          signal,
+        });
+        return {
+          ...result,
+          model: `${combo.name} [Fallback: ${candidateModel}]`,
+        };
+      } catch (err) {
+        lastError = err;
+        console.warn(`[COMBO FALLBACK] Model ${candidateModel} failed: ${err.message}. Trying next candidate...`);
+      }
+    }
+    throw new Error(`Semua model dalam combo "${combo.name}" gagal merespons. Error terakhir: ${lastError?.message || 'Unknown error'}`);
+  }
+
+  if (strategy === 'fusion') {
+    // 1. Run all panel models in parallel
+    const panelPromises = combo.models.map(async (panelModel) => {
+      try {
+        const resolvedProv = resolveProviderForModel(panelModel, orionApiKey);
+        const res = await getChatCompletionInternal({
+          message,
+          history,
+          attachments,
+          model: panelModel,
+          reasoningTier,
+          customProvider: resolvedProv,
+          orionApiKey,
+          signal,
+        });
+        return { model: panelModel, reply: res.reply };
+      } catch (err) {
+        console.warn(`[COMBO FUSION] Panel model ${panelModel} error: ${err.message}`);
+        return null;
+      }
+    });
+
+    const results = await Promise.all(panelPromises);
+    const validResults = results.filter(Boolean);
+
+    if (validResults.length === 0) {
+      throw new Error(`Semua model panel dalam combo "${combo.name}" gagal merespons.`);
+    }
+
+    if (validResults.length === 1) {
+      return {
+        reply: validResults[0].reply,
+        model: `${combo.name} [Fusion: ${validResults[0].model}]`,
+        source: 'combo-fusion',
+      };
+    }
+
+    // 2. Synthesize with Judge Model
+    const judgeModel = combo.judge || combo.models[0] || 'orion::orion';
+    const resolvedJudgeProv = resolveProviderForModel(judgeModel, orionApiKey);
+
+    const judgePrompt = `Berikut adalah hasil tanggapan dari beberapa model AI panel mengenai pertanyaan pengguna:
+
+[PERMINTAAN PENGGUNA]:
+${message}
+
+--- DRAF TANGGAPAN PANEL ---
+${validResults.map((r, idx) => `[Panel ${idx + 1} - Model ${r.model}]:\n${r.reply}`).join('\n\n---\n\n')}
+
+[PERAN ANDA SEBAGAI MODEL JURI & SINTESIS]:
+Analisis seluruh draf panel di atas. Gabungkan fakta dan gagasan terakurat, perbaiki kesalahan, dan buatlah SATU jawaban akhir yang utuh, berstruktur rapi, elegan, dan paling memuaskan untuk pengguna. Jangan sebutkan proses penjurian atau nama-nama panel di jawaban akhir; sajikan langsung respon terbaiknya.`;
+
+    const synthesis = await getChatCompletionInternal({
+      message: judgePrompt,
+      history: [],
+      attachments: [],
+      model: judgeModel,
+      reasoningTier,
+      customProvider: resolvedJudgeProv,
+      orionApiKey,
+      signal,
+    });
+
+    return {
+      reply: synthesis.reply,
+      model: `${combo.name} [Fusion: ${validResults.length} models -> Judge: ${judgeModel}]`,
+      source: 'combo-fusion',
+    };
+  }
+
+  throw new Error(`Strategi combo "${strategy}" tidak dikenali.`);
+}
+
+/**
+ * Public Non-Streaming Chat Completion (with Combo Router Support)
+ */
+export async function getChatCompletion({
+  message,
+  history = [],
+  attachments = [],
+  model = 'orion',
+  reasoningTier = 'medium',
+  customProvider = null,
+  orionApiKey = null,
+  signal,
+}) {
+  const combo = getComboById(model);
+  if (combo) {
+    return executeComboChatCompletion({
+      combo,
+      message,
+      history,
+      attachments,
+      reasoningTier,
+      orionApiKey,
+      signal,
+    });
+  }
+
+  return getChatCompletionInternal({
+    message,
+    history,
+    attachments,
+    model,
+    reasoningTier,
+    customProvider,
+    orionApiKey,
+    signal,
+  });
+}
+
+/**
+ * Internal single-model Streaming Chat Completion (SSE)
+ */
+async function streamChatCompletionInternal({
   message,
   history = [],
   attachments = [],
@@ -578,7 +836,7 @@ export async function streamChatCompletion({
             inReasoningBlock = false;
             onChunk('\n</think>\n\n');
           }
-          onDone();
+          if (typeof onDone === 'function') onDone();
           return;
         }
 
@@ -617,7 +875,7 @@ export async function streamChatCompletion({
       onChunk('\n</think>\n\n');
     }
 
-    onDone();
+    if (typeof onDone === 'function') onDone();
   } catch (err) {
     if (err.name === 'AbortError') return;
     console.error('[AI STREAM ERROR]:', err.message);
@@ -627,6 +885,224 @@ export async function streamChatCompletion({
       throw err;
     }
   }
+}
+
+/**
+ * Execute Combo Strategies for Streaming Completion (SSE)
+ */
+async function executeComboStreamCompletion({
+  combo,
+  message,
+  history = [],
+  attachments = [],
+  reasoningTier = 'medium',
+  orionApiKey = null,
+  onChunk,
+  onDone,
+  onError,
+  signal,
+}) {
+  const strategy = combo.strategy || 'fallback';
+
+  if (strategy === 'round_robin') {
+    const selectedModel = getNextRoundRobinModel(combo);
+    const resolvedProv = resolveProviderForModel(selectedModel, orionApiKey);
+    return streamChatCompletionInternal({
+      message,
+      history,
+      attachments,
+      model: selectedModel,
+      reasoningTier,
+      customProvider: resolvedProv,
+      orionApiKey,
+      onChunk,
+      onDone,
+      onError,
+      signal,
+    });
+  }
+
+  if (strategy === 'fallback') {
+    let lastError = null;
+    let didEmitAnyChunk = false;
+
+    for (let i = 0; i < combo.models.length; i++) {
+      const candidateModel = combo.models[i];
+      try {
+        const resolvedProv = resolveProviderForModel(candidateModel, orionApiKey);
+        let currentChunkCount = 0;
+
+        await new Promise((resolve, reject) => {
+          streamChatCompletionInternal({
+            message,
+            history,
+            attachments,
+            model: candidateModel,
+            reasoningTier,
+            customProvider: resolvedProv,
+            orionApiKey,
+            onChunk: (chunk) => {
+              currentChunkCount++;
+              didEmitAnyChunk = true;
+              onChunk(chunk);
+            },
+            onDone: () => {
+              resolve();
+            },
+            onError: (err) => {
+              if (currentChunkCount === 0) {
+                // Not emitted anything yet, can safely fail over to next model
+                reject(err);
+              } else {
+                // Already started streaming chunks to client, propagate error
+                if (typeof onError === 'function') onError(err);
+                resolve();
+              }
+            },
+            signal,
+          }).catch(reject);
+        });
+
+        // Finished successfully
+        if (typeof onDone === 'function') onDone();
+        return;
+      } catch (err) {
+        lastError = err;
+        console.warn(`[COMBO STREAM FALLBACK] Model ${candidateModel} failed: ${err.message}. Trying next candidate...`);
+        if (didEmitAnyChunk) {
+          // If we already sent chunks to user, do not fallback to avoid garbled mix
+          break;
+        }
+      }
+    }
+
+    const finalErr = new Error(`Semua model dalam combo "${combo.name}" gagal merespons. Error: ${lastError?.message || 'Unknown error'}`);
+    if (typeof onError === 'function') {
+      onError(finalErr);
+    } else {
+      throw finalErr;
+    }
+    return;
+  }
+
+  if (strategy === 'fusion') {
+    // Notify user of parallel panel execution
+    onChunk(`*[Fusion Router: Mengumpulkan analisis dari ${combo.models.length} model panel...]*\n\n`);
+
+    const panelPromises = combo.models.map(async (panelModel) => {
+      try {
+        const resolvedProv = resolveProviderForModel(panelModel, orionApiKey);
+        const res = await getChatCompletionInternal({
+          message,
+          history,
+          attachments,
+          model: panelModel,
+          reasoningTier,
+          customProvider: resolvedProv,
+          orionApiKey,
+          signal,
+        });
+        return { model: panelModel, reply: res.reply };
+      } catch (err) {
+        console.warn(`[COMBO FUSION STREAM] Panel model ${panelModel} error: ${err.message}`);
+        return null;
+      }
+    });
+
+    const results = await Promise.all(panelPromises);
+    const validResults = results.filter(Boolean);
+
+    if (validResults.length === 0) {
+      const err = new Error(`Semua model panel dalam combo "${combo.name}" gagal merespons.`);
+      if (typeof onError === 'function') onError(err);
+      return;
+    }
+
+    if (validResults.length === 1) {
+      onChunk(validResults[0].reply);
+      if (typeof onDone === 'function') onDone();
+      return;
+    }
+
+    // Synthesize using Judge model
+    const judgeModel = combo.judge || combo.models[0] || 'orion::orion';
+    const resolvedJudgeProv = resolveProviderForModel(judgeModel, orionApiKey);
+
+    const judgePrompt = `Berikut adalah hasil draf tanggapan dari beberapa model AI panel mengenai pertanyaan pengguna:
+
+[PERMINTAAN PENGGUNA]:
+${message}
+
+--- DRAF TANGGAPAN PANEL ---
+${validResults.map((r, idx) => `[Panel ${idx + 1} - Model ${r.model}]:\n${r.reply}`).join('\n\n---\n\n')}
+
+[PERAN ANDA SEBAGAI MODEL JURI & SINTESIS]:
+Analisis seluruh draf panel di atas. Gabungkan fakta terakurat, perbaiki kesalahan, dan buatlah SATU jawaban akhir yang utuh, berstruktur rapi, elegan, dan paling memuaskan untuk pengguna. Jangan sebutkan proses penjurian atau nama-nama panel di jawaban akhir; sajikan langsung respon terbaiknya.`;
+
+    return streamChatCompletionInternal({
+      message: judgePrompt,
+      history: [],
+      attachments: [],
+      model: judgeModel,
+      reasoningTier,
+      customProvider: resolvedJudgeProv,
+      orionApiKey,
+      onChunk,
+      onDone,
+      onError,
+      signal,
+    });
+  }
+
+  const err = new Error(`Strategi combo "${strategy}" tidak dikenali.`);
+  if (typeof onError === 'function') onError(err);
+}
+
+/**
+ * Public Streaming Chat Completion (SSE) (with Combo Router Support)
+ */
+export async function streamChatCompletion({
+  message,
+  history = [],
+  attachments = [],
+  model = 'orion',
+  reasoningTier = 'medium',
+  customProvider = null,
+  orionApiKey = null,
+  onChunk,
+  onDone,
+  onError,
+  signal,
+}) {
+  const combo = getComboById(model);
+  if (combo) {
+    return executeComboStreamCompletion({
+      combo,
+      message,
+      history,
+      attachments,
+      reasoningTier,
+      orionApiKey,
+      onChunk,
+      onDone,
+      onError,
+      signal,
+    });
+  }
+
+  return streamChatCompletionInternal({
+    message,
+    history,
+    attachments,
+    model,
+    reasoningTier,
+    customProvider,
+    orionApiKey,
+    onChunk,
+    onDone,
+    onError,
+    signal,
+  });
 }
 
 /**

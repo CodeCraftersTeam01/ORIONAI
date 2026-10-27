@@ -9,8 +9,20 @@ import {
   fetchProviderModels,
   testSpecificModel,
 } from '../services/aiService.js';
+import {
+  getAllSessions,
+  getSessionById,
+  setActiveSessionId,
+  createSession,
+  deleteSession,
+  appendMessageToSession,
+  clearSessionMessages,
+  syncAllSessions,
+  renameSession,
+} from '../services/sessionService.js';
 import { chatRateLimiter, validateChatInput } from '../middleware/security.js';
 import { logger } from '../services/loggerService.js';
+import { getCombos } from '../services/comboService.js';
 
 const orionConfigDir = path.join(os.homedir(), '.orion');
 const providersConfigFile = path.join(orionConfigDir, 'providers.json');
@@ -225,6 +237,26 @@ router.get('/models', (req, res) => {
         }
       });
     });
+
+    // Append Combo Router models
+    try {
+      const combos = getCombos();
+      combos.forEach((c) => {
+        enabledModels.push({
+          id: `combo::${c.id}`,
+          name: c.name,
+          displayName: `${c.name} [${c.strategy.toUpperCase()}]`,
+          providerName: `Combo Router (${c.strategy})`,
+          supportsReasoning: false,
+          isCombo: true,
+          comboDetails: c,
+          status: 'active',
+        });
+      });
+    } catch (err) {
+      logger.warn(`Failed to append combos to /models: ${err.message}`, {}, 'COMBO');
+    }
+
     res.json({
       success: true,
       models: enabledModels,
@@ -367,6 +399,153 @@ router.get('/suggestions', (req, res) => {
     success: true,
     data: SUGGESTIONS,
   });
+});
+
+// ==========================================
+// SESSION MANAGEMENT & SYNCHRONIZATION ROUTES
+// ==========================================
+
+// GET /api/chat/sessions (Retrieve all sessions & active session ID)
+router.get('/sessions', (req, res) => {
+  try {
+    const data = getAllSessions();
+    res.json({
+      success: true,
+      sessions: data.sessions || [],
+      activeSessionId: data.activeSessionId || null,
+      updatedAt: data.updatedAt || Date.now(),
+    });
+  } catch (err) {
+    logger.error(`Error getting sessions: ${err.message}`, { error: err.message }, 'API', 'errors');
+    res.status(500).json({ success: false, message: 'Gagal memuat sesi obrolan.' });
+  }
+});
+
+// POST /api/chat/sessions (Sync all sessions from View)
+router.post('/sessions', (req, res) => {
+  try {
+    const { sessions = [], activeSessionId = null } = req.body;
+    const synced = syncAllSessions({ sessions, activeSessionId });
+    res.json({
+      success: true,
+      sessions: synced.sessions,
+      activeSessionId: synced.activeSessionId,
+      updatedAt: synced.updatedAt,
+      message: 'Sesi berhasil disinkronkan.',
+    });
+  } catch (err) {
+    logger.error(`Error syncing sessions: ${err.message}`, { error: err.message }, 'API', 'errors');
+    res.status(500).json({ success: false, message: 'Gagal menyinkronkan sesi.' });
+  }
+});
+
+// POST /api/chat/sessions/new (Create a new session)
+router.post('/sessions/new', (req, res) => {
+  try {
+    const { title, projectPath, projectName } = req.body;
+    const session = createSession({ title, projectPath, projectName });
+    res.json({
+      success: true,
+      session,
+      activeSessionId: session.id,
+      message: 'Sesi baru berhasil dibuat.',
+    });
+  } catch (err) {
+    logger.error(`Error creating session: ${err.message}`, { error: err.message }, 'API', 'errors');
+    res.status(500).json({ success: false, message: 'Gagal membuat sesi baru.' });
+  }
+});
+
+// PUT /api/chat/sessions/active (Set active session)
+router.put('/sessions/active', (req, res) => {
+  try {
+    const { sessionId } = req.body;
+    if (!sessionId) {
+      return res.status(400).json({ success: false, message: 'sessionId wajib diisi.' });
+    }
+    const ok = setActiveSessionId(sessionId);
+    if (!ok) {
+      return res.status(404).json({ success: false, message: 'Sesi tidak ditemukan.' });
+    }
+    res.json({ success: true, activeSessionId: sessionId });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /api/chat/sessions/:id (Get single session by ID)
+router.get('/sessions/:id', (req, res) => {
+  try {
+    const session = getSessionById(req.params.id);
+    if (!session) {
+      return res.status(404).json({ success: false, message: 'Sesi tidak ditemukan.' });
+    }
+    res.json({ success: true, session });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// PUT /api/chat/sessions/:id (Rename session)
+router.put('/sessions/:id', (req, res) => {
+  try {
+    const { title } = req.body;
+    if (!title || !title.trim()) {
+      return res.status(400).json({ success: false, message: 'Judul tidak boleh kosong.' });
+    }
+    const ok = renameSession(req.params.id, title);
+    if (!ok) {
+      return res.status(404).json({ success: false, message: 'Sesi tidak ditemukan.' });
+    }
+    res.json({ success: true, message: 'Judul sesi berhasil diperbarui.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// DELETE /api/chat/sessions/:id (Delete session)
+router.delete('/sessions/:id', (req, res) => {
+  try {
+    const result = deleteSession(req.params.id);
+    res.json({
+      success: true,
+      activeSessionId: result.activeSessionId,
+      message: 'Sesi berhasil dihapus.',
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// POST /api/chat/sessions/:id/messages (Append message to session)
+router.post('/sessions/:id/messages', (req, res) => {
+  try {
+    const { message } = req.body;
+    if (!message || !message.content) {
+      return res.status(400).json({ success: false, message: 'Pesan tidak valid.' });
+    }
+    const result = appendMessageToSession(req.params.id, message);
+    res.json({
+      success: true,
+      session: result.session,
+      message: result.message,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// DELETE /api/chat/sessions/:id/messages (Clear messages in session)
+router.delete('/sessions/:id/messages', (req, res) => {
+  try {
+    const ok = clearSessionMessages(req.params.id);
+    if (!ok) {
+      return res.status(404).json({ success: false, message: 'Sesi tidak ditemukan.' });
+    }
+    res.json({ success: true, message: 'Pesan dalam sesi berhasil dibersihkan.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 export default router;
