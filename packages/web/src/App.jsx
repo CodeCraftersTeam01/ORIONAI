@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Menu,
   Download,
@@ -35,9 +35,12 @@ import {
   ArrowLeft,
   MessageSquare,
   Terminal,
+  Eye,
+  HelpCircle,
 } from 'lucide-react';
 import AuroraBackground from './components/AuroraBackground';
 import OrionLogo from './components/OrionLogo';
+import LoginPage from './components/LoginPage';
 
 function GithubIcon({ size = 15, className = '' }) {
   return (
@@ -62,14 +65,18 @@ import ChatInput from './components/ChatInput';
 import FormattedMessage from './components/FormattedMessage';
 import SettingsModal from './components/SettingsModal';
 import ManageProvidersModal from './components/ManageProvidersModal';
+import ProjectDirectoryModal from './components/ProjectDirectoryModal';
 import LogsView from './components/LogsView';
+import ModelsView from './components/ModelsView';
+import SkillsView from './components/SkillsView';
 import ThinkingIndicator from './components/ThinkingIndicator';
+import ToolCallBlock from './components/ToolCallBlock';
 import { soundEffects } from './utils/soundEffects';
 import { formatFileSize } from './utils/fileHelpers';
 import { isReasoningSupported } from './utils/modelConfig';
 import VoiceCallingOverlay from './components/VoiceCallingOverlay';
 import { playCosmicHumSound, playCosmicEndCallSound } from './utils/audioEffects';
-import { cleanIndonesianText } from './utils/textCleaner';
+import { cleanIndonesianText, formatVoiceForSpeechAndDisplay } from './utils/textCleaner';
 import './App.css';
 
 function formatUserFacingError(errMessage) {
@@ -115,8 +122,42 @@ function formatUserFacingError(errMessage) {
     return '⚠️ **Batas Permintaan Tercapai (Rate Limit)**\n\nTerlalu banyak permintaan dalam waktu singkat atau kuota habis. Silakan tunggu beberapa saat sebelum mencoba lagi.';
   }
 
-  // 4. Default clean error message
+// 4. Default clean error message
   return `⚠️ **Terjadi Kendala Layanan**\n\n${errMessage}`;
+}
+
+function detectConfirmationQuestion(text) {
+  if (!text || typeof text !== 'string') return false;
+  const t = text.trim();
+  const lines = t.split('\n').map((l) => l.trim()).filter(Boolean);
+  const lastLine = lines[lines.length - 1] || '';
+
+  // Match questions asking for user approval, confirmation, permission, or execution choice
+  const pattern = /(?:apakah\s+(?:anda|kamu)|yakin\s+ingin|mengizinkan|mengonfirmasi|meng\u786e\u8ba4|setuju|mau\s+melanjutkan|apakah\s+ingin|bolehkah\s+saya|ingin\s+saya\s+lanjutkan|apakah\s+anda\s+setuju|konfirmasi|apakah\s+sudah\s+sesuai|do\s+you\s+want\s+to\s+proceed|should\s+i\s+proceed)[^.!?\n]*\?\s*$/i;
+
+  return pattern.test(lastLine) || pattern.test(t);
+}
+
+function extractNumberedOptions(text) {
+  if (!text || typeof text !== 'string') return [];
+  const lines = text.split('\n');
+  const options = [];
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('|')) continue;
+    const m = trimmed.match(/^(?:\[?(\d+)\]?|\(?(\d+)\)?)\s*[\.\):-]?\s+(.+)$/);
+    if (m) {
+      const num = parseInt(m[1] || m[2], 10);
+      const optText = m[3].trim().replace(/^\*\*|\*\*$/g, '');
+      if (optText.length > 0 && optText.length < 80) {
+        options.push({ num, text: optText, raw: trimmed });
+      }
+    }
+  }
+  if (options.length >= 2 && options.length <= 5) {
+    return options;
+  }
+  return [];
 }
 
 const DYNAMIC_RECOMMENDATIONS_POOL = [
@@ -394,9 +435,161 @@ export default function App() {
     return saved !== null ? saved === 'true' : false; // quiet by default for cozy simple feel
   });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [copiedMsgId, setCopiedMsgId] = useState(null);
   const [toast, setToast] = useState(null);
+
+  // Authentication State (Local Gateway Login & First-time Setup)
+  const [authStatus, setAuthStatus] = useState({
+    isLoading: true,
+    isAuthenticated: false,
+    isInitialized: true,
+    user: localStorage.getItem('orion_auth_user') || null,
+  });
+
+  // Agent Mode State (Autonomous Tool Calling like Pi Agent)
+  const [isAgentMode, setIsAgentMode] = useState(() => {
+    const saved = localStorage.getItem('orion_agent_mode');
+    return saved !== null ? saved === 'true' : true;
+  });
+
+  const handleToggleAgentMode = (newVal) => {
+    setIsAgentMode(newVal);
+    localStorage.setItem('orion_agent_mode', String(newVal));
+  };
+
+  const handleApproveTool = async (toolCallId) => {
+    try {
+      await fetch('/api/agent/approve', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(localStorage.getItem('orion_auth_token')
+            ? { Authorization: `Bearer ${localStorage.getItem('orion_auth_token')}` }
+            : {}),
+        },
+        body: JSON.stringify({ toolCallId, approved: true }),
+      });
+      soundEffects.playSend();
+    } catch (err) {
+      console.error('Gagal menyetujui tool:', err);
+    }
+  };
+
+  const handleRejectTool = async (toolCallId) => {
+    try {
+      await fetch('/api/agent/approve', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(localStorage.getItem('orion_auth_token')
+            ? { Authorization: `Bearer ${localStorage.getItem('orion_auth_token')}` }
+            : {}),
+        },
+        body: JSON.stringify({ toolCallId, approved: false }),
+      });
+    } catch (err) {
+      console.error('Gagal menolak tool:', err);
+    }
+  };
+
+  const handleChooseOption = async (toolCallId, option, index) => {
+    try {
+      const selectedText = typeof option === 'string' ? option : option.label || option.value;
+      await fetch('/api/agent/approve', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(localStorage.getItem('orion_auth_token')
+            ? { Authorization: `Bearer ${localStorage.getItem('orion_auth_token')}` }
+            : {}),
+        },
+        body: JSON.stringify({
+          toolCallId,
+          selected: selectedText,
+          index: index ?? 0,
+          approved: true,
+        }),
+      });
+      soundEffects.playSend();
+
+      // Immediately reflect selected option in local state
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === currentSessionId
+            ? {
+                ...s,
+                messages: s.messages.map((m) => ({
+                  ...m,
+                  toolCalls: (m.toolCalls || []).map((tc) =>
+                    tc.id === toolCallId
+                      ? { ...tc, status: 'completed', result: { selected: selectedText } }
+                      : tc
+                  ),
+                })),
+              }
+            : s
+        )
+      );
+    } catch (err) {
+      console.error('Gagal memilih opsi tool:', err);
+      showToast('Gagal mengirim opsi: ' + err.message);
+    }
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    const checkAuthStatus = async () => {
+      try {
+        const token = localStorage.getItem('orion_auth_token');
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const res = await fetch('/api/auth/status', { headers });
+        if (res.ok) {
+          const json = await res.json();
+          if (isMounted) {
+            setAuthStatus({
+              isLoading: false,
+              isAuthenticated: Boolean(json.data?.authenticated),
+              isInitialized: Boolean(json.data?.initialized),
+              user: json.data?.username || json.data?.configuredUsername || localStorage.getItem('orion_auth_user'),
+            });
+          }
+          return;
+        }
+      } catch (err) {
+        console.warn('Gagal memverifikasi status autentikasi:', err);
+      }
+      if (isMounted) {
+        setAuthStatus((prev) => ({ ...prev, isLoading: false }));
+      }
+    };
+    checkAuthStatus();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleLoginSuccess = (username, token) => {
+    setAuthStatus({
+      isLoading: false,
+      isAuthenticated: true,
+      isInitialized: true,
+      user: username,
+    });
+    showToast(`Selamat datang kembali, ${username}!`);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('orion_auth_token');
+    localStorage.removeItem('orion_auth_user');
+    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+    setAuthStatus((prev) => ({
+      ...prev,
+      isAuthenticated: false,
+    }));
+    showToast('Sesi telah diakhiri.');
+  };
 
   // Custom Providers State (OpenAI, Gemini, Claude, Ollama, etc.)
   const [customProviders, setCustomProviders] = useState(() => {
@@ -474,6 +667,10 @@ export default function App() {
   const [voiceUserTranscript, setVoiceUserTranscript] = useState('');
   const [voiceAgentResponse, setVoiceAgentResponse] = useState('');
   const [voiceResponseTurn, setVoiceResponseTurn] = useState(0);
+  const [voiceActiveToolCalls, setVoiceActiveToolCalls] = useState([]);
+  const [voicePendingApproval, setVoicePendingApproval] = useState(null);
+  const voicePendingApprovalRef = useRef(null);
+  voicePendingApprovalRef.current = voicePendingApproval;
 
   const voiceMediaStreamRef = useRef(null);
   const voiceAudioContextRef = useRef(null);
@@ -484,6 +681,11 @@ export default function App() {
   const voiceTranscriptAccumulatorRef = useRef('');
   const voiceIsProcessingQueryRef = useRef(false);
   const voiceAbortControllerRef = useRef(null);
+  const voiceTtsAudioRef = useRef(null);
+  const voiceTtsBlobUrlRef = useRef(null);
+  const voiceTtsAnimIntervalRef = useRef(null);
+  const voiceTtsSourceRef = useRef(null);
+  const voiceIsSpeakingRef = useRef(false);
 
   const isVoiceCallingRef = useRef(false);
   isVoiceCallingRef.current = isVoiceCalling;
@@ -504,6 +706,7 @@ export default function App() {
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRec) {
       console.warn('SpeechRecognition API not available in this browser');
+      showToast('Browser ini (Zen/Firefox) belum mendukung Web Speech. Silakan buka di Safari atau Chrome untuk transkripsi suara.');
       return;
     }
 
@@ -519,7 +722,10 @@ export default function App() {
       recognition.maxAlternatives = 1;
 
       recognition.onresult = (event) => {
-        if (voiceIsProcessingQueryRef.current || isVoiceMutedRef.current) return;
+        // Ignore mic while AI is actively speaking (avoids echo) or when user manually muted
+        if (voiceIsSpeakingRef.current || isVoiceMutedRef.current) return;
+        // Ignore background query processing unless currently waiting for approval
+        if (voiceIsProcessingQueryRef.current && !voicePendingApprovalRef.current) return;
 
         let interim = '';
         let final = '';
@@ -535,6 +741,32 @@ export default function App() {
         if (currentSpeech) {
           voiceTranscriptAccumulatorRef.current = currentSpeech;
           setVoiceUserTranscript(currentSpeech);
+
+          // Voice-Controlled Approval / Rejection for System Tools (JARVIS Mode)
+          if (voicePendingApprovalRef.current) {
+            const lower = currentSpeech.toLowerCase();
+            const isApprove = /\b(approve|setuju|setujui|izinkan|boleh|lanjut|lanjutkan|oke|yes|ya|eksekusi|jalankan|acc|aprove|gas)\b/i.test(lower);
+            const isReject = /\b(reject|tolak|batal|batalkan|jangan|no|tidak|cancel|stop)\b/i.test(lower);
+
+            if (isApprove || isReject) {
+              if (voiceSilenceTimerRef.current) {
+                clearTimeout(voiceSilenceTimerRef.current);
+                voiceSilenceTimerRef.current = null;
+              }
+              const pending = voicePendingApprovalRef.current;
+              setVoicePendingApproval(null);
+              voicePendingApprovalRef.current = null;
+              setVoiceUserTranscript('');
+
+              if (isApprove) {
+                soundEffects.playSend?.();
+                handleApproveTool(pending.toolCallId);
+              } else {
+                handleRejectTool(pending.toolCallId);
+              }
+              return;
+            }
+          }
 
           // Reset silence timer on new utterance
           if (voiceSilenceTimerRef.current) {
@@ -553,14 +785,23 @@ export default function App() {
 
       recognition.onerror = (e) => {
         // no-speech is normal during pauses
-        if (e.error === 'no-speech' && isVoiceCallingRef.current && !voiceIsProcessingQueryRef.current) {
+        if (
+          e.error === 'no-speech' &&
+          isVoiceCallingRef.current &&
+          (!voiceIsProcessingQueryRef.current || voicePendingApprovalRef.current)
+        ) {
           // ignore
         }
       };
 
       recognition.onend = () => {
-        // Keep listening alive unless muted or processing agent reply
-        if (isVoiceCallingRef.current && !voiceIsProcessingQueryRef.current && !isVoiceMutedRef.current) {
+        // Keep listening alive unless muted or actively speaking or processing (unless waiting for approval)
+        if (
+          isVoiceCallingRef.current &&
+          !isVoiceMutedRef.current &&
+          (!voiceIsProcessingQueryRef.current || voicePendingApprovalRef.current) &&
+          !voiceIsSpeakingRef.current
+        ) {
           try {
             recognition.start();
           } catch {}
@@ -574,6 +815,79 @@ export default function App() {
     }
   };
 
+  // Helper to construct clear, natural conversational approval question
+  const buildApprovalSpeech = (parsed) => {
+    const tool = parsed.tool || '';
+    const args = parsed.args || {};
+    const cmd = (args.command || args.cmd || '').trim();
+    const path = args.path || (args.paths ? args.paths.join(', ') : '');
+
+    // 1. Identify base command name (e.g. 'curl', 'pkill', 'rm', 'git', 'npm')
+    let baseCmd = 'perintah';
+    if (cmd) {
+      const firstWord = cmd.split(/\s+/)[0] || '';
+      baseCmd = firstWord.replace(/^[./\\]+/, '').toLowerCase();
+    } else if (tool === 'delete_file') {
+      baseCmd = 'delete_file';
+    } else if (tool === 'write' || tool === 'edit') {
+      baseCmd = tool;
+    } else {
+      baseCmd = tool || 'perintah';
+    }
+
+    // 2. Extract or infer the reason/purpose from the AI
+    let purpose = (parsed.purpose || args.purpose || args.reason || '').trim();
+
+    // If no explicit purpose provided in args, check if there was thought text
+    if (!purpose && parsed.thought) {
+      const cleanedThought = parsed.thought
+        .replace(/^saya\s+(akan|hendak|perlu|ingin)\s+/i, '')
+        .replace(/[.,?!]+$/, '')
+        .trim();
+      if (cleanedThought.length > 5 && cleanedThought.length < 90) {
+        purpose = cleanedThought;
+      }
+    }
+
+    // Heuristic fallbacks if purpose is still empty
+    if (!purpose) {
+      if (baseCmd === 'curl' || baseCmd === 'wget') {
+        const urlMatch = cmd.match(/https?:\/\/([^\s"'/?#]+)/i);
+        if (urlMatch && urlMatch[1]) {
+          const host = urlMatch[1].replace(/^www\./i, '');
+          purpose = `mengambil data dari ${host}`;
+        } else {
+          purpose = 'mengakses data dari internet';
+        }
+      } else if (baseCmd === 'pkill' || baseCmd === 'kill') {
+        const targetMatch = cmd.match(/['"]([^'"]+)['"]/);
+        const target = targetMatch ? targetMatch[1] : cmd.replace(/^(pkill|kill)\s+(-\w+\s+)?/i, '').trim();
+        purpose = target ? `menghentikan proses ${target}` : 'menghentikan proses sistem';
+      } else if (baseCmd === 'rm') {
+        purpose = path ? `menghapus berkas ${path}` : 'menghapus berkas target';
+      } else if (baseCmd === 'npm' || baseCmd === 'yarn' || baseCmd === 'pnpm') {
+        if (/\b(install|add|i)\b/i.test(cmd)) {
+          purpose = 'menginstal dependensi proyek';
+        } else {
+          purpose = 'menjalankan skrip paket';
+        }
+      } else if (baseCmd === 'git') {
+        purpose = 'menjalankan operasi git';
+      } else if (tool === 'delete_file') {
+        purpose = `menghapus ${path || 'file yang dipilih'}`;
+      } else if (path) {
+        purpose = `mengubah isi file ${path}`;
+      } else {
+        purpose = 'menjalankan operasi sistem';
+      }
+    }
+
+    // Clean purpose so it connects smoothly with "untuk ..."
+    purpose = purpose.replace(/^untuk\s+/i, '').replace(/[.,?!]+$/, '').trim();
+
+    return `Saya memerlukan persetujuan Anda untuk menggunakan command ${baseCmd} untuk ${purpose}. Apakah Anda menyetujuinya, Approve atau Reject?`;
+  };
+
   const handleTriggerVoiceAgentResponse = async (queryText) => {
     if (!queryText || voiceIsProcessingQueryRef.current || !isVoiceCallingRef.current) return;
     voiceIsProcessingQueryRef.current = true;
@@ -582,7 +896,20 @@ export default function App() {
       voiceSilenceTimerRef.current = null;
     }
 
-    // 1. Temporarily mute user mic so background noise doesn't interfere while agent thinks & speaks
+    // 1. Stop any currently playing TTS audio before starting a new turn
+    if (voiceTtsAnimIntervalRef.current) {
+      clearInterval(voiceTtsAnimIntervalRef.current);
+      voiceTtsAnimIntervalRef.current = null;
+    }
+    if (voiceTtsAudioRef.current) {
+      try {
+        voiceTtsAudioRef.current.pause();
+        voiceTtsAudioRef.current.currentTime = 0;
+      } catch {}
+      voiceTtsAudioRef.current = null;
+    }
+
+    // 2. Temporarily mute user mic so background noise doesn't interfere while agent thinks & speaks
     if (voiceMediaStreamRef.current) {
       voiceMediaStreamRef.current.getAudioTracks().forEach((t) => { t.enabled = false; });
     }
@@ -591,7 +918,7 @@ export default function App() {
     }
     setVoiceAudioLevel(0);
 
-    // 2. Set Agent Status to Thinking (keep prior response visible until next answer starts)
+    // 3. Set Agent Status to Thinking (keep prior response visible until next answer is ready)
     setVoiceAgentStatus('thinking');
     setVoiceUserTranscript(queryText);
 
@@ -600,170 +927,424 @@ export default function App() {
 
     let accumulatedReply = '';
 
+    // Helper function to synthesize and play spoken audio via Web Audio or Audio element
+    // onReadyToPlay callback is invoked as soon as the audio buffer is decoded and ready to play in speakers
+    const playVoiceAudio = async (textToPlay, signal, onReadyToPlay) => {
+      if (!textToPlay || !isVoiceCallingRef.current) return;
+      const cleanText = formatVoiceForSpeechAndDisplay(textToPlay);
+      if (!cleanText) return;
+
+      let readyFired = false;
+      const fireReady = () => {
+        if (!readyFired) {
+          readyFired = true;
+          onReadyToPlay?.();
+        }
+      };
+
+      voiceIsSpeakingRef.current = true;
+
+      try {
+        const ttsRes = await fetch('/api/tts/speak', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: cleanText,
+            voice: 'multi-female',
+          }),
+          signal,
+        });
+        if (!ttsRes.ok) {
+          fireReady();
+          return;
+        }
+        const audioBlob = await ttsRes.blob();
+        if (!audioBlob || audioBlob.size === 0 || !isVoiceCallingRef.current) {
+          fireReady();
+          return;
+        }
+
+        let playedViaWebAudio = false;
+        if (voiceAudioContextRef.current && voiceAudioContextRef.current.state !== 'closed') {
+          try {
+            const audioCtx = voiceAudioContextRef.current;
+            if (audioCtx.state === 'suspended') await audioCtx.resume();
+            const arrayBuf = await audioBlob.arrayBuffer();
+            const decodedBuffer = await new Promise((resolveDecode, rejectDecode) => {
+              const res = audioCtx.decodeAudioData(arrayBuf, resolveDecode, rejectDecode);
+              if (res && typeof res.then === 'function') {
+                res.then(resolveDecode).catch(rejectDecode);
+              }
+            });
+
+            if (!isVoiceCallingRef.current) return;
+
+            const source = audioCtx.createBufferSource();
+            source.buffer = decodedBuffer;
+            voiceTtsSourceRef.current = source;
+            source.connect(audioCtx.destination);
+
+            // AUDIO IS DECODED AND READY TO PLAY: Reveal text and UI elements now
+            fireReady();
+
+            voiceTtsAnimIntervalRef.current = setInterval(() => {
+              const simLevel = 0.28 + 0.32 * Math.sin(Date.now() / 150) + 0.16 * Math.cos(Date.now() / 95);
+              setVoiceAudioLevel(Math.max(0.16, Math.min(0.85, simLevel)));
+            }, 50);
+
+            await new Promise((resolvePlay) => {
+              source.onended = () => {
+                if (voiceTtsAnimIntervalRef.current) {
+                  clearInterval(voiceTtsAnimIntervalRef.current);
+                  voiceTtsAnimIntervalRef.current = null;
+                }
+                voiceTtsSourceRef.current = null;
+                setVoiceAudioLevel(0);
+                resolvePlay();
+              };
+              source.start(0);
+            });
+            playedViaWebAudio = true;
+          } catch {}
+        }
+
+        if (!playedViaWebAudio) {
+          if (!isVoiceCallingRef.current) return;
+          if (voiceTtsBlobUrlRef.current) {
+            try { URL.revokeObjectURL(voiceTtsBlobUrlRef.current); } catch {}
+          }
+          const audioUrl = URL.createObjectURL(audioBlob);
+          voiceTtsBlobUrlRef.current = audioUrl;
+          const audio = new Audio(audioUrl);
+          voiceTtsAudioRef.current = audio;
+
+          // Fallback HTMLAudio is ready to play
+          fireReady();
+
+          voiceTtsAnimIntervalRef.current = setInterval(() => {
+            if (voiceTtsAudioRef.current && !voiceTtsAudioRef.current.paused) {
+              const simLevel = 0.28 + 0.32 * Math.sin(Date.now() / 150) + 0.16 * Math.cos(Date.now() / 95);
+              setVoiceAudioLevel(Math.max(0.16, Math.min(0.85, simLevel)));
+            }
+          }, 50);
+
+          await new Promise((resolve) => {
+            audio.onended = () => {
+              if (voiceTtsAnimIntervalRef.current) {
+                clearInterval(voiceTtsAnimIntervalRef.current);
+                voiceTtsAnimIntervalRef.current = null;
+              }
+              setVoiceAudioLevel(0);
+              resolve();
+            };
+            audio.onerror = () => {
+              if (voiceTtsAnimIntervalRef.current) {
+                clearInterval(voiceTtsAnimIntervalRef.current);
+                voiceTtsAnimIntervalRef.current = null;
+              }
+              setVoiceAudioLevel(0);
+              resolve();
+            };
+            audio.play().catch(resolve);
+          });
+        }
+      } catch (ttsErr) {
+        fireReady();
+        if (ttsErr.name !== 'AbortError') {
+          console.warn('TTS playback error:', ttsErr.message);
+        }
+      } finally {
+        voiceIsSpeakingRef.current = false;
+      }
+    };
+
     try {
-      // Use the model selected before starting the voice call
-      const modelToUse = voiceSelectedModelRef.current || selectedModelRef.current || selectedModel;
+      let modelToUse = voiceSelectedModelRef.current || selectedModelRef.current || selectedModel;
+      try {
+        const savedAux = localStorage.getItem('orion_aux_assignments');
+        const auxAssignments = savedAux ? JSON.parse(savedAux) : {};
+        if (auxAssignments.voice_chat) {
+          modelToUse = auxAssignments.voice_chat;
+        }
+      } catch {}
+
       const { effectiveModel, activeCustomProvider, userOrionApiKey } = resolveModelAndProvider(
         modelToUse,
         customProvidersRef.current || customProviders
       );
 
-      // Voice prompt: explicit instruction for short, punchy, conversational spoken reply with standard spacing
-      const voicePrompt = `${queryText}\n\n[Instruksi Panggilan Suara]: Jawablah secara SINGKAT, PADAT, BERBOBOT, dan natural seperti berbicara di telepon (maksimal 1-2 kalimat saja). Wajib gunakan spasi pemisah antar kata yang benar dan normal (jangan menggabungkan kata). DILARANG menggunakan markdown, bullet points, atau kode.`;
+      // Detect if user command requires autonomous Agent tool calls (JARVIS Mode)
+      const isActionableAgentTask =
+        isAgentMode ||
+        /\b(install|pasang|setup|buatkan|bikin|create|write|tulis|jalankan|run|hapus|delete|remove|edit|ubah|ganti|perbaiki|fix|cek|check|periksa|baca|lihat|tampilkan|list|buka|cari|search|react|vue|vite|npm|yarn|pnpm|git|docker|terminal|bash)\b/i.test(
+          queryText
+        );
 
-      const res = await fetch('/api/chat/stream', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: voicePrompt,
-          history: activeSession ? activeSession.messages : [],
-          attachments: [],
-          model: effectiveModel || modelToUse,
-          reasoningTier: 'low',
-          customProvider: activeCustomProvider,
-          orionApiKey: userOrionApiKey,
-        }),
-        signal: controller.signal,
-      });
+      if (isActionableAgentTask) {
+        // ================= JARVIS MODE: IMMEDIATE SPOKEN ACKNOWLEDGMENT =================
+        const ackText = 'Baik, mohon tunggu sebentar, saya sedang memprosesnya.';
+        await playVoiceAudio(ackText, controller.signal, () => {
+          setVoiceResponseTurn((prev) => prev + 1);
+          setVoiceAgentResponse(ackText);
+          setVoiceAgentStatus('speaking');
+        });
 
-      if (!res.ok) {
-        throw new Error('Gagal menghubungi AI');
-      }
+        // Transition to thinking while silently running tool calls in background
+        setVoiceAgentResponse('');
+        setVoiceAgentStatus('thinking');
+        setVoiceActiveToolCalls([]);
 
-      // Hold agent status as 'thinking' so the animated thinking cue is clearly visible until first token
-      let hasStartedSpeaking = false;
+        const agentRes = await fetch('/api/agent/run', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(localStorage.getItem('orion_auth_token')
+              ? { Authorization: `Bearer ${localStorage.getItem('orion_auth_token')}` }
+              : {}),
+          },
+          body: JSON.stringify({
+            message: queryText,
+            history: activeSession ? activeSession.messages : [],
+            attachments: [],
+            model: effectiveModel || modelToUse,
+            reasoningTier: 'medium',
+            customProvider: activeCustomProvider,
+            orionApiKey: userOrionApiKey,
+            workspaceRoot: activeProjectPath || undefined,
+            isVoiceMode: true,
+          }),
+          signal: controller.signal,
+        });
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder('utf-8');
-      let buffer = '';
+        if (!agentRes.ok) {
+          throw new Error('Gagal menjalankan operasi agen otonom.');
+        }
 
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
+        const reader = agentRes.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+        let toolCallsList = [];
+        let agentFinalAnswer = '';
 
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || !trimmed.startsWith('data:')) continue;
-          const dataStr = trimmed.replace(/^data:\s*/, '').trim();
-          if (dataStr === '[DONE]') break;
-          try {
-            const parsed = JSON.parse(dataStr);
-            if (parsed.error) {
-              throw new Error(parsed.error);
-            }
-            const token = parsed.chunk || parsed.token || parsed.delta || parsed.content || '';
-            if (token) {
-              accumulatedReply += token;
-              // Clean out think tags, markdown, and fix glued spacing
-              const rawClean = accumulatedReply
-                .replace(/<think>[\s\S]*?<\/think>/gi, '')
-                .replace(/<think>[\s\S]*$/gi, '')
-                .replace(/[*#_`~]/g, '');
-              const cleanText = cleanIndonesianText(rawClean);
-              if (cleanText) {
-                if (!hasStartedSpeaking) {
-                  hasStartedSpeaking = true;
-                  setVoiceResponseTurn((prev) => prev + 1);
-                  setVoiceAgentStatus('speaking');
-                  setVoiceUserTranscript('');
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || !trimmed.startsWith('data:')) continue;
+            const dataStr = trimmed.replace(/^data:\s*/, '').trim();
+            if (dataStr === '[DONE]') break;
+
+            try {
+              const parsed = JSON.parse(dataStr);
+              if (parsed.type === 'tool_call_start') {
+                toolCallsList = [
+                  ...toolCallsList.filter((tc) => tc.id !== parsed.toolCallId),
+                  {
+                    id: parsed.toolCallId,
+                    tool: parsed.tool,
+                    args: parsed.args,
+                    status: parsed.needsApproval ? 'waiting_approval' : 'running',
+                    reason: parsed.reason,
+                  },
+                ];
+                setVoiceActiveToolCalls([...toolCallsList]);
+              } else if (parsed.type === 'tool_call_waiting_approval') {
+                const approvalSpeech = buildApprovalSpeech(parsed);
+                const pending = {
+                  toolCallId: parsed.toolCallId,
+                  tool: parsed.tool,
+                  args: parsed.args,
+                  reason: parsed.reason,
+                  purpose: parsed.purpose || parsed.args?.purpose || '',
+                };
+
+                // Automatically UNMUTE the user's microphone so they can verbally respond immediately
+                setIsVoiceMuted(false);
+                isVoiceMutedRef.current = false;
+                if (voiceMediaStreamRef.current) {
+                  voiceMediaStreamRef.current.getAudioTracks().forEach((t) => {
+                    t.enabled = true;
+                  });
                 }
-                setVoiceAgentResponse(cleanText);
+
+                // Render TTS audio FIRST! Reveal the text and approval card only once audio is decoded & ready to play
+                await playVoiceAudio(approvalSpeech, controller.signal, () => {
+                  setVoicePendingApproval(pending);
+                  voicePendingApprovalRef.current = pending;
+                  setVoiceResponseTurn((prev) => prev + 1);
+                  setVoiceAgentResponse(approvalSpeech);
+                  setVoiceAgentStatus('speaking');
+                });
+                setVoiceAgentStatus('listening');
+
+                // Re-open microphone to listen for user's spoken "Approve" or "Reject"
+                if (voiceMediaStreamRef.current) {
+                  voiceMediaStreamRef.current.getAudioTracks().forEach((t) => {
+                    t.enabled = true;
+                  });
+                }
+                if (voiceSpeechRecRef.current) {
+                  try {
+                    voiceSpeechRecRef.current.start();
+                  } catch {}
+                }
+              } else if (parsed.type === 'tool_call_running') {
+                toolCallsList = toolCallsList.map((tc) =>
+                  tc.id === parsed.toolCallId ? { ...tc, status: 'running' } : tc
+                );
+                setVoiceActiveToolCalls([...toolCallsList]);
+              } else if (parsed.type === 'tool_call_complete') {
+                toolCallsList = toolCallsList.map((tc) =>
+                  tc.id === parsed.toolCallId
+                    ? { ...tc, status: parsed.isError ? 'error' : 'completed', result: parsed.result }
+                    : tc
+                );
+                setVoiceActiveToolCalls([...toolCallsList]);
+              } else if (parsed.type === 'agent_done') {
+                agentFinalAnswer = parsed.finalAnswer;
               }
-            }
-          } catch (e) {
-            if (e.message && !e.message.includes('JSON') && !e.message.includes('Unexpected')) {
-              throw e;
-            }
+            } catch {}
           }
         }
-      }
 
-      if (!hasStartedSpeaking) {
-        hasStartedSpeaking = true;
-        setVoiceResponseTurn((prev) => prev + 1);
-        setVoiceAgentStatus('speaking');
+        // Format final answer specifically for voice: remove tables/markdown and speak naturally
+        const spokenFinal = formatVoiceForSpeechAndDisplay(agentFinalAnswer);
+
         setVoiceUserTranscript('');
-      }
+        await playVoiceAudio(spokenFinal, controller.signal, () => {
+          setVoiceResponseTurn((prev) => prev + 1);
+          setVoiceAgentResponse(spokenFinal);
+          setVoiceAgentStatus('speaking');
+        });
 
-      let finalAnswer = cleanIndonesianText(
-        accumulatedReply
-          .replace(/<think>[\s\S]*?<\/think>/gi, '')
-          .replace(/<think>[\s\S]*$/gi, '')
-          .replace(/[*#_`~]/g, '')
-      );
+        // Record in active session messages
+        const userMsg = {
+          id: `msg-v-user-${Date.now()}`,
+          role: 'user',
+          content: queryText,
+          timestamp: new Date().toISOString(),
+        };
+        const aiMsg = {
+          id: `msg-v-ai-${Date.now()}`,
+          role: 'assistant',
+          content: agentFinalAnswer || spokenFinal,
+          model: effectiveModel || modelToUse,
+          toolCalls: toolCallsList,
+          timestamp: new Date().toISOString(),
+        };
+        setSessions((prev) =>
+          prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [...s.messages, userMsg, aiMsg] } : s))
+        );
 
-      // Fallback if stream was empty
-      if (!finalAnswer) {
-        try {
-          const fallbackRes = await fetch('/api/chat/message', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              message: voicePrompt,
-              history: activeSession ? activeSession.messages : [],
-              model: effectiveModel || modelToUse,
-              reasoningTier: 'low',
-              customProvider: activeCustomProvider,
-              orionApiKey: userOrionApiKey,
-            }),
-            signal: controller.signal,
-          });
-          if (fallbackRes.ok) {
-            const json = await fallbackRes.json();
-            const fallbackContent = json.data?.content || json.reply || '';
-            finalAnswer = fallbackContent
-              .replace(/<think>[\s\S]*?<\/think>/gi, '')
-              .replace(/<think>[\s\S]*$/gi, '')
-              .replace(/[*#_`~]/g, '')
-              .trim();
+        setVoiceActiveToolCalls([]);
+        setVoicePendingApproval(null);
+        voicePendingApprovalRef.current = null;
+      } else {
+        // ================= REGULAR CONVERSATION STREAM =================
+        const voicePrompt = `${queryText}\n\n[Instruksi Panggilan Suara]: Jawablah secara SINGKAT, PADAT, BERBOBOT, dan natural seperti berbicara di telepon (maksimal 1-2 kalimat saja). Wajib gunakan spasi pemisah antar kata yang benar dan normal (jangan menggabungkan kata). DILARANG menggunakan markdown, bullet points, atau kode.`;
+
+        const res = await fetch('/api/chat/stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: voicePrompt,
+            history: activeSession ? activeSession.messages : [],
+            attachments: [],
+            model: effectiveModel || modelToUse,
+            reasoningTier: 'low',
+            customProvider: activeCustomProvider,
+            orionApiKey: userOrionApiKey,
+          }),
+          signal: controller.signal,
+        });
+
+        if (!res.ok) {
+          throw new Error('Gagal menghubungi AI');
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || !trimmed.startsWith('data:')) continue;
+            const dataStr = trimmed.replace(/^data:\s*/, '').trim();
+            if (dataStr === '[DONE]') break;
+            try {
+              const parsed = JSON.parse(dataStr);
+              const token = parsed.chunk || parsed.token || parsed.delta || parsed.content || '';
+              if (token) accumulatedReply += token;
+            } catch {}
           }
-        } catch {}
+        }
+
+        let stripped = accumulatedReply
+          .replace(/<think>[\s\S]*?<\/think>/gi, '')
+          .replace(/<think>[\s\S]*$/gi, '');
+        let finalAnswer = formatVoiceForSpeechAndDisplay(stripped);
+
+        if (!finalAnswer) {
+          finalAnswer = 'Halo, saya mendengar Anda. Ada yang bisa saya bantu?';
+        }
+
+        // Record exchange in active session messages
+        const userMsg = {
+          id: `msg-v-user-${Date.now()}`,
+          role: 'user',
+          content: queryText,
+          timestamp: new Date().toISOString(),
+        };
+        const aiMsg = {
+          id: `msg-v-ai-${Date.now()}`,
+          role: 'assistant',
+          content: finalAnswer,
+          model: effectiveModel || modelToUse,
+          timestamp: new Date().toISOString(),
+        };
+        setSessions((prev) =>
+          prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [...s.messages, userMsg, aiMsg] } : s))
+        );
+
+        setVoiceUserTranscript('');
+        await playVoiceAudio(finalAnswer, controller.signal, () => {
+          setVoiceResponseTurn((prev) => prev + 1);
+          setVoiceAgentResponse(finalAnswer);
+          setVoiceAgentStatus('speaking');
+        });
       }
-
-      if (!finalAnswer) {
-        finalAnswer = 'Halo, saya mendengar Anda. Ada yang bisa saya bantu?';
-      }
-
-      setVoiceAgentResponse(finalAnswer);
-
-      // Record this exchange in active session messages
-      const userMsg = {
-        id: `msg-v-user-${Date.now()}`,
-        role: 'user',
-        content: queryText,
-        timestamp: new Date().toISOString(),
-      };
-      const aiMsg = {
-        id: `msg-v-ai-${Date.now()}`,
-        role: 'assistant',
-        content: finalAnswer,
-        model: effectiveModel || modelToUse,
-        timestamp: new Date().toISOString(),
-      };
-      setSessions((prev) =>
-        prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [...s.messages, userMsg, aiMsg] } : s))
-      );
-
-      // 4. Brief natural pause before mic seamlessly re-opens for the next user utterance
-      await new Promise((resolve) => setTimeout(resolve, 400));
 
     } catch (err) {
       if (err.name !== 'AbortError') {
+        console.error('Voice processing error:', err);
         setVoiceResponseTurn((prev) => prev + 1);
         setVoiceUserTranscript('');
         setVoiceAgentResponse('Maaf, suara kurang jelas. Bisa tolong diulangi?');
       }
     } finally {
-      // 5. Re-open microphone and resume listening while keeping current response visible
+      if (voiceTtsAnimIntervalRef.current) {
+        clearInterval(voiceTtsAnimIntervalRef.current);
+        voiceTtsAnimIntervalRef.current = null;
+      }
+      // 6. Selesai bicara: mikrofon dibuka kembali untuk pertanyaan berikutnya, teks tetap terlihat
       if (isVoiceCallingRef.current) {
         voiceIsProcessingQueryRef.current = false;
         voiceTranscriptAccumulatorRef.current = '';
         setVoiceUserTranscript('');
-        // Retain voiceAgentResponse so text stays on screen until replaced by next reply
         setVoiceAgentStatus('listening');
+        setVoiceAudioLevel(0);
 
         // Unmute audio tracks if not manually muted by user
         if (voiceMediaStreamRef.current && !isVoiceMutedRef.current) {
@@ -876,6 +1457,27 @@ export default function App() {
 
   const handleEndVoiceCalling = () => {
     playCosmicEndCallSound();
+    if (voiceTtsSourceRef.current) {
+      try {
+        voiceTtsSourceRef.current.stop();
+      } catch {}
+      voiceTtsSourceRef.current = null;
+    }
+    if (voiceTtsAnimIntervalRef.current) {
+      clearInterval(voiceTtsAnimIntervalRef.current);
+      voiceTtsAnimIntervalRef.current = null;
+    }
+    if (voiceTtsAudioRef.current) {
+      try {
+        voiceTtsAudioRef.current.pause();
+        voiceTtsAudioRef.current.currentTime = 0;
+      } catch {}
+      voiceTtsAudioRef.current = null;
+    }
+    if (voiceTtsBlobUrlRef.current) {
+      try { URL.revokeObjectURL(voiceTtsBlobUrlRef.current); } catch {}
+      voiceTtsBlobUrlRef.current = null;
+    }
     setIsVoiceCalling(false);
     setVoiceAudioLevel(0);
     setIsVoiceMuted(false);
@@ -974,6 +1576,11 @@ export default function App() {
     soundEffects.switchSession?.();
     setActiveSessionId(id);
     setCurrentView('chat');
+    fetch('/api/chat/sessions/active', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: id }),
+    }).catch(() => {});
   };
 
   const syncProvidersToServer = (providersList, model = selectedModel, tier = reasoningTier) => {
@@ -1152,18 +1759,129 @@ export default function App() {
     localStorage.setItem('orion_sound', soundEnabled ? 'true' : 'false');
   }, [soundEnabled]);
 
-  // Debounce localStorage persistence and avoid synchronous disk I/O while streaming
-  useEffect(() => {
+  // Bidirectional session synchronization with server & CLI (~/.orion/sessions.json)
+  const lastServerUpdatedAtRef = useRef(0);
+  const isSyncingSessionsRef = useRef(false);
+
+  const fetchServerSessions = useCallback(async (isInitial = false) => {
     if (isGenerating) return;
-    const timeoutId = setTimeout(() => {
+    try {
+      const res = await fetch('/api/chat/sessions');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data.success) return;
+
+      const serverSessions = data.sessions || [];
+      const serverActiveId = data.activeSessionId;
+      const serverUpdated = data.updatedAt || 0;
+
+      if (isInitial) {
+        let localSessions = [];
+        try {
+          const saved = localStorage.getItem('orion_chat_sessions');
+          if (saved) localSessions = JSON.parse(saved) || [];
+        } catch {}
+
+        if (serverSessions.length === 0 && localSessions.length > 0) {
+          // Migrate localStorage sessions to server
+          const pushRes = await fetch('/api/chat/sessions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessions: localSessions, activeSessionId }),
+          });
+          if (pushRes.ok) {
+            const pushData = await pushRes.json();
+            lastServerUpdatedAtRef.current = pushData.updatedAt || Date.now();
+          }
+          return;
+        }
+
+        if (serverSessions.length > 0) {
+          lastServerUpdatedAtRef.current = serverUpdated;
+          setSessions(serverSessions);
+          if (serverActiveId) {
+            setActiveSessionId(serverActiveId);
+          }
+          try {
+            localStorage.setItem('orion_chat_sessions', JSON.stringify(serverSessions));
+          } catch {}
+        }
+        return;
+      }
+
+      // Subsequent syncs (focus / visibility / poll):
+      // Apply if server has newer data or if server active session changed
+      const hasNewerData = serverUpdated > lastServerUpdatedAtRef.current;
+      const hasDifferentActive = serverActiveId && serverActiveId !== activeSessionId;
+      if ((hasNewerData || hasDifferentActive) && !isGenerating && !isSyncingSessionsRef.current) {
+        lastServerUpdatedAtRef.current = serverUpdated;
+        setSessions(serverSessions);
+        if (serverActiveId && serverActiveId !== activeSessionId) {
+          setActiveSessionId(serverActiveId);
+        }
+        try {
+          localStorage.setItem('orion_chat_sessions', JSON.stringify(serverSessions));
+        } catch {}
+      }
+    } catch {
+      // offline / network error
+    }
+  }, [isGenerating, activeSessionId]);
+
+  // Debounce localStorage persistence and sync to ~/.orion/sessions.json
+  useEffect(() => {
+    if (isGenerating || sessions.length === 0) return;
+    const timeoutId = setTimeout(async () => {
       try {
         localStorage.setItem('orion_chat_sessions', JSON.stringify(sessions));
-      } catch {
-        // storage quota
+      } catch {}
+
+      try {
+        isSyncingSessionsRef.current = true;
+        const res = await fetch('/api/chat/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessions, activeSessionId }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.updatedAt) {
+            lastServerUpdatedAtRef.current = data.updatedAt;
+          }
+        }
+      } catch {} finally {
+        isSyncingSessionsRef.current = false;
       }
-    }, 500);
+    }, 600);
     return () => clearTimeout(timeoutId);
-  }, [sessions, isGenerating]);
+  }, [sessions, activeSessionId, isGenerating]);
+
+  // Listen for window focus, visibilitychange, and gentle poll to catch CLI messages
+  useEffect(() => {
+    fetchServerSessions(true);
+
+    const onFocus = () => fetchServerSessions(false);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchServerSessions(false);
+      }
+    };
+
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    const intervalId = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchServerSessions(false);
+      }
+    }, 2000);
+
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      clearInterval(intervalId);
+    };
+  }, [fetchServerSessions]);
 
   const isScrollingRef = useRef(false);
   const scrollToBottom = (instant = false) => {
@@ -1182,6 +1900,45 @@ export default function App() {
 
   const activeSession = sessions.find((s) => s.id === activeSessionId) || sessions[0];
   const messages = activeSession ? activeSession.messages : [];
+  const activeProjectPath = activeSession?.projectPath || null;
+  const activeProjectName = activeSession?.projectName || null;
+
+  const handleSelectProject = async (projectPath, projectName) => {
+    soundEffects.playClick?.();
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === activeSessionId
+          ? { ...s, projectPath, projectName }
+          : s
+      )
+    );
+    showToast(`Proyek dipilih: ${projectName}`);
+
+    // Persist to recent workspaces on server
+    try {
+      const token = localStorage.getItem('orion_auth_token');
+      await fetch('/api/workspace/recent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ path: projectPath, name: projectName }),
+      });
+    } catch {}
+  };
+
+  const handleClearProject = () => {
+    soundEffects.playClick?.();
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === activeSessionId
+          ? { ...s, projectPath: null, projectName: null }
+          : s
+      )
+    );
+    showToast('Proyek dilepas (Kembali ke default Orion Safe Workspace)');
+  };
 
   useEffect(() => {
     scrollToBottom(isGenerating);
@@ -1192,13 +1949,34 @@ export default function App() {
     setTimeout(() => setToast(null), 2500);
   };
 
-  const handleNewSession = () => {
+  const handleNewSession = async () => {
     soundEffects.newChat?.();
+    try {
+      const res = await fetch('/api/chat/sessions/new', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: 'Percakapan Baru' }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.session) {
+          setSessions((prev) => [data.session, ...prev.filter((s) => s.id !== data.session.id)]);
+          setActiveSessionId(data.session.id);
+          lastServerUpdatedAtRef.current = data.updatedAt || Date.now();
+          setRecommendations(getRandomRecommendations(3));
+          setCurrentView('chat');
+          return;
+        }
+      }
+    } catch {}
+
     const newSession = {
       id: `session-${Date.now()}`,
       title: 'Percakapan Baru',
       createdAt: new Date().toISOString(),
       messages: [],
+      projectPath: null,
+      projectName: null,
     };
     setSessions((prev) => [newSession, ...prev]);
     setActiveSessionId(newSession.id);
@@ -1207,6 +1985,7 @@ export default function App() {
   };
 
   const handleDeleteSession = (sessionId) => {
+    fetch(`/api/chat/sessions/${sessionId}`, { method: 'DELETE' }).catch(() => {});
     setSessions((prev) => {
       const filtered = prev.filter((s) => s.id !== sessionId);
       if (filtered.length === 0) {
@@ -1216,6 +1995,8 @@ export default function App() {
             title: 'Percakapan Baru',
             createdAt: new Date().toISOString(),
             messages: [],
+            projectPath: null,
+            projectName: null,
           },
         ];
       }
@@ -1234,6 +2015,8 @@ export default function App() {
       title: 'Percakapan Baru',
       createdAt: new Date().toISOString(),
       messages: [],
+      projectPath: null,
+      projectName: null,
     };
     setSessions([fresh]);
     setActiveSessionId(fresh.id);
@@ -1260,6 +2043,31 @@ export default function App() {
     const userText = (textToSend !== undefined ? textToSend : input).trim();
     if ((!userText && activeAttachments.length === 0) || isGenerating) return;
 
+    // Handle direct client-side slash commands
+    if (userText.toLowerCase() === '/clear') {
+      setInput('');
+      setSessions((prev) =>
+        prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [] } : s))
+      );
+      showToast('Riwayat percakapan sesi telah dibersihkan');
+      return;
+    }
+    if (userText.toLowerCase() === '/new') {
+      setInput('');
+      handleNewSession();
+      showToast('Sesi percakapan baru dimulai');
+      return;
+    }
+    if (userText.toLowerCase() === '/agent' || userText.toLowerCase().startsWith('/agent ')) {
+      const parts = userText.split(/\s+/);
+      const arg = parts[1]?.toLowerCase();
+      const nextMode = arg === 'on' ? true : arg === 'off' ? false : !isAgentMode;
+      setIsAgentMode(nextMode);
+      setInput('');
+      showToast(`Mode AI Agent: ${nextMode ? 'AKTIF (Eksekusi Tools & Terminal)' : 'NONAKTIF (Mode Chat Standar)'}`);
+      return;
+    }
+
     soundEffects.playSend();
 
     const displayPrompt = userText || (activeAttachments.length > 0 ? 'Tolong analisis dan jelaskan lampiran berikut.' : '');
@@ -1272,13 +2080,41 @@ export default function App() {
       timestamp: new Date().toISOString(),
     };
 
+    // Check if attachments contain any images for Vision routing
+    const hasImages = (activeAttachments || []).some(
+      (a) => a && (
+        a.type === 'image' ||
+        a.type?.startsWith('image/') ||
+        a.category === 'image' ||
+        a.isImage ||
+        /\.(png|jpe?g|webp|gif|svg|bmp)$/i.test(a.name || '') ||
+        (typeof a.data === 'string' && a.data.startsWith('data:image/'))
+      )
+    );
+
+    let modelToUseForMessage = selectedModel;
+    let isVisionRouted = false;
+
+    if (hasImages) {
+      try {
+        const savedAux = localStorage.getItem('orion_aux_assignments');
+        const auxAssignments = savedAux ? JSON.parse(savedAux) : {};
+        if (auxAssignments.vision) {
+          modelToUseForMessage = auxAssignments.vision;
+          isVisionRouted = true;
+        }
+      } catch (e) {
+        console.warn('Gagal membaca penugasan vision:', e);
+      }
+    }
+
     const { effectiveModel, activeCustomProvider, userOrionApiKey } = resolveModelAndProvider(
-      selectedModel,
+      modelToUseForMessage,
       customProviders
     );
 
     const modelSupportsReasoning = isReasoningSupported(
-      selectedModel,
+      modelToUseForMessage,
       activeCustomProvider?.modelId || activeCustomProvider?.name || ''
     );
     const activeReasoningTier = modelSupportsReasoning ? reasoningTier : null;
@@ -1288,7 +2124,8 @@ export default function App() {
       id: aiMessageId,
       role: 'assistant',
       content: '',
-      model: effectiveModel || selectedModel,
+      model: effectiveModel || modelToUseForMessage,
+      isVisionTask: isVisionRouted,
       reasoningTier: activeReasoningTier,
       customProvider: activeCustomProvider,
       timestamp: new Date().toISOString(),
@@ -1324,16 +2161,23 @@ export default function App() {
     abortControllerRef.current = controller;
 
     let accumulated = '';
+    let toolCallsList = [];
     let rafId = null;
 
-    const commitUpdate = (text) => {
+    const commitUpdate = (text, toolCalls = null) => {
       setSessions((prev) =>
         prev.map((s) => {
           if (s.id === activeSessionId) {
             return {
               ...s,
               messages: s.messages.map((m) =>
-                m.id === aiMessageId ? { ...m, content: text } : m
+                m.id === aiMessageId
+                  ? {
+                      ...m,
+                      content: text,
+                      ...(toolCalls !== null ? { toolCalls } : {}),
+                    }
+                  : m
               ),
             };
           }
@@ -1343,17 +2187,24 @@ export default function App() {
     };
 
     try {
-      const res = await fetch('/api/chat/stream', {
+      const endpoint = isAgentMode ? '/api/agent/run' : '/api/chat/stream';
+      const res = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(localStorage.getItem('orion_auth_token')
+            ? { Authorization: `Bearer ${localStorage.getItem('orion_auth_token')}` }
+            : {}),
+        },
         body: JSON.stringify({
           message: displayPrompt,
           history: activeSession ? activeSession.messages : [],
           attachments: activeAttachments,
-          model: effectiveModel || selectedModel,
+          model: effectiveModel || modelToUseForMessage,
           reasoningTier: activeReasoningTier,
           customProvider: activeCustomProvider,
           orionApiKey: userOrionApiKey,
+          workspaceRoot: activeProjectPath || undefined,
         }),
         signal: controller.signal,
       });
@@ -1375,7 +2226,7 @@ export default function App() {
             rafId = requestAnimationFrame(() => {
               rafId = null;
               lastCommit = performance.now();
-              commitUpdate(accumulated);
+              commitUpdate(accumulated, toolCallsList);
             });
           }
           return;
@@ -1385,7 +2236,7 @@ export default function App() {
           rafId = null;
         }
         lastCommit = now;
-        commitUpdate(text);
+        commitUpdate(text, toolCallsList);
       };
 
       while (true) {
@@ -1406,12 +2257,72 @@ export default function App() {
 
           try {
             const parsed = JSON.parse(dataStr);
-            if (parsed.error) {
-              throw new Error(parsed.error);
+            if (parsed.error || parsed.message && parsed.type === 'agent_error') {
+              throw new Error(parsed.error || parsed.message);
             }
-            if (parsed.chunk) {
-              accumulated += parsed.chunk;
-              hasNewChunk = true;
+
+            if (isAgentMode) {
+              if (parsed.type === 'tool_call_start') {
+                toolCallsList = [
+                  ...toolCallsList.filter((tc) => tc.id !== parsed.toolCallId),
+                  {
+                    id: parsed.toolCallId,
+                    tool: parsed.tool,
+                    args: parsed.args,
+                    status: parsed.needsApproval ? 'waiting_approval' : 'running',
+                    reason: parsed.reason,
+                  },
+                ];
+                commitUpdate(accumulated, toolCallsList);
+              } else if (parsed.type === 'tool_call_waiting_approval') {
+                toolCallsList = toolCallsList.map((tc) =>
+                  tc.id === parsed.toolCallId
+                    ? { ...tc, status: 'waiting_approval', reason: parsed.reason }
+                    : tc
+                );
+                commitUpdate(accumulated, toolCallsList);
+              } else if (parsed.type === 'tool_call_waiting_choice') {
+                toolCallsList = toolCallsList.map((tc) =>
+                  tc.id === parsed.toolCallId
+                    ? {
+                        ...tc,
+                        status: 'waiting_choice',
+                        question: parsed.question,
+                        options: parsed.options,
+                      }
+                    : tc
+                );
+                commitUpdate(accumulated, toolCallsList);
+              } else if (parsed.type === 'tool_call_running') {
+                toolCallsList = toolCallsList.map((tc) =>
+                  tc.id === parsed.toolCallId ? { ...tc, status: 'running' } : tc
+                );
+                commitUpdate(accumulated, toolCallsList);
+              } else if (parsed.type === 'tool_call_complete') {
+                toolCallsList = toolCallsList.map((tc) =>
+                  tc.id === parsed.toolCallId
+                    ? { ...tc, status: parsed.isError ? 'error' : 'completed', result: parsed.result }
+                    : tc
+                );
+                commitUpdate(accumulated, toolCallsList);
+              } else if (parsed.type === 'tool_call_rejected') {
+                toolCallsList = toolCallsList.map((tc) =>
+                  tc.id === parsed.toolCallId ? { ...tc, status: 'rejected' } : tc
+                );
+                commitUpdate(accumulated, toolCallsList);
+              } else if (parsed.type === 'agent_thought') {
+                // If message is still empty, show progress
+              } else if (parsed.type === 'agent_done') {
+                accumulated = parsed.finalAnswer;
+                commitUpdate(accumulated, toolCallsList);
+              } else if (parsed.type === 'stream_end') {
+                break;
+              }
+            } else {
+              if (parsed.chunk) {
+                accumulated += parsed.chunk;
+                hasNewChunk = true;
+              }
             }
           } catch (e) {
             if (e.message && !e.message.includes('JSON') && !e.message.includes('Unexpected')) {
@@ -1429,17 +2340,22 @@ export default function App() {
         cancelAnimationFrame(rafId);
         rafId = null;
       }
-      commitUpdate(accumulated);
+      commitUpdate(accumulated, toolCallsList);
 
       // Fallback if stream was empty
-      if (!accumulated.trim()) {
+      if (!accumulated.trim() && toolCallsList.length === 0) {
         const fallbackRes = await fetch('/api/chat/message', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(localStorage.getItem('orion_auth_token')
+              ? { Authorization: `Bearer ${localStorage.getItem('orion_auth_token')}` }
+              : {}),
+          },
           body: JSON.stringify({
             message: userText,
             history: activeSession ? activeSession.messages : [],
-            model: selectedModel,
+            model: effectiveModel || modelToUseForMessage,
             reasoningTier: activeReasoningTier,
             customProvider: activeCustomProvider,
             orionApiKey: userOrionApiKey,
@@ -1449,7 +2365,7 @@ export default function App() {
         if (fallbackRes.ok) {
           const json = await fallbackRes.json();
           accumulated = json.data.content;
-          commitUpdate(accumulated);
+          commitUpdate(accumulated, toolCallsList);
         } else {
           const errJson = await fallbackRes.json().catch(() => ({}));
           throw new Error(errJson.message || `Layanan AI mengembalikan HTTP ${fallbackRes.status}`);
@@ -1570,6 +2486,26 @@ export default function App() {
     showToast('Obrolan diunduh');
   };
 
+  // Authentication Guard: Login or Initial Setup Screen
+  if (authStatus.isLoading) {
+    return (
+      <div className="login-screen-wrapper">
+        <div className="login-btn-spinner" style={{ width: 28, height: 28, color: 'var(--text-primary)' }} />
+      </div>
+    );
+  }
+
+  if (!authStatus.isAuthenticated) {
+    return (
+      <LoginPage
+        isInitialized={authStatus.isInitialized}
+        onLoginSuccess={handleLoginSuccess}
+        theme={theme}
+        onToggleTheme={() => handleSelectThemeMode(theme === 'dark' ? 'light' : 'dark')}
+      />
+    );
+  }
+
   return (
     <div className="orion-layout">
       {/* Dynamic WebGL Aurora Mesh Background (Only in Chat & Dashboard, completely inactive in Settings & Providers) */}
@@ -1604,6 +2540,8 @@ export default function App() {
         onToggleSound={() => setSoundEnabled((prev) => !prev)}
         isOpen={isSidebarOpen}
         onCloseMobile={() => setIsSidebarOpen(false)}
+        authUser={authStatus.user}
+        onLogout={handleLogout}
       />
 
       {/* Main Area */}
@@ -1642,11 +2580,17 @@ export default function App() {
             {currentView === 'providers' && (
               <span className="session-active-title">Kelola Provider AI</span>
             )}
+            {currentView === 'models' && (
+              <span className="session-active-title">Models</span>
+            )}
             {currentView === 'settings' && (
               <span className="session-active-title">Pengaturan</span>
             )}
             {currentView === 'logs' && (
               <span className="session-active-title">System & Gateway Logs</span>
+            )}
+            {currentView === 'skills' && (
+              <span className="session-active-title">Skills Hub</span>
             )}
           </div>
 
@@ -1745,6 +2689,32 @@ export default function App() {
           />
         ) : currentView === 'logs' ? (
           <LogsView onClose={() => setCurrentView('dashboard')} />
+        ) : currentView === 'models' ? (
+          <ModelsView
+            onClose={() => setCurrentView('dashboard')}
+            selectedModel={selectedModel}
+            onSelectModel={(modId) => {
+              handleModelChange(modId);
+            }}
+            reasoningTier={reasoningTier}
+            onSelectReasoningTier={(tierId) => {
+              handleReasoningTierChange(tierId);
+            }}
+            customProviders={customProviders}
+            sessions={sessions}
+            onNavigate={(view) => {
+              if (view === 'chat') {
+                handleNewSession();
+                setCurrentView('chat');
+              } else {
+                setCurrentView(view);
+              }
+            }}
+            onOpenProviders={() => setCurrentView('providers')}
+            showToast={showToast}
+          />
+        ) : currentView === 'skills' ? (
+          <SkillsView onClose={() => setCurrentView('dashboard')} showToast={showToast} />
         ) : (
           <>
             {/* Message Stream or Unified Spatial Hero (Seamless shared elements) */}
@@ -1890,21 +2860,109 @@ export default function App() {
                             )}
                             {msg.content && <div className="user-text-content">{msg.content}</div>}
                           </div>
-                        ) : msg.content === '' ? (
-                          isGenerating && isStreamingThis ? (
-                            <ThinkingIndicator
-                              model={msg.model || selectedModel}
-                              reasoningTier={msg.reasoningTier || reasoningTier}
-                            />
-                          ) : null
                         ) : (
-                          <FormattedMessage content={msg.content} isStreaming={isStreamingThis} />
+                          <div className="ai-message-wrapper">
+                            {Array.isArray(msg.toolCalls) && msg.toolCalls.length > 0 && (
+                              <div className="agent-tool-calls-container">
+                                {msg.toolCalls.map((tc) => (
+                                  <ToolCallBlock
+                                    key={tc.id}
+                                    toolCall={tc}
+                                    onApprove={handleApproveTool}
+                                    onReject={handleRejectTool}
+                                    onChooseOption={handleChooseOption}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                            {msg.content === '' ? (
+                              isGenerating && isStreamingThis && (!msg.toolCalls || msg.toolCalls.length === 0) ? (
+                                <ThinkingIndicator
+                                  model={msg.model || selectedModel}
+                                  reasoningTier={msg.reasoningTier || reasoningTier}
+                                />
+                              ) : null
+                            ) : (
+                              <>
+                                <FormattedMessage content={msg.content} isStreaming={isStreamingThis} />
+                                {msg.role === 'assistant' &&
+                                  index === messages.length - 1 &&
+                                  !isGenerating &&
+                                  !(Array.isArray(msg.toolCalls) && msg.toolCalls.some((tc) => tc.status === 'waiting_approval' || tc.status === 'waiting_choice')) && (
+                                    (() => {
+                                      const numberedOpts = extractNumberedOptions(msg.content);
+                                      if (numberedOpts.length > 0) {
+                                        return (
+                                          <div className="agent-text-confirmation-box">
+                                            <div className="agent-confirmation-desc">
+                                              <Terminal size={13} />
+                                              <span>Pilihan Respons (Klik opsi atau ketik angka):</span>
+                                            </div>
+                                            <div className="agent-confirmation-actions">
+                                              {numberedOpts.map((opt) => (
+                                                <button
+                                                  key={opt.num}
+                                                  type="button"
+                                                  className="agent-confirmation-btn"
+                                                  onClick={() => handleSendMessage(`${opt.num}. ${opt.text}`)}
+                                                >
+                                                  <span className="agent-opt-badge">[{opt.num}]</span>
+                                                  <span className="agent-confirmation-text">{opt.text}</span>
+                                                </button>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        );
+                                      }
+                                      if (detectConfirmationQuestion(msg.content)) {
+                                        return (
+                                          <div className="agent-text-confirmation-box">
+                                            <div className="agent-confirmation-desc">
+                                              <HelpCircle size={13} />
+                                              <span>Konfirmasi Tindakan Diperlukan:</span>
+                                            </div>
+                                            <div className="agent-confirmation-actions">
+                                              <button
+                                                type="button"
+                                                className="agent-confirmation-btn approve-opt"
+                                                onClick={() => handleSendMessage('Ya, saya setuju dan mengizinkan. Silakan lanjutkan.')}
+                                              >
+                                                <span className="agent-opt-badge approve-badge">[1]</span>
+                                                <span className="agent-confirmation-text">✓ Setuju (Lanjutkan)</span>
+                                              </button>
+                                              <button
+                                                type="button"
+                                                className="agent-confirmation-btn reject-opt"
+                                                onClick={() => handleSendMessage('Tidak, batalkan tindakan ini.')}
+                                              >
+                                                <span className="agent-opt-badge reject-badge">[2]</span>
+                                                <span className="agent-confirmation-text">✗ Tolak (Batalkan)</span>
+                                              </button>
+                                            </div>
+                                          </div>
+                                        );
+                                      }
+                                      return null;
+                                    })()
+                                  )}
+                              </>
+                            )}
+                          </div>
                         )}
                       </div>
 
                       {/* Action Bar for AI Message */}
                       {msg.role === 'assistant' && msg.content !== '' && (
                         <div className="message-actions-bar">
+                          {msg.isVisionTask && (
+                            <span
+                              className="msg-vision-indicator-pill"
+                              title={`Diproses oleh model vision: ${msg.model}`}
+                            >
+                              <Eye size={11} />
+                              <span>Vision · {msg.model?.includes('::') ? msg.model.split('::')[1] : msg.model}</span>
+                            </span>
+                          )}
                           <button
                             type="button"
                             className="msg-action-btn"
@@ -1965,6 +3023,12 @@ export default function App() {
           setReasoningTier={handleReasoningTierChange}
           customProviders={customProviders}
           onOpenManageProviders={() => setCurrentView('providers')}
+          isAgentMode={isAgentMode}
+          setIsAgentMode={handleToggleAgentMode}
+          projectPath={activeProjectPath}
+          projectName={activeProjectName}
+          onOpenProjectModal={() => setIsProjectModalOpen(true)}
+          onClearProject={handleClearProject}
         />
 
         {/* Ambient Voice Calling Overlay with Equalizer Wave Visualizer */}
@@ -1975,12 +3039,32 @@ export default function App() {
           userTranscript={voiceUserTranscript}
           agentResponse={voiceAgentResponse}
           responseTurn={voiceResponseTurn}
+          activeToolCalls={voiceActiveToolCalls}
+          pendingApproval={voicePendingApproval}
+          onApproveTool={async (toolCallId) => {
+            setVoicePendingApproval(null);
+            voicePendingApprovalRef.current = null;
+            await handleApproveTool(toolCallId);
+          }}
+          onRejectTool={async (toolCallId) => {
+            setVoicePendingApproval(null);
+            voicePendingApprovalRef.current = null;
+            await handleRejectTool(toolCallId);
+          }}
           onToggleMute={handleToggleVoiceMute}
           onEndCall={handleEndVoiceCalling}
         />
           </>
         )}
       </main>
+
+      {/* Project Directory Picker Modal */}
+      <ProjectDirectoryModal
+        isOpen={isProjectModalOpen}
+        onClose={() => setIsProjectModalOpen(false)}
+        onSelectProject={handleSelectProject}
+        currentProjectPath={activeProjectPath}
+      />
 
       {/* Image Lightbox Modal */}
       {previewImage && (

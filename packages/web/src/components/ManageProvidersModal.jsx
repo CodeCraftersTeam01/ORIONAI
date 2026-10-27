@@ -554,47 +554,90 @@ export default function ManageProvidersModal({
 
   const modalContent = (
     <div
-      className={isPage ? "provider-page-content is-page-mode" : "modal-dialog provider-modal-dialog provider-modal-large"}
+      className={isPage ? "provider-page-view-content" : "modal-dialog provider-modal-dialog provider-modal-large"}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
       {/* Header */}
-      <div className={isPage ? "page-view-header modal-header" : "modal-header"}>
-        {view === 'add' ? (
-          <div className="provider-header-nav-block">
-            <button
-              type="button"
-              className="provider-breadcrumb-back"
-              onClick={() => setView('catalog')}
-              title="Kembali ke daftar provider"
-            >
-              <ArrowLeft size={14} />
-              <span>Kembali ke Daftar Provider</span>
-            </button>
-            <h2 className={isPage ? "page-view-title" : "modal-title"}>Tambah {currentTemplate.name}</h2>
-          </div>
-        ) : view === 'manage' ? (
-          <div className="provider-header-nav-block">
-            <button
-              type="button"
-              className="provider-breadcrumb-back"
-              onClick={() => setView('catalog')}
-              title="Kembali ke daftar provider"
-            >
-              <ArrowLeft size={14} />
-              <span>Kembali ke Daftar Provider</span>
-            </button>
-            <h2 className={isPage ? "page-view-title" : "modal-title"}>Pengaturan Provider</h2>
-          </div>
-        ) : (
-          <div className="provider-header-title-box">
-            <h2 className={isPage ? "page-view-title" : "modal-title"}>Kelola Provider AI</h2>
-            <p className={isPage ? "page-view-subtitle" : "provider-modal-desc"}>
-              Pilih atau tambahkan endpoint OpenAI-compatible (Ollama, LM Studio, Cloud LLM)
-            </p>
-          </div>
-        )}
-        {!isPage && (
+      {isPage ? (
+        <div className="models-main-header">
+          {view === 'add' ? (
+            <div className="models-title-block">
+              <button
+                type="button"
+                className="provider-breadcrumb-back"
+                onClick={() => setView('catalog')}
+                title="Kembali ke daftar provider"
+              >
+                <ArrowLeft size={13} />
+                <span>Kembali ke Daftar Provider</span>
+              </button>
+              <h1 className="models-heading">Tambah {currentTemplate.name}</h1>
+              <p className="models-subheading">
+                Konfigurasi endpoint dan API key untuk provider {currentTemplate.name}
+              </p>
+            </div>
+          ) : view === 'manage' ? (
+            <div className="models-title-block">
+              <button
+                type="button"
+                className="provider-breadcrumb-back"
+                onClick={() => setView('catalog')}
+                title="Kembali ke daftar provider"
+              >
+                <ArrowLeft size={13} />
+                <span>Kembali ke Daftar Provider</span>
+              </button>
+              <h1 className="models-heading">Pengaturan {currentProvider?.name || 'Provider'}</h1>
+              <p className="models-subheading">
+                Kelola kredensial dan model aktif untuk koneksi ini
+              </p>
+            </div>
+          ) : (
+            <div className="models-title-block">
+              <h1 className="models-heading">Kelola Provider AI</h1>
+              <p className="models-subheading">
+                Pilih atau tambahkan endpoint OpenAI-compatible (Ollama, LM Studio, Cloud LLM)
+              </p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="modal-header">
+          {view === 'add' ? (
+            <div className="provider-header-nav-block">
+              <button
+                type="button"
+                className="provider-breadcrumb-back"
+                onClick={() => setView('catalog')}
+                title="Kembali ke daftar provider"
+              >
+                <ArrowLeft size={14} />
+                <span>Kembali ke Daftar Provider</span>
+              </button>
+              <h2 className="modal-title">Tambah {currentTemplate.name}</h2>
+            </div>
+          ) : view === 'manage' ? (
+            <div className="provider-header-nav-block">
+              <button
+                type="button"
+                className="provider-breadcrumb-back"
+                onClick={() => setView('catalog')}
+                title="Kembali ke daftar provider"
+              >
+                <ArrowLeft size={14} />
+                <span>Kembali ke Daftar Provider</span>
+              </button>
+              <h2 className="modal-title">Pengaturan Provider</h2>
+            </div>
+          ) : (
+            <div className="provider-header-title-box">
+              <h2 className="modal-title">Kelola Provider AI</h2>
+              <p className="provider-modal-desc">
+                Pilih atau tambahkan endpoint OpenAI-compatible (Ollama, LM Studio, Cloud LLM)
+              </p>
+            </div>
+          )}
           <button
             type="button"
             className="modal-close-btn"
@@ -603,11 +646,11 @@ export default function ManageProvidersModal({
           >
             <X size={16} />
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
-        {/* Modal Body */}
-        <div className="modal-body provider-modal-body">
+        {/* Modal / Page Body */}
+        <div className={isPage ? "provider-page-view-body" : "modal-body provider-modal-body"}>
           {/* =========================================================================
               VIEW 1: CATALOG OF PROVIDERS & TEMPLATES
              ========================================================================= */}
@@ -1294,8 +1337,10 @@ export default function ManageProvidersModal({
 
   if (isPage) {
     return (
-      <div className="page-view-container providers-page-view animate-page-enter">
-        {modalContent}
+      <div className="models-view-wrapper providers-page-view animate-page-enter">
+        <div className="models-view-inner providers-page-inner">
+          {modalContent}
+        </div>
       </div>
     );
   }

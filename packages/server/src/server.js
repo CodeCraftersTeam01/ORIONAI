@@ -7,6 +7,12 @@ import apiRoutes from './routes/apiRoutes.js';
 import itemRoutes from './routes/itemRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import logRoutes from './routes/logRoutes.js';
+import ttsRoutes from './routes/ttsRoutes.js';
+import authRoutes from './routes/authRoutes.js';
+import agentRoutes from './routes/agentRoutes.js';
+import workspaceRoutes from './routes/workspaceRoutes.js';
+import skillRoutes from './routes/skillRoutes.js';
+import comboRoutes from './routes/comboRoutes.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 import { logger } from './services/loggerService.js';
 
@@ -100,10 +106,16 @@ if (hasDist) {
 }
 
 // Mount Routes
+app.use('/api/auth', authRoutes);
 app.use('/api', apiRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/agent', agentRoutes);
+app.use('/api/workspace', workspaceRoutes);
 app.use('/api/items', itemRoutes);
 app.use('/api/logs', logRoutes);
+app.use('/api/tts', ttsRoutes);
+app.use('/api/skills', skillRoutes);
+app.use('/api/combos', comboRoutes);
 
 // SPA routing: any non-API GET request serves web index.html if dist exists
 if (hasDist) {
@@ -179,4 +191,6 @@ if (isDirectRun) {
 }
 
 export { app };
+export * as authService from './services/authService.js';
+export { isAuthInitialized, setupAccount, authenticateUser } from './services/authService.js';
 

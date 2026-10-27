@@ -4,6 +4,19 @@ import os from 'os';
 import path from 'path';
 import { execSync } from 'child_process';
 import { streamChatCompletion } from '../../server/src/services/aiService.js';
+import { runAgentLoop, resolveApproval } from '../../server/src/agent/agentLoop.js';
+import {
+  getAllSessions,
+  getSessionById,
+  getActiveSession,
+  setActiveSessionId,
+  createSession,
+  deleteSession,
+  appendMessageToSession,
+  clearSessionMessages,
+  formatRelativeTime,
+} from '../../server/src/services/sessionService.js';
+import { getSkillCommands } from '../../server/src/services/skillService.js';
 
 function copyToClipboard(text) {
   try {
@@ -18,6 +31,351 @@ function copyToClipboard(text) {
       return true;
     }
   } catch {
+    return false;
+  }
+}
+
+class SmoothTextStreamer {
+  constructor({ signal = null, minDelay = 4, maxDelay = 12 } = {}) {
+    this.signal = signal;
+    this.minDelay = minDelay;
+    this.maxDelay = maxDelay;
+    this.queue = [];
+    this.isProcessing = false;
+    this.drainResolvers = [];
+
+    if (this.signal) {
+      this.signal.addEventListener('abort', () => this.stop(), { once: true });
+    }
+  }
+
+  _tokenize(text) {
+    if (!text) return [];
+    const tokens = [];
+    // Atomically capture ANSI escape sequences (CSI, OSC) or individual unicode characters
+    const regex = /(\x1b\[[0-9;?]*[a-zA-Z]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|[\s\S])/gu;
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      tokens.push(match[0]);
+    }
+    return tokens;
+  }
+
+  write(text) {
+    if (!text || this.signal?.aborted) return;
+    const tokens = this._tokenize(text);
+    for (let i = 0; i < tokens.length; i++) {
+      this.queue.push(tokens[i]);
+    }
+    this._processQueue();
+  }
+
+  async _processQueue() {
+    if (this.isProcessing) return;
+    this.isProcessing = true;
+
+    while (this.queue.length > 0) {
+      if (this.signal?.aborted) {
+        this.queue.length = 0;
+        break;
+      }
+
+      const qLen = this.queue.length;
+      let batchSize = 1;
+      let delay = this.maxDelay;
+
+      // Adaptive cadence: smooth progressive typewriter reveal that never lags behind fast chunks
+      if (qLen > 100) {
+        batchSize = 10;
+        delay = 2;
+      } else if (qLen > 50) {
+        batchSize = 5;
+        delay = 4;
+      } else if (qLen > 20) {
+        batchSize = 2;
+        delay = 8;
+      }
+
+      let toOutput = '';
+      for (let i = 0; i < batchSize && this.queue.length > 0; i++) {
+        const token = this.queue.shift();
+        toOutput += token;
+        // ANSI escape codes apply instantly without consuming delay budget
+        if (token.startsWith('\x1b')) {
+          i--;
+        }
+      }
+
+      if (toOutput) {
+        process.stdout.write(toOutput);
+      }
+
+      if (this.queue.length > 0 && delay > 0 && !this.signal?.aborted) {
+        await new Promise((r) => setTimeout(r, delay));
+      }
+    }
+
+    this.isProcessing = false;
+    const resolvers = this.drainResolvers.splice(0, this.drainResolvers.length);
+    for (const res of resolvers) res();
+  }
+
+  async flush() {
+    if (this.queue.length === 0 && !this.isProcessing) return;
+    if (this.signal?.aborted) {
+      this.queue.length = 0;
+      return;
+    }
+    return new Promise((resolve) => {
+      this.drainResolvers.push(resolve);
+    });
+  }
+
+  stop() {
+    this.queue.length = 0;
+    this.isProcessing = false;
+    const resolvers = this.drainResolvers.splice(0, this.drainResolvers.length);
+    for (const res of resolvers) res();
+  }
+}
+
+class AgentSpinner {
+  constructor() {
+    this.frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+    this.idx = 0;
+    this.timer = null;
+    this.active = false;
+    this.label = 'Working...';
+    this.startTime = Date.now();
+    this.showTimer = true;
+  }
+
+  start(label = 'Working...', showTimer = true) {
+    this.label = label;
+    this.startTime = Date.now();
+    this.showTimer = showTimer;
+    if (this.active) return;
+    this.active = true;
+    this.timer = setInterval(() => {
+      if (this.active) {
+        const elapsed = ((Date.now() - this.startTime) / 1000).toFixed(1);
+        const timerText = this.showTimer ? ` \x1b[38;5;244m(${elapsed}s)\x1b[0m` : '';
+        process.stdout.write(`\r\x1b[K\x1b[38;5;39m${this.frames[this.idx]}\x1b[0m \x1b[38;5;244m${this.label}\x1b[0m${timerText} \x1b[38;5;240m(Tekan \x1b[38;5;248mEsc\x1b[38;5;240m untuk batal)\x1b[0m`);
+        this.idx = (this.idx + 1) % this.frames.length;
+      }
+    }, 80);
+  }
+
+  update(label, resetTimer = true) {
+    this.label = label;
+    if (resetTimer) {
+      this.startTime = Date.now();
+    }
+    if (!this.active) {
+      this.start(label);
+    }
+  }
+
+  getElapsedSeconds() {
+    return ((Date.now() - this.startTime) / 1000).toFixed(1);
+  }
+
+  clear() {
+    if (this.active) {
+      process.stdout.write('\r\x1b[K');
+    }
+  }
+
+  stop() {
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+    if (this.active) {
+      process.stdout.write('\r\x1b[K');
+      this.active = false;
+    }
+  }
+}
+
+/**
+ * Dedicated interactive selector helper for dynamic keyboard navigation (Up/Down + Enter)
+ * Supports custom dynamic options (strings or objects), numbers (1-9), Esc to cancel.
+ */
+export async function selectOptionInteractive({ title = 'Pilih salah satu opsi:', items = [], initialIndex = 0, signal = null }) {
+  if (!items || items.length === 0) return null;
+  if (!process.stdin.isTTY) {
+    const first = items[0];
+    return typeof first === 'string' ? { label: first, value: first, index: 0 } : { ...first, index: 0 };
+  }
+
+  const PAGE_SIZE = 6;
+  let selectedIndex = Math.max(0, Math.min(initialIndex, items.length - 1));
+  let scrollOffset = Math.floor(selectedIndex / PAGE_SIZE) * PAGE_SIZE;
+  let linesRendered = 0;
+
+  function render(isFirst = false) {
+    if (!isFirst && linesRendered > 0) {
+      process.stdout.write(`\x1b[${linesRendered}A\r\x1b[J`);
+    }
+
+    if (selectedIndex < scrollOffset) {
+      scrollOffset = selectedIndex;
+    } else if (selectedIndex >= scrollOffset + PAGE_SIZE) {
+      scrollOffset = selectedIndex - PAGE_SIZE + 1;
+    }
+
+    const visibleItems = items.slice(scrollOffset, scrollOffset + PAGE_SIZE);
+    let out = `\x1b[1m\x1b[36m${title}\x1b[0m \x1b[90m(Gunakan ↑ / ↓ lalu Enter, Esc untuk batal)\x1b[0m\x1b[K\n`;
+    let count = 1;
+
+    visibleItems.forEach((rawItem, idx) => {
+      const realIdx = scrollOffset + idx;
+      const isSelected = realIdx === selectedIndex;
+      const item = typeof rawItem === 'string' ? { label: rawItem, detail: '', value: rawItem } : rawItem;
+      const cursor = isSelected ? `\x1b[36m→ \x1b[0m` : `  `;
+      const numLabel = `[${realIdx + 1}] `;
+      const label = isSelected
+        ? `\x1b[1m\x1b[37m${numLabel}${item.label}\x1b[0m`
+        : `\x1b[37m${numLabel}${item.label}\x1b[0m`;
+      const detail = item.detail
+        ? (isSelected ? ` \x1b[36m— ${item.detail}\x1b[0m` : ` \x1b[90m— ${item.detail}\x1b[0m`)
+        : '';
+      const badge = item.badge ? ` \x1b[32m[${item.badge}]\x1b[0m` : '';
+
+      out += `${cursor}${label}${detail}${badge}\x1b[K\n`;
+      count++;
+    });
+
+    if (items.length > PAGE_SIZE) {
+      out += `  \x1b[90m(${selectedIndex + 1}/${items.length})\x1b[0m\x1b[K\n`;
+      count++;
+    }
+
+    linesRendered = count;
+    process.stdout.write(out);
+  }
+
+  function clear() {
+    if (linesRendered > 0) {
+      process.stdout.write(`\x1b[${linesRendered}A\r\x1b[J`);
+      linesRendered = 0;
+    }
+  }
+
+  render(true);
+
+  return new Promise((resolve) => {
+    const wasRaw = process.stdin.isRaw;
+    if (process.stdin.setRawMode) {
+      process.stdin.setRawMode(true);
+    }
+    process.stdin.resume();
+
+    const cleanup = () => {
+      signal?.removeEventListener('abort', onAbort);
+      process.stdin.removeListener('data', onData);
+      if (process.stdin.setRawMode) {
+        process.stdin.setRawMode(wasRaw);
+      }
+      process.stdin.pause();
+    };
+
+    const onAbort = () => {
+      clear();
+      cleanup();
+      resolve(null);
+    };
+
+    if (signal?.aborted) {
+      onAbort();
+      return;
+    }
+    signal?.addEventListener('abort', onAbort, { once: true });
+
+    const onData = (buffer) => {
+      const key = buffer.toString();
+
+      if (key === '\u0003') {
+        clear();
+        cleanup();
+        process.exit(0);
+      }
+
+      if (key === '\r' || key === '\n') {
+        clear();
+        cleanup();
+        const raw = items[selectedIndex];
+        resolve(typeof raw === 'string' ? { label: raw, value: raw, index: selectedIndex } : { ...raw, index: selectedIndex });
+        return;
+      }
+
+      if (key === '\u001b' || key === '\x1b') {
+        clear();
+        cleanup();
+        resolve(null);
+        return;
+      }
+
+      if (key === '\u001b[A' || key === '\u001bOA' || key === 'k') {
+        selectedIndex = (selectedIndex - 1 + items.length) % items.length;
+        if (selectedIndex === items.length - 1) {
+          scrollOffset = Math.max(0, items.length - PAGE_SIZE);
+        }
+        render(false);
+        return;
+      }
+
+      if (key === '\u001b[B' || key === '\u001bOB' || key === 'j') {
+        selectedIndex = (selectedIndex + 1) % items.length;
+        if (selectedIndex === 0) {
+          scrollOffset = 0;
+        }
+        render(false);
+        return;
+      }
+
+      if (/^[1-9]$/.test(key)) {
+        const num = parseInt(key, 10) - 1;
+        if (num >= 0 && num < items.length) {
+          selectedIndex = num;
+          render(false);
+        }
+      }
+    };
+
+    process.stdin.on('data', onData);
+  });
+}
+
+export async function promptCliApproval(toolCall, signal = null) {
+  process.stdout.write(`\n\x1b[33m╭── ⚠️  PERSETUJUAN DIPERLUKAN (SAFETY GUARD) ──────────────────────────\x1b[0m\n`);
+  process.stdout.write(`\x1b[33m│\x1b[0m Tool: \x1b[1m\x1b[36m${toolCall?.name || toolCall?.tool || 'tool'}\x1b[0m\n`);
+  const toolArgs = toolCall?.args || {};
+  let target = '';
+  if (Array.isArray(toolArgs.paths) && toolArgs.paths.length > 0) {
+    target = `${toolArgs.paths.length} file (${toolArgs.paths.join(', ')})`;
+  } else {
+    target = toolArgs.path || toolArgs.command || toolArgs.query || (Object.keys(toolArgs).length ? JSON.stringify(toolArgs) : '');
+  }
+  process.stdout.write(`\x1b[33m│\x1b[0m Target: \x1b[37m${target}\x1b[0m\n`);
+  process.stdout.write(`\x1b[33m│\x1b[0m Alasan: \x1b[90m${toolCall?.risk?.reason || toolCall?.reason || 'Operasi sensitif / berdampak sistem'}\x1b[0m\n`);
+  process.stdout.write(`\x1b[33m╰────────────────────────────────────────────────────────────────────────\x1b[0m\n`);
+
+  const choice = await selectOptionInteractive({
+    title: 'Pilih tindakan Anda:',
+    items: [
+      { label: '✓ Setuju (Lanjutkan)', detail: 'Izinkan operasi ini dieksekusi', value: true },
+      { label: '✗ Tolak (Batalkan)', detail: 'Batalkan operasi ini', value: false },
+    ],
+    signal,
+  });
+
+  if (choice && choice.value === true) {
+    process.stdout.write(`  \x1b[32m✓ Anda memilih: Setuju (Lanjutkan)\x1b[0m\n\n`);
+    return true;
+  } else {
+    process.stdout.write(`  \x1b[31m✗ Anda memilih: Tolak (Batalkan)\x1b[0m\n\n`);
     return false;
   }
 }
@@ -140,6 +498,7 @@ function loadSyncedConfig() {
   let selectedModel = 'orion';
   let reasoningTier = 'medium';
   let apiKey = '';
+  let agentMode = true;
 
   try {
     if (fs.existsSync(providersPath)) {
@@ -147,6 +506,7 @@ function loadSyncedConfig() {
       providers = data.providers || [];
       if (data.selectedModel) selectedModel = data.selectedModel;
       if (data.reasoningTier) reasoningTier = data.reasoningTier;
+      if (data.agentMode !== undefined) agentMode = data.agentMode;
     }
   } catch {}
 
@@ -196,10 +556,10 @@ function loadSyncedConfig() {
     ];
   }
 
-  return { providers, selectedModel, reasoningTier, apiKey };
+  return { providers, selectedModel, reasoningTier, apiKey, agentMode };
 }
 
-function saveSyncedConfig({ providers, selectedModel, reasoningTier, apiKey }) {
+function saveSyncedConfig({ providers, selectedModel, reasoningTier, apiKey, agentMode }) {
   ensureConfigDir();
   try {
     let existingData = {};
@@ -232,6 +592,7 @@ function saveSyncedConfig({ providers, selectedModel, reasoningTier, apiKey }) {
       providers: updatedProviders,
       selectedModel: selectedModel || existingData.selectedModel || 'orion',
       reasoningTier: reasoningTier || existingData.reasoningTier || 'medium',
+      agentMode: agentMode !== undefined ? agentMode : (existingData.agentMode !== undefined ? existingData.agentMode : true),
       updatedAt: Date.now(),
     };
     fs.writeFileSync(providersPath, JSON.stringify(updated, null, 2), 'utf8');
@@ -430,20 +791,25 @@ export async function showSplashScreen() {
 }
 
 // Print minimalist chat header (Pi style)
-export function printHeader(modelId, tier, hasKey = false) {
+export function printHeader(modelId, tier, hasKey = false, activeSessionTitle = null) {
   console.log(`${c.brightCyan}${c.bold}🌌 ORION AGENT TERMINAL CHAT${c.reset} ${c.dim}(Pi-Engine v1.1.0)${c.reset}`);
+  if (activeSessionTitle) {
+    console.log(`${c.gray}Sesi Aktif:${c.reset} ${c.brightWhite}${c.bold}${activeSessionTitle}${c.reset} ${c.dim}• Tersinkron dengan View (/session)${c.reset}`);
+  }
   console.log(
     `${c.gray}Pintasan:${c.reset} ${c.yellow}Ctrl+L${c.reset} ${c.dim}(Model)${c.reset} · ${c.yellow}Shift+Tab${c.reset} ${c.dim}(Reasoning)${c.reset} · ${c.yellow}!cmd${c.reset} ${c.dim}(Shell)${c.reset} · ${c.yellow}/${c.reset} ${c.dim}(Perintah)${c.reset}`
   );
 }
 
 const COMMAND_ITEMS = [
+  { label: 'agent', detail: 'Toggle mode AI Agent otonom (tool call & terminal)', action: 'agent' },
   { label: 'reload', detail: 'Muat ulang konfigurasi, provider & environment (/reload)', action: 'reload' },
   { label: 'settings', detail: 'Buka menu pengaturan & preferensi aktif', action: 'settings' },
   { label: 'model', detail: '<provider/model> — Pilih & beralih model AI (Ctrl+L)', action: 'model' },
   { label: 'thinking', detail: 'Atur tingkat penalaran (low/medium/high, Shift+Tab)', action: 'thinking' },
   { label: 'tier', detail: 'Alias /thinking untuk tingkat penalaran', action: 'tier' },
-  { label: 'session', detail: 'Lihat info sesi, pesan riwayat & estimasi token', action: 'session' },
+  { label: 'session', detail: 'Kelola & alihkan sesi obrolan (tersinkron dengan View)', action: 'session' },
+  { label: 'sessions', detail: 'Pilih & beralih sesi obrolan aktif dari View/CLI', action: 'session' },
   { label: 'copy', detail: 'Salin respon asisten terakhir ke clipboard', action: 'copy' },
   { label: 'compact', detail: 'Kompak riwayat percakapan untuk menghemat token', action: 'compact' },
   { label: 'hotkeys', detail: 'Daftar pintasan keyboard (Ctrl+L, Shift+Tab, !cmd)', action: 'hotkeys' },
@@ -452,7 +818,7 @@ const COMMAND_ITEMS = [
   { label: 'logout', detail: 'Hapus kredensial API Key yang tersimpan', action: 'logout' },
   { label: 'key', detail: 'Alias /login untuk memasukkan API Key', action: 'key' },
   { label: 'clear', detail: 'Bersihkan layar terminal obrolan', action: 'clear' },
-  { label: 'new', detail: 'Mulai sesi obrolan baru & reset riwayat', action: 'new' },
+  { label: 'new', detail: 'Mulai sesi obrolan baru & reset riwayat (tersinkron ke View)', action: 'new' },
   { label: 'reset', detail: 'Reset riwayat percakapan sesi', action: 'reset' },
   { label: 'help', detail: 'Tampilkan panduan bantuan semua perintah', action: 'help' },
   { label: 'exit', detail: 'Keluar dari sesi terminal obrolan (/quit, /q)', action: 'exit' },
@@ -465,7 +831,7 @@ const COMMAND_ITEMS = [
  * - Pi status footer bar showing cwd (~), active model/tier, context token estimate, and API key status
  * - Fast keyboard shortcuts: Ctrl+L (Model), Shift+Tab (Tier), !cmd (Shell), Tab (Autocomplete)
  */
-function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, userApiKey, history }) {
+function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, userApiKey, history, isAgentMode, sessionTitle = null, skillCommands = [] }) {
   return new Promise((resolve) => {
     let buffer = '';
     let menuOpen = false;
@@ -473,6 +839,20 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
     let scrollOffset = 0;
     let isFirstRender = true;
     let filteredItems = [];
+
+    const dynamicCommandItems = [
+      ...COMMAND_ITEMS,
+      ...(skillCommands || []).map((sc) => ({
+        label: sc.command.replace(/^\//, ''),
+        detail: sc.argsHint ? `${sc.argsHint} — ${sc.description}` : sc.description,
+        action: sc.command.replace(/^\//, ''),
+        badge: sc.skillName || sc.skillId || 'Skill',
+        isSkill: true,
+        skillId: sc.skillId,
+        rawCommand: sc.command,
+        argsHint: sc.argsHint,
+      })),
+    ];
 
     const wasRaw = process.stdin.isRaw;
     if (process.stdin.isTTY) {
@@ -515,10 +895,17 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
           const realIdx = scrollOffset + idx;
           const isSelected = realIdx === menuIndex;
           const cursor = isSelected ? `\x1b[36m→ \x1b[0m` : `  `;
+
+          const rawLabel = `/${item.label}`;
+          const badgeText = item.badge ? ` \x1b[38;5;141m[${item.badge}]\x1b[0m` : '';
+          const labelWidth = 18;
+          const displayLabel = rawLabel.length > labelWidth ? rawLabel : rawLabel.padEnd(labelWidth);
           const label = isSelected
-            ? `\x1b[1m\x1b[37m${item.label.padEnd(14)}\x1b[0m`
-            : `\x1b[37m${item.label.padEnd(14)}\x1b[0m`;
-          const maxDetailLen = Math.max(10, width - 20);
+            ? `\x1b[1m\x1b[36m${displayLabel}\x1b[0m`
+            : `\x1b[37m${displayLabel}\x1b[0m`;
+
+          const badgeLen = item.badge ? item.badge.length + 3 : 0;
+          const maxDetailLen = Math.max(10, width - labelWidth - badgeLen - 6);
           const detailText = item.detail
             ? item.detail.length > maxDetailLen
               ? item.detail.slice(0, maxDetailLen - 1) + '…'
@@ -526,7 +913,7 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
             : '';
           const detail = detailText ? `\x1b[90m${detailText}\x1b[0m` : '';
 
-          out += `${cursor}${label} ${detail}\x1b[K\n`;
+          out += `${cursor}${label}${badgeText} ${detail}\x1b[K\n`;
           linesBelow++;
         });
 
@@ -562,8 +949,11 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
       out += `\x1b[90m${leftTokens}${' '.repeat(gap2)}${keyColor}${keyLabel}\x1b[0m\x1b[K\n`;
       linesBelow++;
 
-      // Pi Status Footer Line 3: agent status indicator (no trailing newline so cursor stays on footer row)
-      out += `\x1b[90m● 🌌 orion-core: \x1b[33m⚡ READY\x1b[0m\x1b[K`;
+      // Pi Status Footer Line 3: agent status indicator & active session (no trailing newline so cursor stays on footer row)
+      const agentBadge = isAgentMode ? `\x1b[36m⚡ AGENT\x1b[0m` : `\x1b[90m💬 Chat\x1b[0m`;
+      const shortTitle = sessionTitle ? (sessionTitle.length > 22 ? sessionTitle.slice(0, 21) + '…' : sessionTitle) : '';
+      const sessionBadge = shortTitle ? ` \x1b[38;5;240m│\x1b[0m \x1b[38;5;244mSesi: ${shortTitle}\x1b[0m` : '';
+      out += `\x1b[90m● 🌌 orion-core: ${agentBadge}${sessionBadge}\x1b[K`;
 
       // Calculate exact line offset dynamically from rendered output
       const parts = out.split('\n');
@@ -591,13 +981,15 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
 
       const query = buffer.slice(1).trim().toLowerCase();
       if (!query) {
-        filteredItems = COMMAND_ITEMS;
+        filteredItems = dynamicCommandItems;
       } else {
-        filteredItems = COMMAND_ITEMS.filter(
+        filteredItems = dynamicCommandItems.filter(
           (item) =>
             item.label.toLowerCase().startsWith(query) ||
             item.action.toLowerCase().startsWith(query) ||
-            item.label.toLowerCase().includes(query)
+            item.label.toLowerCase().includes(query) ||
+            (item.badge && item.badge.toLowerCase().includes(query)) ||
+            (item.detail && item.detail.toLowerCase().includes(query))
         );
       }
 
@@ -702,6 +1094,15 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
             resolve({ type: 'open_tier_menu' });
             return;
           }
+          if (selected.isSkill) {
+            resolve({
+              type: 'skill_command',
+              raw: `/${selected.label}`,
+              action: selected.action,
+              skillId: selected.skillId,
+            });
+            return;
+          }
           resolve({ type: 'command', action: selected.action, raw: `/${selected.action}` });
           return;
         }
@@ -720,12 +1121,11 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
           const cmdName = parts[0].toLowerCase();
           const arg = parts.slice(1).join(' ').trim();
 
-          const matchedCmd = COMMAND_ITEMS.find(
+          const matchedCmd = dynamicCommandItems.find(
             (c) =>
-              `/${c.label}` === cmdName ||
-              `/${c.label}`.startsWith(cmdName) ||
-              c.action === cmdName.slice(1) ||
-              c.action.startsWith(cmdName.slice(1))
+              `/${c.label.toLowerCase()}` === cmdName ||
+              `/${c.action.toLowerCase()}` === cmdName ||
+              c.action.toLowerCase() === cmdName.slice(1)
           );
 
           if (matchedCmd) {
@@ -735,6 +1135,15 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
             }
             if ((matchedCmd.action === 'tier' || matchedCmd.action === 'thinking') && !arg) {
               resolve({ type: 'open_tier_menu' });
+              return;
+            }
+            if (matchedCmd.isSkill) {
+              resolve({
+                type: 'skill_command',
+                raw: text,
+                action: matchedCmd.action,
+                skillId: matchedCmd.skillId,
+              });
               return;
             }
             resolve({
@@ -770,7 +1179,7 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
       if (key === '\t') {
         if (menuOpen && filteredItems.length > 0) {
           const selected = filteredItems[menuIndex];
-          buffer = `/${selected.label}`;
+          buffer = `/${selected.label} `;
           updateSuggestions();
         }
         return;
@@ -797,7 +1206,7 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
 }
 
 // Main Interactive Terminal Chat Launcher
-export async function startTerminalChat() {
+export async function startTerminalChat({ sessionId = null, forceNew = false, openSessionPicker = false } = {}) {
   await showSplashScreen();
 
   // Load configuration synchronized from Web app / ~/.orion/providers.json
@@ -805,17 +1214,59 @@ export async function startTerminalChat() {
   let currentModel = syncedConfig.selectedModel || 'orion';
   let reasoningTier = syncedConfig.reasoningTier || 'medium';
   let userApiKey = syncedConfig.apiKey || '';
-  let history = [];
+  let isAgentMode = syncedConfig.agentMode !== undefined ? syncedConfig.agentMode : true;
+
+  // Load or initialize synced chat session from ~/.orion/sessions.json
+  let currentSession = null;
+  if (forceNew) {
+    currentSession = createSession({ title: 'Sesi Terminal' });
+  } else if (sessionId) {
+    currentSession = getSessionById(sessionId) || createSession({ title: 'Sesi Terminal' });
+  } else {
+    currentSession = getActiveSession() || createSession({ title: 'Percakapan Perdana' });
+  }
+
+  setActiveSessionId(currentSession.id);
+  let history = (currentSession.messages || []).map((m) => ({
+    role: m.role,
+    content: m.content,
+  }));
   let isGenerating = false;
   let activeAbortController = null;
 
-  printHeader(currentModel, reasoningTier, !!userApiKey);
+  printHeader(currentModel, reasoningTier, !!userApiKey, currentSession.title);
+
+  // Active session status banner
+  console.log(`\n${c.dim}╭────────────────────────────────────────────────────────────────────────╮${c.reset}`);
+  console.log(`  ${c.brightCyan}🌌 Sesi Aktif:${c.reset} ${c.bold}${c.white}${currentSession.title || 'Percakapan'}${c.reset} ${c.dim}(${history.length} pesan tersinkron)${c.reset}`);
+  console.log(`  ${c.dim}Status: Tersinkronisasi dua arah dengan antarmuka Web View${c.reset}`);
+  if (history.length > 0) {
+    const lastUser = [...history].reverse().find((m) => m.role === 'user');
+    const lastAsst = [...history].reverse().find((m) => m.role === 'assistant');
+    if (lastUser) {
+      const userSnippet = lastUser.content.length > 55 ? lastUser.content.slice(0, 55) + '…' : lastUser.content;
+      console.log(`  ${c.gray}Pesan Terakhir (User):${c.reset} ${c.dim}${userSnippet.replace(/[\r\n]+/g, ' ')}${c.reset}`);
+    }
+    if (lastAsst) {
+      const asstSnippet = lastAsst.content.length > 55 ? lastAsst.content.slice(0, 55) + '…' : lastAsst.content;
+      console.log(`  ${c.gray}Pesan Terakhir (AI):  ${c.reset} ${c.dim}${asstSnippet.replace(/[\r\n]+/g, ' ')}${c.reset}`);
+    }
+  } else {
+    console.log(`  ${c.gray}💡 Ketik pertanyaan atau gunakan ${c.yellow}/session${c.gray} untuk beralih sesi obrolan.${c.reset}`);
+  }
+  console.log(`${c.dim}╰────────────────────────────────────────────────────────────────────────╯${c.reset}\n`);
 
   // Push prompt area to the bottom of the terminal window
   const termRows = process.stdout.rows || 24;
-  const padLines = Math.max(0, termRows - 10);
+  const padLines = Math.max(0, termRows - 12);
   if (padLines > 0) {
     process.stdout.write('\n'.repeat(padLines));
+  }
+
+  let queuedUserMessage = '';
+
+  if (openSessionPicker) {
+    await handleSessionMenuInteractive();
   }
 
   while (true) {
@@ -830,14 +1281,48 @@ export async function startTerminalChat() {
     if (freshConfig.reasoningTier && freshConfig.reasoningTier !== reasoningTier) {
       reasoningTier = freshConfig.reasoningTier;
     }
+    if (freshConfig.agentMode !== undefined && freshConfig.agentMode !== isAgentMode) {
+      isAgentMode = freshConfig.agentMode;
+    }
 
-    const inputResult = await readInteractivePrompt({
-      syncedConfig: freshConfig,
-      currentModel,
-      reasoningTier,
-      userApiKey,
-      history,
-    });
+    // Refresh current session from disk if modified by web view
+    try {
+      const freshActive = getActiveSession();
+      if (freshActive && freshActive.id !== currentSession.id) {
+        currentSession = freshActive;
+        history = (freshActive.messages || []).map((m) => ({ role: m.role, content: m.content }));
+      } else {
+        const freshSession = getSessionById(currentSession.id);
+        if (freshSession) {
+          currentSession = freshSession;
+          if ((freshSession.messages || []).length !== history.length) {
+            history = freshSession.messages.map((m) => ({ role: m.role, content: m.content }));
+          }
+        }
+      }
+    } catch {}
+
+    let inputResult;
+    if (queuedUserMessage) {
+      inputResult = { type: 'chat', text: queuedUserMessage };
+      queuedUserMessage = '';
+    } else {
+      let skillCommands = [];
+      try {
+        skillCommands = await getSkillCommands(process.cwd());
+      } catch {}
+
+      inputResult = await readInteractivePrompt({
+        syncedConfig: freshConfig,
+        currentModel,
+        reasoningTier,
+        userApiKey,
+        history,
+        isAgentMode,
+        sessionTitle: currentSession.title,
+        skillCommands,
+      });
+    }
 
     if (inputResult.type === 'empty') {
       continue;
@@ -925,12 +1410,28 @@ export async function startTerminalChat() {
       const result = runShellCommand(cmdToRun, isSilent);
 
       if (!isSilent && result.output) {
+        const shellMsg = `[Hasil Eksekusi Terminal \`${cmdToRun}\`]:\n\`\`\`\n${result.output.trim()}\n\`\`\``;
         history.push({
           role: 'user',
-          content: `[Hasil Eksekusi Terminal \`${cmdToRun}\`]:\n\`\`\`\n${result.output.trim()}\n\`\`\``,
+          content: shellMsg,
         });
+        try {
+          const { session: sessAfterShell } = appendMessageToSession(currentSession.id, {
+            role: 'user',
+            content: shellMsg,
+          });
+          if (sessAfterShell) currentSession = sessAfterShell;
+        } catch {}
         console.log(`\n${c.green}✓ Output terminal disertakan ke memori percakapan AI.${c.reset}\n`);
       }
+      continue;
+    }
+
+    // Skill Command execution from menu or typed slash command
+    if (inputResult.type === 'skill_command') {
+      const cmdText = inputResult.raw;
+      console.log(`\n${c.bold}${c.brightCyan}✦ Menjalankan Perintah Skill [${inputResult.skillId || 'Skill'}]:${c.reset} ${c.yellow}${cmdText}${c.reset}\n`);
+      queuedUserMessage = cmdText;
       continue;
     }
 
@@ -966,8 +1467,32 @@ export async function startTerminalChat() {
       isGenerating = true;
       activeAbortController = new AbortController();
 
+      const wasStdinRaw = process.stdin.isRaw;
+      if (process.stdin.isTTY) {
+        process.stdin.setRawMode(true);
+        process.stdin.resume();
+      }
+
+      const onAbortKey = (buf) => {
+        const key = buf.toString();
+        if (key === '\u001b' || key === '\x1b' || key === '\u0003') {
+          if (activeAbortController) {
+            activeAbortController.abort();
+          }
+        }
+      };
+
+      process.stdin.on('data', onAbortKey);
+
       const userMessage = inputResult.text;
       history.push({ role: 'user', content: userMessage });
+      try {
+        const { session: sessAfterUser } = appendMessageToSession(currentSession.id, {
+          role: 'user',
+          content: userMessage,
+        });
+        if (sessAfterUser) currentSession = sessAfterUser;
+      } catch {}
 
       // Pi Chat UI: Full-width, vertically padded container card (Screenshot exact match)
       const termCols = Math.max(30, (process.stdout.columns || 80) - 2);
@@ -992,16 +1517,9 @@ export async function startTerminalChat() {
 
       process.stdout.write(userBox);
 
-      // Pi Working Spinner (Screenshot 4)
-      const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-      let spinnerIdx = 0;
-      let hasReceivedFirstChunk = false;
-      const spinnerTimer = setInterval(() => {
-        if (!hasReceivedFirstChunk) {
-          process.stdout.write(`\r\x1b[K\x1b[38;5;39m${spinnerFrames[spinnerIdx]}\x1b[0m \x1b[38;5;244mWorking...\x1b[0m`);
-          spinnerIdx = (spinnerIdx + 1) % spinnerFrames.length;
-        }
-      }, 80);
+      // Pi-Style Dynamic Working Spinner
+      const spinner = new AgentSpinner();
+      spinner.start('Working...');
 
       let assistantReply = '';
       let inThinking = false;
@@ -1014,29 +1532,80 @@ export async function startTerminalChat() {
       let streamWordBuffer = '';
       let lastChar = '';
 
-      const SQUISHED_WORDS = [
-        [/Senangbertemudengan/gi, 'Senang bertemu dengan'],
-        [/bertemudengan/gi, 'bertemu dengan'],
-        [/Senangbertemu/gi, 'Senang bertemu'],
-        [/siapmembantu/gi, 'siap membantu'],
-        [/asistenkecerdasan/gi, 'asisten kecerdasan'],
-        [/buatanyang/gi, 'buatan yang'],
-        [/kecerdasanbuatan/gi, 'kecerdasan buatan'],
-        [/yangsiap/gi, 'yang siap'],
-        [/adalahasisten/gi, 'adalah asisten'],
-        [/terimakasih/gi, 'terima kasih'],
-      ];
-
       function cleanIndonesianSpelling(text) {
-        let res = text;
-        // 1. Lowercase directly followed by Uppercase (e.g. "membantuAnda" -> "membantu Anda", "SayaORION" -> "Saya ORION")
-        res = res.replace(/([a-z\u00C0-\u017F])([A-Z])/g, '$1 $2');
-        // 2. Punctuation followed by letter/number (e.g. "ini?Jangan" -> "ini? Jangan")
-        res = res.replace(/([?!.,;:])([a-zA-Z0-9\u00C0-\u017F])/g, '$1 $2');
+        if (!text || typeof text !== 'string') return text || '';
 
-        for (const [re, repl] of SQUISHED_WORDS) {
+        // 1. Protect inline code `...`
+        const codePlaceholders = [];
+        let res = text.replace(/`([^`\n]+)`/g, (match) => {
+          codePlaceholders.push(match);
+          return `__INLINE_CODE_${codePlaceholders.length - 1}__`;
+        });
+
+        // 2. Fix glued uppercase words / abbreviations (e.g. "YAuntukmelanjutkan" -> "YA untuk melanjutkan")
+        res = res.replace(/([A-Z]{2,})(untuk|dan|atau|jika|bila|pada|ke|di)/g, '$1 $2');
+        res = res.replace(/\b(untuk|dan|atau|jika|bila)(melanjutkan|membatalkan|menghapus|membuat|mengedit|menulis|membaca|menjalankan)\b/gi, '$1 $2');
+
+        // 3. Lowercase directly followed by Uppercase (e.g. "membantuAnda" -> "membantu Anda")
+        res = res.replace(/([a-z\u00C0-\u017F])([A-Z])/g, '$1 $2');
+
+        // 4. Glued Indonesian modal/verbs/adverbs (e.g. "akanmenghapus", "yakiningin", "tidakdapat")
+        const modalPattern = '\\b(siap|dapat|bisa|akan|telah|sudah|sedang|ingin|harus|perlu|boleh|tidak|belum|bukan|jangan|yakin)';
+        const verbPattern = '(membantu|menjawab|menjelaskan|menganalisis|merancang|menyelesaikan|memberikan|menemukan|melakukan|bekerja|bantu|pakai|gunakan|bicara|dengar|membuat|menghapus|hapus|buat|baca|edit|tulis|buka|tutup|jalankan|ingin|dapat|bisa|ada|kembali)';
+        res = res.replace(new RegExp(modalPattern + verbPattern + '\\b', 'gi'), '$1 $2');
+
+        // 5. Glued relative pronoun "yang", prepositions "dengan", "untuk", etc.
+        res = res.replace(/\byang([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'yang $1');
+        res = res.replace(/\bdengan([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'dengan $1');
+        res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,})dengan\b/gi, '$1 dengan');
+        res = res.replace(/\buntuk([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'untuk $1');
+        res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,})untuk\b/gi, '$1 untuk');
+        res = res.replace(/\badalah([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'adalah $1');
+        res = res.replace(/\bsecara([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'secara $1');
+
+        // 6. Prepositions squished with nouns
+        const prepPattern = '\\b(dari|ke|pada|untuk|dengan|tanpa|dalam|hingga|sampai|serta|sebagai)';
+        const nounPattern = '(penjelasan|perencanaan|kebutuhan|analisis|pemecahan|pertanyaan|pembuatan|pengembangan|pembelajaran|penggunaan|pelaksanaan|pekerjaan|bantuan|solusi|informasi|tugas|layanan|proses|topik|aspek|bidang|cara|aturan|keselamatan|anda|kamu|kita|saya|mereka|siapa|apa|semua|file|folder|berkas)';
+        res = res.replace(new RegExp(prepPattern + nounPattern + '\\b', 'gi'), '$1 $2');
+
+        // 7. Punctuation spacing - DO NOT break file extensions!
+        res = res.replace(/([?!,;])([a-zA-Z0-9\u00C0-\u017F])/g, '$1 $2');
+        res = res.replace(/(?<!https?|ftp|file|ws|wss):([a-zA-Z0-9\u00C0-\u017F])/g, ': $1');
+        // Only space dot after word if followed by CAPITAL letter (new sentence)
+        res = res.replace(/(?<=[a-zA-Z0-9\u00C0-\u017F])\.([A-Z\u00C0-\u017F])/g, '. $1');
+
+        // Heal accidentally spaced file extensions (e.g. "test. txt" -> "test.txt")
+        res = res.replace(/\.\s+(txt|html|css|js|jsx|ts|tsx|json|md|py|sh|png|jpg|jpeg|gif|svg|zip|tar|gz)\b/gi, '.$1');
+
+        // 8. Specific known squished phrases
+        const SQUISHED_MAP = [
+          [/\bSenangbertemudengan\b/gi, 'Senang bertemu dengan'],
+          [/\bbertemudengan\b/gi, 'bertemu dengan'],
+          [/\bSenangbertemu\b/gi, 'Senang bertemu'],
+          [/\bsiapmembantu\b/gi, 'siap membantu'],
+          [/\bterimakasih\b/gi, 'terima kasih'],
+          [/\basistenkecerdasan\b/gi, 'asisten kecerdasan'],
+          [/\bkecerdasanbuatan\b/gi, 'kecerdasan buatan'],
+          [/\bbuatanyang\b/gi, 'buatan yang'],
+          [/\byangsiap\b/gi, 'yang siap'],
+          [/\badalahasisten\b/gi, 'adalah asisten'],
+          [/\bBerderti\b/gi, 'Berdasarkan'],
+          [/\bBerdasaraturan\b/gi, 'Berdasarkan aturan'],
+          [/\baturankeselamatan\b/gi, 'aturan keselamatan'],
+          [/\btidakdapat\b/gi, 'tidak dapat'],
+          [/\byakiningin\b/gi, 'yakin ingin'],
+          [/\bakanmenghapus\b/gi, 'akan menghapus'],
+        ];
+
+        for (const [re, repl] of SQUISHED_MAP) {
           res = res.replace(re, repl);
         }
+
+        // Restore placeholders
+        codePlaceholders.forEach((code, idx) => {
+          res = res.replace(`__INLINE_CODE_${idx}__`, code);
+        });
+
         return res;
       }
 
@@ -1175,12 +1744,19 @@ export async function startTerminalChat() {
         return out;
       }
 
+      const streamer = new SmoothTextStreamer({
+        signal: activeAbortController.signal,
+        minDelay: 4,
+        maxDelay: 12,
+      });
+
       function flushWordBuffer(force = false) {
         if (!streamWordBuffer) return;
 
         if (force) {
           const formatted = formatStreamChunk(streamWordBuffer);
-          process.stdout.write(inThinking ? `${c.gray}${formatted}${c.reset}` : formatted);
+          const toWrite = inThinking ? `${c.gray}${formatted}${c.reset}` : formatted;
+          streamer.write(toWrite);
           streamWordBuffer = '';
           return;
         }
@@ -1195,107 +1771,371 @@ export async function startTerminalChat() {
           const toEmit = streamWordBuffer.slice(0, lastBoundary + 1);
           streamWordBuffer = streamWordBuffer.slice(lastBoundary + 1);
           const formatted = formatStreamChunk(toEmit);
-          process.stdout.write(inThinking ? `${c.gray}${formatted}${c.reset}` : formatted);
+          const toWrite = inThinking ? `${c.gray}${formatted}${c.reset}` : formatted;
+          streamer.write(toWrite);
         }
       }
 
-      try {
-        await new Promise((resolveStream, rejectStream) => {
-          streamChatCompletion({
-            message: userMessage,
-            history: history.slice(0, -1),
-            model: currentModel,
-            reasoningTier: reasoningTier,
-            customProvider: activeCustomProvider,
-            orionApiKey: userApiKey,
-            signal: activeAbortController.signal,
-            onChunk: (chunk) => {
-              if (!hasReceivedFirstChunk) {
-                hasReceivedFirstChunk = true;
-                clearInterval(spinnerTimer);
-                process.stdout.write('\r\x1b[K'); // Clears the Working... line completely
-              }
+      let liveThoughtPreview = '';
 
-              assistantReply += chunk;
+      if (isAgentMode) {
+        try {
+          await new Promise((resolveAgent, rejectAgent) => {
+            runAgentLoop({
+              message: userMessage,
+              history: history.slice(0, -1),
+              model: currentModel,
+              reasoningTier: reasoningTier,
+              customProvider: activeCustomProvider,
+              orionApiKey: userApiKey,
+              workspaceRoot: process.cwd(),
+              signal: activeAbortController.signal,
+              autoApprove: false,
+              onEvent: async (event) => {
+                if (event.type === 'agent_step') {
+                  liveThoughtPreview = '';
+                  spinner.update(`[Tahap ${event.step}/${event.maxSteps}] Menganalisis & merancang tindakan...`);
+                } else if (event.type === 'agent_thought_chunk') {
+                  const chunkTxt = (event.chunk || '').replace(/\s+/g, ' ');
+                  if (chunkTxt) {
+                    liveThoughtPreview = (liveThoughtPreview + chunkTxt).slice(-50).trim();
+                    spinner.update(`✦ ${liveThoughtPreview}...`, false);
+                  }
+                } else if (event.type === 'agent_thought') {
+                  // User request: "penalaran agent itu muncul sesaat aja kalo sudah selesai dia akan hilang"
+                  // Show thought dynamically in the temporary spinner line, then clear on next phase
+                  const th = (event.thought || event.content || '').replace(/\s+/g, ' ').trim();
+                  if (th) {
+                    spinner.update(`✦ ${th.slice(0, 50)}...`, false);
+                  }
+                } else if (event.type === 'tool_call_start') {
+                  liveThoughtPreview = '';
+                  spinner.clear();
+                  await streamer.flush();
+                  const rawTool = event.tool || event.toolCall?.name || 'tool';
+                  const toolArgs = event.args || event.toolCall?.args || {};
+                  const stepLabel = event.toolIndex && event.totalTools ? `[${event.toolIndex}/${event.totalTools}] ` : '';
+                  
+                  // Render Pi-style call header
+                  if (rawTool === 'bash' || rawTool === 'run_command') {
+                    const cmd = toolArgs.command || toolArgs.cmd || '...';
+                    process.stdout.write(`\n\x1b[38;5;75m⚡ Tool ${stepLabel}\x1b[1m\x1b[37m$ ${cmd}\x1b[0m\n`);
+                  } else if (rawTool === 'write' || rawTool === 'write_file') {
+                    const p = toolArgs.path || toolArgs.file_path || '...';
+                    process.stdout.write(`\n\x1b[38;5;75m⚡ Tool ${stepLabel}\x1b[1m\x1b[37mwrite\x1b[0m \x1b[38;5;81m${p}\x1b[0m\n`);
+                  } else if (rawTool === 'read' || rawTool === 'read_file') {
+                    const p = toolArgs.path || '...';
+                    process.stdout.write(`\n\x1b[38;5;75m⚡ Tool ${stepLabel}\x1b[1m\x1b[37mread\x1b[0m \x1b[38;5;81m${p}\x1b[0m\n`);
+                  } else if (rawTool === 'edit' || rawTool === 'edit_file') {
+                    const p = toolArgs.path || '...';
+                    process.stdout.write(`\n\x1b[38;5;75m⚡ Tool ${stepLabel}\x1b[1m\x1b[37medit\x1b[0m \x1b[38;5;81m${p}\x1b[0m\n`);
+                  } else if (rawTool === 'ls' || rawTool === 'list_dir') {
+                    const p = toolArgs.path || '.';
+                    process.stdout.write(`\n\x1b[38;5;75m⚡ Tool ${stepLabel}\x1b[1m\x1b[37mls\x1b[0m \x1b[38;5;81m${p}\x1b[0m\n`);
+                  } else {
+                    const target = toolArgs.path || toolArgs.command || toolArgs.query || (Object.keys(toolArgs).length ? JSON.stringify(toolArgs) : '');
+                    process.stdout.write(`\n\x1b[38;5;75m⚡ Tool ${stepLabel}\x1b[1m\x1b[37m${rawTool}\x1b[0m ${target ? `\x1b[90m(${target})\x1b[0m` : ''}\n`);
+                  }
+                  spinner.start(`Menjalankan ${rawTool}...`);
+                } else if (event.type === 'tool_call_waiting_approval') {
+                  spinner.stop();
+                  await streamer.flush();
+                  const callId = event.toolCallId || event.toolCall?.id;
+                  const toolName = event.tool || event.toolCall?.name || 'tool';
+                  const toolArgs = event.args || event.toolCall?.args || {};
+                  const reason = event.reason || event.toolCall?.risk?.reason || 'Operasi sensitif';
+                  const approved = await promptCliApproval(
+                    { id: callId, name: toolName, args: toolArgs, risk: { reason } },
+                    activeAbortController?.signal
+                  );
+                  if (approved) {
+                    spinner.start(`Mengeksekusi ${toolName}...`);
+                  }
+                  resolveApproval(callId, approved);
+                } else if (event.type === 'tool_call_waiting_choice') {
+                  spinner.stop();
+                  await streamer.flush();
+                  const callId = event.toolCallId || event.toolCall?.id;
+                  const question = event.question || 'Silakan pilih salah satu opsi:';
+                  const options = event.options || [];
 
-              if (chunk.includes('<think>')) {
-                inThinking = true;
-                process.stdout.write(`\n${c.dim}${c.cyan}✦ Penalaran Internal (Thinking):${c.reset}\n${c.gray}`);
-                const afterTag = chunk.replace('<think>', '');
-                if (afterTag) {
-                  streamWordBuffer += afterTag;
+                  const items = options.map((opt, idx) => ({
+                    label: typeof opt === 'string' ? opt : opt.label || `Opsi ${idx + 1}`,
+                    detail: typeof opt === 'object' ? opt.detail : '',
+                    value: typeof opt === 'string' ? opt : opt.value || opt.label,
+                    index: idx,
+                  }));
+
+                  process.stdout.write(`\n\x1b[38;5;75m╭── 💬 PERTANYAAN DARI AI ──────────────────────────────────────\x1b[0m\n`);
+                  process.stdout.write(`\x1b[38;5;75m│\x1b[0m \x1b[1m\x1b[37m${question}\x1b[0m\n`);
+                  process.stdout.write(`\x1b[38;5;75m╰───────────────────────────────────────────────────────────────\x1b[0m\n`);
+
+                  const choice = await selectOptionInteractive({
+                    title: 'Gunakan ↑ / ↓ lalu Enter untuk memilih:',
+                    items,
+                    signal: activeAbortController?.signal,
+                  });
+
+                  if (choice) {
+                    process.stdout.write(`  \x1b[32m✓ Opsi terpilih:\x1b[0m \x1b[1m\x1b[37m${choice.label}\x1b[0m\n\n`);
+                    resolveApproval(callId, { selected: choice.label, index: choice.index });
+                  } else {
+                    process.stdout.write(`  \x1b[31m✗ Batal\x1b[0m\n\n`);
+                    resolveApproval(callId, { selected: 'Dibatalkan', index: -1, cancelled: true });
+                  }
+                } else if (event.type === 'tool_call_running') {
+                  spinner.start(`Menjalankan ${event.tool || 'tool'}...`);
+                } else if (event.type === 'tool_call_complete') {
+                  spinner.stop();
+                  await streamer.flush();
+                  const toolName = event.tool || event.toolCall?.name || 'tool';
+                  const isErr = event.isError || Boolean(event.result?.error);
+                  const isCommand = toolName === 'bash' || toolName === 'run_command';
+                  const tookText = (isCommand || (event.durationMs && event.durationMs > 500)) ? ` \x1b[38;5;244m(Took ${event.durationSec}s)\x1b[0m` : '';
+
+                  if (isErr) {
+                    process.stdout.write(`  \x1b[31m✗ Error:${tookText} ${event.result?.error || 'Eksekusi gagal'}\x1b[0m\n`);
+                  } else {
+                    const previewMsg = event.result?.message || (event.result?.path ? `File: ${event.result.path}` : '');
+                    process.stdout.write(`  \x1b[32m✓ Selesai\x1b[0m${tookText}${previewMsg ? ` \x1b[90m— ${previewMsg}\x1b[0m` : ''}\n`);
+                    
+                    // Pi-style snippet preview of written files
+                    if ((toolName === 'write' || toolName === 'write_file') && event.args?.content) {
+                      const lines = event.args.content.split('\n');
+                      const previewLines = lines.slice(0, 10);
+                      const snippet = previewLines.map((l, i) => `    \x1b[38;5;240m${String(i + 1).padStart(2)} |\x1b[0m \x1b[38;5;250m${l}\x1b[0m`).join('\n');
+                      process.stdout.write(`${snippet}\n`);
+                      if (lines.length > 10) {
+                        process.stdout.write(`    \x1b[38;5;242m... (${lines.length - 10} baris kode lagi tersimpan, total ${lines.length} baris)\x1b[0m\n`);
+                      }
+                    } else if ((toolName === 'bash' || toolName === 'run_command') && (event.result?.stdout || event.result?.output)) {
+                      const out = (event.result.stdout || event.result.output || '').trim();
+                      if (out) {
+                        const lines = out.split('\n');
+                        const previewLines = lines.slice(0, 8);
+                        const snippet = previewLines.map((l) => `    \x1b[38;5;244m${l}\x1b[0m`).join('\n');
+                        process.stdout.write(`${snippet}\n`);
+                        if (lines.length > 8) {
+                          process.stdout.write(`    \x1b[38;5;242m... (${lines.length - 8} baris output lagi)\x1b[0m\n`);
+                        }
+                      }
+                    } else if ((toolName === 'ls' || toolName === 'list_dir') && Array.isArray(event.result?.entries)) {
+                      const entries = event.result.entries;
+                      if (entries.length > 0) {
+                        const formattedEntries = entries.slice(0, 12).map((e) => {
+                          return e.type === 'directory' ? `\x1b[38;5;39m📁 ${e.name}/\x1b[0m` : `\x1b[38;5;250m📄 ${e.name}\x1b[0m`;
+                        }).join('  ');
+                        process.stdout.write(`    ${formattedEntries}\n`);
+                        if (entries.length > 12) {
+                          process.stdout.write(`    \x1b[38;5;242m... (+${entries.length - 12} file/folder lainnya)\x1b[0m\n`);
+                        }
+                      }
+                    } else if ((toolName === 'read' || toolName === 'read_file') && event.result?.content) {
+                      const lines = (event.result.content || '').split('\n');
+                      const previewLines = lines.slice(0, 6);
+                      const snippet = previewLines.map((l) => `    \x1b[38;5;244m${l}\x1b[0m`).join('\n');
+                      process.stdout.write(`${snippet}\n`);
+                      if (lines.length > 6) {
+                        process.stdout.write(`    \x1b[38;5;242m... (${lines.length - 6} baris lagi)\x1b[0m\n`);
+                      }
+                    }
+                  }
+                  spinner.start('AI sedang merancang langkah selanjutnya...');
+                } else if (event.type === 'tool_call_rejected') {
+                  spinner.stop();
+                  await streamer.flush();
+                  process.stdout.write(`  \x1b[31m✗ Ditolak pengguna\x1b[0m\n`);
+                  spinner.start('Mengevaluasi alternatif...');
+                } else if (event.type === 'tool_call_error') {
+                  spinner.stop();
+                  await streamer.flush();
+                  process.stdout.write(`  \x1b[31m✗ Error: ${event.error || event.message}\x1b[0m\n`);
+                  spinner.start('Melanjutkan...');
+                } else if (event.type === 'agent_step_complete') {
+                  spinner.stop();
+                  process.stdout.write(`  \x1b[38;5;39m↳ Selesai Tahap ${event.step}.\x1b[0m \x1b[90mLanjut ke Tahap ${event.step + 1}...\x1b[0m\n`);
+                  spinner.start(`[Tahap ${event.step + 1}] AI sedang merancang kode berikutnya...`);
+                } else if (event.type === 'agent_chunk') {
+                  spinner.stop();
+                  assistantReply += event.chunk;
+                  streamWordBuffer += event.chunk;
                   flushWordBuffer();
+                } else if (event.type === 'agent_done') {
+                  spinner.stop();
+                  const finalTxt = event.finalAnswer || event.content || '';
+                  if (finalTxt) {
+                    if (!assistantReply) {
+                      assistantReply = finalTxt;
+                      streamWordBuffer = finalTxt;
+                    } else if (finalTxt.startsWith(assistantReply)) {
+                      const remainder = finalTxt.slice(assistantReply.length);
+                      if (remainder) {
+                        assistantReply += remainder;
+                        streamWordBuffer += remainder;
+                      }
+                    } else if (!assistantReply.includes(finalTxt)) {
+                      assistantReply += (assistantReply.endsWith('\n') ? '' : '\n') + finalTxt;
+                      streamWordBuffer += (streamWordBuffer.endsWith('\n') ? '' : '\n') + finalTxt;
+                    }
+                  }
+                  flushWordBuffer(true);
+                  await streamer.flush();
+                  if (headingLevel > 0 || isBold || isInlineCode) {
+                    process.stdout.write('\x1b[0m');
+                    headingLevel = 0;
+                    isBold = false;
+                    isInlineCode = false;
+                  }
+                  resolveAgent();
                 }
-              } else if (chunk.includes('</think>')) {
-                inThinking = false;
-                process.stdout.write(`${c.reset}\n\n`);
-                const afterClose = chunk.replace('</think>', '');
-                if (afterClose) {
-                  streamWordBuffer += afterClose;
-                  flushWordBuffer();
-                }
-              } else {
-                streamWordBuffer += chunk;
-                flushWordBuffer();
-              }
-            },
-            onDone: () => {
-              if (!hasReceivedFirstChunk) {
-                hasReceivedFirstChunk = true;
-                clearInterval(spinnerTimer);
-                process.stdout.write('\r\x1b[K');
-              }
-              // Flush any remaining characters in streamWordBuffer
-              flushWordBuffer(true);
-
-              if (pendingSurrogate) {
-                process.stdout.write(pendingSurrogate);
-                pendingSurrogate = '';
-              }
-              if (headingLevel > 0 || isBold || isInlineCode) {
-                process.stdout.write('\x1b[0m');
-                headingLevel = 0;
-                isBold = false;
-                isInlineCode = false;
-              }
-              resolveStream();
-            },
-            onError: (err) => {
-              if (!hasReceivedFirstChunk) {
-                hasReceivedFirstChunk = true;
-                clearInterval(spinnerTimer);
-                process.stdout.write('\r\x1b[K');
-              }
-              if (isBold) {
-                process.stdout.write('\x1b[0m');
-                isBold = false;
-              }
-              rejectStream(err);
-            },
-          }).catch((err) => {
-            if (!hasReceivedFirstChunk) {
-              hasReceivedFirstChunk = true;
-              clearInterval(spinnerTimer);
-              process.stdout.write('\r\x1b[K');
-            }
-            rejectStream(err);
+              },
+            }).catch((err) => {
+              spinner.stop();
+              rejectAgent(err);
+            });
           });
-        });
 
-        history.push({ role: 'assistant', content: assistantReply });
-        process.stdout.write('\n\n');
-      } catch (err) {
-        if (err.name === 'AbortError') {
-          process.stdout.write(`\n${c.yellow}⚠️  Respon dihentikan oleh pengguna.${c.reset}\n\n`);
-        } else if (/api\s*key/i.test(err.message)) {
-          process.stdout.write(`\n${c.yellow}⚠️  ${err.message}${c.reset}\n${c.gray}Ketik ${c.cyan}/login <api_key_anda>${c.gray} untuk memasukkan API Key Orion.${c.reset}\n\n`);
-        } else {
-          process.stdout.write(`\n${c.red}❌ Terjadi kesalahan: ${err.message}${c.reset}\n\n`);
+          history.push({ role: 'assistant', content: assistantReply });
+          try {
+            const { session: sessAfterAsst } = appendMessageToSession(currentSession.id, {
+              role: 'assistant',
+              content: assistantReply,
+              model: currentModel,
+            });
+            if (sessAfterAsst) currentSession = sessAfterAsst;
+          } catch {}
+          process.stdout.write('\n\n');
+
+          // If AI asked a confirmation or selection question in text, offer interactive keyboard selector
+          const detectedChoice = detectChoiceOptions(assistantReply);
+          if (detectedChoice && !activeAbortController?.signal?.aborted) {
+            const picked = await selectOptionInteractive({
+              title: detectedChoice.title,
+              items: detectedChoice.items,
+              signal: activeAbortController?.signal,
+            });
+            if (picked) {
+              process.stdout.write(`  \x1b[32m✓ Opsi terpilih:\x1b[0m \x1b[1m\x1b[37m${picked.label}\x1b[0m\n\n`);
+              queuedUserMessage = picked.value;
+            }
+          }
+        } catch (err) {
+          spinner.stop();
+          if (err.name === 'AbortError' || /dihentikan oleh pengguna/i.test(err?.message) || activeAbortController?.signal?.aborted) {
+            process.stdout.write(`\n${c.yellow}⚠️  Respon dihentikan oleh pengguna (Esc).${c.reset}\n\n`);
+          } else if (/api\s*key/i.test(err.message)) {
+            process.stdout.write(`\n${c.yellow}⚠️  ${err.message}${c.reset}\n${c.gray}Ketik ${c.cyan}/login <api_key_anda>${c.gray} untuk memasukkan API Key Orion.${c.reset}\n\n`);
+          } else {
+            process.stdout.write(`\n${c.red}❌ Terjadi kesalahan: ${err.message}${c.reset}\n\n`);
+          }
+        } finally {
+          spinner.stop();
+          streamer.stop();
+          process.stdin.removeListener('data', onAbortKey);
+          if (process.stdin.isTTY) {
+            process.stdin.setRawMode(wasStdinRaw);
+          }
+          isGenerating = false;
+          activeAbortController = null;
         }
-      } finally {
-        clearInterval(spinnerTimer);
-        isGenerating = false;
-        activeAbortController = null;
+      } else {
+        try {
+          await new Promise((resolveStream, rejectStream) => {
+            streamChatCompletion({
+              message: userMessage,
+              history: history.slice(0, -1),
+              model: currentModel,
+              reasoningTier: reasoningTier,
+              customProvider: activeCustomProvider,
+              orionApiKey: userApiKey,
+              signal: activeAbortController.signal,
+              onChunk: (chunk) => {
+                spinner.stop();
+
+                assistantReply += chunk;
+
+                if (chunk.includes('<think>')) {
+                  inThinking = true;
+                  process.stdout.write(`\n${c.dim}${c.cyan}✦ Penalaran Internal (Thinking):${c.reset}\n${c.gray}`);
+                  const afterTag = chunk.replace('<think>', '');
+                  if (afterTag) {
+                    streamWordBuffer += afterTag;
+                    flushWordBuffer();
+                  }
+                } else if (chunk.includes('</think>')) {
+                  inThinking = false;
+                  process.stdout.write(`${c.reset}\n\n`);
+                  const afterClose = chunk.replace('</think>', '');
+                  if (afterClose) {
+                    streamWordBuffer += afterClose;
+                    flushWordBuffer();
+                  }
+                } else {
+                  streamWordBuffer += chunk;
+                  flushWordBuffer();
+                }
+              },
+              onDone: async () => {
+                spinner.stop();
+                // Flush any remaining characters in streamWordBuffer
+                flushWordBuffer(true);
+                await streamer.flush();
+
+                if (pendingSurrogate) {
+                  process.stdout.write(pendingSurrogate);
+                  pendingSurrogate = '';
+                }
+                if (headingLevel > 0 || isBold || isInlineCode) {
+                  process.stdout.write('\x1b[0m');
+                  headingLevel = 0;
+                  isBold = false;
+                  isInlineCode = false;
+                }
+                resolveStream();
+              },
+              onError: (err) => {
+                spinner.stop();
+                if (isBold) {
+                  process.stdout.write('\x1b[0m');
+                  isBold = false;
+                }
+                rejectStream(err);
+              },
+            }).catch((err) => {
+              spinner.stop();
+              rejectStream(err);
+            });
+          });
+
+          history.push({ role: 'assistant', content: assistantReply });
+          try {
+            const { session: sessAfterAsst } = appendMessageToSession(currentSession.id, {
+              role: 'assistant',
+              content: assistantReply,
+              model: currentModel,
+            });
+            if (sessAfterAsst) currentSession = sessAfterAsst;
+          } catch {}
+          process.stdout.write('\n\n');
+        } catch (err) {
+          spinner.stop();
+          if (err.name === 'AbortError' || /dihentikan oleh pengguna/i.test(err?.message) || activeAbortController?.signal?.aborted) {
+            process.stdout.write(`\n${c.yellow}⚠️  Respon dihentikan oleh pengguna (Esc).${c.reset}\n\n`);
+          } else if (/api\s*key/i.test(err.message)) {
+            process.stdout.write(`\n${c.yellow}⚠️  ${err.message}${c.reset}\n${c.gray}Ketik ${c.cyan}/login <api_key_anda>${c.gray} untuk memasukkan API Key Orion.${c.reset}\n\n`);
+          } else {
+            process.stdout.write(`\n${c.red}❌ Terjadi kesalahan: ${err.message}${c.reset}\n\n`);
+          }
+        } finally {
+          spinner.stop();
+          streamer.stop();
+          process.stdin.removeListener('data', onAbortKey);
+          if (process.stdin.isTTY) {
+            process.stdin.setRawMode(wasStdinRaw);
+          }
+          isGenerating = false;
+          activeAbortController = null;
+        }
       }
     }
   }
@@ -1309,6 +2149,16 @@ export async function startTerminalChat() {
     if (action === '/exit' || action === '/quit' || action === '/q') {
       console.log(`\n${c.brightCyan}✦ Terima kasih telah menggunakan Orion Agent. Sampai jumpa!${c.reset}\n`);
       return true; // exit loop
+    }
+
+    if (action === '/agent') {
+      if (arg === 'on') isAgentMode = true;
+      else if (arg === 'off') isAgentMode = false;
+      else isAgentMode = !isAgentMode;
+
+      saveSyncedConfig({ agentMode: isAgentMode });
+      console.log(`\n${c.bold}✦ Mode AI Agent (Pi-Style):${c.reset} ${isAgentMode ? `${c.green}AKTIF (Tool Calling: read, write, edit, delete, run_command)` : `${c.yellow}NONAKTIF (Mode Chat Standar)`}${c.reset}\n`);
+      return false;
     }
 
     if (action === '/reload' || action === '/rel') {
@@ -1341,14 +2191,18 @@ export async function startTerminalChat() {
       return false;
     }
 
-    if (action === '/session') {
+    function printSessionStats() {
       const userCount = history.filter((m) => m.role === 'user').length;
       const asstCount = history.filter((m) => m.role === 'assistant').length;
       const estTokens = Math.round(
         history.reduce((acc, m) => acc + (m.content ? m.content.length / 4 : 0), 0)
       );
-      console.log(`\n${c.bold}${c.brightCyan}✦ Informasi Sesi Obrolan Aktif (Pi Style):${c.reset}`);
-      console.log(`  ${c.gray}Folder Kerja:${c.reset}    ${c.white}${process.cwd()}${c.reset}`);
+      console.log(`\n${c.bold}${c.brightCyan}✦ Informasi Sesi Obrolan Aktif (Tersinkron dengan View):${c.reset}`);
+      console.log(`  ${c.gray}ID Sesi:${c.reset}         ${c.white}${currentSession.id}${c.reset}`);
+      console.log(`  ${c.gray}Judul Sesi:${c.reset}      ${c.bold}${c.green}${currentSession.title || 'Percakapan'}${c.reset}`);
+      console.log(`  ${c.gray}Folder Kerja:${c.reset}    ${c.white}${currentSession.projectPath || process.cwd()}${c.reset}`);
+      console.log(`  ${c.gray}Dibuat:${c.reset}          ${c.dim}${formatRelativeTime(currentSession.createdAt)}${c.reset}`);
+      console.log(`  ${c.gray}Diperbarui:${c.reset}      ${c.dim}${formatRelativeTime(currentSession.updatedAt || currentSession.createdAt)}${c.reset}`);
       console.log(`  ${c.gray}Model Aktif:${c.reset}     ${c.cyan}${currentModel}${c.reset}`);
       console.log(`  ${c.gray}Reasoning/Tier:${c.reset}  ${c.yellow}${reasoningTier}${c.reset}`);
       console.log(`  ${c.gray}Total Pesan:${c.reset}     ${c.white}${history.length}${c.reset} (${userCount} user, ${asstCount} asisten)`);
@@ -1356,6 +2210,120 @@ export async function startTerminalChat() {
       console.log(
         `  ${c.gray}Status API Key:${c.reset}   ${userApiKey ? `${c.green}● Tersambung${c.reset}` : `${c.yellow}○ Belum diatur (/login)${c.reset}`}\n`
       );
+    }
+
+    async function handleSessionMenuInteractive() {
+      const data = getAllSessions();
+      const sessions = data.sessions || [];
+
+      const sessionItems = sessions.map((s) => {
+        const msgCount = (s.messages || []).length;
+        const timeAgo = formatRelativeTime(s.updatedAt || s.createdAt);
+        const isCur = s.id === currentSession.id;
+        return {
+          label: s.title || 'Percakapan Tanpa Judul',
+          detail: `${msgCount} pesan • ${timeAgo}`,
+          badge: isCur ? 'Aktif' : '',
+          value: s.id,
+          action: 'select_session',
+          session: s,
+        };
+      });
+
+      const menuItems = [
+        ...sessionItems,
+        { label: '+ Mulai Percakapan Baru', detail: 'Buat sesi baru & reset riwayat (/new)', value: '__new__', action: 'new_session' },
+        { label: '📊 Info Statistik Sesi', detail: 'Token, rincian pesan & waktu sesi aktif', value: '__info__', action: 'info_session' },
+        { label: '🧹 Bersihkan Pesan Sesi Ini', detail: 'Hapus semua pesan dalam sesi aktif (/reset)', value: '__clear__', action: 'clear_session' },
+        { label: '🗑️  Hapus Sesi Aktif', detail: 'Hapus sesi ini dari View & CLI', value: '__delete__', action: 'delete_session' },
+      ];
+
+      const picked = await selectOptionInteractive({
+        title: '✦ Kelola Sesi Obrolan (Tersinkron dengan View):',
+        items: menuItems,
+      });
+
+      if (!picked) return false;
+
+      if (picked.action === 'select_session') {
+        const target = picked.session || getSessionById(picked.value);
+        if (target) {
+          currentSession = target;
+          setActiveSessionId(currentSession.id);
+          history = (currentSession.messages || []).map((m) => ({ role: m.role, content: m.content }));
+          console.log(
+            `\n${c.green}✓ Beralih ke sesi: ${c.bold}${currentSession.title}${c.reset} ${c.dim}(${history.length} pesan tersinkron)${c.reset}\n`
+          );
+        }
+        return false;
+      }
+
+      if (picked.action === 'new_session') {
+        currentSession = createSession({ title: 'Percakapan Baru' });
+        setActiveSessionId(currentSession.id);
+        history = [];
+        console.log(`\n${c.green}✓ Sesi baru dibuat dan tersinkron dengan antarmuka Web View!${c.reset}\n`);
+        return false;
+      }
+
+      if (picked.action === 'info_session') {
+        printSessionStats();
+        return false;
+      }
+
+      if (picked.action === 'clear_session') {
+        clearSessionMessages(currentSession.id);
+        history = [];
+        currentSession.messages = [];
+        console.log(`\n${c.green}✓ Pesan dalam sesi "${currentSession.title}" telah dibersihkan.${c.reset}\n`);
+        return false;
+      }
+
+      if (picked.action === 'delete_session') {
+        const res = deleteSession(currentSession.id);
+        currentSession = getSessionById(res.activeSessionId) || getActiveSession() || createSession();
+        setActiveSessionId(currentSession.id);
+        history = (currentSession.messages || []).map((m) => ({ role: m.role, content: m.content }));
+        console.log(`\n${c.yellow}✓ Sesi telah dihapus. Beralih ke sesi aktif: "${currentSession.title}".${c.reset}\n`);
+        return false;
+      }
+
+      return false;
+    }
+
+    if (action === '/session' || action === '/sessions' || action.startsWith('/sess')) {
+      if (arg === 'info' || arg === 'status' || arg === 'stats') {
+        printSessionStats();
+        return false;
+      }
+      if (arg === 'new') {
+        currentSession = createSession({ title: 'Percakapan Baru' });
+        setActiveSessionId(currentSession.id);
+        history = [];
+        console.log(`\n${c.green}✓ Sesi baru dibuat dan tersinkron dengan antarmuka Web View!${c.reset}\n`);
+        return false;
+      }
+      if (arg === 'clear' || arg === 'reset') {
+        clearSessionMessages(currentSession.id);
+        history = [];
+        currentSession.messages = [];
+        console.log(`\n${c.green}✓ Pesan dalam sesi "${currentSession.title}" telah dibersihkan.${c.reset}\n`);
+        return false;
+      }
+      if (arg) {
+        const data = getAllSessions();
+        const found = (data.sessions || []).find(
+          (s) => s.id.toLowerCase() === arg.toLowerCase() || s.title?.toLowerCase().includes(arg.toLowerCase())
+        );
+        if (found) {
+          currentSession = found;
+          setActiveSessionId(currentSession.id);
+          history = (currentSession.messages || []).map((m) => ({ role: m.role, content: m.content }));
+          console.log(`\n${c.green}✓ Beralih ke sesi: ${c.bold}${currentSession.title}${c.reset} ${c.dim}(${history.length} pesan)${c.reset}\n`);
+          return false;
+        }
+      }
+      await handleSessionMenuInteractive();
       return false;
     }
 
@@ -1465,9 +2433,19 @@ export async function startTerminalChat() {
       return false;
     }
 
-    if (action === '/reset' || action === '/new') {
+    if (action === '/new') {
+      currentSession = createSession({ title: 'Percakapan Baru' });
+      setActiveSessionId(currentSession.id);
       history = [];
-      console.log(`\n${c.green}✓ Riwayat percakapan telah direset.${c.reset}\n`);
+      console.log(`\n${c.green}✓ Sesi baru dibuat dan tersinkron dengan antarmuka Web View!${c.reset}\n`);
+      return false;
+    }
+
+    if (action === '/reset') {
+      clearSessionMessages(currentSession.id);
+      history = [];
+      currentSession.messages = [];
+      console.log(`\n${c.green}✓ Riwayat percakapan sesi ini telah dibersihkan.${c.reset}\n`);
       return false;
     }
 
@@ -1491,11 +2469,12 @@ export async function startTerminalChat() {
 
     if (action === '/help' || action === '/h' || action === '/?') {
       console.log(`\n${c.bold}${c.brightCyan}✦ Panduan Perintah Orion Terminal Chat (Pi Style):${c.reset}`);
+      console.log(`  ${c.yellow}/agent${c.reset} [on/off]           Aktifkan/nonaktifkan mode AI Agent otonom (tool calls)`);
       console.log(`  ${c.yellow}/model${c.reset} [nama]            Pilih model AI interaktif (atau gunakan Ctrl+L)`);
       console.log(`  ${c.yellow}/thinking, /tier${c.reset} [level]  Atur penalaran (low/medium/high, atau Shift+Tab)`);
       console.log(`  ${c.yellow}!perintah${c.reset}                Jalankan perintah shell terminal (hasil masuk konteks)`);
       console.log(`  ${c.yellow}!!perintah${c.reset}               Jalankan perintah shell diam-diam`);
-      console.log(`  ${c.yellow}/session${c.reset}                Lihat info sesi, pesan riwayat & estimasi token`);
+      console.log(`  ${c.yellow}/session, /sessions${c.reset}    Kelola & alihkan sesi obrolan (tersinkron ke View)`);
       console.log(`  ${c.yellow}/copy${c.reset}                   Salin respon asisten terakhir ke clipboard`);
       console.log(`  ${c.yellow}/compact${c.reset}                Kompak riwayat percakapan untuk menghemat token`);
       console.log(`  ${c.yellow}/export${c.reset}                 Ekspor sesi percakapan ke file JSONL`);
@@ -1505,11 +2484,41 @@ export async function startTerminalChat() {
       console.log(`  ${c.yellow}/login, /key${c.reset} [key]      Sambungkan / masukkan API Key Orion`);
       console.log(`  ${c.yellow}/logout${c.reset}                 Hapus kredensial API Key yang tersimpan`);
       console.log(`  ${c.yellow}/clear${c.reset}                  Bersihkan layar terminal obrolan`);
-      console.log(`  ${c.yellow}/new, /reset${c.reset}            Mulai sesi obrolan baru (reset riwayat)`);
+      console.log(`  ${c.yellow}/new${c.reset}                      Mulai sesi obrolan baru (tersinkron ke View)`);
+      console.log(`  ${c.yellow}/reset${c.reset}                    Bersihkan riwayat percakapan sesi ini`);
       console.log(`  ${c.yellow}/help${c.reset}                   Tampilkan panduan bantuan perintah`);
       console.log(`  ${c.yellow}/exit, /quit, /q${c.reset}        Keluar dari sesi terminal obrolan\n`);
+
+      try {
+        const skillCommands = await getSkillCommands(process.cwd());
+        if (skillCommands && skillCommands.length > 0) {
+          console.log(`${c.bold}${c.cyan}✦ Perintah Skill Terpasang:${c.reset}`);
+          skillCommands.forEach((sc) => {
+            const cmdWithArgs = `${sc.command}${sc.argsHint ? ` ${sc.argsHint}` : ''}`;
+            const padded = `${c.yellow}${cmdWithArgs}${c.reset}`.padEnd(36);
+            console.log(`  ${padded} ${c.magenta}[${sc.skillName || sc.skillId}]${c.reset} ${sc.description}`);
+          });
+          console.log('');
+        }
+      } catch {}
+
       return false;
     }
+
+    try {
+      const skillCommands = await getSkillCommands(process.cwd());
+      const matchedSkill = skillCommands.find(
+        (s) =>
+          s.command.toLowerCase() === action ||
+          `/${s.action.toLowerCase()}` === action ||
+          `/${s.label.toLowerCase()}` === action
+      );
+      if (matchedSkill) {
+        console.log(`\n${c.bold}${c.brightCyan}✦ Menjalankan Perintah Skill [${matchedSkill.skillName || matchedSkill.skillId}]:${c.reset} ${c.yellow}${cmd}${c.reset}\n`);
+        queuedUserMessage = cmd;
+        return false;
+      }
+    } catch {}
 
     console.log(`\n${c.yellow}⚠️  Perintah '${action}' tidak dikenal.${c.reset} Ketik ${c.yellow}/${c.reset} untuk saran perintah.\n`);
     return false;
@@ -1517,120 +2526,52 @@ export async function startTerminalChat() {
 }
 
 /**
- * Dedicated interactive selector helper for standalone selection menus (Model / Tier)
- * Features windowed pagination (PAGE_SIZE = 6) with (x/y) indicator to prevent screen overflow.
+ * Detects if the AI output contains a confirmation or choice question.
  */
-async function selectModelInteractive({ title, items, initialIndex = 0 }) {
-  if (!items || items.length === 0) return null;
-  if (!process.stdin.isTTY) return items[0];
+export function detectChoiceOptions(text) {
+  if (!text || typeof text !== 'string') return null;
 
-  const PAGE_SIZE = 6;
-  let selectedIndex = Math.max(0, Math.min(initialIndex, items.length - 1));
-  let scrollOffset = Math.floor(selectedIndex / PAGE_SIZE) * PAGE_SIZE;
-  let linesRendered = 0;
+  // Case 1: Yes/No confirmation prompt (e.g. "Silakan jawab YA ... atau TIDAK ...", "Apakah Anda yakin ...?")
+  const hasYesNoPrompt = (
+    /(?:jawab|ketik|pilih)\s+[`"']?(?:ya|yes)[`"']?\s+.*?(?:atau|atow)\s+[`"']?(?:tidak|no)[`"']?/i.test(text) ||
+    /apakah anda yakin.*?(?:menghapus|melanjutkan|mengubah|eksekusi).*?\?/i.test(text) ||
+    /(?:konfirmasi|persetujuan).*?(?:ya|tidak)/i.test(text)
+  );
 
-  function render(isFirst = false) {
-    if (!isFirst && linesRendered > 0) {
-      process.stdout.write(`\x1b[${linesRendered}A\r\x1b[J`);
-    }
-
-    if (selectedIndex < scrollOffset) {
-      scrollOffset = selectedIndex;
-    } else if (selectedIndex >= scrollOffset + PAGE_SIZE) {
-      scrollOffset = selectedIndex - PAGE_SIZE + 1;
-    }
-
-    const visibleItems = items.slice(scrollOffset, scrollOffset + PAGE_SIZE);
-    let out = `\x1b[1m\x1b[36m${title}\x1b[0m \x1b[90m(Gunakan ↑ / ↓ lalu Enter, Esc untuk batal)\x1b[0m\x1b[K\n`;
-    let count = 1;
-
-    visibleItems.forEach((item, idx) => {
-      const realIdx = scrollOffset + idx;
-      const isSelected = realIdx === selectedIndex;
-      const cursor = isSelected ? `\x1b[36m→ \x1b[0m` : `  `;
-      const label = isSelected
-        ? `\x1b[1m\x1b[37m${item.label.padEnd(22)}\x1b[0m`
-        : `\x1b[37m${item.label.padEnd(22)}\x1b[0m`;
-      const detail = item.detail
-        ? (isSelected ? `\x1b[36m${item.detail}\x1b[0m` : `\x1b[90m${item.detail}\x1b[0m`)
-        : '';
-      const badge = item.badge ? ` \x1b[32m[${item.badge}]\x1b[0m` : '';
-
-      out += `${cursor}${label} ${detail}${badge}\x1b[K\n`;
-      count++;
-    });
-
-    if (items.length > PAGE_SIZE) {
-      out += `  \x1b[90m(${selectedIndex + 1}/${items.length})\x1b[0m\x1b[K\n`;
-      count++;
-    }
-
-    linesRendered = count;
-    process.stdout.write(out);
-  }
-
-  function clear() {
-    if (linesRendered > 0) {
-      process.stdout.write(`\x1b[${linesRendered}A\r\x1b[J`);
-      linesRendered = 0;
-    }
-  }
-
-  render(true);
-
-  return new Promise((resolve) => {
-    const wasRaw = process.stdin.isRaw;
-    process.stdin.setRawMode(true);
-    process.stdin.resume();
-
-    const onData = (buffer) => {
-      const key = buffer.toString();
-
-      if (key === '\u0003') {
-        clear();
-        cleanup();
-        process.exit(0);
-      }
-
-      if (key === '\r' || key === '\n') {
-        clear();
-        cleanup();
-        resolve(items[selectedIndex]);
-        return;
-      }
-
-      if (key === '\u001b') {
-        clear();
-        cleanup();
-        resolve(null);
-        return;
-      }
-
-      if (key === '\u001b[A' || key === '\u001bOA' || key === 'k') {
-        selectedIndex = (selectedIndex - 1 + items.length) % items.length;
-        if (selectedIndex === items.length - 1) {
-          scrollOffset = Math.max(0, items.length - PAGE_SIZE);
-        }
-        render(false);
-        return;
-      }
-
-      if (key === '\u001b[B' || key === '\u001bOB' || key === 'j') {
-        selectedIndex = (selectedIndex + 1) % items.length;
-        if (selectedIndex === 0) {
-          scrollOffset = 0;
-        }
-        render(false);
-        return;
-      }
+  if (hasYesNoPrompt) {
+    return {
+      title: 'Pilih konfirmasi tindakan Anda:',
+      items: [
+        { label: '✓ Ya, lanjutkan', detail: 'Setujui dan lanjutkan tindakan ini', value: 'Ya, lanjutkan' },
+        { label: '✗ Tidak, batalkan', detail: 'Batalkan dan jangan lanjutkan', value: 'Tidak, batalkan' },
+      ],
     };
+  }
 
-    function cleanup() {
-      process.stdin.removeListener('data', onData);
-      process.stdin.setRawMode(wasRaw);
-      process.stdin.pause();
+  // Case 2: Numbered options in text (e.g. "1. Option A\n2. Option B\n3. Option C")
+  const numberedLines = [];
+  const lines = text.split('\n');
+  for (const line of lines) {
+    const match = line.trim().match(/^(\d+)[\.\)]\s+(.+)$/);
+    if (match) {
+      numberedLines.push({ num: match[1], text: match[2].trim() });
     }
+  }
 
-    process.stdin.on('data', onData);
-  });
+  if (numberedLines.length >= 2 && numberedLines.length <= 6) {
+    if (/pilih|silakan|mana yang|opsi|rekomendasi/i.test(text)) {
+      return {
+        title: 'Pilih salah satu opsi:',
+        items: numberedLines.map((n) => ({
+          label: n.text.slice(0, 35),
+          detail: n.text.length > 35 ? n.text.slice(35, 75) : '',
+          value: n.text,
+        })),
+      };
+    }
+  }
+
+  return null;
 }
+
+export const selectModelInteractive = selectOptionInteractive;

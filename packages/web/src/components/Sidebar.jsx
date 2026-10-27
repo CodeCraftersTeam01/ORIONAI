@@ -12,6 +12,8 @@ import {
   Sparkles,
   LayoutDashboard,
   Terminal,
+  LogOut,
+  Boxes,
 } from 'lucide-react';
 import OrionLogo from './OrionLogo';
 
@@ -29,6 +31,8 @@ export default function Sidebar({
   onToggleSound,
   isOpen,
   onCloseMobile,
+  authUser,
+  onLogout,
 }) {
   return (
     <>
@@ -100,6 +104,30 @@ export default function Sidebar({
 
               <button
                 type="button"
+                className={`sidebar-nav-item ${currentView === 'models' ? 'active' : ''}`}
+                onClick={() => {
+                  onNavigate?.('models');
+                  if (window.innerWidth < 768) onCloseMobile();
+                }}
+              >
+                <Sparkles size={16} className="nav-item-icon" />
+                <span className="nav-item-label">Models</span>
+              </button>
+
+              <button
+                type="button"
+                className={`sidebar-nav-item ${currentView === 'skills' ? 'active' : ''}`}
+                onClick={() => {
+                  onNavigate?.('skills');
+                  if (window.innerWidth < 768) onCloseMobile();
+                }}
+              >
+                <Boxes size={16} className="nav-item-icon" />
+                <span className="nav-item-label">Skills Hub</span>
+              </button>
+
+              <button
+                type="button"
                 className={`sidebar-nav-item ${currentView === 'logs' ? 'active' : ''}`}
                 onClick={() => {
                   onNavigate?.('logs');
@@ -147,7 +175,9 @@ export default function Sidebar({
 
             {/* Sessions List */}
             <div className="sidebar-history-section">
-              <div className="section-label">Riwayat</div>
+              <div className="section-label">
+                <span>Riwayat</span>
+              </div>
               <div className="sessions-scroll-list">
                 {sessions.length === 0 ? (
                   <div className="no-sessions-hint">Belum ada obrolan</div>
@@ -191,20 +221,31 @@ export default function Sidebar({
         <div className="sidebar-footer">
           <div
             className="sidebar-user-card"
+            role="button"
+            tabIndex={0}
             onClick={() => {
               onNavigate?.('settings');
               if (window.innerWidth < 768) onCloseMobile?.();
             }}
-            title="Arjuna (wardilanang46@gmail.com) — Buka Pengaturan"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onNavigate?.('settings');
+                if (window.innerWidth < 768) onCloseMobile?.();
+              }
+            }}
+            title={`${authUser || 'Arjuna'}: Profil dan Pengaturan`}
           >
             <div className="sidebar-user-avatar">
-              <span className="user-initials">A</span>
-              <span className="user-online-pip" title="Online" />
+              <span className="user-initials">
+                {(authUser || 'Arjuna').charAt(0).toUpperCase()}
+              </span>
+              <span className="user-online-pip" title="Status: Online" />
             </div>
 
             <div className="sidebar-user-meta">
-              <span className="sidebar-user-name">Arjuna</span>
-              <span className="sidebar-user-email">wardilanang46@gmail.com</span>
+              <span className="sidebar-user-name">{authUser || 'Arjuna'}</span>
+              <span className="sidebar-user-email">Pengelola Sistem</span>
             </div>
           </div>
 
@@ -216,7 +257,7 @@ export default function Sidebar({
                 e.stopPropagation();
                 onToggleSound();
               }}
-              title={soundEnabled ? 'Matikan Suara' : 'Nyalakan Suara'}
+              title={soundEnabled ? 'Audio Respon: Aktif' : 'Audio Respon: Senyap'}
               aria-label="Toggle Sound"
             >
               {soundEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
@@ -230,7 +271,7 @@ export default function Sidebar({
                 onNavigate?.('logs');
                 if (window.innerWidth < 768) onCloseMobile?.();
               }}
-              title="System & Gateway Logs"
+              title="Log Sistem dan Gateway"
               aria-label="Logs"
             >
               <Terminal size={14} />
@@ -244,11 +285,26 @@ export default function Sidebar({
                 onNavigate?.('settings');
                 if (window.innerWidth < 768) onCloseMobile?.();
               }}
-              title="Pengaturan"
+              title="Pengaturan Aplikasi"
               aria-label="Settings"
             >
               <Settings size={14} />
             </button>
+
+            {onLogout && (
+              <button
+                type="button"
+                className="footer-icon-btn footer-logout-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onLogout();
+                }}
+                title="Keluar dari Akun"
+                aria-label="Logout"
+              >
+                <LogOut size={14} />
+              </button>
+            )}
           </div>
         </div>
       </aside>
