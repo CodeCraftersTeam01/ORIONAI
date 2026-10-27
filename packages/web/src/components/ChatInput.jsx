@@ -83,10 +83,6 @@ export default function ChatInput({
   const [slashCommands, setSlashCommands] = useState(SYSTEM_SLASH_COMMANDS);
   const [slashSelectedIndex, setSlashSelectedIndex] = useState(0);
   const [isSlashDismissed, setIsSlashDismissed] = useState(false);
-  const [slashCategory, setSlashCategory] = useState('all'); // 'all' | 'skill' | 'system'
-
-  const skillCount = React.useMemo(() => slashCommands.filter((c) => c.category !== 'System').length, [slashCommands]);
-  const systemCount = React.useMemo(() => slashCommands.filter((c) => c.category === 'System').length, [slashCommands]);
 
   // Fetch slash commands from backend (system commands + installed skills)
   useEffect(() => {
@@ -149,16 +145,8 @@ export default function ChatInput({
   const activeSlashMatches = React.useMemo(() => {
     if (!input.startsWith('/') || input.includes('\n') || isSlashDismissed) return [];
     const query = input.slice(1).trim().toLowerCase();
-
-    let baseList = slashCommands;
-    if (slashCategory === 'skill') {
-      baseList = baseList.filter((c) => c.category !== 'System');
-    } else if (slashCategory === 'system') {
-      baseList = baseList.filter((c) => c.category === 'System');
-    }
-
-    if (!query) return baseList;
-    return baseList.filter((c) => {
+    if (!query) return slashCommands;
+    return slashCommands.filter((c) => {
       const cmd = (c.command || '').toLowerCase().replace(/^\//, '');
       const label = (c.label || '').toLowerCase();
       const skill = (c.skillName || c.skillId || '').toLowerCase();
@@ -171,7 +159,7 @@ export default function ChatInput({
         desc.includes(query)
       );
     });
-  }, [input, slashCommands, isSlashDismissed, slashCategory]);
+  }, [input, slashCommands, isSlashDismissed]);
 
   const showSlashMenu = input.startsWith('/') && !input.includes('\n') && !isSlashDismissed;
 
@@ -386,72 +374,24 @@ export default function ChatInput({
           </div>
         )}
 
-        {/* Floating Slash Commands Menu */}
+        {/* Floating Slash Commands Menu (Simple & Clean) */}
         {showSlashMenu && (
           <div className="chat-slash-menu" ref={slashMenuRef} onClick={(e) => e.stopPropagation()}>
-            <div className="slash-menu-header">
-              <div className="slash-menu-header-left">
-                <Command size={13} className="slash-menu-icon" />
-                <span className="slash-menu-title">Daftar Perintah</span>
-                <span className="slash-count-pill">{activeSlashMatches.length}</span>
-              </div>
-              <div className="slash-category-tabs">
-                <button
-                  type="button"
-                  className={`slash-tab ${slashCategory === 'all' ? 'is-active' : ''}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSlashCategory('all');
-                    setSlashSelectedIndex(0);
-                  }}
-                >
-                  Semua ({slashCommands.length})
-                </button>
-                <button
-                  type="button"
-                  className={`slash-tab ${slashCategory === 'skill' ? 'is-active' : ''}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSlashCategory('skill');
-                    setSlashSelectedIndex(0);
-                  }}
-                >
-                  Skills ({skillCount})
-                </button>
-                <button
-                  type="button"
-                  className={`slash-tab ${slashCategory === 'system' ? 'is-active' : ''}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSlashCategory('system');
-                    setSlashSelectedIndex(0);
-                  }}
-                >
-                  Sistem ({systemCount})
-                </button>
-              </div>
-              <div className="slash-menu-header-hint">
-                <span><kbd>↑</kbd><kbd>↓</kbd></span>
-                <span><kbd>Tab</kbd> pakai</span>
-                <span><kbd>Esc</kbd></span>
-              </div>
-            </div>
-
-            {activeSlashMatches.length === 0 ? (
-              <div className="slash-empty-state">
-                Tidak ada perintah atau skill yang cocok dengan <code>{input.trim()}</code>
-              </div>
-            ) : (
-              <div className="slash-menu-list">
-                {activeSlashMatches.map((item, idx) => {
+            <div className="slash-menu-list">
+              {activeSlashMatches.length === 0 ? (
+                <div className="slash-empty-state">
+                  Tidak ada perintah yang cocok dengan <code>{input.trim()}</code>
+                </div>
+              ) : (
+                activeSlashMatches.map((item, idx) => {
                   const isSelected = idx === slashSelectedIndex;
                   const isSystem = item.category === 'System';
-                  const tagText = isSystem ? 'sistem' : (item.skillName || item.skillId || 'skill');
+                  const tagText = isSystem ? 'system' : (item.skillName || item.skillId || 'skill');
 
                   return (
                     <div
                       key={`${item.command}-${idx}`}
-                      className={`slash-menu-item ${isSelected ? 'is-selected' : ''}`}
+                      className={`slash-menu-row ${isSelected ? 'is-selected' : ''}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         setInput(`${item.command} `);
@@ -459,25 +399,32 @@ export default function ChatInput({
                       }}
                       onMouseEnter={() => setSlashSelectedIndex(idx)}
                     >
-                      <div className="slash-item-main">
-                        <div className="slash-item-left">
-                          <span className="slash-item-cmd">{item.command}</span>
-                          {item.argsHint && (
-                            <span className="slash-item-args">{item.argsHint}</span>
-                          )}
-                        </div>
-                        <span className={`slash-item-badge ${isSystem ? 'is-system' : 'is-skill'}`}>
-                          {tagText}
-                        </span>
+                      <div className="slash-row-left">
+                        <span className="slash-row-cmd">{item.command}</span>
+                        {item.argsHint && (
+                          <span className="slash-row-args">{item.argsHint}</span>
+                        )}
+                        {item.description && (
+                          <span className="slash-row-desc">{item.description}</span>
+                        )}
                       </div>
-                      {item.description && (
-                        <div className="slash-item-desc">{item.description}</div>
-                      )}
+                      <span className={`slash-row-badge ${isSystem ? 'is-system' : 'is-skill'}`}>
+                        {tagText}
+                      </span>
                     </div>
                   );
-                })}
+                })
+              )}
+            </div>
+
+            <div className="slash-menu-footer">
+              <span className="slash-footer-count">{activeSlashMatches.length} perintah</span>
+              <div className="slash-footer-keys">
+                <span><kbd>↑↓</kbd> pilih</span>
+                <span><kbd>Tab</kbd> gunakan</span>
+                <span><kbd>Esc</kbd> batal</span>
               </div>
-            )}
+            </div>
           </div>
         )}
 
