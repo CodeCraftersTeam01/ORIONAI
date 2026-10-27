@@ -10795,58 +10795,66 @@ svg[aria-roledescription="error"] {
 }
 
 /* ==========================================================================
-   SLASH COMMANDS AUTOCOMPLETE (Simple & Clean Anti-Slop)
+   SLASH COMMANDS AUTOCOMPLETE (Orion Native Glassmorphic System)
    ========================================================================== */
 .chat-input-box.has-slash-menu {
   z-index: 70;
 }
 
 .chat-input-top-bar.is-dimmed {
-  opacity: 0.2;
+  opacity: 0.15;
   pointer-events: none;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.25s ease;
 }
 
 .chat-slash-menu {
   position: absolute;
-  bottom: calc(100% + 8px);
+  bottom: calc(100% + 12px);
   left: 0;
   right: 0;
-  background: #11141b;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.7);
+  background: rgba(18, 20, 26, 0.78);
+  backdrop-filter: blur(26px) saturate(190%);
+  -webkit-backdrop-filter: blur(26px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.14),
+              0 24px 50px -10px rgba(0, 0, 0, 0.75),
+              0 0 0 1px rgba(255, 255, 255, 0.05);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   z-index: 100;
-  animation: slashMenuFadeIn 0.12s ease-out;
+  animation: slashMenuFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 [data-theme='light'] .chat-slash-menu {
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(26px) saturate(190%);
+  -webkit-backdrop-filter: blur(26px) saturate(190%);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.95),
+              0 18px 42px -8px rgba(0, 0, 0, 0.12),
+              0 0 0 1px rgba(0, 0, 0, 0.04);
 }
 
 @keyframes slashMenuFadeIn {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(6px) scale(0.99);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 
 .slash-menu-list {
   overflow-y: auto;
-  max-height: 240px;
-  padding: 4px;
+  max-height: 250px;
+  padding: 6px;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
 }
 
 .slash-menu-row {
@@ -10854,29 +10862,66 @@ svg[aria-roledescription="error"] {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 7px 10px;
-  border-radius: 6px;
+  padding: 8px 12px;
+  border-radius: 12px;
   cursor: pointer;
-  transition: background 0.1s ease;
+  border: 1px solid transparent;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
   user-select: none;
 }
 
 .slash-menu-row:hover,
 .slash-menu-row.is-selected {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(56, 189, 248, 0.1);
+  border-color: rgba(56, 189, 248, 0.25);
 }
 
 [data-theme='light'] .slash-menu-row:hover,
 [data-theme='light'] .slash-menu-row.is-selected {
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(2, 132, 199, 0.08);
+  border-color: rgba(2, 132, 199, 0.2);
 }
 
 .slash-row-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
   flex: 1;
+}
+
+.slash-icon-box {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.slash-menu-row:hover .slash-icon-box,
+.slash-menu-row.is-selected .slash-icon-box {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: rgba(56, 189, 248, 0.4);
+  color: #38bdf8;
+}
+
+[data-theme='light'] .slash-icon-box {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.08);
+  color: #64748b;
+}
+
+[data-theme='light'] .slash-menu-row:hover .slash-icon-box,
+[data-theme='light'] .slash-menu-row.is-selected .slash-icon-box {
+  background: rgba(2, 132, 199, 0.15);
+  border-color: rgba(2, 132, 199, 0.35);
+  color: #0284c7;
 }
 
 .slash-row-cmd {
@@ -10885,10 +10930,21 @@ svg[aria-roledescription="error"] {
   font-size: 0.8125rem;
   color: #f1f5f9;
   white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+
+.slash-menu-row:hover .slash-row-cmd,
+.slash-menu-row.is-selected .slash-row-cmd {
+  color: #38bdf8;
 }
 
 [data-theme='light'] .slash-row-cmd {
   color: #0f172a;
+}
+
+[data-theme='light'] .slash-menu-row:hover .slash-row-cmd,
+[data-theme='light'] .slash-menu-row.is-selected .slash-row-cmd {
+  color: #0284c7;
 }
 
 .slash-row-args {
@@ -10915,43 +10971,55 @@ svg[aria-roledescription="error"] {
   font-size: 0.65rem;
   font-family: var(--font-mono, monospace);
   color: #64748b;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   white-space: nowrap;
   flex-shrink: 0;
 }
 
+.slash-menu-row:hover .slash-row-badge,
+.slash-menu-row.is-selected .slash-row-badge {
+  color: #94a3b8;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
 [data-theme='light'] .slash-row-badge {
   color: #94a3b8;
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.06);
 }
 
 .slash-menu-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 5px 10px;
+  padding: 7px 14px;
   background: rgba(255, 255, 255, 0.02);
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
   font-size: 0.68rem;
   color: #64748b;
 }
 
 [data-theme='light'] .slash-menu-footer {
   background: rgba(0, 0, 0, 0.02);
-  border-top-color: rgba(0, 0, 0, 0.05);
+  border-top-color: rgba(0, 0, 0, 0.06);
 }
 
 .slash-footer-keys {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .slash-footer-keys kbd {
   font-family: var(--font-mono, monospace);
   font-size: 0.64rem;
-  padding: 1px 4px;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: #94a3b8;
 }
 
@@ -10962,7 +11030,7 @@ svg[aria-roledescription="error"] {
 }
 
 .slash-empty-state {
-  padding: 14px 10px;
+  padding: 18px 12px;
   text-align: center;
   font-size: 0.78rem;
   color: #64748b;
@@ -10970,10 +11038,10 @@ svg[aria-roledescription="error"] {
 
 .slash-empty-state code {
   font-family: var(--font-mono, monospace);
-  color: #cbd5e1;
-  background: rgba(255, 255, 255, 0.06);
-  padding: 1px 5px;
-  border-radius: 3px;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.1);
+  padding: 1px 6px;
+  border-radius: 4px;
 }
 
 

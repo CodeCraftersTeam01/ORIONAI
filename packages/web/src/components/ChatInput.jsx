@@ -13,6 +13,11 @@ import {
   AudioWaveform,
   Command,
   Sparkles,
+  Terminal,
+  Wrench,
+  Trash2,
+  Plus,
+  HelpCircle,
 } from 'lucide-react';
 import { processFile, formatFileSize } from '../utils/fileHelpers';
 import ModelSelector from './ModelSelector';
@@ -314,6 +319,16 @@ export default function ChatInput({
     }
   };
 
+  const renderCommandIcon = (item) => {
+    if (item.category === 'System') {
+      if (item.command === '/clear') return <Trash2 size={12} />;
+      if (item.command === '/new') return <Plus size={12} />;
+      if (item.command === '/help') return <HelpCircle size={12} />;
+      return <Terminal size={12} />;
+    }
+    return <Wrench size={12} />;
+  };
+
   const canSend = (input.trim().length > 0 || attachments.length > 0) && !isGenerating && !isProcessingFiles;
 
   return (
@@ -400,6 +415,9 @@ export default function ChatInput({
                       onMouseEnter={() => setSlashSelectedIndex(idx)}
                     >
                       <div className="slash-row-left">
+                        <div className="slash-icon-box">
+                          {renderCommandIcon(item)}
+                        </div>
                         <span className="slash-row-cmd">{item.command}</span>
                         {item.argsHint && (
                           <span className="slash-row-args">{item.argsHint}</span>
