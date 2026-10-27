@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { exec } from 'child_process';
 import { safetyGuard } from './safetyGuard.js';
+import { getSkillDetails, getInstalledSkills } from '../services/skillService.js';
 
 /**
  * Standard OpenAI Tools Schema for Autonomous Coding Agent
@@ -101,6 +102,10 @@ export const TOOL_DEFINITIONS = [
           command: {
             type: 'string',
             description: 'Command to run in bash shell',
+          },
+          purpose: {
+            type: 'string',
+            description: 'Penjelasan singkat tujuan perintah dalam bahasa Indonesia (contoh: "mengunduh data cuaca dari BMKG", "menghentikan proses server node", "menginstal dependensi react")',
           },
           timeout: {
             type: 'integer',
@@ -212,6 +217,23 @@ export const TOOL_DEFINITIONS = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'use_skill',
+      description: 'Membaca dan memuat instruksi lengkap dari keahlian (skill) terpasang berdasarkan nama skill. Gunakan tool ini saat tugas pengguna memerlukan keahlian atau pedoman spesifik dari daftar keahlian aktif (misal "antislop", "bang-motion", "tdd-practitioner", "frontend-design").',
+      parameters: {
+        type: 'object',
+        properties: {
+          skill_name: {
+            type: 'string',
+            description: 'Nama skill yang ingin diakses/dibaca (misalnya "antislop", "bang-motion", "tdd-practitioner")',
+          },
+        },
+        required: ['skill_name'],
+      },
+    },
+  },
 ];
 
 function normalizeToolArgs(toolName, rawArgs = {}) {
@@ -257,6 +279,7 @@ export async function executeTool(name, rawArgs = {}) {
   else if (toolName === 'ls' || toolName.startsWith('list') || toolName === 'list_dir') toolName = 'list_dir';
   else if (toolName === 'find' || toolName.startsWith('find') || toolName === 'find_files') toolName = 'find_files';
   else if (toolName === 'grep' || toolName.startsWith('grep') || toolName === 'grep_search') toolName = 'grep_search';
+  else if (toolName === 'use_skill' || toolName.startsWith('use_skill') || toolName === 'read_skill' || toolName === 'load_skill') toolName = 'use_skill';
 
   const args = normalizeToolArgs(toolName, rawArgs);
   try {
@@ -578,6 +601,45 @@ export async function executeTool(name, rawArgs = {}) {
             ? `Berhasil menghapus ${deleted.length} file: ${deleted.join(', ')}.`
             : `File '${deleted[0] || pathsToDelete[0]}' berhasil dihapus.`,
         };
+      }
+
+      case 'use_skill': {
+        const queryName = (args.skill_name || args.name || args.skill || '').trim().toLowerCase();
+        if (!queryName) {
+          return { error: "Parameter 'skill_name' tidak boleh kosong. Masukkan nama skill yang ingin digunakan." };
+        }
+
+        try {
+          const installed = await getInstalledSkills();
+          const target = installed.find(
+            (s) => s.id === queryName || s.name.toLowerCase() === queryName || s.id.includes(queryName)
+          );
+
+          if (!target) {
+            const availableNames = installed.map((s) => s.name).join(', ');
+            return {
+              error: `Skill '${queryName}' tidak ditemukan di daftar keahlian terpasang.`,
+              available_skills: availableNames || 'Belum ada skill yang terpasang.',
+            };
+          }
+
+          const details = await getSkillDetails(target.id);
+          return {
+            success: true,
+            skill_id: details.id,
+            name: details.name,
+            platform: details.platform,
+            version: details.version,
+            author: details.author,
+            allowed_tools: details.allowedTools,
+            instructions: details.instructions,
+            has_scripts: details.scripts && details.scripts.length > 0,
+            scripts: details.scripts,
+            message: `Keahlian '${details.name}' berhasil diakses. Terapkan seluruh aturan dan panduan ini secara disiplin.`,
+          };
+        } catch (skillErr) {
+          return { error: `Gagal mengakses skill '${queryName}': ${skillErr.message}` };
+        }
       }
 
       default:

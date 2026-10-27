@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { getActiveSkillsPromptSync } from './skillService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -206,6 +207,38 @@ export function cleanIndonesianText(text) {
     return `${p1} ${p2}`;
   });
 
+  // 13. Squished numbers, weather terms, units, and compound prefixes
+  const idNumbers = ['nol', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh', 'sebelas', 'belas', 'puluh', 'ratus', 'ribu', 'juta'];
+  const idUnits = ['derajat', 'celcius', 'celsius', 'fahrenheit', 'persen', 'kilometer', 'km', 'meter', 'jam', 'hari', 'bulan', 'tahun'];
+  const idApprox = ['seperti', 'sekitar', 'antara', 'kurang', 'lebih', 'mencapai', 'berkisar', 'minimum', 'maksimum'];
+
+  res = res.replace(/\b(ini)(suhunya|suhu|cuaca|kondisi|data)/gi, '$1 $2');
+  res = res.replace(/(suhunya|suhu|minimum|maksimum)(sekitar|mencapai|adalah|berkisar)/gi, '$1 $2');
+  res = res.replace(/(cuaca)(terbaru|terkini|hari|saat)/gi, '$1 $2');
+  res = res.replace(/(saat)(ini)/gi, '$1 $2');
+  res = res.replace(/(suhu)(terasa|maksimum|minimum|saat|rata)/gi, '$1 $2');
+  res = res.replace(/(dari)(arah)/gi, '$1 $2');
+  res = res.replace(/(kilometer|meter|mil)(per)/gi, '$1 $2');
+  res = res.replace(/(per)(jam|hari|detik|bulan|tahun)/gi, '$1 $2');
+  res = res.replace(/(berkisar)(antara)/gi, '$1 $2');
+  res = res.replace(/(ke)(depan|belakang|bawah|atas)/gi, '$1 $2');
+
+  const numRegex = new RegExp('(' + idNumbers.join('|') + ')(' + idNumbers.join('|') + ')', 'gi');
+  res = res.replace(numRegex, '$1 $2');
+  res = res.replace(numRegex, '$1 $2');
+
+  const unitRegex = new RegExp('(' + idUnits.join('|') + ')(' + idUnits.join('|') + ')', 'gi');
+  res = res.replace(unitRegex, '$1 $2');
+  const numUnitRegex = new RegExp('(' + idNumbers.join('|') + ')(' + idUnits.join('|') + ')', 'gi');
+  res = res.replace(numUnitRegex, '$1 $2');
+  const unitNumRegex = new RegExp('(' + idUnits.join('|') + ')(' + idNumbers.join('|') + ')', 'gi');
+  res = res.replace(unitNumRegex, '$1 $2');
+
+  const approxNumRegex = new RegExp('(' + idApprox.join('|') + ')(' + idNumbers.join('|') + ')', 'gi');
+  res = res.replace(approxNumRegex, '$1 $2');
+
+  res = res.replace(new RegExp('(' + idUnits.join('|') + ')(ke)', 'gi'), '$1 $2');
+
   const SQUISHED_MAP = [
     [/\bSenangbertemudengan\b/gi, 'Senang bertemu dengan'],
     [/\bbertemudengan\b/gi, 'bertemu dengan'],
@@ -356,7 +389,8 @@ function buildMessagesPayload({ message, history = [], attachments = [], modelId
     };
   });
 
-  const fullSystemPrompt = `${SYSTEM_PROMPT}\n${modelConfig.systemPromptExtra}`;
+  const skillsPrompt = getActiveSkillsPromptSync();
+  const fullSystemPrompt = `${SYSTEM_PROMPT}\n${modelConfig.systemPromptExtra}${skillsPrompt ? `\n${skillsPrompt}` : ''}`;
 
   return {
     messages: [

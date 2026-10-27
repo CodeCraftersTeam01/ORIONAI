@@ -64,6 +64,7 @@ router.post('/run', chatRateLimiter, validateChatInput, (req, res) => {
     customProvider = null,
     orionApiKey = null,
     workspaceRoot,
+    isVoiceMode = false,
   } = req.body;
 
   const effectiveWorkspace = (typeof workspaceRoot === 'string' && workspaceRoot.trim())
@@ -102,6 +103,7 @@ router.post('/run', chatRateLimiter, validateChatInput, (req, res) => {
     customProvider,
     orionApiKey,
     workspaceRoot: effectiveWorkspace,
+    isVoiceMode: Boolean(isVoiceMode),
     signal: abortController.signal,
     onEvent: (event) => {
       sendEvent(event);

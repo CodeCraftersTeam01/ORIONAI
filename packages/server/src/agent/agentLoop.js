@@ -1,6 +1,7 @@
 import { TOOL_DEFINITIONS, executeTool } from './tools.js';
 import { safetyGuard } from './safetyGuard.js';
 import { getModelConfig, resolveEndpointAndHeaders } from '../services/aiService.js';
+import { getActiveSkillsPrompt } from '../services/skillService.js';
 
 // Pending approvals registry for interactive web/cli sessions
 export const pendingApprovals = new Map();
@@ -22,12 +23,13 @@ Daftar tools yang tersedia:
 - write: Menulis atau membuat file baru dengan isi lengkap. Parameter: path (string), content (string).
 - read: Membaca isi file teks. Parameter: path (string), offset (integer opsional), limit (integer opsional).
 - edit: Mengedit file secara presisi dengan exact replacement. Parameter: path (string), edits (array [{oldText, newText}]).
-- bash: Menjalankan perintah terminal/shell di direktori aktif. Parameter: command (string), timeout (integer opsional).
+- bash: Menjalankan perintah terminal/shell di direktori aktif. Parameter: command (string), purpose (string penjelasan singkat tujuan perintah dalam bahasa Indonesia, contoh: "mengambil data cuaca dari BMKG", "menghentikan proses server node", "menginstal dependensi react"), timeout (integer opsional).
 - ls: Melihat isi direktori. Parameter: path (string opsional).
 - find: Mencari file dengan pola/glob. Parameter: pattern (string), path (string opsional).
 - grep: Mencari teks di dalam file. Parameter: pattern (string), path (string opsional).
 - delete_file: Menghapus satu atau banyak file sekaligus dalam direktori proyek. Parameter: path (string untuk 1 file) atau paths (array of strings untuk banyak file). Sistem keselamatan akan meminta persetujuan 1 kali untuk seluruh file tersebut.
 - ask_user: Menampilkan pertanyaan pilihan opsi interaktif kepada pengguna yang dapat dipilih menggunakan tombol panah keyboard (Up/Down) dan Enter. Parameter: question (string), options (array of strings).
+- use_skill: Membaca dan memuat instruksi lengkap dari keahlian (skill) terpasang berdasarkan nama skill (misalnya 'antislop', 'bang-motion', 'tdd-practitioner', 'frontend-design'). Gunakan tool ini saat tugas pengguna memerlukan keahlian atau pedoman spesifik dari daftar keahlian aktif. Parameter: skill_name (string).
 
 Pedoman Eksekusi:
 1. EKSEKUSI LANGSUNG & EFISIEN (BATCH OPERATIONS):
@@ -148,6 +150,7 @@ export async function runAgentLoop({
   customProvider = null,
   orionApiKey = null,
   workspaceRoot = process.cwd(),
+  isVoiceMode = false,
   onEvent = () => {},
   signal,
   maxSteps = 15,
@@ -156,12 +159,24 @@ export async function runAgentLoop({
   const modelConfig = getModelConfig(model, reasoningTier);
   const endpointInfo = resolveEndpointAndHeaders(customProvider, modelConfig, orionApiKey);
 
-  // Initialize messages payload with Agent System Prompt & Active Workspace
+  // Initialize messages payload with Agent System Prompt, Active Workspace & Active Skills
   const activeWs = safetyGuard.getWorkspaceRoot();
+  const skillsPrompt = await getActiveSkillsPrompt(activeWs);
+
+  const voiceInstruction = isVoiceMode
+    ? `\n\n[MODE PANGGILAN SUARA (TTS & JARVIS MODE AKTIF)]:
+PENGGUNA SEDANG MENDENGARKAN ANDA SECARA LANGSUNG MELALUI AUDIO / TELEPON (TTS).
+ATURAN WAJIB UNTUK JAWABAN AKHIR (FINAL ANSWER):
+1. DILARANG KERAS MENGGUNAKAN TABEL MARKDOWN, GARIS PIPA (|), DAFTAR BULLET (*, -, •), KODE BLOK, ATAU FORMAT DOKUMEN APAPUN.
+2. JAWABAN HARUS SANGAT SINGKAT (1 HINGGA 2 KALIMAT PENDEK SAJA). Jangan pernah menjelaskan panjang lebar atau bercerita detail bertele-tele. Langsung berikan intinya saja.
+3. Rangkum inti hasil eksekusi dalam bahasa percakapan sehari-hari yang santun dan enak didengar.
+4. SPASI KATA & ANGKA: Setiap kata WAJIB dipisahkan oleh karakter spasi tunggal yang rapi. Gunakan angka biasa (misal "33 derajat Celsius", jangan mengeja "tiga puluh tiga").`
+    : '';
+
   const messages = [
     {
       role: 'system',
-      content: `${AGENT_SYSTEM_PROMPT}\n\n[WORKSPACE PROYEK AKTIF]\nDirektori kerja (CWD) saat ini: ${activeWs}\nSemua perintah bash dan operasi berkas akan dieksekusi di dalam direktori proyek ini.`,
+      content: `${AGENT_SYSTEM_PROMPT}${voiceInstruction}\n\n[WORKSPACE PROYEK AKTIF]\nDirektori kerja (CWD) saat ini: ${activeWs}\nSemua perintah bash dan operasi berkas akan dieksekusi di dalam direktori proyek ini.${skillsPrompt}`,
     },
   ];
 
@@ -464,6 +479,8 @@ export async function runAgentLoop({
           toolIndex: toolIndexInStep,
           totalTools: totalToolsInStep,
           reason: evaluation.reason,
+          thought: thoughtText || '',
+          purpose: fnArgs.purpose || fnArgs.reason || '',
         });
 
         const approved = await approvalPromise;
