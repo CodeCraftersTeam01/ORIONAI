@@ -1800,30 +1800,65 @@ export default function App() {
 
         if (serverSessions.length > 0) {
           lastServerUpdatedAtRef.current = serverUpdated;
-          setSessions(serverSessions);
+          let localSessions = [];
+          try {
+            const saved = localStorage.getItem('orion_chat_sessions');
+            if (saved) localSessions = JSON.parse(saved) || [];
+          } catch {}
+          const localMap = new Map((localSessions || []).map((s) => [s.id, s]));
+          const safeMerged = serverSessions.map((srv) => {
+            const loc = localMap.get(srv.id);
+            if (loc && (loc.messages || []).length > (srv.messages || []).length) {
+              return { ...srv, messages: loc.messages, title: loc.title || srv.title };
+            }
+            return srv;
+          });
+          setSessions(safeMerged);
           if (serverActiveId) {
             setActiveSessionId(serverActiveId);
           }
           try {
-            localStorage.setItem('orion_chat_sessions', JSON.stringify(serverSessions));
+            localStorage.setItem('orion_chat_sessions', JSON.stringify(safeMerged));
           } catch {}
         }
         return;
       }
 
       // Subsequent syncs (focus / visibility / poll):
-      // Apply if server has newer data or if server active session changed
+      // Only apply if server has newer data, and NEVER wipe local sessions that have more messages!
       const hasNewerData = serverUpdated > lastServerUpdatedAtRef.current;
-      const hasDifferentActive = serverActiveId && serverActiveId !== activeSessionId;
-      if ((hasNewerData || hasDifferentActive) && !isGenerating && !isSyncingSessionsRef.current) {
+      if (hasNewerData && !isGenerating && !isSyncingSessionsRef.current) {
         lastServerUpdatedAtRef.current = serverUpdated;
-        setSessions(serverSessions);
+        setSessions((prevSessions) => {
+          const prevMap = new Map((prevSessions || []).map((s) => [s.id, s]));
+          const merged = serverSessions.map((srv) => {
+            const local = prevMap.get(srv.id);
+            if (!local) return srv;
+            const localMsgs = local.messages || [];
+            const srvMsgs = srv.messages || [];
+            if (localMsgs.length > srvMsgs.length) {
+              return {
+                ...srv,
+                title: local.title || srv.title,
+                messages: localMsgs,
+              };
+            }
+            return srv;
+          });
+          for (const local of prevSessions) {
+            if (!merged.some((s) => s.id === local.id)) {
+              merged.push(local);
+            }
+          }
+          try {
+            localStorage.setItem('orion_chat_sessions', JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
+
         if (serverActiveId && serverActiveId !== activeSessionId) {
           setActiveSessionId(serverActiveId);
         }
-        try {
-          localStorage.setItem('orion_chat_sessions', JSON.stringify(serverSessions));
-        } catch {}
       }
     } catch {
       // offline / network error
@@ -2045,6 +2080,9 @@ export default function App() {
     const rawUserText = (textToSend !== undefined ? textToSend : input).trim();
     if ((!rawUserText && activeAttachments.length === 0 && !activeSkill) || isGenerating) return;
 
+    // Immediately switch view to chat mode so user never bounces to dashboard
+    setCurrentView('chat');
+
     // Handle direct client-side slash commands
     if (rawUserText.toLowerCase() === '/clear') {
       setInput('');
@@ -2149,24 +2187,65 @@ export default function App() {
       timestamp: new Date().toISOString(),
     };
 
-    setSessions((prev) =>
-      prev.map((s) => {
-        if (s.id === activeSessionId) {
-          const isFirstMessage = s.messages.length === 0;
-          const displayTitle = rawUserText || (skillName ? `/${skillName}` : (activeAttachments[0] ? `Lampiran: ${activeAttachments[0].name}` : 'Percakapan'));
-          return {
-            ...s,
-            title: isFirstMessage
-              ? displayTitle.length > 24
-                ? `${displayTitle.slice(0, 24)}...`
-                : displayTitle
-              : s.title,
-            messages: [...s.messages, userMessage, initialAiMessage],
-          };
+    // Determine target session ID and safely ensure session exists
+    let targetSessionId = activeSessionId;
+    let finalSessions = [];
+
+    setSessions((prev) => {
+      const exists = prev.some((s) => s.id === targetSessionId);
+      if (exists) {
+        finalSessions = prev.map((s) => {
+          if (s.id === targetSessionId) {
+            const isFirstMessage = (s.messages || []).length === 0;
+            const displayTitle = rawUserText || (skillName ? `/${skillName}` : (activeAttachments[0] ? `Lampiran: ${activeAttachments[0].name}` : 'Percakapan'));
+            return {
+              ...s,
+              title: isFirstMessage
+                ? displayTitle.length > 24
+                  ? `${displayTitle.slice(0, 24)}...`
+                  : displayTitle
+                : s.title,
+              messages: [...(s.messages || []), userMessage, initialAiMessage],
+            };
+          }
+          return s;
+        });
+      } else {
+        targetSessionId = targetSessionId || `session-${Date.now()}`;
+        setActiveSessionId(targetSessionId);
+        const displayTitle = rawUserText || (skillName ? `/${skillName}` : 'Percakapan Baru');
+        const newSess = {
+          id: targetSessionId,
+          title: displayTitle.length > 24 ? `${displayTitle.slice(0, 24)}...` : displayTitle,
+          createdAt: new Date().toISOString(),
+          messages: [userMessage, initialAiMessage],
+          projectPath: null,
+          projectName: null,
+        };
+        finalSessions = [newSess, ...prev];
+      }
+      try {
+        localStorage.setItem('orion_chat_sessions', JSON.stringify(finalSessions));
+      } catch {}
+      return finalSessions;
+    });
+
+    // Immediate sync to server so ~/.orion/sessions.json has the user message and initial bubble
+    isSyncingSessionsRef.current = true;
+    fetch('/api/chat/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessions: finalSessions, activeSessionId: targetSessionId }),
+    }).then(async (r) => {
+      if (r.ok) {
+        const data = await r.json();
+        if (data.updatedAt) {
+          lastServerUpdatedAtRef.current = data.updatedAt;
         }
-        return s;
-      })
-    );
+      }
+    }).catch(() => {}).finally(() => {
+      isSyncingSessionsRef.current = false;
+    });
 
     setInput('');
     setActiveSkill(null);
@@ -2186,10 +2265,10 @@ export default function App() {
     const commitUpdate = (text, toolCalls = null) => {
       setSessions((prev) =>
         prev.map((s) => {
-          if (s.id === activeSessionId) {
+          if (s.id === targetSessionId) {
             return {
               ...s,
-              messages: s.messages.map((m) =>
+              messages: (s.messages || []).map((m) =>
                 m.id === aiMessageId
                   ? {
                       ...m,
@@ -2372,7 +2451,7 @@ export default function App() {
               : {}),
           },
           body: JSON.stringify({
-            message: userText,
+            message: displayPrompt,
             history: activeSession ? activeSession.messages : [],
             model: effectiveModel || modelToUseForMessage,
             reasoningTier: activeReasoningTier,
@@ -2408,10 +2487,10 @@ export default function App() {
         if (!accumulated.trim()) {
           setSessions((prev) =>
             prev.map((s) => {
-              if (s.id === activeSessionId) {
+              if (s.id === targetSessionId) {
                 return {
                   ...s,
-                  messages: s.messages.map((m) =>
+                  messages: (s.messages || []).map((m) =>
                     m.id === aiMessageId ? { ...m, content: 'Respon dihentikan oleh pengguna.' } : m
                   ),
                 };
@@ -2429,10 +2508,10 @@ export default function App() {
 
       setSessions((prev) =>
         prev.map((s) => {
-          if (s.id === activeSessionId) {
+          if (s.id === targetSessionId) {
             return {
               ...s,
-              messages: s.messages.map((m) =>
+              messages: (s.messages || []).map((m) =>
                 m.id === aiMessageId ? { ...m, content: errorContent } : m
               ),
             };
@@ -2447,6 +2526,24 @@ export default function App() {
       }
       abortControllerRef.current = null;
       setIsGenerating(false);
+
+      // Persist latest sessions state to disk and server
+      setSessions((latest) => {
+        try {
+          localStorage.setItem('orion_chat_sessions', JSON.stringify(latest));
+        } catch {}
+        fetch('/api/chat/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessions: latest, activeSessionId: targetSessionId }),
+        }).then(async (r) => {
+          if (r.ok) {
+            const data = await r.json();
+            if (data.updatedAt) lastServerUpdatedAtRef.current = data.updatedAt;
+          }
+        }).catch(() => {});
+        return latest;
+      });
     }
   };
 

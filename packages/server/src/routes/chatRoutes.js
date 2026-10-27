@@ -467,7 +467,8 @@ router.put('/sessions/active', (req, res) => {
     if (!ok) {
       return res.status(404).json({ success: false, message: 'Sesi tidak ditemukan.' });
     }
-    res.json({ success: true, activeSessionId: sessionId });
+    const all = getAllSessions();
+    res.json({ success: true, activeSessionId: sessionId, updatedAt: all.updatedAt || Date.now() });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
