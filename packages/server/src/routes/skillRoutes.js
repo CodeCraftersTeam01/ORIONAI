@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   getInstalledSkills,
+  getSkillCommands,
   getSkillDetails,
   toggleSkill,
   installSkill,
@@ -26,6 +27,24 @@ router.get('/', async (req, res, next) => {
       success: true,
       count: skills.length,
       skills,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /api/skills/commands
+ * List all available slash commands from all installed and enabled skills
+ */
+router.get('/commands', async (req, res, next) => {
+  try {
+    const workspacePath = req.query.workspace || null;
+    const commands = await getSkillCommands(workspacePath);
+    res.json({
+      success: true,
+      count: commands.length,
+      commands,
     });
   } catch (err) {
     next(err);

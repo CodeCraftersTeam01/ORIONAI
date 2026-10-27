@@ -66,6 +66,7 @@ export function parseSkillMarkdown(content, fallbackName = 'unnamed-skill') {
     platform: 'universal',
     version: '1.0.0',
     author: 'Community',
+    argumentHint: '',
     allowedTools: [],
     tags: [],
     sourceUrl: null,
@@ -77,40 +78,61 @@ export function parseSkillMarkdown(content, fallbackName = 'unnamed-skill') {
     const rawYaml = match[1];
     instructions = match[2].trim();
 
-    // Parse simple YAML lines
+    // Parse YAML lines with multiline support (>, |, or indented block)
     const lines = rawYaml.split(/\r?\n/);
-    for (const line of lines) {
-      const colonIdx = line.indexOf(':');
-      if (colonIdx === -1) continue;
+    let currentKey = null;
+    let multilineVal = [];
 
-      const key = line.slice(0, colonIdx).trim().toLowerCase();
-      let value = line.slice(colonIdx + 1).trim();
-
-      // Clean quotes
+    const flushKey = () => {
+      if (!currentKey) return;
+      let value = multilineVal.join(' ').trim();
       if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
         value = value.slice(1, -1);
       }
 
-      if (key === 'name') {
+      if (currentKey === 'name') {
         metadata.name = value;
-      } else if (key === 'description' || key === 'desc') {
+      } else if (currentKey === 'description' || currentKey === 'desc') {
         metadata.description = value;
-      } else if (key === 'platform') {
+      } else if (currentKey === 'platform') {
         metadata.platform = value.toLowerCase();
-      } else if (key === 'version') {
+      } else if (currentKey === 'version') {
         metadata.version = value;
-      } else if (key === 'author') {
+      } else if (currentKey === 'author') {
         metadata.author = value;
-      } else if (key === 'allowed-tools' || key === 'allowedtools' || key === 'tools') {
+      } else if (currentKey === 'argument-hint' || currentKey === 'argumenthint' || currentKey === 'args') {
+        metadata.argumentHint = value;
+      } else if (currentKey === 'allowed-tools' || currentKey === 'allowedtools' || currentKey === 'tools') {
         metadata.allowedTools = value.split(/[,\s]+/).filter(Boolean);
-      } else if (key === 'tags') {
-        // Handle array syntax [a, b] or comma string
+      } else if (currentKey === 'tags') {
         const clean = value.replace(/[\[\]]/g, '');
         metadata.tags = clean.split(/[,\s]+/).filter(Boolean);
-      } else if (key === 'source' || key === 'url' || key === 'sourceurl') {
+      } else if (currentKey === 'source' || currentKey === 'url' || currentKey === 'sourceurl') {
         metadata.sourceUrl = value;
       }
+    };
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      // Indented continuation line under current key
+      if (/^\s+/.test(line) && currentKey) {
+        multilineVal.push(line.trim());
+        continue;
+      }
+
+      const colonIdx = line.indexOf(':');
+      if (colonIdx !== -1) {
+        flushKey();
+        currentKey = line.slice(0, colonIdx).trim().toLowerCase();
+        let initVal = line.slice(colonIdx + 1).trim();
+        if (initVal === '>' || initVal === '|') {
+          multilineVal = [];
+        } else {
+          multilineVal = initVal ? [initVal] : [];
+        }
+      }
     }
+    flushKey();
   } else {
     // If no YAML frontmatter, extract first H1 as name and first paragraph as description
     const h1Match = content.match(/^#\s+(.+)$/m);
@@ -135,6 +157,121 @@ export function parseSkillMarkdown(content, fallbackName = 'unnamed-skill') {
   }
 
   return { metadata, instructions };
+}
+
+/**
+ * Extract slash commands declared in skill markdown (tables, lists, inline, and default skill command)
+ */
+export function extractCommandsFromContent(content = '', skill = {}) {
+  const commandsMap = new Map();
+
+  const addCommand = (rawCmd, rawDesc) => {
+    if (!rawCmd) return;
+    let cleanCmd = rawCmd.trim().replace(/^[`'"]+|[`'"]+$/g, '');
+    if (!cleanCmd.startsWith('/')) {
+      cleanCmd = '/' + cleanCmd;
+    }
+
+    let cmdName = cleanCmd;
+    let argsHint = '';
+
+    const bracketIdx = cleanCmd.search(/[\[<({]/);
+    if (bracketIdx !== -1) {
+      cmdName = cleanCmd.slice(0, bracketIdx).trim();
+      argsHint = cleanCmd.slice(bracketIdx).trim();
+    } else {
+      const parts = cleanCmd.split(/\s+/);
+      if (parts.length > 1 && (parts[1].includes('|') || parts[1].includes('='))) {
+        cmdName = parts[0];
+        argsHint = parts.slice(1).join(' ');
+      }
+    }
+
+    let cleanDesc = (rawDesc || '')
+      .trim()
+      .replace(/^[—\-:\s]+/, '')
+      .replace(/^[`'"]+|[`'"]+$/g, '')
+      .trim();
+
+    if (!cleanDesc) {
+      cleanDesc = `Perintah skill ${skill.name || skill.id || ''}`;
+    }
+
+    const key = cmdName.toLowerCase();
+    if (!commandsMap.has(key)) {
+      commandsMap.set(key, {
+        command: cmdName,
+        label: cmdName.slice(1),
+        action: cmdName.slice(1),
+        argsHint: argsHint || (cmdName === `/${skill.id}` ? (skill.argumentHint || '') : ''),
+        description: cleanDesc,
+        skillId: skill.id,
+        skillName: skill.name || skill.id,
+        category: 'Skill',
+      });
+    }
+  };
+
+  if (content && typeof content === 'string') {
+    // 1. Table rows: parse line-by-line supporting escaped pipes (\|)
+    const lines = content.split(/\r?\n/);
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith('|') || !trimmed.endsWith('|')) continue;
+      // Skip markdown table header separators like |---|---|
+      if (/^\|[\s\-:|]+\|$/.test(trimmed)) continue;
+
+      const cols = trimmed
+        .slice(1, -1)
+        .split(/(?<!\\)\|/)
+        .map((c) => c.replace(/\\\|/g, '|').trim());
+
+      if (cols.length >= 2) {
+        const col1 = cols[0];
+        const col2 = cols[1];
+        if (col1.toLowerCase().includes('command') || col1.toLowerCase().includes('perintah')) continue;
+        const cmdMatch = col1.match(/`?(\/[a-zA-Z0-9_\-]+(?:\s+[^`]+)?)`?/);
+        if (cmdMatch) {
+          addCommand(cmdMatch[1], col2);
+        }
+      }
+    }
+
+    // 2. List items: - `/cmd ...`: description or - `/cmd` - description
+    const listItemRegex = /^[*-]\s+`?(\/[a-zA-Z0-9_\-]+(?:\s+[^`:\r\n]+)?)`?\s*(?:[:\-—]\s*|\s+)(.+)$/gm;
+    let match;
+    while ((match = listItemRegex.exec(content)) !== null) {
+      const rawCmd = match[1].trim();
+      const rawDesc = match[2].trim();
+      addCommand(rawCmd, rawDesc);
+    }
+
+    // 3. Inline mentions: `(/cmd ...)`
+    const inlineRegex = /`(\/[a-zA-Z0-9_\-]+(?:\s+[^`\n]{1,40})?)`/g;
+    while ((match = inlineRegex.exec(content)) !== null) {
+      const rawCmd = match[1].trim();
+      addCommand(rawCmd, `Perintah skill ${skill.name || skill.id}`);
+    }
+  }
+
+  // 4. Always ensure the primary skill command exists
+  if (skill.id) {
+    const primaryCmd = `/${skill.id}`;
+    if (!commandsMap.has(primaryCmd.toLowerCase())) {
+      commandsMap.set(primaryCmd.toLowerCase(), {
+        command: primaryCmd,
+        label: skill.id,
+        action: skill.id,
+        argsHint: skill.argumentHint || '',
+        description: skill.description || `Jalankan atau terapkan skill ${skill.name || skill.id}`,
+        skillId: skill.id,
+        skillName: skill.name || skill.id,
+        category: 'Skill',
+      });
+    }
+  }
+
+  return Array.from(commandsMap.values());
 }
 
 /**
@@ -184,6 +321,22 @@ export async function getInstalledSkills(workspacePath = null) {
           const { metadata, instructions } = parseSkillMarkdown(rawContent, skillName);
 
           const skillId = skillName.toLowerCase();
+
+          let fullContent = rawContent;
+          const readmeFile = path.join(skillFolder, 'README.md');
+          if (fs.existsSync(readmeFile)) {
+            try {
+              fullContent += '\n\n' + fs.readFileSync(readmeFile, 'utf8');
+            } catch {}
+          }
+
+          const extractedCommands = extractCommandsFromContent(fullContent, {
+            id: skillId,
+            name: metadata.name || skillName,
+            argumentHint: metadata.argumentHint,
+            description: metadata.description,
+          });
+
           // Prefer Orion internal over global if duplicate, or merge metadata
           if (!skillsMap.has(skillId) || source === 'orion') {
             skillsMap.set(skillId, {
@@ -193,6 +346,8 @@ export async function getInstalledSkills(workspacePath = null) {
               platform: metadata.platform || defaultPlatform,
               version: metadata.version || '1.0.0',
               author: metadata.author || 'Komunitas',
+              argumentHint: metadata.argumentHint || '',
+              commands: extractedCommands,
               allowedTools: metadata.allowedTools || [],
               tags: metadata.tags || [],
               sourceUrl: metadata.sourceUrl || null,
@@ -214,6 +369,29 @@ export async function getInstalledSkills(workspacePath = null) {
   }
 
   return Array.from(skillsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Get all available slash commands from all enabled installed skills
+ */
+export async function getSkillCommands(workspacePath = null) {
+  const installed = await getInstalledSkills(workspacePath);
+  const commandsList = [];
+  const seen = new Set();
+
+  for (const s of installed) {
+    if (!s.enabled) continue;
+    const cmds = Array.isArray(s.commands) ? s.commands : [];
+    for (const c of cmds) {
+      const key = c.command.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        commandsList.push(c);
+      }
+    }
+  }
+
+  return commandsList;
 }
 
 /**

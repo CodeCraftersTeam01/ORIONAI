@@ -16,6 +16,7 @@ import {
   clearSessionMessages,
   formatRelativeTime,
 } from '../../server/src/services/sessionService.js';
+import { getSkillCommands } from '../../server/src/services/skillService.js';
 
 function copyToClipboard(text) {
   try {
@@ -830,7 +831,7 @@ const COMMAND_ITEMS = [
  * - Pi status footer bar showing cwd (~), active model/tier, context token estimate, and API key status
  * - Fast keyboard shortcuts: Ctrl+L (Model), Shift+Tab (Tier), !cmd (Shell), Tab (Autocomplete)
  */
-function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, userApiKey, history, isAgentMode, sessionTitle = null }) {
+function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, userApiKey, history, isAgentMode, sessionTitle = null, skillCommands = [] }) {
   return new Promise((resolve) => {
     let buffer = '';
     let menuOpen = false;
@@ -838,6 +839,20 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
     let scrollOffset = 0;
     let isFirstRender = true;
     let filteredItems = [];
+
+    const dynamicCommandItems = [
+      ...COMMAND_ITEMS,
+      ...(skillCommands || []).map((sc) => ({
+        label: sc.command.replace(/^\//, ''),
+        detail: sc.argsHint ? `${sc.argsHint} — ${sc.description}` : sc.description,
+        action: sc.command.replace(/^\//, ''),
+        badge: sc.skillName || sc.skillId || 'Skill',
+        isSkill: true,
+        skillId: sc.skillId,
+        rawCommand: sc.command,
+        argsHint: sc.argsHint,
+      })),
+    ];
 
     const wasRaw = process.stdin.isRaw;
     if (process.stdin.isTTY) {
@@ -880,10 +895,17 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
           const realIdx = scrollOffset + idx;
           const isSelected = realIdx === menuIndex;
           const cursor = isSelected ? `\x1b[36m→ \x1b[0m` : `  `;
+
+          const rawLabel = `/${item.label}`;
+          const badgeText = item.badge ? ` \x1b[38;5;141m[${item.badge}]\x1b[0m` : '';
+          const labelWidth = 18;
+          const displayLabel = rawLabel.length > labelWidth ? rawLabel : rawLabel.padEnd(labelWidth);
           const label = isSelected
-            ? `\x1b[1m\x1b[37m${item.label.padEnd(14)}\x1b[0m`
-            : `\x1b[37m${item.label.padEnd(14)}\x1b[0m`;
-          const maxDetailLen = Math.max(10, width - 20);
+            ? `\x1b[1m\x1b[36m${displayLabel}\x1b[0m`
+            : `\x1b[37m${displayLabel}\x1b[0m`;
+
+          const badgeLen = item.badge ? item.badge.length + 3 : 0;
+          const maxDetailLen = Math.max(10, width - labelWidth - badgeLen - 6);
           const detailText = item.detail
             ? item.detail.length > maxDetailLen
               ? item.detail.slice(0, maxDetailLen - 1) + '…'
@@ -891,7 +913,7 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
             : '';
           const detail = detailText ? `\x1b[90m${detailText}\x1b[0m` : '';
 
-          out += `${cursor}${label} ${detail}\x1b[K\n`;
+          out += `${cursor}${label}${badgeText} ${detail}\x1b[K\n`;
           linesBelow++;
         });
 
@@ -959,13 +981,15 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
 
       const query = buffer.slice(1).trim().toLowerCase();
       if (!query) {
-        filteredItems = COMMAND_ITEMS;
+        filteredItems = dynamicCommandItems;
       } else {
-        filteredItems = COMMAND_ITEMS.filter(
+        filteredItems = dynamicCommandItems.filter(
           (item) =>
             item.label.toLowerCase().startsWith(query) ||
             item.action.toLowerCase().startsWith(query) ||
-            item.label.toLowerCase().includes(query)
+            item.label.toLowerCase().includes(query) ||
+            (item.badge && item.badge.toLowerCase().includes(query)) ||
+            (item.detail && item.detail.toLowerCase().includes(query))
         );
       }
 
@@ -1070,6 +1094,15 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
             resolve({ type: 'open_tier_menu' });
             return;
           }
+          if (selected.isSkill) {
+            resolve({
+              type: 'skill_command',
+              raw: `/${selected.label}`,
+              action: selected.action,
+              skillId: selected.skillId,
+            });
+            return;
+          }
           resolve({ type: 'command', action: selected.action, raw: `/${selected.action}` });
           return;
         }
@@ -1088,12 +1121,11 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
           const cmdName = parts[0].toLowerCase();
           const arg = parts.slice(1).join(' ').trim();
 
-          const matchedCmd = COMMAND_ITEMS.find(
+          const matchedCmd = dynamicCommandItems.find(
             (c) =>
-              `/${c.label}` === cmdName ||
-              `/${c.label}`.startsWith(cmdName) ||
-              c.action === cmdName.slice(1) ||
-              c.action.startsWith(cmdName.slice(1))
+              `/${c.label.toLowerCase()}` === cmdName ||
+              `/${c.action.toLowerCase()}` === cmdName ||
+              c.action.toLowerCase() === cmdName.slice(1)
           );
 
           if (matchedCmd) {
@@ -1103,6 +1135,15 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
             }
             if ((matchedCmd.action === 'tier' || matchedCmd.action === 'thinking') && !arg) {
               resolve({ type: 'open_tier_menu' });
+              return;
+            }
+            if (matchedCmd.isSkill) {
+              resolve({
+                type: 'skill_command',
+                raw: text,
+                action: matchedCmd.action,
+                skillId: matchedCmd.skillId,
+              });
               return;
             }
             resolve({
@@ -1138,7 +1179,7 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
       if (key === '\t') {
         if (menuOpen && filteredItems.length > 0) {
           const selected = filteredItems[menuIndex];
-          buffer = `/${selected.label}`;
+          buffer = `/${selected.label} `;
           updateSuggestions();
         }
         return;
@@ -1260,6 +1301,11 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
       inputResult = { type: 'chat', text: queuedUserMessage };
       queuedUserMessage = '';
     } else {
+      let skillCommands = [];
+      try {
+        skillCommands = await getSkillCommands(process.cwd());
+      } catch {}
+
       inputResult = await readInteractivePrompt({
         syncedConfig: freshConfig,
         currentModel,
@@ -1268,6 +1314,7 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
         history,
         isAgentMode,
         sessionTitle: currentSession.title,
+        skillCommands,
       });
     }
 
@@ -1371,6 +1418,14 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
         } catch {}
         console.log(`\n${c.green}✓ Output terminal disertakan ke memori percakapan AI.${c.reset}\n`);
       }
+      continue;
+    }
+
+    // Skill Command execution from menu or typed slash command
+    if (inputResult.type === 'skill_command') {
+      const cmdText = inputResult.raw;
+      console.log(`\n${c.bold}${c.brightCyan}✦ Menjalankan Perintah Skill [${inputResult.skillId || 'Skill'}]:${c.reset} ${c.yellow}${cmdText}${c.reset}\n`);
+      queuedUserMessage = cmdText;
       continue;
     }
 
@@ -2427,8 +2482,37 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
       console.log(`  ${c.yellow}/reset${c.reset}                    Bersihkan riwayat percakapan sesi ini`);
       console.log(`  ${c.yellow}/help${c.reset}                   Tampilkan panduan bantuan perintah`);
       console.log(`  ${c.yellow}/exit, /quit, /q${c.reset}        Keluar dari sesi terminal obrolan\n`);
+
+      try {
+        const skillCommands = await getSkillCommands(process.cwd());
+        if (skillCommands && skillCommands.length > 0) {
+          console.log(`${c.bold}${c.cyan}✦ Perintah Skill Terpasang:${c.reset}`);
+          skillCommands.forEach((sc) => {
+            const cmdWithArgs = `${sc.command}${sc.argsHint ? ` ${sc.argsHint}` : ''}`;
+            const padded = `${c.yellow}${cmdWithArgs}${c.reset}`.padEnd(36);
+            console.log(`  ${padded} ${c.magenta}[${sc.skillName || sc.skillId}]${c.reset} ${sc.description}`);
+          });
+          console.log('');
+        }
+      } catch {}
+
       return false;
     }
+
+    try {
+      const skillCommands = await getSkillCommands(process.cwd());
+      const matchedSkill = skillCommands.find(
+        (s) =>
+          s.command.toLowerCase() === action ||
+          `/${s.action.toLowerCase()}` === action ||
+          `/${s.label.toLowerCase()}` === action
+      );
+      if (matchedSkill) {
+        console.log(`\n${c.bold}${c.brightCyan}✦ Menjalankan Perintah Skill [${matchedSkill.skillName || matchedSkill.skillId}]:${c.reset} ${c.yellow}${cmd}${c.reset}\n`);
+        queuedUserMessage = cmd;
+        return false;
+      }
+    } catch {}
 
     console.log(`\n${c.yellow}⚠️  Perintah '${action}' tidak dikenal.${c.reset} Ketik ${c.yellow}/${c.reset} untuk saran perintah.\n`);
     return false;
