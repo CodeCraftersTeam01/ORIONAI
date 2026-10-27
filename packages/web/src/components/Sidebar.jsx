@@ -175,7 +175,27 @@ export default function Sidebar({
 
             {/* Sessions List */}
             <div className="sidebar-history-section">
-              <div className="section-label">Riwayat</div>
+              <div className="section-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span>Riwayat</span>
+                <span
+                  title="Sesi tersinkronisasi otomatis dua arah dengan Orion CLI"
+                  style={{
+                    fontSize: '0.62rem',
+                    textTransform: 'none',
+                    fontWeight: 500,
+                    padding: '1px 6px',
+                    borderRadius: '999px',
+                    backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                    color: 'var(--accent-color, #38bdf8)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: 'currentColor', display: 'inline-block' }} />
+                  CLI Sync
+                </span>
+              </div>
               <div className="sessions-scroll-list">
                 {sessions.length === 0 ? (
                   <div className="no-sessions-hint">Belum ada obrolan</div>

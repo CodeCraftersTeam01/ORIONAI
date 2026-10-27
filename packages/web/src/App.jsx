@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Menu,
   Download,
@@ -1576,6 +1576,11 @@ export default function App() {
     soundEffects.switchSession?.();
     setActiveSessionId(id);
     setCurrentView('chat');
+    fetch('/api/chat/sessions/active', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: id }),
+    }).catch(() => {});
   };
 
   const syncProvidersToServer = (providersList, model = selectedModel, tier = reasoningTier) => {
@@ -1754,18 +1759,130 @@ export default function App() {
     localStorage.setItem('orion_sound', soundEnabled ? 'true' : 'false');
   }, [soundEnabled]);
 
-  // Debounce localStorage persistence and avoid synchronous disk I/O while streaming
-  useEffect(() => {
+  // Bidirectional session synchronization with server & CLI (~/.orion/sessions.json)
+  const lastServerUpdatedAtRef = useRef(0);
+  const isSyncingSessionsRef = useRef(false);
+
+  const fetchServerSessions = useCallback(async (isInitial = false) => {
     if (isGenerating) return;
-    const timeoutId = setTimeout(() => {
+    try {
+      const res = await fetch('/api/chat/sessions');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data.success) return;
+
+      const serverSessions = data.sessions || [];
+      const serverActiveId = data.activeSessionId;
+      const serverUpdated = data.updatedAt || 0;
+
+      if (isInitial) {
+        let localSessions = [];
+        try {
+          const saved = localStorage.getItem('orion_chat_sessions');
+          if (saved) localSessions = JSON.parse(saved) || [];
+        } catch {}
+
+        if (serverSessions.length === 0 && localSessions.length > 0) {
+          // Migrate localStorage sessions to server
+          const pushRes = await fetch('/api/chat/sessions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessions: localSessions, activeSessionId }),
+          });
+          if (pushRes.ok) {
+            const pushData = await pushRes.json();
+            lastServerUpdatedAtRef.current = pushData.updatedAt || Date.now();
+          }
+          return;
+        }
+
+        if (serverSessions.length > 0) {
+          lastServerUpdatedAtRef.current = serverUpdated;
+          setSessions(serverSessions);
+          if (serverActiveId) {
+            setActiveSessionId(serverActiveId);
+          }
+          try {
+            localStorage.setItem('orion_chat_sessions', JSON.stringify(serverSessions));
+          } catch {}
+        }
+        return;
+      }
+
+      // Subsequent syncs (focus / visibility / poll):
+      // Only apply if server has newer data than our last known timestamp
+      if (serverUpdated > lastServerUpdatedAtRef.current && !isGenerating && !isSyncingSessionsRef.current) {
+        lastServerUpdatedAtRef.current = serverUpdated;
+        setSessions(serverSessions);
+        if (serverActiveId) {
+          setActiveSessionId((prev) => {
+            const stillExists = serverSessions.some((s) => s.id === prev);
+            return stillExists ? prev : serverActiveId;
+          });
+        }
+        try {
+          localStorage.setItem('orion_chat_sessions', JSON.stringify(serverSessions));
+        } catch {}
+      }
+    } catch {
+      // offline / network error
+    }
+  }, [isGenerating, activeSessionId]);
+
+  // Debounce localStorage persistence and sync to ~/.orion/sessions.json
+  useEffect(() => {
+    if (isGenerating || sessions.length === 0) return;
+    const timeoutId = setTimeout(async () => {
       try {
         localStorage.setItem('orion_chat_sessions', JSON.stringify(sessions));
-      } catch {
-        // storage quota
+      } catch {}
+
+      try {
+        isSyncingSessionsRef.current = true;
+        const res = await fetch('/api/chat/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessions, activeSessionId }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.updatedAt) {
+            lastServerUpdatedAtRef.current = data.updatedAt;
+          }
+        }
+      } catch {} finally {
+        isSyncingSessionsRef.current = false;
       }
-    }, 500);
+    }, 600);
     return () => clearTimeout(timeoutId);
-  }, [sessions, isGenerating]);
+  }, [sessions, activeSessionId, isGenerating]);
+
+  // Listen for window focus, visibilitychange, and gentle poll to catch CLI messages
+  useEffect(() => {
+    fetchServerSessions(true);
+
+    const onFocus = () => fetchServerSessions(false);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchServerSessions(false);
+      }
+    };
+
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    const intervalId = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchServerSessions(false);
+      }
+    }, 4000);
+
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      clearInterval(intervalId);
+    };
+  }, [fetchServerSessions]);
 
   const isScrollingRef = useRef(false);
   const scrollToBottom = (instant = false) => {
@@ -1850,6 +1967,7 @@ export default function App() {
   };
 
   const handleDeleteSession = (sessionId) => {
+    fetch(`/api/chat/sessions/${sessionId}`, { method: 'DELETE' }).catch(() => {});
     setSessions((prev) => {
       const filtered = prev.filter((s) => s.id !== sessionId);
       if (filtered.length === 0) {

@@ -15,6 +15,12 @@ import {
   CheckCircle2,
   X,
   Info,
+  Plus,
+  Copy,
+  Trash2,
+  Edit3,
+  GitFork,
+  Search,
 } from 'lucide-react';
 import { REASONING_TIERS, isReasoningSupported } from '../utils/modelConfig';
 
@@ -62,6 +68,42 @@ export default function ModelsView({
   const [isAuxModalOpen, setIsAuxModalOpen] = useState(false);
   const [isMoaModalOpen, setIsMoaModalOpen] = useState(false);
   const [isChangeModelModalOpen, setIsChangeModelModalOpen] = useState(false);
+
+  // Combos State
+  const [combos, setCombos] = useState([]);
+  const [isLoadingCombos, setIsLoadingCombos] = useState(false);
+  const [isComboModalOpen, setIsComboModalOpen] = useState(false);
+  const [editingCombo, setEditingCombo] = useState(null);
+  const [selectedComboIds, setSelectedComboIds] = useState([]);
+  const [comboModelSearch, setComboModelSearch] = useState('');
+  const [isSavingCombo, setIsSavingCombo] = useState(false);
+  const [comboForm, setComboForm] = useState({
+    id: '',
+    name: '',
+    strategy: 'fallback',
+    models: [],
+    judge: '',
+    description: '',
+  });
+
+  const fetchCombos = async () => {
+    setIsLoadingCombos(true);
+    try {
+      const res = await fetch('/api/combos');
+      const data = await res.json();
+      if (data.success && Array.isArray(data.combos)) {
+        setCombos(data.combos);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch combos:', err);
+    } finally {
+      setIsLoadingCombos(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCombos();
+  }, []);
 
   // Auxiliary tasks assignment state (persisted to localStorage)
   const [auxAssignments, setAuxAssignments] = useState(() => {
@@ -249,6 +291,7 @@ export default function ModelsView({
 
   const handleRefresh = () => {
     setIsRefreshing(true);
+    fetchCombos();
     setTimeout(() => {
       setIsRefreshing(false);
     }, 500);
@@ -308,6 +351,189 @@ export default function ModelsView({
     onSelectModel?.(modelId);
     setActiveDropdownModelId(null);
     if (onNavigate) onNavigate('chat');
+  };
+
+  // Combo Handler Actions
+  const handleOpenCreateCombo = () => {
+    setEditingCombo(null);
+    setComboForm({
+      id: '',
+      name: '',
+      strategy: 'fallback',
+      models: modelsList.slice(0, 2).map((m) => m.id),
+      judge: modelsList[0]?.id || 'orion::orion',
+      description: '',
+    });
+    setComboModelSearch('');
+    setIsComboModalOpen(true);
+  };
+
+  const handleOpenEditCombo = (combo) => {
+    setEditingCombo(combo);
+    setComboForm({
+      id: combo.id,
+      name: combo.name || '',
+      strategy: combo.strategy || 'fallback',
+      models: Array.isArray(combo.models) ? [...combo.models] : [],
+      judge: combo.judge || combo.models?.[0] || 'orion::orion',
+      description: combo.description || '',
+    });
+    setComboModelSearch('');
+    setIsComboModalOpen(true);
+  };
+
+  const handleToggleSelectCombo = (id) => {
+    setSelectedComboIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleToggleSelectAllCombos = () => {
+    if (selectedComboIds.length === combos.length) {
+      setSelectedComboIds([]);
+    } else {
+      setSelectedComboIds(combos.map((c) => c.id));
+    }
+  };
+
+  const handleSelectComboAsMain = (combo) => {
+    const comboModelId = `combo::${combo.id}`;
+    onSelectModel?.(comboModelId);
+    if (showToast) {
+      showToast(`Model aktif diatur ke Combo: ${combo.name} (${combo.strategy.toUpperCase()})`);
+    }
+  };
+
+  const handleCopyCombo = async (combo) => {
+    const comboId = `combo::${combo.id}`;
+    try {
+      await navigator.clipboard.writeText(comboId);
+      if (showToast) {
+        showToast(`Identifier "${comboId}" berhasil disalin ke clipboard`);
+      }
+    } catch {
+      if (showToast) showToast(`Combo ID: ${comboId}`);
+    }
+  };
+
+  const handleQuickChangeStrategy = async (combo, newStrategy) => {
+    try {
+      const res = await fetch('/api/combos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...combo,
+          strategy: newStrategy,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCombos((prev) =>
+          prev.map((c) => (c.id === combo.id ? { ...c, strategy: newStrategy } : c))
+        );
+        if (showToast) {
+          showToast(`Strategi combo ${combo.name} diubah ke ${newStrategy}`);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to update combo strategy:', err);
+    }
+  };
+
+  const handleSaveCombo = async (e) => {
+    if (e) e.preventDefault();
+    if (!comboForm.name.trim()) {
+      if (showToast) showToast('Nama combo wajib diisi.');
+      return;
+    }
+    if (!comboForm.models || comboForm.models.length === 0) {
+      if (showToast) showToast('Pilih minimal 1 model untuk combo ini.');
+      return;
+    }
+
+    setIsSavingCombo(true);
+    try {
+      const res = await fetch('/api/combos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(comboForm),
+      });
+      const data = await res.json();
+      if (data.success) {
+        await fetchCombos();
+        setIsComboModalOpen(false);
+        if (showToast) {
+          showToast(editingCombo ? `Combo "${data.combo.name}" berhasil diperbarui.` : `Combo "${data.combo.name}" berhasil dibuat!`);
+        }
+      } else {
+        if (showToast) showToast(data.message || 'Gagal menyimpan combo.');
+      }
+    } catch (err) {
+      if (showToast) showToast('Terjadi kesalahan saat menyimpan combo: ' + err.message);
+    } finally {
+      setIsSavingCombo(false);
+    }
+  };
+
+  const handleDeleteCombo = async (id, name) => {
+    if (!window.confirm(`Yakin ingin menghapus combo "${name}"?`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/combos/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        setCombos((prev) => prev.filter((c) => c.id !== id));
+        setSelectedComboIds((prev) => prev.filter((item) => item !== id));
+        if (selectedModel === `combo::${id}` || selectedModel === id) {
+          onSelectModel?.('orion::orion');
+        }
+        if (showToast) {
+          showToast(`Combo "${name}" berhasil dihapus.`);
+        }
+      }
+    } catch (err) {
+      if (showToast) showToast('Gagal menghapus combo: ' + err.message);
+    }
+  };
+
+  const handleBulkDeleteCombos = async () => {
+    if (selectedComboIds.length === 0) return;
+    if (!window.confirm(`Yakin ingin menghapus ${selectedComboIds.length} combo terpilih?`)) {
+      return;
+    }
+    for (const id of selectedComboIds) {
+      try {
+        await fetch(`/api/combos/${id}`, { method: 'DELETE' });
+      } catch {}
+    }
+    setSelectedComboIds([]);
+    await fetchCombos();
+    if (showToast) {
+      showToast('Combo yang dipilih berhasil dihapus.');
+    }
+  };
+
+  const handleToggleModelInCombo = (modelId) => {
+    setComboForm((prev) => {
+      const exists = prev.models.includes(modelId);
+      const newModels = exists
+        ? prev.models.filter((m) => m !== modelId)
+        : [...prev.models, modelId];
+
+      let newJudge = prev.judge;
+      if (exists && prev.judge === modelId) {
+        newJudge = newModels[0] || 'orion::orion';
+      } else if (!exists && (!newJudge || !newModels.includes(newJudge))) {
+        newJudge = newModels[0] || 'orion::orion';
+      }
+
+      return {
+        ...prev,
+        models: newModels,
+        judge: newJudge,
+      };
+    });
   };
 
   const modelsUsedCount = Math.max(1, modelsList.filter((m) => (modelStats[m.id] || 0) > 0).length);
@@ -444,6 +670,36 @@ export default function ModelsView({
                   CONFIGURE
                 </button>
               </div>
+
+              {/* Row 4: Combos */}
+              <div className="models-setting-row">
+                <div className="setting-row-meta">
+                  <div className="setting-row-label">
+                    <GitFork size={13} className="setting-icon-combos" />
+                    <span>COMBOS & ROUTER</span>
+                  </div>
+                  <div className="setting-row-spec">
+                    <span className="spec-count">{combos.length} combos</span>
+                    <span className="spec-dot">·</span>
+                    <span className="spec-mode">
+                      {combos.length > 0
+                        ? `${combos[0].name} (${combos[0].strategy})`
+                        : 'none configured'}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="models-btn-ghost"
+                  onClick={() => {
+                    const el = document.getElementById('models-combos-section');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                >
+                  MANAGE
+                </button>
+              </div>
             </div>
           </div>
 
@@ -472,6 +728,222 @@ export default function ModelsView({
                 debug estimate anyway.
               </p>
             </div>
+          </div>
+        </div>
+
+        {/* ================= COMBOS SECTION (9Router Proxy Style) ================= */}
+        <div className="models-combos-section" id="models-combos-section">
+          <div className="combos-section-header">
+            <div className="combos-header-left">
+              <div className="combos-title-wrap">
+                <GitFork size={20} className="combos-main-icon" />
+                <h2 className="combos-title">Combos</h2>
+              </div>
+              <p className="combos-subtitle">Model combos with fallback & router</p>
+            </div>
+
+            <button
+              type="button"
+              className="combos-create-btn"
+              onClick={handleOpenCreateCombo}
+            >
+              <Plus size={15} />
+              <span>Create Combo</span>
+            </button>
+          </div>
+
+          {/* Guidelines Explainer */}
+          <div className="combos-explainer-box">
+            <p className="combos-explainer-intro">
+              Group models under one name, then pick a strategy per combo:
+            </p>
+            <div className="combos-strategies-guide">
+              <div className="combos-strategy-item">
+                <span className="strategy-strong">Fallback</span>
+                <span className="strategy-sep">—</span>
+                <span className="strategy-desc">tries models in order (next on failure)</span>
+              </div>
+              <div className="combos-strategy-item">
+                <span className="strategy-strong">Round Robin</span>
+                <span className="strategy-sep">—</span>
+                <span className="strategy-desc">rotates models across requests to spread load</span>
+              </div>
+              <div className="combos-strategy-item">
+                <span className="strategy-strong">Fusion</span>
+                <span className="strategy-sep">—</span>
+                <span className="strategy-desc">queries all models in parallel, then a judge synthesizes one answer. Best quality, but costs the most: every request bills all panel models + the judge (N+1 calls)</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Select All Bar */}
+          <div className="combos-select-bar">
+            <label className="combos-select-all-label">
+              <input
+                type="checkbox"
+                checked={combos.length > 0 && selectedComboIds.length === combos.length}
+                onChange={handleToggleSelectAllCombos}
+                className="combos-checkbox"
+              />
+              <span>Select all ({combos.length})</span>
+            </label>
+
+            {selectedComboIds.length > 0 && (
+              <div className="combos-bulk-actions">
+                <span className="combos-selected-count">{selectedComboIds.length} dipilih</span>
+                <button
+                  type="button"
+                  className="combos-bulk-delete-btn"
+                  onClick={handleBulkDeleteCombos}
+                >
+                  <Trash2 size={13} />
+                  <span>Hapus</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Combos List Cards */}
+          <div className="combos-cards-list">
+            {combos.map((combo) => {
+              const isSelected = selectedComboIds.includes(combo.id);
+              const isCurrentMain = selectedModel === `combo::${combo.id}` || selectedModel === combo.id;
+
+              return (
+                <div
+                  key={combo.id}
+                  className={`combo-item-card ${isCurrentMain ? 'is-active-combo' : ''}`}
+                >
+                  <div className="combo-card-main-row">
+                    <div className="combo-card-left">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleToggleSelectCombo(combo.id)}
+                        className="combos-checkbox"
+                      />
+                      <div className="combo-card-icon-box">
+                        <Layers size={18} className="combo-card-icon" />
+                      </div>
+
+                      <div className="combo-card-info">
+                        <div className="combo-name-row">
+                          <span className="combo-name">{combo.name}</span>
+                          {isCurrentMain && (
+                            <span className="combo-active-pill">
+                              <Check size={11} />
+                              ACTIVE MODEL
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Model tags row */}
+                        <div className="combo-models-chips-wrap">
+                          {(combo.models || []).slice(0, 4).map((mId) => {
+                            const cleanName = mId.includes('::') ? mId.split('::')[1] : mId;
+                            return (
+                              <span key={mId} className="combo-model-chip" title={mId}>
+                                <Zap size={11} className="combo-chip-icon" />
+                                <span>{cleanName}</span>
+                              </span>
+                            );
+                          })}
+                          {(combo.models || []).length > 4 && (
+                            <span className="combo-model-chip combo-more-chip" title={(combo.models || []).slice(4).join(', ')}>
+                              +{(combo.models || []).length - 4} more
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Judge indicator if Fusion */}
+                        {combo.strategy === 'fusion' && (
+                          <div className="combo-judge-row">
+                            <span className="combo-judge-label">Judge</span>
+                            <span className="combo-judge-chip" title={combo.judge || 'Default'}>
+                              <Bot size={11} className="judge-chip-icon" />
+                              <span>{combo.judge ? (combo.judge.includes('::') ? combo.judge.split('::')[1] : combo.judge) : 'orion'}</span>
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="combo-card-right">
+                      {/* Strategy Selector Dropdown */}
+                      <div className="combo-strategy-select-wrap">
+                        <select
+                          value={combo.strategy || 'fallback'}
+                          onChange={(e) => handleQuickChangeStrategy(combo, e.target.value)}
+                          className="combo-strategy-select"
+                        >
+                          <option value="fallback">Fallback — try in order</option>
+                          <option value="round_robin">Round Robin — spread load</option>
+                          <option value="fusion">Fusion — panel + judge</option>
+                        </select>
+                        <ChevronDown size={13} className="combo-select-arrow" />
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="combo-card-actions">
+                        <button
+                          type="button"
+                          className={`combo-action-btn ${isCurrentMain ? 'is-active-btn' : ''}`}
+                          onClick={() => handleSelectComboAsMain(combo)}
+                          title={isCurrentMain ? 'Model ini sedang aktif' : 'Jadikan Model Utama'}
+                        >
+                          <CheckCircle2 size={14} />
+                          <span>{isCurrentMain ? 'Active' : 'Use'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          className="combo-action-btn"
+                          onClick={() => handleCopyCombo(combo)}
+                          title="Salin identifier model"
+                        >
+                          <Copy size={14} />
+                          <span>Copy</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          className="combo-action-btn"
+                          onClick={() => handleOpenEditCombo(combo)}
+                          title="Edit combo ini"
+                        >
+                          <Edit3 size={14} />
+                          <span>Edit</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          className="combo-action-btn btn-delete"
+                          onClick={() => handleDeleteCombo(combo.id, combo.name)}
+                          title="Hapus combo ini"
+                        >
+                          <Trash2 size={14} />
+                          <span>Delete</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {combos.length === 0 && !isLoadingCombos && (
+              <div className="combos-empty-state">
+                <p>Belum ada combo model yang dibuat.</p>
+                <button
+                  type="button"
+                  className="combos-create-btn"
+                  onClick={handleOpenCreateCombo}
+                >
+                  <Plus size={15} />
+                  <span>Buat Combo Pertama</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -847,6 +1319,230 @@ export default function ModelsView({
                 Simpan Konfigurasi
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL: CREATE / EDIT COMBO ================= */}
+      {isComboModalOpen && (
+        <div className="modal-backdrop" onClick={() => setIsComboModalOpen(false)}>
+          <div
+            className="modal-dialog modal-content combo-modal-dialog"
+            style={{ maxWidth: '640px', width: '100%', maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <div className="modal-header-left" style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                <GitFork size={18} style={{ color: 'var(--text-primary)' }} />
+                <h3 className="modal-title">
+                  {editingCombo ? `Edit Combo: ${editingCombo.name}` : 'Create New Combo'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setIsComboModalOpen(false)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCombo} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+              <div className="modal-body custom-scrollbar" style={{ overflowY: 'auto', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                {/* Field 1: Name */}
+                <div className="combo-form-field">
+                  <label className="combo-form-label">
+                    <span>NAMA COMBO</span>
+                    <span className="combo-form-required">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={comboForm.name}
+                    onChange={(e) => setComboForm({ ...comboForm, name: e.target.value.toUpperCase().replace(/\s+/g, '_') })}
+                    placeholder="e.g. ORION_FALLBACK_ROUTER"
+                    className="combo-form-input"
+                  />
+                  <span className="combo-form-help">
+                    Nama unik combo model (otomatis kapital & tanpa spasi).
+                  </span>
+                </div>
+
+                {/* Field 2: Strategy */}
+                <div className="combo-form-field">
+                  <label className="combo-form-label">STRATEGI ROUTING</label>
+                  <div className="combo-strategy-grid">
+                    {[
+                      {
+                        id: 'fallback',
+                        title: 'Fallback',
+                        desc: 'Tries models sequentially in order upon failure or timeout',
+                      },
+                      {
+                        id: 'round_robin',
+                        title: 'Round Robin',
+                        desc: 'Rotates requests evenly across models to spread load',
+                      },
+                      {
+                        id: 'fusion',
+                        title: 'Fusion',
+                        desc: 'Queries all models in parallel, then a judge synthesizes one unified answer',
+                      },
+                    ].map((s) => {
+                      const isSelected = comboForm.strategy === s.id;
+                      return (
+                        <div
+                          key={s.id}
+                          className={`combo-strategy-card ${isSelected ? 'is-selected' : ''}`}
+                          onClick={() => setComboForm({ ...comboForm, strategy: s.id })}
+                        >
+                          <div className="strategy-card-header">
+                            <span className="strategy-card-title">{s.title}</span>
+                            {isSelected && <Check size={14} className="strategy-check" />}
+                          </div>
+                          <span className="strategy-card-desc">{s.desc}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Field 3: Multi-select Models */}
+                <div className="combo-form-field">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                    <label className="combo-form-label" style={{ margin: 0 }}>
+                      MODEL PANEL ({comboForm.models.length} DIPILIH)
+                      <span className="combo-form-required">*</span>
+                    </label>
+                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                      <button
+                        type="button"
+                        className="combo-mini-btn"
+                        onClick={() => setComboForm({ ...comboForm, models: modelsList.map((m) => m.id) })}
+                      >
+                        Pilih Semua
+                      </button>
+                      <button
+                        type="button"
+                        className="combo-mini-btn"
+                        onClick={() => setComboForm({ ...comboForm, models: [] })}
+                      >
+                        Hapus Semua
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Search box for models */}
+                  <div className="combo-model-search-box">
+                    <Search size={14} className="search-icon" />
+                    <input
+                      type="text"
+                      value={comboModelSearch}
+                      onChange={(e) => setComboModelSearch(e.target.value)}
+                      placeholder="Cari model dalam daftar..."
+                      className="combo-search-input"
+                    />
+                  </div>
+
+                  <div className="combo-models-checklist custom-scrollbar">
+                    {modelsList
+                      .filter((m) => {
+                        if (!comboModelSearch.trim()) return true;
+                        const query = comboModelSearch.toLowerCase();
+                        return (
+                          (m.name || '').toLowerCase().includes(query) ||
+                          (m.displayName || '').toLowerCase().includes(query) ||
+                          (m.id || '').toLowerCase().includes(query)
+                        );
+                      })
+                      .map((model) => {
+                        const isChecked = comboForm.models.includes(model.id);
+                        const orderIndex = comboForm.models.indexOf(model.id);
+
+                        return (
+                          <div
+                            key={model.id}
+                            className={`combo-model-item ${isChecked ? 'is-checked' : ''}`}
+                            onClick={() => handleToggleModelInCombo(model.id)}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {}}
+                              className="combos-checkbox"
+                            />
+                            <div className="combo-model-item-info">
+                              <span className="combo-model-item-name">
+                                {model.displayName || model.name}
+                              </span>
+                              <span className="combo-model-item-provider">
+                                {model.providerId || model.endpoint || 'Provider'}
+                              </span>
+                            </div>
+
+                            {isChecked && (
+                              <span className="combo-order-chip">
+                                #{orderIndex + 1}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+
+                {/* Field 4: Judge Model (Only if Fusion) */}
+                {comboForm.strategy === 'fusion' && (
+                  <div className="combo-form-field animate-fade-in">
+                    <label className="combo-form-label">MODEL JURI (SYNTHESIS JUDGE)</label>
+                    <select
+                      value={comboForm.judge || comboForm.models[0] || 'orion::orion'}
+                      onChange={(e) => setComboForm({ ...comboForm, judge: e.target.value })}
+                      className="combo-form-select"
+                    >
+                      {modelsList.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.displayName || m.name} ({m.providerId || 'Official'})
+                        </option>
+                      ))}
+                    </select>
+                    <span className="combo-form-help">
+                      Model ini bertindak sebagai juri yang mengevaluasi draf dari semua model panel dan menyusun jawaban akhir terbaik.
+                    </span>
+                  </div>
+                )}
+
+                {/* Field 5: Description */}
+                <div className="combo-form-field">
+                  <label className="combo-form-label">DESKRIPSI (OPSIONAL)</label>
+                  <textarea
+                    rows={2}
+                    value={comboForm.description}
+                    onChange={(e) => setComboForm({ ...comboForm, description: e.target.value })}
+                    placeholder="Contoh: Model combo dengan failover otomatis ke Agnes jika Orion utama sibuk."
+                    className="combo-form-textarea"
+                  />
+                </div>
+              </div>
+
+              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.65rem', padding: '0.85rem 1.25rem', borderTop: '1px solid var(--border-color)' }}>
+                <button
+                  type="button"
+                  className="models-btn-ghost"
+                  onClick={() => setIsComboModalOpen(false)}
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingCombo || !comboForm.name.trim() || comboForm.models.length === 0}
+                  className="btn-primary-action"
+                  style={{ padding: '0.5rem 1.25rem', borderRadius: '8px', fontSize: '0.82rem' }}
+                >
+                  {isSavingCombo ? 'Menyimpan...' : editingCombo ? 'Simpan Perubahan' : 'Buat Combo'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

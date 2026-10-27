@@ -10158,6 +10158,643 @@ svg[aria-roledescription="error"] {
   white-space: nowrap;
 }
 
+/* ========================================================
+   9ROUTER-INSPIRED COMBOS SECTION & MODALS
+======================================================== */
+.models-combos-section {
+  margin-top: 1.5rem;
+  margin-bottom: 2.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.combos-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.combos-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.combos-main-icon {
+  color: #ea580c;
+}
+
+.combos-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.combos-subtitle {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin: 0.25rem 0 0;
+}
+
+.combos-create-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1.15rem;
+  background: #ea580c;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 8px rgba(234, 88, 12, 0.25);
+}
+
+.combos-create-btn:hover {
+  background: #c2410c;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.35);
+}
+
+.combos-explainer-box {
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px dashed var(--border-subtle);
+  border-radius: 12px;
+  padding: 1.15rem 1.35rem;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+[data-theme='dark'] .combos-explainer-box {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: #2b2b2e;
+}
+
+.combos-explainer-intro {
+  margin: 0 0 0.65rem;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.combos-strategies-guide {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.combos-strategy-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.strategy-strong {
+  font-weight: 700;
+  color: var(--text-primary);
+  min-width: 95px;
+  flex-shrink: 0;
+}
+
+.strategy-sep {
+  color: var(--text-muted);
+}
+
+.strategy-desc {
+  color: var(--text-muted);
+}
+
+.combos-select-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.25rem 0.5rem;
+}
+
+.combos-select-all-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.combos-checkbox {
+  accent-color: #ea580c;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.combos-bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.combos-selected-count {
+  font-size: 0.78rem;
+  color: #ea580c;
+  font-weight: 600;
+}
+
+.combos-bulk-delete-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.combos-bulk-delete-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.combos-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.combo-item-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 1.15rem 1.45rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+[data-theme='dark'] .combo-item-card {
+  background: #151516;
+  border-color: #27272a;
+}
+
+.combo-item-card:hover {
+  border-color: #3f3f46;
+}
+
+.combo-item-card.is-active-combo {
+  border-color: #ea580c;
+  box-shadow: 0 0 0 1px #ea580c, 0 4px 16px rgba(234, 88, 12, 0.12);
+}
+
+.combo-card-main-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.combo-card-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+  min-width: 280px;
+}
+
+.combo-card-icon-box {
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  background: rgba(234, 88, 12, 0.1);
+  border: 1px solid rgba(234, 88, 12, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ea580c;
+  flex-shrink: 0;
+}
+
+.combo-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.combo-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.combo-name {
+  font-family: var(--font-mono);
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.03em;
+}
+
+.combo-active-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: rgba(34, 197, 94, 0.12);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  border-radius: 9999px;
+  padding: 1px 7px;
+}
+
+.combo-models-chips-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.combo-model-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.73rem;
+  font-family: var(--font-mono);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  padding: 2px 7px;
+  border-radius: 6px;
+  color: var(--text-secondary);
+}
+
+[data-theme='dark'] .combo-model-chip {
+  background: #1e1e21;
+  border-color: #333338;
+}
+
+.combo-more-chip {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.combo-chip-icon {
+  color: #ea580c;
+  opacity: 0.85;
+}
+
+.combo-judge-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.15rem;
+}
+
+.combo-judge-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.combo-judge-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.73rem;
+  font-family: var(--font-mono);
+  background: rgba(234, 88, 12, 0.08);
+  border: 1px dashed rgba(234, 88, 12, 0.35);
+  padding: 2px 8px;
+  border-radius: 6px;
+  color: #ea580c;
+}
+
+.combo-card-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.combo-strategy-select-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.combo-strategy-select {
+  appearance: none;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  font-weight: 500;
+  border-radius: 8px;
+  padding: 0.45rem 2rem 0.45rem 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  outline: none;
+}
+
+[data-theme='dark'] .combo-strategy-select {
+  background: #1c1c1f;
+  border-color: #333338;
+}
+
+.combo-strategy-select:hover {
+  border-color: var(--border-default);
+}
+
+.combo-strategy-select:focus {
+  border-color: #ea580c;
+}
+
+.combo-select-arrow {
+  position: absolute;
+  right: 0.65rem;
+  pointer-events: none;
+  color: var(--text-muted);
+}
+
+.combo-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.combo-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  border-radius: 6px;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.74rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.combo-action-btn:hover {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border-color: var(--border-default);
+}
+
+.combo-action-btn.is-active-btn {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.combo-action-btn.btn-delete:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.combos-empty-state {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px dashed var(--border-subtle);
+  border-radius: 12px;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Modal Form Styles */
+.combo-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.combo-form-label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+.combo-form-required {
+  color: #ef4444;
+}
+
+.combo-form-input,
+.combo-form-select,
+.combo-form-textarea {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 0.55rem 0.75rem;
+  color: var(--text-primary);
+  font-size: 0.84rem;
+  outline: none;
+  transition: all 0.15s;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+[data-theme='dark'] .combo-form-input,
+[data-theme='dark'] .combo-form-select,
+[data-theme='dark'] .combo-form-textarea {
+  background: #1c1c1f;
+  border-color: #333338;
+}
+
+.combo-form-input:focus,
+.combo-form-select:focus,
+.combo-form-textarea:focus {
+  border-color: #ea580c;
+  box-shadow: 0 0 0 2px rgba(234, 88, 12, 0.15);
+}
+
+.combo-form-help {
+  font-size: 0.73rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.combo-strategy-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.65rem;
+}
+
+.combo-strategy-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 0.75rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  transition: all 0.15s;
+}
+
+[data-theme='dark'] .combo-strategy-card {
+  background: #1c1c1f;
+  border-color: #333338;
+}
+
+.combo-strategy-card.is-selected {
+  border-color: #ea580c;
+  background: rgba(234, 88, 12, 0.06);
+}
+
+.strategy-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.strategy-card-title {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.strategy-check {
+  color: #ea580c;
+}
+
+.strategy-card-desc {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.combo-mini-btn {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.combo-mini-btn:hover {
+  border-color: var(--text-primary);
+  color: var(--text-primary);
+}
+
+.combo-model-search-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 0.4rem 0.65rem;
+  margin-bottom: 0.5rem;
+}
+
+[data-theme='dark'] .combo-model-search-box {
+  background: #1c1c1f;
+  border-color: #333338;
+}
+
+.combo-search-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  width: 100%;
+}
+
+.combo-models-checklist {
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 0.5rem;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='dark'] .combo-models-checklist {
+  background: #131314;
+  border-color: #26262a;
+}
+
+.combo-model-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.combo-model-item:hover {
+  background: var(--bg-surface);
+}
+
+.combo-model-item.is-checked {
+  background: rgba(234, 88, 12, 0.08);
+}
+
+.combo-model-item-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.combo-model-item-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.combo-model-item-provider {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.combo-order-chip {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #ea580c;
+  background: rgba(234, 88, 12, 0.15);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+
 
 
 
