@@ -896,24 +896,39 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
           const isSelected = realIdx === menuIndex;
           const cursor = isSelected ? `\x1b[36m→ \x1b[0m` : `  `;
 
+          // Format raw command label (strictly clamped so it NEVER wraps)
           const rawLabel = `/${item.label}`;
-          const badgeText = item.badge ? ` \x1b[38;5;141m[${item.badge}]\x1b[0m` : '';
-          const labelWidth = 18;
-          const displayLabel = rawLabel.length > labelWidth ? rawLabel : rawLabel.padEnd(labelWidth);
+          const maxLabelWidth = 22;
+          const cleanRawLabel = rawLabel.length > maxLabelWidth ? rawLabel.slice(0, maxLabelWidth - 1) + '…' : rawLabel;
+          const displayLabel = cleanRawLabel.padEnd(maxLabelWidth);
           const label = isSelected
             ? `\x1b[1m\x1b[36m${displayLabel}\x1b[0m`
             : `\x1b[37m${displayLabel}\x1b[0m`;
 
-          const badgeLen = item.badge ? item.badge.length + 3 : 0;
-          const maxDetailLen = Math.max(10, width - labelWidth - badgeLen - 6);
-          const detailText = item.detail
-            ? item.detail.length > maxDetailLen
-              ? item.detail.slice(0, maxDetailLen - 1) + '…'
-              : item.detail
-            : '';
-          const detail = detailText ? `\x1b[90m${detailText}\x1b[0m` : '';
+          // Format badge (strictly clamped)
+          let badgeText = '';
+          let badgeLen = 0;
+          if (item.badge) {
+            const shortBadge = item.badge.length > 15 ? item.badge.slice(0, 14) + '…' : item.badge;
+            badgeText = ` \x1b[38;5;141m[${shortBadge}]\x1b[0m`;
+            badgeLen = shortBadge.length + 3; // ' [' + shortBadge + ']'
+          }
 
-          out += `${cursor}${label}${badgeText} ${detail}\x1b[K\n`;
+          // Strict remaining space calculation:
+          // cursor (2) + displayLabel (22) + badge (badgeLen) + space (1) = 25 + badgeLen
+          const usedWidth = 25 + badgeLen;
+          const availableForDetail = Math.max(0, width - usedWidth - 2);
+
+          let detail = '';
+          if (item.detail && availableForDetail > 4) {
+            const singleLineDetail = item.detail.replace(/[\r\n\t]+/g, ' ').trim();
+            const cleanDetail = singleLineDetail.length > availableForDetail
+              ? singleLineDetail.slice(0, availableForDetail - 1) + '…'
+              : singleLineDetail;
+            detail = ` \x1b[90m${cleanDetail}\x1b[0m`;
+          }
+
+          out += `${cursor}${label}${badgeText}${detail}\x1b[K\n`;
           linesBelow++;
         });
 
@@ -930,9 +945,13 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
       const rawProvName = matchedModel?.provider?.name || matchedModel?.provider?.id || 'orion';
       const provName = rawProvName.replace(/::.*/, '').replace(/\s*\(Official\)/, '');
       const displayModel = currentModel.replace(/^orion::/, '');
-      const rightModel = `\x1b[38;5;244m(${provName})\x1b[0m \x1b[1m\x1b[37m${displayModel}\x1b[0m \x1b[90m•\x1b[0m \x1b[36m${reasoningTier}\x1b[0m`;
-      const cleanRight = `(${provName}) ${displayModel} • ${reasoningTier}`;
+      const maxRightLen = Math.max(10, width - leftCwd.length - 4);
+      let cleanRight = `(${provName}) ${displayModel} • ${reasoningTier}`;
+      if (cleanRight.length > maxRightLen) {
+        cleanRight = cleanRight.slice(0, maxRightLen - 1) + '…';
+      }
       const gap1 = Math.max(2, width - leftCwd.length - cleanRight.length);
+      const rightModel = `\x1b[38;5;244m(${provName})\x1b[0m \x1b[1m\x1b[37m${displayModel}\x1b[0m \x1b[90m•\x1b[0m \x1b[36m${reasoningTier}\x1b[0m`;
       out += `\x1b[90m${leftCwd}${' '.repeat(gap1)}${rightModel}\x1b[0m\x1b[K\n`;
       linesBelow++;
 
@@ -951,7 +970,8 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
 
       // Pi Status Footer Line 3: agent status indicator & active session (no trailing newline so cursor stays on footer row)
       const agentBadge = isAgentMode ? `\x1b[36m⚡ AGENT\x1b[0m` : `\x1b[90m💬 Chat\x1b[0m`;
-      const shortTitle = sessionTitle ? (sessionTitle.length > 22 ? sessionTitle.slice(0, 21) + '…' : sessionTitle) : '';
+      const maxTitleLen = Math.max(10, width - 36);
+      const shortTitle = sessionTitle ? (sessionTitle.length > maxTitleLen ? sessionTitle.slice(0, maxTitleLen - 1) + '…' : sessionTitle) : '';
       const sessionBadge = shortTitle ? ` \x1b[38;5;240m│\x1b[0m \x1b[38;5;244mSesi: ${shortTitle}\x1b[0m` : '';
       out += `\x1b[90m● 🌌 orion-core: ${agentBadge}${sessionBadge}\x1b[K`;
 

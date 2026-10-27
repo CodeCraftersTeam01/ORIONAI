@@ -167,9 +167,9 @@ export function extractCommandsFromContent(content = '', skill = {}) {
 
   const addCommand = (rawCmd, rawDesc) => {
     if (!rawCmd) return;
-    let cleanCmd = rawCmd.trim().replace(/^[`'"]+|[`'"]+$/g, '');
+    let cleanCmd = rawCmd.trim().replace(/^[`'*"]+|[`'*"]+$/g, '').trim();
     if (!cleanCmd.startsWith('/')) {
-      cleanCmd = '/' + cleanCmd;
+      return;
     }
 
     let cmdName = cleanCmd;
@@ -187,10 +187,16 @@ export function extractCommandsFromContent(content = '', skill = {}) {
       }
     }
 
+    // Must be a valid slash command identifier (e.g. /ponytail, /ponytail-review, /ponytail band)
+    // Reject random markdown sentences or words like File/CSS
+    if (!/^\/[a-zA-Z0-9_\-]+(?:\s+[a-zA-Z0-9_\-]+)*$/.test(cmdName) || cmdName.length > 35) {
+      return;
+    }
+
     let cleanDesc = (rawDesc || '')
       .trim()
       .replace(/^[—\-:\s]+/, '')
-      .replace(/^[`'"]+|[`'"]+$/g, '')
+      .replace(/^[`'*"]+|[`'*"]+$/g, '')
       .trim();
 
     if (!cleanDesc) {
@@ -230,7 +236,7 @@ export function extractCommandsFromContent(content = '', skill = {}) {
         const col1 = cols[0];
         const col2 = cols[1];
         if (col1.toLowerCase().includes('command') || col1.toLowerCase().includes('perintah')) continue;
-        const cmdMatch = col1.match(/`?(\/[a-zA-Z0-9_\-]+(?:\s+[^`]+)?)`?/);
+        const cmdMatch = col1.match(/(?:^|`|\*\*)(\/[a-zA-Z0-9_\-]+(?:\s+[a-zA-Z0-9_\-]+|\s*\[[^\]]+\]|\s*<[^>]+>)*)/);
         if (cmdMatch) {
           addCommand(cmdMatch[1], col2);
         }
