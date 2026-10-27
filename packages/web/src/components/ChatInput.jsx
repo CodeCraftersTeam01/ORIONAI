@@ -18,6 +18,37 @@ import { processFile, formatFileSize } from '../utils/fileHelpers';
 import ModelSelector from './ModelSelector';
 import ProjectSelector from './ProjectSelector';
 
+const SYSTEM_SLASH_COMMANDS = [
+  {
+    command: '/agent',
+    label: 'agent',
+    argsHint: '[on | off]',
+    description: 'Aktifkan atau nonaktifkan mode AI Agent otonom (tool calls & terminal)',
+    category: 'System',
+  },
+  {
+    command: '/clear',
+    label: 'clear',
+    argsHint: '',
+    description: 'Bersihkan seluruh riwayat percakapan sesi saat ini',
+    category: 'System',
+  },
+  {
+    command: '/new',
+    label: 'new',
+    argsHint: '',
+    description: 'Buka sesi percakapan baru yang segar',
+    category: 'System',
+  },
+  {
+    command: '/help',
+    label: 'help',
+    argsHint: '',
+    description: 'Tampilkan panduan dan daftar bantuan seluruh perintah',
+    category: 'System',
+  },
+];
+
 export default function ChatInput({
   input,
   setInput,
@@ -49,7 +80,7 @@ export default function ChatInput({
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
 
   // Slash commands state
-  const [slashCommands, setSlashCommands] = useState([]);
+  const [slashCommands, setSlashCommands] = useState(SYSTEM_SLASH_COMMANDS);
   const [slashSelectedIndex, setSlashSelectedIndex] = useState(0);
   const [isSlashDismissed, setIsSlashDismissed] = useState(false);
 
@@ -60,39 +91,12 @@ export default function ChatInput({
       try {
         const res = await fetch('/api/skills/commands');
         if (res.ok) {
-          const data = await res.json();
-          if (active && Array.isArray(data)) {
-            const systemCommands = [
-              {
-                command: '/agent',
-                label: 'agent',
-                argsHint: '[on | off]',
-                description: 'Aktifkan atau nonaktifkan mode AI Agent otonom (tool calls & terminal)',
-                category: 'System',
-              },
-              {
-                command: '/clear',
-                label: 'clear',
-                argsHint: '',
-                description: 'Bersihkan seluruh riwayat percakapan sesi saat ini',
-                category: 'System',
-              },
-              {
-                command: '/new',
-                label: 'new',
-                argsHint: '',
-                description: 'Buka sesi percakapan baru yang segar',
-                category: 'System',
-              },
-              {
-                command: '/help',
-                label: 'help',
-                argsHint: '',
-                description: 'Tampilkan panduan dan daftar bantuan seluruh perintah',
-                category: 'System',
-              },
-            ];
-            setSlashCommands([...systemCommands, ...data]);
+          const json = await res.json();
+          const items = Array.isArray(json)
+            ? json
+            : (Array.isArray(json?.commands) ? json.commands : []);
+          if (active && items.length > 0) {
+            setSlashCommands([...SYSTEM_SLASH_COMMANDS, ...items]);
           }
         }
       } catch (err) {
@@ -102,6 +106,23 @@ export default function ChatInput({
     fetchCommands();
     return () => {
       active = false;
+    };
+  }, []);
+
+  // Dismiss slash menu on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (
+        slashMenuRef.current &&
+        !slashMenuRef.current.contains(e.target) &&
+        !textareaRef.current?.contains(e.target)
+      ) {
+        setIsSlashDismissed(true);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
     };
   }, []);
 
@@ -438,6 +459,11 @@ export default function ChatInput({
             }
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onFocus={() => {
+              if (input.startsWith('/')) {
+                setIsSlashDismissed(false);
+              }
+            }}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             rows={1}
