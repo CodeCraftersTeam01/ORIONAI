@@ -10964,9 +10964,9 @@ svg[aria-roledescription="error"] {
 .slash-menu-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 7px 10px;
-  border-radius: 6px;
+  gap: 8px;
+  padding: 5px 9px;
+  border-radius: 5px;
   cursor: pointer;
   user-select: none;
   transition: background-color 0.1s ease;
@@ -10983,8 +10983,8 @@ svg[aria-roledescription="error"] {
 }
 
 .slash-row-icon {
-  width: 18px;
-  height: 18px;
+  width: 15px;
+  height: 15px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -11009,7 +11009,7 @@ svg[aria-roledescription="error"] {
 .slash-row-cmd {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-weight: 600;
-  font-size: 0.88rem;
+  font-size: 0.78rem;
   color: #f3f4f6;
   white-space: nowrap;
   letter-spacing: -0.01em;
@@ -11025,10 +11025,8 @@ svg[aria-roledescription="error"] {
   color: #0f172a;
 }
 
-
-
 .slash-row-desc {
-  font-size: 0.82rem;
+  font-size: 0.72rem;
   color: #8c8c8c;
   white-space: nowrap;
   overflow: hidden;

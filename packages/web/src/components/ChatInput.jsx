@@ -381,13 +381,13 @@ export default function ChatInput({
 
   const renderCommandIcon = (item) => {
     if (item.category === 'System') {
-      if (item.command === '/clear') return <Trash2 size={15} />;
-      if (item.command === '/new') return <Plus size={15} />;
-      if (item.command === '/help') return <HelpCircle size={15} />;
-      return <Terminal size={15} />;
+      if (item.command === '/clear') return <Trash2 size={13} />;
+      if (item.command === '/new') return <Plus size={13} />;
+      if (item.command === '/help') return <HelpCircle size={13} />;
+      return <Terminal size={13} />;
     }
     return (
-      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
         <rect x="1" y="1.5" width="14" height="13" rx="3.5" stroke="currentColor" strokeWidth="1.2" opacity="0.8" />
         <path d="M5.5 5.5L3.5 8L5.5 10.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
         <path d="M10.5 5.5L12.5 8L10.5 10.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
