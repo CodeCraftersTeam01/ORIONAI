@@ -381,12 +381,18 @@ export default function ChatInput({
 
   const renderCommandIcon = (item) => {
     if (item.category === 'System') {
-      if (item.command === '/clear') return <Trash2 size={12} />;
-      if (item.command === '/new') return <Plus size={12} />;
-      if (item.command === '/help') return <HelpCircle size={12} />;
-      return <Terminal size={12} />;
+      if (item.command === '/clear') return <Trash2 size={15} />;
+      if (item.command === '/new') return <Plus size={15} />;
+      if (item.command === '/help') return <HelpCircle size={15} />;
+      return <Terminal size={15} />;
     }
-    return <Wrench size={12} />;
+    return (
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="1" y="1.5" width="14" height="13" rx="3.5" stroke="currentColor" strokeWidth="1.2" opacity="0.8" />
+        <path d="M5.5 5.5L3.5 8L5.5 10.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M10.5 5.5L12.5 8L10.5 10.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
   };
 
   const canSend = (input.trim().length > 0 || attachments.length > 0 || !!activeSkill) && !isGenerating && !isProcessingFiles;
@@ -449,7 +455,7 @@ export default function ChatInput({
           </div>
         )}
 
-        {/* Floating Slash Commands Menu (Simple & Clean) */}
+        {/* Floating Slash Commands Menu (Simple & Clean Solid) */}
         {showSlashMenu && (
           <div className="chat-slash-menu" ref={slashMenuRef} onClick={(e) => e.stopPropagation()}>
             <div className="slash-menu-list">
@@ -460,8 +466,7 @@ export default function ChatInput({
               ) : (
                 activeSlashMatches.map((item, idx) => {
                   const isSelected = idx === slashSelectedIndex;
-                  const isSystem = item.category === 'System';
-                  const tagText = isSystem ? 'system' : (item.skillName || item.skillId || 'skill');
+                  const label = item.label || item.command.replace(/^\//, '');
 
                   return (
                     <div
@@ -472,9 +477,9 @@ export default function ChatInput({
                         if (item.category !== 'System') {
                           if (typeof setActiveSkill === 'function') {
                             setActiveSkill({
-                              name: item.label || item.command.replace(/^\//, ''),
+                              name: label,
                               command: item.command,
-                              label: item.label || item.command.replace(/^\//, ''),
+                              label: label,
                             });
                           }
                           setInput('');
@@ -486,34 +491,17 @@ export default function ChatInput({
                       }}
                       onMouseEnter={() => setSlashSelectedIndex(idx)}
                     >
-                      <div className="slash-row-left">
-                        <div className="slash-icon-box">
-                          {renderCommandIcon(item)}
-                        </div>
-                        <span className="slash-row-cmd">{item.command}</span>
-                        {item.argsHint && (
-                          <span className="slash-row-args">{item.argsHint}</span>
-                        )}
-                        {item.description && (
-                          <span className="slash-row-desc">{item.description}</span>
-                        )}
+                      <div className="slash-row-icon">
+                        {renderCommandIcon(item)}
                       </div>
-                      <span className={`slash-row-badge ${isSystem ? 'is-system' : 'is-skill'}`}>
-                        {tagText}
-                      </span>
+                      <span className="slash-row-cmd">{label}</span>
+                      {item.description && (
+                        <span className="slash-row-desc">{item.description}</span>
+                      )}
                     </div>
                   );
                 })
               )}
-            </div>
-
-            <div className="slash-menu-footer">
-              <span className="slash-footer-count">{activeSlashMatches.length} perintah</span>
-              <div className="slash-footer-keys">
-                <span><kbd>↑↓</kbd> pilih</span>
-                <span><kbd>Tab</kbd> gunakan</span>
-                <span><kbd>Esc</kbd> batal</span>
-              </div>
             </div>
           </div>
         )}
