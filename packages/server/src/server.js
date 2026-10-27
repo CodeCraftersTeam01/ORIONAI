@@ -11,6 +11,7 @@ import ttsRoutes from './routes/ttsRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import agentRoutes from './routes/agentRoutes.js';
 import workspaceRoutes from './routes/workspaceRoutes.js';
+import skillRoutes from './routes/skillRoutes.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 import { logger } from './services/loggerService.js';
 
@@ -112,6 +113,7 @@ app.use('/api/workspace', workspaceRoutes);
 app.use('/api/items', itemRoutes);
 app.use('/api/logs', logRoutes);
 app.use('/api/tts', ttsRoutes);
+app.use('/api/skills', skillRoutes);
 
 // SPA routing: any non-API GET request serves web index.html if dist exists
 if (hasDist) {
