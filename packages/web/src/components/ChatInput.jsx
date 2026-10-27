@@ -57,6 +57,8 @@ const SYSTEM_SLASH_COMMANDS = [
 export default function ChatInput({
   input,
   setInput,
+  activeSkill = null,
+  setActiveSkill,
   attachments = [],
   setAttachments,
   onSend,
@@ -137,7 +139,7 @@ export default function ChatInput({
     if (!el) return;
     el.style.height = 'auto';
     el.style.height = `${Math.min(el.scrollHeight, 180)}px`;
-  }, [input]);
+  }, [input, activeSkill]);
 
   // Reset dismissed state when input changes or starts fresh with /
   useEffect(() => {
@@ -184,6 +186,15 @@ export default function ChatInput({
   }, [slashSelectedIndex, showSlashMenu]);
 
   const handleKeyDown = (e) => {
+    // 1. Backspace on empty input removes active skill pill
+    if (e.key === 'Backspace' && input === '' && activeSkill) {
+      e.preventDefault();
+      if (typeof setActiveSkill === 'function') {
+        setActiveSkill(null);
+      }
+      return;
+    }
+
     if (showSlashMenu) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -204,27 +215,76 @@ export default function ChatInput({
         e.preventDefault();
         const selected = activeSlashMatches[slashSelectedIndex] || activeSlashMatches[0];
         if (selected) {
-          setInput(`${selected.command} `);
+          if (selected.category !== 'System') {
+            if (typeof setActiveSkill === 'function') {
+              setActiveSkill({
+                name: selected.label || selected.command.replace(/^\//, ''),
+                command: selected.command,
+                label: selected.label || selected.command.replace(/^\//, ''),
+              });
+            }
+            setInput('');
+            setIsSlashDismissed(true);
+          } else {
+            setInput(`${selected.command} `);
+          }
         }
         return;
       }
       if (e.key === 'Enter' && !e.shiftKey) {
-        // If the user hasn't typed arguments yet (i.e. single word like `/ponytail`), autocomplete the command
+        // If the user hasn't typed arguments yet (e.g. single command like `/antislop`), convert to active skill pill
         const parts = input.trim().split(/\s+/);
         if (parts.length <= 1) {
           e.preventDefault();
-          const selected = activeSlashMatches[slashSelectedIndex] || activeSlashMatches[0];
+          const selected = activeSlashMatches[slashSelectedIndex] || activeSlashMatches[0] || {
+            label: input.trim().replace(/^\//, ''),
+            command: input.trim(),
+            category: 'Skill',
+          };
           if (selected) {
-            setInput(`${selected.command} `);
+            if (selected.category !== 'System') {
+              if (typeof setActiveSkill === 'function') {
+                setActiveSkill({
+                  name: selected.label || selected.command.replace(/^\//, ''),
+                  command: selected.command,
+                  label: selected.label || selected.command.replace(/^\//, ''),
+                });
+              }
+              setInput('');
+              setIsSlashDismissed(true);
+              return;
+            } else {
+              setInput(`${selected.command} `);
+              return;
+            }
           }
-          return;
         }
       }
     }
 
     if (e.key === 'Enter' && !e.shiftKey) {
+      const trimmed = input.trim();
+      const parts = trimmed.split(/\s+/);
+      // If user typed a single slash skill command without clicking menu and hits Enter
+      if (parts.length === 1 && trimmed.startsWith('/') && trimmed.length > 1) {
+        const cmdName = trimmed.replace(/^\//, '').toLowerCase();
+        if (!['clear', 'new', 'agent', 'help'].includes(cmdName)) {
+          e.preventDefault();
+          if (typeof setActiveSkill === 'function') {
+            setActiveSkill({
+              name: cmdName,
+              command: `/${cmdName}`,
+              label: cmdName,
+            });
+          }
+          setInput('');
+          setIsSlashDismissed(true);
+          return;
+        }
+      }
+
       e.preventDefault();
-      if (!isGenerating && (input.trim() || attachments.length > 0) && !isProcessingFiles) {
+      if (!isGenerating && (input.trim() || attachments.length > 0 || activeSkill) && !isProcessingFiles) {
         setIsSlashDismissed(true);
         onSend();
       }
@@ -329,7 +389,7 @@ export default function ChatInput({
     return <Wrench size={12} />;
   };
 
-  const canSend = (input.trim().length > 0 || attachments.length > 0) && !isGenerating && !isProcessingFiles;
+  const canSend = (input.trim().length > 0 || attachments.length > 0 || !!activeSkill) && !isGenerating && !isProcessingFiles;
 
   return (
     <div className={`chat-input-wrapper ${isCentered ? 'is-centered' : 'is-docked'} ${isHiddenDashboard ? 'is-hidden-dashboard' : ''}`}>
@@ -409,7 +469,19 @@ export default function ChatInput({
                       className={`slash-menu-row ${isSelected ? 'is-selected' : ''}`}
                       onClick={(e) => {
                         e.stopPropagation();
-                        setInput(`${item.command} `);
+                        if (item.category !== 'System') {
+                          if (typeof setActiveSkill === 'function') {
+                            setActiveSkill({
+                              name: item.label || item.command.replace(/^\//, ''),
+                              command: item.command,
+                              label: item.label || item.command.replace(/^\//, ''),
+                            });
+                          }
+                          setInput('');
+                          setIsSlashDismissed(true);
+                        } else {
+                          setInput(`${item.command} `);
+                        }
                         textareaRef.current?.focus();
                       }}
                       onMouseEnter={() => setSlashSelectedIndex(idx)}
@@ -476,27 +548,59 @@ export default function ChatInput({
             accept="image/*,.pdf,.txt,.md,.csv,.json,.js,.jsx,.ts,.tsx,.py,.html,.css,.sql,.doc,.docx"
           />
 
-          {/* Chat Textarea (Center) */}
-          <textarea
-            ref={textareaRef}
-            className="chat-textarea"
-            placeholder={
-              attachments.length > 0
-                ? 'Tambahkan instruksi untuk lampiran ini...'
-                : 'Tanyakan sesuatu atau tempel gambar/file...'
-            }
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onFocus={() => {
-              if (input.startsWith('/')) {
-                setIsSlashDismissed(false);
+          {/* Chat Input Text Container (holds activeSkill pill + textarea) */}
+          <div className="chat-input-text-container">
+            {activeSkill && (
+              <div className="active-command-pill">
+                <span className="command-pill-icon-box" title="Skill">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="1" y="1.5" width="14" height="13" rx="3.5" stroke="currentColor" strokeWidth="1.2" opacity="0.75" />
+                    <path d="M5.5 5.5L3.5 8L5.5 10.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M10.5 5.5L12.5 8L10.5 10.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+                <span className="command-pill-label">{activeSkill.name || activeSkill.label}</span>
+                <button
+                  type="button"
+                  className="btn-remove-command-pill"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (typeof setActiveSkill === 'function') {
+                      setActiveSkill(null);
+                    }
+                    textareaRef.current?.focus();
+                  }}
+                  title="Hapus skill"
+                  aria-label="Hapus skill"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            )}
+
+            <textarea
+              ref={textareaRef}
+              className="chat-textarea"
+              placeholder={
+                activeSkill
+                  ? `Ketik instruksi untuk keahlian ${activeSkill.name || activeSkill.label}...`
+                  : attachments.length > 0
+                  ? 'Tambahkan instruksi untuk lampiran ini...'
+                  : 'Tanyakan sesuatu atau ketik / untuk perintah...'
               }
-            }}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            rows={1}
-            disabled={isGenerating}
-          />
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onFocus={() => {
+                if (input.startsWith('/')) {
+                  setIsSlashDismissed(false);
+                }
+              }}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              rows={1}
+              disabled={isGenerating}
+            />
+          </div>
 
 
           {/* Model Selector Pill (Right, before Send Button) */}

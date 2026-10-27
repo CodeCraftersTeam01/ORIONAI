@@ -427,6 +427,7 @@ export default function App() {
   });
 
   const [input, setInput] = useState('');
+  const [activeSkill, setActiveSkill] = useState(null);
   const [attachments, setAttachments] = useState([]);
   const [previewImage, setPreviewImage] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -1575,6 +1576,7 @@ export default function App() {
   const handleSelectSession = (id) => {
     soundEffects.switchSession?.();
     setActiveSessionId(id);
+    setActiveSkill(null);
     setCurrentView('chat');
     fetch('/api/chat/sessions/active', {
       method: 'PUT',
@@ -2040,42 +2042,58 @@ export default function App() {
   // Real-time Token Streaming
   const handleSendMessage = async (textToSend, customAttachments = null) => {
     const activeAttachments = customAttachments !== null ? customAttachments : attachments;
-    const userText = (textToSend !== undefined ? textToSend : input).trim();
-    if ((!userText && activeAttachments.length === 0) || isGenerating) return;
+    const rawUserText = (textToSend !== undefined ? textToSend : input).trim();
+    if ((!rawUserText && activeAttachments.length === 0 && !activeSkill) || isGenerating) return;
 
     // Handle direct client-side slash commands
-    if (userText.toLowerCase() === '/clear') {
+    if (rawUserText.toLowerCase() === '/clear') {
       setInput('');
+      setActiveSkill(null);
       setSessions((prev) =>
         prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [] } : s))
       );
       showToast('Riwayat percakapan sesi telah dibersihkan');
       return;
     }
-    if (userText.toLowerCase() === '/new') {
+    if (rawUserText.toLowerCase() === '/new') {
       setInput('');
+      setActiveSkill(null);
       handleNewSession();
       showToast('Sesi percakapan baru dimulai');
       return;
     }
-    if (userText.toLowerCase() === '/agent' || userText.toLowerCase().startsWith('/agent ')) {
-      const parts = userText.split(/\s+/);
+    if (rawUserText.toLowerCase() === '/agent' || rawUserText.toLowerCase().startsWith('/agent ')) {
+      const parts = rawUserText.split(/\s+/);
       const arg = parts[1]?.toLowerCase();
       const nextMode = arg === 'on' ? true : arg === 'off' ? false : !isAgentMode;
       setIsAgentMode(nextMode);
       setInput('');
+      setActiveSkill(null);
       showToast(`Mode AI Agent: ${nextMode ? 'AKTIF (Eksekusi Tools & Terminal)' : 'NONAKTIF (Mode Chat Standar)'}`);
       return;
     }
 
+    // Determine active skill context
+    const skillName = activeSkill?.name || activeSkill?.label || null;
+    let promptToSend = rawUserText;
+    if (skillName) {
+      if (!promptToSend) {
+        promptToSend = `/${skillName}`;
+      } else if (!promptToSend.toLowerCase().startsWith(`/${skillName.toLowerCase()}`)) {
+        promptToSend = `/${skillName} ${promptToSend}`;
+      }
+    }
+
     soundEffects.playSend();
 
-    const displayPrompt = userText || (activeAttachments.length > 0 ? 'Tolong analisis dan jelaskan lampiran berikut.' : '');
+    const displayPrompt = promptToSend || (activeAttachments.length > 0 ? 'Tolong analisis dan jelaskan lampiran berikut.' : '');
 
     const userMessage = {
       id: `msg-${Date.now()}`,
       role: 'user',
-      content: displayPrompt,
+      content: rawUserText || (skillName ? `/${skillName}` : displayPrompt),
+      prompt: displayPrompt,
+      skill: skillName,
       attachments: activeAttachments,
       timestamp: new Date().toISOString(),
     };
@@ -2135,7 +2153,7 @@ export default function App() {
       prev.map((s) => {
         if (s.id === activeSessionId) {
           const isFirstMessage = s.messages.length === 0;
-          const displayTitle = userText || (activeAttachments[0] ? `Lampiran: ${activeAttachments[0].name}` : 'Percakapan');
+          const displayTitle = rawUserText || (skillName ? `/${skillName}` : (activeAttachments[0] ? `Lampiran: ${activeAttachments[0].name}` : 'Percakapan'));
           return {
             ...s,
             title: isFirstMessage
@@ -2151,6 +2169,7 @@ export default function App() {
     );
 
     setInput('');
+    setActiveSkill(null);
     setAttachments([]);
     setIsGenerating(true);
 
@@ -2858,7 +2877,43 @@ export default function App() {
                                 ))}
                               </div>
                             )}
-                            {msg.content && <div className="user-text-content">{msg.content}</div>}
+                            {/* If message has active skill or starts with skill slash command, render [<>] skill pill */}
+                            {(() => {
+                              const skillName = msg.skill || (
+                                typeof msg.content === 'string' &&
+                                msg.content.startsWith('/') &&
+                                !['/clear', '/new', '/agent', '/help'].some((c) => msg.content.startsWith(c))
+                                  ? msg.content.split(/\s+/)[0].replace(/^\//, '')
+                                  : null
+                              );
+                              if (!skillName) return null;
+                              return (
+                                <div className="msg-skill-badge-row">
+                                  <div className="active-command-pill in-message">
+                                    <span className="command-pill-icon-box" title="Skill">
+                                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <rect x="1" y="1.5" width="14" height="13" rx="3.5" stroke="currentColor" strokeWidth="1.2" opacity="0.75" />
+                                        <path d="M5.5 5.5L3.5 8L5.5 10.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                                        <path d="M10.5 5.5L12.5 8L10.5 10.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                                      </svg>
+                                    </span>
+                                    <span className="command-pill-label">{skillName}</span>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                            {(() => {
+                              let textToRender = msg.content;
+                              if (msg.skill && textToRender.startsWith(`/${msg.skill}`)) {
+                                textToRender = textToRender.slice(msg.skill.length + 1).trim();
+                              } else if (!msg.skill && textToRender?.startsWith('/') && !['/clear', '/new', '/agent', '/help'].some((c) => textToRender.startsWith(c))) {
+                                const parts = textToRender.split(/\s+/);
+                                textToRender = parts.slice(1).join(' ').trim();
+                              }
+                              return textToRender ? (
+                                <div className="user-text-content">{textToRender}</div>
+                              ) : null;
+                            })()}
                           </div>
                         ) : (
                           <div className="ai-message-wrapper">
@@ -3009,6 +3064,8 @@ export default function App() {
         <ChatInput
           input={input}
           setInput={setInput}
+          activeSkill={activeSkill}
+          setActiveSkill={setActiveSkill}
           attachments={attachments}
           setAttachments={setAttachments}
           onSend={() => handleSendMessage()}

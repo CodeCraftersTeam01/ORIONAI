@@ -1768,6 +1768,118 @@
   cursor: not-allowed;
 }
 
+.chat-input-text-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  min-width: 0;
+  padding: 0.1rem 0.2rem;
+}
+
+.chat-input-text-container .chat-textarea {
+  flex: 1;
+  min-width: 120px;
+  padding: 0.35rem 0.2rem;
+}
+
+/* Active Command & Skill Pill (matches [<>] antislop) */
+.active-command-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: rgba(30, 34, 42, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  padding: 3px 8px 3px 6px;
+  border-radius: 6px;
+  user-select: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
+  animation: pillPop 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme='light'] .active-command-pill {
+  background: rgba(241, 245, 249, 0.95);
+  border-color: rgba(0, 0, 0, 0.14);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.command-pill-icon-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  line-height: 0;
+}
+
+[data-theme='light'] .command-pill-icon-box {
+  color: #64748b;
+}
+
+.command-pill-label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #f8fafc;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+
+[data-theme='light'] .command-pill-label {
+  color: #0f172a;
+}
+
+.btn-remove-command-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  padding: 1px;
+  margin-left: 2px;
+  color: #94a3b8;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.15s ease;
+  line-height: 0;
+}
+
+.btn-remove-command-pill:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme='light'] .btn-remove-command-pill:hover {
+  color: #0f172a;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.active-command-pill.in-message {
+  margin-bottom: 0.35rem;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme='light'] .active-command-pill.in-message {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.msg-skill-badge-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.35rem;
+}
+
+@keyframes pillPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .chat-textarea {
   flex: 1;
   background: transparent;
