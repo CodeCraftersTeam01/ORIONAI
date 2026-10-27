@@ -1287,11 +1287,17 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
 
     // Refresh current session from disk if modified by web view
     try {
-      const freshSession = getSessionById(currentSession.id);
-      if (freshSession) {
-        currentSession = freshSession;
-        if ((freshSession.messages || []).length > history.length) {
-          history = freshSession.messages.map((m) => ({ role: m.role, content: m.content }));
+      const freshActive = getActiveSession();
+      if (freshActive && freshActive.id !== currentSession.id) {
+        currentSession = freshActive;
+        history = (freshActive.messages || []).map((m) => ({ role: m.role, content: m.content }));
+      } else {
+        const freshSession = getSessionById(currentSession.id);
+        if (freshSession) {
+          currentSession = freshSession;
+          if ((freshSession.messages || []).length !== history.length) {
+            history = freshSession.messages.map((m) => ({ role: m.role, content: m.content }));
+          }
         }
       }
     } catch {}

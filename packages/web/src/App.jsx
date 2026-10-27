@@ -1810,15 +1810,14 @@ export default function App() {
       }
 
       // Subsequent syncs (focus / visibility / poll):
-      // Only apply if server has newer data than our last known timestamp
-      if (serverUpdated > lastServerUpdatedAtRef.current && !isGenerating && !isSyncingSessionsRef.current) {
+      // Apply if server has newer data or if server active session changed
+      const hasNewerData = serverUpdated > lastServerUpdatedAtRef.current;
+      const hasDifferentActive = serverActiveId && serverActiveId !== activeSessionId;
+      if ((hasNewerData || hasDifferentActive) && !isGenerating && !isSyncingSessionsRef.current) {
         lastServerUpdatedAtRef.current = serverUpdated;
         setSessions(serverSessions);
-        if (serverActiveId) {
-          setActiveSessionId((prev) => {
-            const stillExists = serverSessions.some((s) => s.id === prev);
-            return stillExists ? prev : serverActiveId;
-          });
+        if (serverActiveId && serverActiveId !== activeSessionId) {
+          setActiveSessionId(serverActiveId);
         }
         try {
           localStorage.setItem('orion_chat_sessions', JSON.stringify(serverSessions));
@@ -1875,7 +1874,7 @@ export default function App() {
       if (document.visibilityState === 'visible') {
         fetchServerSessions(false);
       }
-    }, 4000);
+    }, 2000);
 
     return () => {
       window.removeEventListener('focus', onFocus);
@@ -1950,8 +1949,27 @@ export default function App() {
     setTimeout(() => setToast(null), 2500);
   };
 
-  const handleNewSession = () => {
+  const handleNewSession = async () => {
     soundEffects.newChat?.();
+    try {
+      const res = await fetch('/api/chat/sessions/new', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: 'Percakapan Baru' }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.session) {
+          setSessions((prev) => [data.session, ...prev.filter((s) => s.id !== data.session.id)]);
+          setActiveSessionId(data.session.id);
+          lastServerUpdatedAtRef.current = data.updatedAt || Date.now();
+          setRecommendations(getRandomRecommendations(3));
+          setCurrentView('chat');
+          return;
+        }
+      }
+    } catch {}
+
     const newSession = {
       id: `session-${Date.now()}`,
       title: 'Percakapan Baru',
