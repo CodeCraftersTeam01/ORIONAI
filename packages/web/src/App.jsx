@@ -68,6 +68,7 @@ import ManageProvidersModal from './components/ManageProvidersModal';
 import ProjectDirectoryModal from './components/ProjectDirectoryModal';
 import LogsView from './components/LogsView';
 import ModelsView from './components/ModelsView';
+import SkillsView from './components/SkillsView';
 import ThinkingIndicator from './components/ThinkingIndicator';
 import ToolCallBlock from './components/ToolCallBlock';
 import { soundEffects } from './utils/soundEffects';
@@ -75,7 +76,7 @@ import { formatFileSize } from './utils/fileHelpers';
 import { isReasoningSupported } from './utils/modelConfig';
 import VoiceCallingOverlay from './components/VoiceCallingOverlay';
 import { playCosmicHumSound, playCosmicEndCallSound } from './utils/audioEffects';
-import { cleanIndonesianText } from './utils/textCleaner';
+import { cleanIndonesianText, formatVoiceForSpeechAndDisplay } from './utils/textCleaner';
 import './App.css';
 
 function formatUserFacingError(errMessage) {
@@ -666,6 +667,10 @@ export default function App() {
   const [voiceUserTranscript, setVoiceUserTranscript] = useState('');
   const [voiceAgentResponse, setVoiceAgentResponse] = useState('');
   const [voiceResponseTurn, setVoiceResponseTurn] = useState(0);
+  const [voiceActiveToolCalls, setVoiceActiveToolCalls] = useState([]);
+  const [voicePendingApproval, setVoicePendingApproval] = useState(null);
+  const voicePendingApprovalRef = useRef(null);
+  voicePendingApprovalRef.current = voicePendingApproval;
 
   const voiceMediaStreamRef = useRef(null);
   const voiceAudioContextRef = useRef(null);
@@ -680,6 +685,7 @@ export default function App() {
   const voiceTtsBlobUrlRef = useRef(null);
   const voiceTtsAnimIntervalRef = useRef(null);
   const voiceTtsSourceRef = useRef(null);
+  const voiceIsSpeakingRef = useRef(false);
 
   const isVoiceCallingRef = useRef(false);
   isVoiceCallingRef.current = isVoiceCalling;
@@ -716,7 +722,10 @@ export default function App() {
       recognition.maxAlternatives = 1;
 
       recognition.onresult = (event) => {
-        if (voiceIsProcessingQueryRef.current || isVoiceMutedRef.current) return;
+        // Ignore mic while AI is actively speaking (avoids echo) or when user manually muted
+        if (voiceIsSpeakingRef.current || isVoiceMutedRef.current) return;
+        // Ignore background query processing unless currently waiting for approval
+        if (voiceIsProcessingQueryRef.current && !voicePendingApprovalRef.current) return;
 
         let interim = '';
         let final = '';
@@ -732,6 +741,32 @@ export default function App() {
         if (currentSpeech) {
           voiceTranscriptAccumulatorRef.current = currentSpeech;
           setVoiceUserTranscript(currentSpeech);
+
+          // Voice-Controlled Approval / Rejection for System Tools (JARVIS Mode)
+          if (voicePendingApprovalRef.current) {
+            const lower = currentSpeech.toLowerCase();
+            const isApprove = /\b(approve|setuju|setujui|izinkan|boleh|lanjut|lanjutkan|oke|yes|ya|eksekusi|jalankan|acc|aprove|gas)\b/i.test(lower);
+            const isReject = /\b(reject|tolak|batal|batalkan|jangan|no|tidak|cancel|stop)\b/i.test(lower);
+
+            if (isApprove || isReject) {
+              if (voiceSilenceTimerRef.current) {
+                clearTimeout(voiceSilenceTimerRef.current);
+                voiceSilenceTimerRef.current = null;
+              }
+              const pending = voicePendingApprovalRef.current;
+              setVoicePendingApproval(null);
+              voicePendingApprovalRef.current = null;
+              setVoiceUserTranscript('');
+
+              if (isApprove) {
+                soundEffects.playSend?.();
+                handleApproveTool(pending.toolCallId);
+              } else {
+                handleRejectTool(pending.toolCallId);
+              }
+              return;
+            }
+          }
 
           // Reset silence timer on new utterance
           if (voiceSilenceTimerRef.current) {
@@ -750,14 +785,23 @@ export default function App() {
 
       recognition.onerror = (e) => {
         // no-speech is normal during pauses
-        if (e.error === 'no-speech' && isVoiceCallingRef.current && !voiceIsProcessingQueryRef.current) {
+        if (
+          e.error === 'no-speech' &&
+          isVoiceCallingRef.current &&
+          (!voiceIsProcessingQueryRef.current || voicePendingApprovalRef.current)
+        ) {
           // ignore
         }
       };
 
       recognition.onend = () => {
-        // Keep listening alive unless muted or processing agent reply
-        if (isVoiceCallingRef.current && !voiceIsProcessingQueryRef.current && !isVoiceMutedRef.current) {
+        // Keep listening alive unless muted or actively speaking or processing (unless waiting for approval)
+        if (
+          isVoiceCallingRef.current &&
+          !isVoiceMutedRef.current &&
+          (!voiceIsProcessingQueryRef.current || voicePendingApprovalRef.current) &&
+          !voiceIsSpeakingRef.current
+        ) {
           try {
             recognition.start();
           } catch {}
@@ -769,6 +813,79 @@ export default function App() {
     } catch (err) {
       console.warn('Speech recognition start error:', err);
     }
+  };
+
+  // Helper to construct clear, natural conversational approval question
+  const buildApprovalSpeech = (parsed) => {
+    const tool = parsed.tool || '';
+    const args = parsed.args || {};
+    const cmd = (args.command || args.cmd || '').trim();
+    const path = args.path || (args.paths ? args.paths.join(', ') : '');
+
+    // 1. Identify base command name (e.g. 'curl', 'pkill', 'rm', 'git', 'npm')
+    let baseCmd = 'perintah';
+    if (cmd) {
+      const firstWord = cmd.split(/\s+/)[0] || '';
+      baseCmd = firstWord.replace(/^[./\\]+/, '').toLowerCase();
+    } else if (tool === 'delete_file') {
+      baseCmd = 'delete_file';
+    } else if (tool === 'write' || tool === 'edit') {
+      baseCmd = tool;
+    } else {
+      baseCmd = tool || 'perintah';
+    }
+
+    // 2. Extract or infer the reason/purpose from the AI
+    let purpose = (parsed.purpose || args.purpose || args.reason || '').trim();
+
+    // If no explicit purpose provided in args, check if there was thought text
+    if (!purpose && parsed.thought) {
+      const cleanedThought = parsed.thought
+        .replace(/^saya\s+(akan|hendak|perlu|ingin)\s+/i, '')
+        .replace(/[.,?!]+$/, '')
+        .trim();
+      if (cleanedThought.length > 5 && cleanedThought.length < 90) {
+        purpose = cleanedThought;
+      }
+    }
+
+    // Heuristic fallbacks if purpose is still empty
+    if (!purpose) {
+      if (baseCmd === 'curl' || baseCmd === 'wget') {
+        const urlMatch = cmd.match(/https?:\/\/([^\s"'/?#]+)/i);
+        if (urlMatch && urlMatch[1]) {
+          const host = urlMatch[1].replace(/^www\./i, '');
+          purpose = `mengambil data dari ${host}`;
+        } else {
+          purpose = 'mengakses data dari internet';
+        }
+      } else if (baseCmd === 'pkill' || baseCmd === 'kill') {
+        const targetMatch = cmd.match(/['"]([^'"]+)['"]/);
+        const target = targetMatch ? targetMatch[1] : cmd.replace(/^(pkill|kill)\s+(-\w+\s+)?/i, '').trim();
+        purpose = target ? `menghentikan proses ${target}` : 'menghentikan proses sistem';
+      } else if (baseCmd === 'rm') {
+        purpose = path ? `menghapus berkas ${path}` : 'menghapus berkas target';
+      } else if (baseCmd === 'npm' || baseCmd === 'yarn' || baseCmd === 'pnpm') {
+        if (/\b(install|add|i)\b/i.test(cmd)) {
+          purpose = 'menginstal dependensi proyek';
+        } else {
+          purpose = 'menjalankan skrip paket';
+        }
+      } else if (baseCmd === 'git') {
+        purpose = 'menjalankan operasi git';
+      } else if (tool === 'delete_file') {
+        purpose = `menghapus ${path || 'file yang dipilih'}`;
+      } else if (path) {
+        purpose = `mengubah isi file ${path}`;
+      } else {
+        purpose = 'menjalankan operasi sistem';
+      }
+    }
+
+    // Clean purpose so it connects smoothly with "untuk ..."
+    purpose = purpose.replace(/^untuk\s+/i, '').replace(/[.,?!]+$/, '').trim();
+
+    return `Saya memerlukan persetujuan Anda untuk menggunakan command ${baseCmd} untuk ${purpose}. Apakah Anda menyetujuinya, Approve atau Reject?`;
   };
 
   const handleTriggerVoiceAgentResponse = async (queryText) => {
@@ -810,176 +927,48 @@ export default function App() {
 
     let accumulatedReply = '';
 
-    try {
-      // Use model: check if voice_chat auxiliary task is assigned, otherwise use current model
-      let modelToUse = voiceSelectedModelRef.current || selectedModelRef.current || selectedModel;
-      try {
-        const savedAux = localStorage.getItem('orion_aux_assignments');
-        const auxAssignments = savedAux ? JSON.parse(savedAux) : {};
-        if (auxAssignments.voice_chat) {
-          modelToUse = auxAssignments.voice_chat;
+    // Helper function to synthesize and play spoken audio via Web Audio or Audio element
+    // onReadyToPlay callback is invoked as soon as the audio buffer is decoded and ready to play in speakers
+    const playVoiceAudio = async (textToPlay, signal, onReadyToPlay) => {
+      if (!textToPlay || !isVoiceCallingRef.current) return;
+      const cleanText = formatVoiceForSpeechAndDisplay(textToPlay);
+      if (!cleanText) return;
+
+      let readyFired = false;
+      const fireReady = () => {
+        if (!readyFired) {
+          readyFired = true;
+          onReadyToPlay?.();
         }
-      } catch {}
-
-      const { effectiveModel, activeCustomProvider, userOrionApiKey } = resolveModelAndProvider(
-        modelToUse,
-        customProvidersRef.current || customProviders
-      );
-
-      // Voice prompt: explicit instruction for short, punchy, conversational spoken reply with standard spacing
-      const voicePrompt = `${queryText}\n\n[Instruksi Panggilan Suara]: Jawablah secara SINGKAT, PADAT, BERBOBOT, dan natural seperti berbicara di telepon (maksimal 1-2 kalimat saja). Wajib gunakan spasi pemisah antar kata yang benar dan normal (jangan menggabungkan kata). DILARANG menggunakan markdown, bullet points, atau kode.`;
-
-      const res = await fetch('/api/chat/stream', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: voicePrompt,
-          history: activeSession ? activeSession.messages : [],
-          attachments: [],
-          model: effectiveModel || modelToUse,
-          reasoningTier: 'low',
-          customProvider: activeCustomProvider,
-          orionApiKey: userOrionApiKey,
-        }),
-        signal: controller.signal,
-      });
-
-      if (!res.ok) {
-        throw new Error('Gagal menghubungi AI');
-      }
-
-      // Collect complete LLM response while agent remains in "thinking" state
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder('utf-8');
-      let buffer = '';
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || !trimmed.startsWith('data:')) continue;
-          const dataStr = trimmed.replace(/^data:\s*/, '').trim();
-          if (dataStr === '[DONE]') break;
-          try {
-            const parsed = JSON.parse(dataStr);
-            if (parsed.error) {
-              throw new Error(parsed.error);
-            }
-            const token = parsed.chunk || parsed.token || parsed.delta || parsed.content || '';
-            if (token) {
-              accumulatedReply += token;
-            }
-          } catch (e) {
-            if (e.message && !e.message.includes('JSON') && !e.message.includes('Unexpected')) {
-              throw e;
-            }
-          }
-        }
-      }
-
-      let finalAnswer = cleanIndonesianText(
-        accumulatedReply
-          .replace(/<think>[\s\S]*?<\/think>/gi, '')
-          .replace(/<think>[\s\S]*$/gi, '')
-          .replace(/[*#_`~]/g, '')
-      );
-
-      // Fallback if stream was empty
-      if (!finalAnswer) {
-        try {
-          const fallbackRes = await fetch('/api/chat/message', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              message: voicePrompt,
-              history: activeSession ? activeSession.messages : [],
-              model: effectiveModel || modelToUse,
-              reasoningTier: 'low',
-              customProvider: activeCustomProvider,
-              orionApiKey: userOrionApiKey,
-            }),
-            signal: controller.signal,
-          });
-          if (fallbackRes.ok) {
-            const json = await fallbackRes.json();
-            const fallbackContent = json.data?.content || json.reply || '';
-            finalAnswer = cleanIndonesianText(
-              fallbackContent
-                .replace(/<think>[\s\S]*?<\/think>/gi, '')
-                .replace(/<think>[\s\S]*$/gi, '')
-                .replace(/[*#_`~]/g, '')
-            );
-          }
-        } catch {}
-      }
-
-      if (!finalAnswer) {
-        finalAnswer = 'Halo, saya mendengar Anda. Ada yang bisa saya bantu?';
-      }
-
-      // Record this exchange in active session messages
-      const userMsg = {
-        id: `msg-v-user-${Date.now()}`,
-        role: 'user',
-        content: queryText,
-        timestamp: new Date().toISOString(),
       };
-      const aiMsg = {
-        id: `msg-v-ai-${Date.now()}`,
-        role: 'assistant',
-        content: finalAnswer,
-        model: effectiveModel || modelToUse,
-        timestamp: new Date().toISOString(),
-      };
-      setSessions((prev) =>
-        prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [...s.messages, userMsg, aiMsg] } : s))
-      );
 
-      // 4. Synthesize voice audio (multi-female) while still in thinking state ("menyusun suara")
-      let audioBlob = null;
+      voiceIsSpeakingRef.current = true;
+
       try {
         const ttsRes = await fetch('/api/tts/speak', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            text: finalAnswer,
+            text: cleanText,
             voice: 'multi-female',
           }),
-          signal: controller.signal,
+          signal,
         });
-        if (ttsRes.ok) {
-          audioBlob = await ttsRes.blob();
+        if (!ttsRes.ok) {
+          fireReady();
+          return;
         }
-      } catch (ttsErr) {
-        if (ttsErr.name !== 'AbortError') {
-          console.warn('TTS fetch notice:', ttsErr.message);
+        const audioBlob = await ttsRes.blob();
+        if (!audioBlob || audioBlob.size === 0 || !isVoiceCallingRef.current) {
+          fireReady();
+          return;
         }
-      }
 
-      if (!isVoiceCallingRef.current) return;
-
-      // 5. Munculkan teks dan audionya ketika sudah selesai!
-      setVoiceResponseTurn((prev) => prev + 1);
-      setVoiceAgentResponse(finalAnswer);
-      setVoiceUserTranscript('');
-      setVoiceAgentStatus('speaking');
-
-      if (audioBlob && audioBlob.size > 0) {
         let playedViaWebAudio = false;
-
-        // Primary: Web Audio API buffer playback (Safari & Chrome autoplay immune)
         if (voiceAudioContextRef.current && voiceAudioContextRef.current.state !== 'closed') {
           try {
             const audioCtx = voiceAudioContextRef.current;
-            if (audioCtx.state === 'suspended') {
-              await audioCtx.resume();
-            }
-
+            if (audioCtx.state === 'suspended') await audioCtx.resume();
             const arrayBuf = await audioBlob.arrayBuffer();
             const decodedBuffer = await new Promise((resolveDecode, rejectDecode) => {
               const res = audioCtx.decodeAudioData(arrayBuf, resolveDecode, rejectDecode);
@@ -988,14 +977,16 @@ export default function App() {
               }
             });
 
+            if (!isVoiceCallingRef.current) return;
+
             const source = audioCtx.createBufferSource();
             source.buffer = decodedBuffer;
             voiceTtsSourceRef.current = source;
-
-            // Connect output to speaker
             source.connect(audioCtx.destination);
 
-            // Animate organic aurora waves while Orion speaks
+            // AUDIO IS DECODED AND READY TO PLAY: Reveal text and UI elements now
+            fireReady();
+
             voiceTtsAnimIntervalRef.current = setInterval(() => {
               const simLevel = 0.28 + 0.32 * Math.sin(Date.now() / 150) + 0.16 * Math.cos(Date.now() / 95);
               setVoiceAudioLevel(Math.max(0.16, Math.min(0.85, simLevel)));
@@ -1014,21 +1005,21 @@ export default function App() {
               source.start(0);
             });
             playedViaWebAudio = true;
-          } catch (webAudioErr) {
-            console.warn('Web Audio decode notice, falling back to HTMLAudio:', webAudioErr);
-          }
+          } catch {}
         }
 
-        // Secondary Fallback: HTML Audio Element
         if (!playedViaWebAudio) {
+          if (!isVoiceCallingRef.current) return;
           if (voiceTtsBlobUrlRef.current) {
             try { URL.revokeObjectURL(voiceTtsBlobUrlRef.current); } catch {}
           }
           const audioUrl = URL.createObjectURL(audioBlob);
           voiceTtsBlobUrlRef.current = audioUrl;
-
           const audio = new Audio(audioUrl);
           voiceTtsAudioRef.current = audio;
+
+          // Fallback HTMLAudio is ready to play
+          fireReady();
 
           voiceTtsAnimIntervalRef.current = setInterval(() => {
             if (voiceTtsAudioRef.current && !voiceTtsAudioRef.current.paused) {
@@ -1046,8 +1037,7 @@ export default function App() {
               setVoiceAudioLevel(0);
               resolve();
             };
-            audio.onerror = (err) => {
-              console.warn('Audio playback error:', err);
+            audio.onerror = () => {
               if (voiceTtsAnimIntervalRef.current) {
                 clearInterval(voiceTtsAnimIntervalRef.current);
                 voiceTtsAnimIntervalRef.current = null;
@@ -1055,24 +1045,286 @@ export default function App() {
               setVoiceAudioLevel(0);
               resolve();
             };
-            audio.play().catch((playErr) => {
-              console.warn('Audio playback start notice:', playErr);
-              if (voiceTtsAnimIntervalRef.current) {
-                clearInterval(voiceTtsAnimIntervalRef.current);
-                voiceTtsAnimIntervalRef.current = null;
-              }
-              setVoiceAudioLevel(0);
-              resolve();
-            });
+            audio.play().catch(resolve);
           });
         }
-      } else {
-        // Fallback duration if audio not available
-        await new Promise((resolve) => setTimeout(resolve, Math.min(4500, Math.max(1600, finalAnswer.length * 50))));
+      } catch (ttsErr) {
+        fireReady();
+        if (ttsErr.name !== 'AbortError') {
+          console.warn('TTS playback error:', ttsErr.message);
+        }
+      } finally {
+        voiceIsSpeakingRef.current = false;
       }
+    };
 
-      // Small natural pause before mic turns back on
-      await new Promise((resolve) => setTimeout(resolve, 350));
+    try {
+      let modelToUse = voiceSelectedModelRef.current || selectedModelRef.current || selectedModel;
+      try {
+        const savedAux = localStorage.getItem('orion_aux_assignments');
+        const auxAssignments = savedAux ? JSON.parse(savedAux) : {};
+        if (auxAssignments.voice_chat) {
+          modelToUse = auxAssignments.voice_chat;
+        }
+      } catch {}
+
+      const { effectiveModel, activeCustomProvider, userOrionApiKey } = resolveModelAndProvider(
+        modelToUse,
+        customProvidersRef.current || customProviders
+      );
+
+      // Detect if user command requires autonomous Agent tool calls (JARVIS Mode)
+      const isActionableAgentTask =
+        isAgentMode ||
+        /\b(install|pasang|setup|buatkan|bikin|create|write|tulis|jalankan|run|hapus|delete|remove|edit|ubah|ganti|perbaiki|fix|cek|check|periksa|baca|lihat|tampilkan|list|buka|cari|search|react|vue|vite|npm|yarn|pnpm|git|docker|terminal|bash)\b/i.test(
+          queryText
+        );
+
+      if (isActionableAgentTask) {
+        // ================= JARVIS MODE: IMMEDIATE SPOKEN ACKNOWLEDGMENT =================
+        const ackText = 'Baik, mohon tunggu sebentar, saya sedang memprosesnya.';
+        await playVoiceAudio(ackText, controller.signal, () => {
+          setVoiceResponseTurn((prev) => prev + 1);
+          setVoiceAgentResponse(ackText);
+          setVoiceAgentStatus('speaking');
+        });
+
+        // Transition to thinking while silently running tool calls in background
+        setVoiceAgentResponse('');
+        setVoiceAgentStatus('thinking');
+        setVoiceActiveToolCalls([]);
+
+        const agentRes = await fetch('/api/agent/run', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(localStorage.getItem('orion_auth_token')
+              ? { Authorization: `Bearer ${localStorage.getItem('orion_auth_token')}` }
+              : {}),
+          },
+          body: JSON.stringify({
+            message: queryText,
+            history: activeSession ? activeSession.messages : [],
+            attachments: [],
+            model: effectiveModel || modelToUse,
+            reasoningTier: 'medium',
+            customProvider: activeCustomProvider,
+            orionApiKey: userOrionApiKey,
+            workspaceRoot: activeProjectPath || undefined,
+            isVoiceMode: true,
+          }),
+          signal: controller.signal,
+        });
+
+        if (!agentRes.ok) {
+          throw new Error('Gagal menjalankan operasi agen otonom.');
+        }
+
+        const reader = agentRes.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+        let toolCallsList = [];
+        let agentFinalAnswer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || !trimmed.startsWith('data:')) continue;
+            const dataStr = trimmed.replace(/^data:\s*/, '').trim();
+            if (dataStr === '[DONE]') break;
+
+            try {
+              const parsed = JSON.parse(dataStr);
+              if (parsed.type === 'tool_call_start') {
+                toolCallsList = [
+                  ...toolCallsList.filter((tc) => tc.id !== parsed.toolCallId),
+                  {
+                    id: parsed.toolCallId,
+                    tool: parsed.tool,
+                    args: parsed.args,
+                    status: parsed.needsApproval ? 'waiting_approval' : 'running',
+                    reason: parsed.reason,
+                  },
+                ];
+                setVoiceActiveToolCalls([...toolCallsList]);
+              } else if (parsed.type === 'tool_call_waiting_approval') {
+                const approvalSpeech = buildApprovalSpeech(parsed);
+                const pending = {
+                  toolCallId: parsed.toolCallId,
+                  tool: parsed.tool,
+                  args: parsed.args,
+                  reason: parsed.reason,
+                  purpose: parsed.purpose || parsed.args?.purpose || '',
+                };
+
+                // Automatically UNMUTE the user's microphone so they can verbally respond immediately
+                setIsVoiceMuted(false);
+                isVoiceMutedRef.current = false;
+                if (voiceMediaStreamRef.current) {
+                  voiceMediaStreamRef.current.getAudioTracks().forEach((t) => {
+                    t.enabled = true;
+                  });
+                }
+
+                // Render TTS audio FIRST! Reveal the text and approval card only once audio is decoded & ready to play
+                await playVoiceAudio(approvalSpeech, controller.signal, () => {
+                  setVoicePendingApproval(pending);
+                  voicePendingApprovalRef.current = pending;
+                  setVoiceResponseTurn((prev) => prev + 1);
+                  setVoiceAgentResponse(approvalSpeech);
+                  setVoiceAgentStatus('speaking');
+                });
+                setVoiceAgentStatus('listening');
+
+                // Re-open microphone to listen for user's spoken "Approve" or "Reject"
+                if (voiceMediaStreamRef.current) {
+                  voiceMediaStreamRef.current.getAudioTracks().forEach((t) => {
+                    t.enabled = true;
+                  });
+                }
+                if (voiceSpeechRecRef.current) {
+                  try {
+                    voiceSpeechRecRef.current.start();
+                  } catch {}
+                }
+              } else if (parsed.type === 'tool_call_running') {
+                toolCallsList = toolCallsList.map((tc) =>
+                  tc.id === parsed.toolCallId ? { ...tc, status: 'running' } : tc
+                );
+                setVoiceActiveToolCalls([...toolCallsList]);
+              } else if (parsed.type === 'tool_call_complete') {
+                toolCallsList = toolCallsList.map((tc) =>
+                  tc.id === parsed.toolCallId
+                    ? { ...tc, status: parsed.isError ? 'error' : 'completed', result: parsed.result }
+                    : tc
+                );
+                setVoiceActiveToolCalls([...toolCallsList]);
+              } else if (parsed.type === 'agent_done') {
+                agentFinalAnswer = parsed.finalAnswer;
+              }
+            } catch {}
+          }
+        }
+
+        // Format final answer specifically for voice: remove tables/markdown and speak naturally
+        const spokenFinal = formatVoiceForSpeechAndDisplay(agentFinalAnswer);
+
+        setVoiceUserTranscript('');
+        await playVoiceAudio(spokenFinal, controller.signal, () => {
+          setVoiceResponseTurn((prev) => prev + 1);
+          setVoiceAgentResponse(spokenFinal);
+          setVoiceAgentStatus('speaking');
+        });
+
+        // Record in active session messages
+        const userMsg = {
+          id: `msg-v-user-${Date.now()}`,
+          role: 'user',
+          content: queryText,
+          timestamp: new Date().toISOString(),
+        };
+        const aiMsg = {
+          id: `msg-v-ai-${Date.now()}`,
+          role: 'assistant',
+          content: agentFinalAnswer || spokenFinal,
+          model: effectiveModel || modelToUse,
+          toolCalls: toolCallsList,
+          timestamp: new Date().toISOString(),
+        };
+        setSessions((prev) =>
+          prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [...s.messages, userMsg, aiMsg] } : s))
+        );
+
+        setVoiceActiveToolCalls([]);
+        setVoicePendingApproval(null);
+        voicePendingApprovalRef.current = null;
+      } else {
+        // ================= REGULAR CONVERSATION STREAM =================
+        const voicePrompt = `${queryText}\n\n[Instruksi Panggilan Suara]: Jawablah secara SINGKAT, PADAT, BERBOBOT, dan natural seperti berbicara di telepon (maksimal 1-2 kalimat saja). Wajib gunakan spasi pemisah antar kata yang benar dan normal (jangan menggabungkan kata). DILARANG menggunakan markdown, bullet points, atau kode.`;
+
+        const res = await fetch('/api/chat/stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: voicePrompt,
+            history: activeSession ? activeSession.messages : [],
+            attachments: [],
+            model: effectiveModel || modelToUse,
+            reasoningTier: 'low',
+            customProvider: activeCustomProvider,
+            orionApiKey: userOrionApiKey,
+          }),
+          signal: controller.signal,
+        });
+
+        if (!res.ok) {
+          throw new Error('Gagal menghubungi AI');
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || !trimmed.startsWith('data:')) continue;
+            const dataStr = trimmed.replace(/^data:\s*/, '').trim();
+            if (dataStr === '[DONE]') break;
+            try {
+              const parsed = JSON.parse(dataStr);
+              const token = parsed.chunk || parsed.token || parsed.delta || parsed.content || '';
+              if (token) accumulatedReply += token;
+            } catch {}
+          }
+        }
+
+        let stripped = accumulatedReply
+          .replace(/<think>[\s\S]*?<\/think>/gi, '')
+          .replace(/<think>[\s\S]*$/gi, '');
+        let finalAnswer = formatVoiceForSpeechAndDisplay(stripped);
+
+        if (!finalAnswer) {
+          finalAnswer = 'Halo, saya mendengar Anda. Ada yang bisa saya bantu?';
+        }
+
+        // Record exchange in active session messages
+        const userMsg = {
+          id: `msg-v-user-${Date.now()}`,
+          role: 'user',
+          content: queryText,
+          timestamp: new Date().toISOString(),
+        };
+        const aiMsg = {
+          id: `msg-v-ai-${Date.now()}`,
+          role: 'assistant',
+          content: finalAnswer,
+          model: effectiveModel || modelToUse,
+          timestamp: new Date().toISOString(),
+        };
+        setSessions((prev) =>
+          prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [...s.messages, userMsg, aiMsg] } : s))
+        );
+
+        setVoiceUserTranscript('');
+        await playVoiceAudio(finalAnswer, controller.signal, () => {
+          setVoiceResponseTurn((prev) => prev + 1);
+          setVoiceAgentResponse(finalAnswer);
+          setVoiceAgentStatus('speaking');
+        });
+      }
 
     } catch (err) {
       if (err.name !== 'AbortError') {
@@ -2176,6 +2428,9 @@ export default function App() {
             {currentView === 'logs' && (
               <span className="session-active-title">System & Gateway Logs</span>
             )}
+            {currentView === 'skills' && (
+              <span className="session-active-title">Skills Hub</span>
+            )}
           </div>
 
           <div className="header-simple-right">
@@ -2297,6 +2552,8 @@ export default function App() {
             onOpenProviders={() => setCurrentView('providers')}
             showToast={showToast}
           />
+        ) : currentView === 'skills' ? (
+          <SkillsView onClose={() => setCurrentView('dashboard')} showToast={showToast} />
         ) : (
           <>
             {/* Message Stream or Unified Spatial Hero (Seamless shared elements) */}
@@ -2621,6 +2878,18 @@ export default function App() {
           userTranscript={voiceUserTranscript}
           agentResponse={voiceAgentResponse}
           responseTurn={voiceResponseTurn}
+          activeToolCalls={voiceActiveToolCalls}
+          pendingApproval={voicePendingApproval}
+          onApproveTool={async (toolCallId) => {
+            setVoicePendingApproval(null);
+            voicePendingApprovalRef.current = null;
+            await handleApproveTool(toolCallId);
+          }}
+          onRejectTool={async (toolCallId) => {
+            setVoicePendingApproval(null);
+            voicePendingApprovalRef.current = null;
+            await handleRejectTool(toolCallId);
+          }}
           onToggleMute={handleToggleVoiceMute}
           onEndCall={handleEndVoiceCalling}
         />
