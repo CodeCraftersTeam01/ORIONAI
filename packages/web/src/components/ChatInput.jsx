@@ -11,6 +11,8 @@ import {
   Loader2,
   Square,
   AudioWaveform,
+  Command,
+  Sparkles,
 } from 'lucide-react';
 import { processFile, formatFileSize } from '../utils/fileHelpers';
 import ModelSelector from './ModelSelector';
@@ -42,8 +44,66 @@ export default function ChatInput({
 }) {
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
+  const slashMenuRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
+
+  // Slash commands state
+  const [slashCommands, setSlashCommands] = useState([]);
+  const [slashSelectedIndex, setSlashSelectedIndex] = useState(0);
+  const [isSlashDismissed, setIsSlashDismissed] = useState(false);
+
+  // Fetch slash commands from backend (system commands + installed skills)
+  useEffect(() => {
+    let active = true;
+    async function fetchCommands() {
+      try {
+        const res = await fetch('/api/skills/commands');
+        if (res.ok) {
+          const data = await res.json();
+          if (active && Array.isArray(data)) {
+            const systemCommands = [
+              {
+                command: '/agent',
+                label: 'agent',
+                argsHint: '[on | off]',
+                description: 'Aktifkan atau nonaktifkan mode AI Agent otonom (tool calls & terminal)',
+                category: 'System',
+              },
+              {
+                command: '/clear',
+                label: 'clear',
+                argsHint: '',
+                description: 'Bersihkan seluruh riwayat percakapan sesi saat ini',
+                category: 'System',
+              },
+              {
+                command: '/new',
+                label: 'new',
+                argsHint: '',
+                description: 'Buka sesi percakapan baru yang segar',
+                category: 'System',
+              },
+              {
+                command: '/help',
+                label: 'help',
+                argsHint: '',
+                description: 'Tampilkan panduan dan daftar bantuan seluruh perintah',
+                category: 'System',
+              },
+            ];
+            setSlashCommands([...systemCommands, ...data]);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load slash commands:', err);
+      }
+    }
+    fetchCommands();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Auto resize textarea
   useEffect(() => {
@@ -53,10 +113,87 @@ export default function ChatInput({
     el.style.height = `${Math.min(el.scrollHeight, 180)}px`;
   }, [input]);
 
+  // Reset dismissed state when input changes or starts fresh with /
+  useEffect(() => {
+    if (input.startsWith('/')) {
+      setIsSlashDismissed(false);
+      setSlashSelectedIndex(0);
+    }
+  }, [input]);
+
+  const activeSlashMatches = React.useMemo(() => {
+    if (!input.startsWith('/') || input.includes('\n') || isSlashDismissed) return [];
+    const query = input.slice(1).trim().toLowerCase();
+    if (!query) return slashCommands;
+    return slashCommands.filter((c) => {
+      const cmd = (c.command || '').toLowerCase().replace(/^\//, '');
+      const label = (c.label || '').toLowerCase();
+      const skill = (c.skillName || c.skillId || '').toLowerCase();
+      const desc = (c.description || '').toLowerCase();
+      return (
+        cmd.startsWith(query) ||
+        label.startsWith(query) ||
+        cmd.includes(query) ||
+        skill.includes(query) ||
+        desc.includes(query)
+      );
+    });
+  }, [input, slashCommands, isSlashDismissed]);
+
+  const showSlashMenu = activeSlashMatches.length > 0;
+
+  // Auto scroll active item in slash menu
+  useEffect(() => {
+    if (!showSlashMenu || !slashMenuRef.current) return;
+    const activeEl = slashMenuRef.current.querySelector('.slash-menu-item.is-selected');
+    if (activeEl) {
+      activeEl.scrollIntoView({ block: 'nearest' });
+    }
+  }, [slashSelectedIndex, showSlashMenu]);
+
   const handleKeyDown = (e) => {
+    if (showSlashMenu) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSlashSelectedIndex((prev) => (prev + 1) % activeSlashMatches.length);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSlashSelectedIndex((prev) => (prev - 1 + activeSlashMatches.length) % activeSlashMatches.length);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setIsSlashDismissed(true);
+        return;
+      }
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const selected = activeSlashMatches[slashSelectedIndex] || activeSlashMatches[0];
+        if (selected) {
+          setInput(`${selected.command} `);
+        }
+        return;
+      }
+      if (e.key === 'Enter' && !e.shiftKey) {
+        // If the user hasn't typed arguments yet (i.e. single word like `/ponytail`), autocomplete the command
+        const parts = input.trim().split(/\s+/);
+        if (parts.length <= 1) {
+          e.preventDefault();
+          const selected = activeSlashMatches[slashSelectedIndex] || activeSlashMatches[0];
+          if (selected) {
+            setInput(`${selected.command} `);
+          }
+          return;
+        }
+      }
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       if (!isGenerating && (input.trim() || attachments.length > 0) && !isProcessingFiles) {
+        setIsSlashDismissed(true);
         onSend();
       }
     }
@@ -207,6 +344,56 @@ export default function ChatInput({
                 </button>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Floating Slash Commands Menu */}
+        {showSlashMenu && (
+          <div className="chat-slash-menu" ref={slashMenuRef} onClick={(e) => e.stopPropagation()}>
+            <div className="slash-menu-header">
+              <div className="slash-menu-header-left">
+                <Command size={13} className="slash-menu-icon" />
+                <span className="slash-menu-title">Daftar Perintah ({activeSlashMatches.length})</span>
+              </div>
+              <div className="slash-menu-header-hint">
+                <span>↑↓ navigasi</span>
+                <span>Tab / Enter pilih</span>
+                <span>Esc tutup</span>
+              </div>
+            </div>
+            <div className="slash-menu-list">
+              {activeSlashMatches.map((item, idx) => {
+                const isSelected = idx === slashSelectedIndex;
+                const isSystem = item.category === 'System';
+                const skillLabel = isSystem ? 'SISTEM' : (item.skillName || item.skillId || 'SKILL').toUpperCase();
+
+                return (
+                  <div
+                    key={`${item.command}-${idx}`}
+                    className={`slash-menu-item ${isSelected ? 'is-selected' : ''}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setInput(`${item.command} `);
+                      textareaRef.current?.focus();
+                    }}
+                    onMouseEnter={() => setSlashSelectedIndex(idx)}
+                  >
+                    <div className="slash-item-main">
+                      <span className="slash-item-cmd">{item.command}</span>
+                      {item.argsHint && (
+                        <span className="slash-item-args">{item.argsHint}</span>
+                      )}
+                      <span className={`slash-item-badge ${isSystem ? 'is-system' : 'is-skill'}`}>
+                        {skillLabel}
+                      </span>
+                    </div>
+                    {item.description && (
+                      <div className="slash-item-desc">{item.description}</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 

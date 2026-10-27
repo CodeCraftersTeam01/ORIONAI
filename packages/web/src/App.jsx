@@ -2025,6 +2025,31 @@ export default function App() {
     const userText = (textToSend !== undefined ? textToSend : input).trim();
     if ((!userText && activeAttachments.length === 0) || isGenerating) return;
 
+    // Handle direct client-side slash commands
+    if (userText.toLowerCase() === '/clear') {
+      setInput('');
+      setSessions((prev) =>
+        prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [] } : s))
+      );
+      showToast('Riwayat percakapan sesi telah dibersihkan');
+      return;
+    }
+    if (userText.toLowerCase() === '/new') {
+      setInput('');
+      handleNewSession();
+      showToast('Sesi percakapan baru dimulai');
+      return;
+    }
+    if (userText.toLowerCase() === '/agent' || userText.toLowerCase().startsWith('/agent ')) {
+      const parts = userText.split(/\s+/);
+      const arg = parts[1]?.toLowerCase();
+      const nextMode = arg === 'on' ? true : arg === 'off' ? false : !isAgentMode;
+      setIsAgentMode(nextMode);
+      setInput('');
+      showToast(`Mode AI Agent: ${nextMode ? 'AKTIF (Eksekusi Tools & Terminal)' : 'NONAKTIF (Mode Chat Standar)'}`);
+      return;
+    }
+
     soundEffects.playSend();
 
     const displayPrompt = userText || (activeAttachments.length > 0 ? 'Tolong analisis dan jelaskan lampiran berikut.' : '');
