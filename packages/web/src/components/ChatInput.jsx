@@ -83,6 +83,10 @@ export default function ChatInput({
   const [slashCommands, setSlashCommands] = useState(SYSTEM_SLASH_COMMANDS);
   const [slashSelectedIndex, setSlashSelectedIndex] = useState(0);
   const [isSlashDismissed, setIsSlashDismissed] = useState(false);
+  const [slashCategory, setSlashCategory] = useState('all'); // 'all' | 'skill' | 'system'
+
+  const skillCount = React.useMemo(() => slashCommands.filter((c) => c.category !== 'System').length, [slashCommands]);
+  const systemCount = React.useMemo(() => slashCommands.filter((c) => c.category === 'System').length, [slashCommands]);
 
   // Fetch slash commands from backend (system commands + installed skills)
   useEffect(() => {
@@ -145,8 +149,16 @@ export default function ChatInput({
   const activeSlashMatches = React.useMemo(() => {
     if (!input.startsWith('/') || input.includes('\n') || isSlashDismissed) return [];
     const query = input.slice(1).trim().toLowerCase();
-    if (!query) return slashCommands;
-    return slashCommands.filter((c) => {
+
+    let baseList = slashCommands;
+    if (slashCategory === 'skill') {
+      baseList = baseList.filter((c) => c.category !== 'System');
+    } else if (slashCategory === 'system') {
+      baseList = baseList.filter((c) => c.category === 'System');
+    }
+
+    if (!query) return baseList;
+    return baseList.filter((c) => {
       const cmd = (c.command || '').toLowerCase().replace(/^\//, '');
       const label = (c.label || '').toLowerCase();
       const skill = (c.skillName || c.skillId || '').toLowerCase();
@@ -159,14 +171,20 @@ export default function ChatInput({
         desc.includes(query)
       );
     });
-  }, [input, slashCommands, isSlashDismissed]);
+  }, [input, slashCommands, isSlashDismissed, slashCategory]);
 
-  const showSlashMenu = activeSlashMatches.length > 0;
+  const showSlashMenu = input.startsWith('/') && !input.includes('\n') && !isSlashDismissed;
 
-  // Auto scroll active item in slash menu
+  // Auto scroll active item in slash menu without clipping top item
   useEffect(() => {
     if (!showSlashMenu || !slashMenuRef.current) return;
-    const activeEl = slashMenuRef.current.querySelector('.slash-menu-item.is-selected');
+    const listEl = slashMenuRef.current.querySelector('.slash-menu-list');
+    if (!listEl) return;
+    if (slashSelectedIndex === 0) {
+      listEl.scrollTop = 0;
+      return;
+    }
+    const activeEl = listEl.querySelector('.slash-menu-item.is-selected');
     if (activeEl) {
       activeEl.scrollIntoView({ block: 'nearest' });
     }
@@ -312,8 +330,8 @@ export default function ChatInput({
 
   return (
     <div className={`chat-input-wrapper ${isCentered ? 'is-centered' : 'is-docked'} ${isHiddenDashboard ? 'is-hidden-dashboard' : ''}`}>
-      {/* Top Bar: Project Selector (Image 2 style) */}
-      <div className="chat-input-top-bar">
+      {/* Top Bar: Project Selector */}
+      <div className={`chat-input-top-bar ${showSlashMenu ? 'is-dimmed' : ''}`}>
         <ProjectSelector
           projectPath={projectPath}
           projectName={projectName}
@@ -324,7 +342,7 @@ export default function ChatInput({
       </div>
 
       <div
-        className={`chat-input-box ${isDragging ? 'is-drag-over' : ''}`}
+        className={`chat-input-box ${isDragging ? 'is-drag-over' : ''} ${showSlashMenu ? 'has-slash-menu' : ''}`}
         onClick={() => textareaRef.current?.focus()}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -374,47 +392,92 @@ export default function ChatInput({
             <div className="slash-menu-header">
               <div className="slash-menu-header-left">
                 <Command size={13} className="slash-menu-icon" />
-                <span className="slash-menu-title">Daftar Perintah ({activeSlashMatches.length})</span>
+                <span className="slash-menu-title">Daftar Perintah</span>
+                <span className="slash-count-pill">{activeSlashMatches.length}</span>
+              </div>
+              <div className="slash-category-tabs">
+                <button
+                  type="button"
+                  className={`slash-tab ${slashCategory === 'all' ? 'is-active' : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSlashCategory('all');
+                    setSlashSelectedIndex(0);
+                  }}
+                >
+                  Semua ({slashCommands.length})
+                </button>
+                <button
+                  type="button"
+                  className={`slash-tab ${slashCategory === 'skill' ? 'is-active' : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSlashCategory('skill');
+                    setSlashSelectedIndex(0);
+                  }}
+                >
+                  Skills ({skillCount})
+                </button>
+                <button
+                  type="button"
+                  className={`slash-tab ${slashCategory === 'system' ? 'is-active' : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSlashCategory('system');
+                    setSlashSelectedIndex(0);
+                  }}
+                >
+                  Sistem ({systemCount})
+                </button>
               </div>
               <div className="slash-menu-header-hint">
-                <span>↑↓ navigasi</span>
-                <span>Tab / Enter pilih</span>
-                <span>Esc tutup</span>
+                <span><kbd>↑</kbd><kbd>↓</kbd></span>
+                <span><kbd>Tab</kbd> pakai</span>
+                <span><kbd>Esc</kbd></span>
               </div>
             </div>
-            <div className="slash-menu-list">
-              {activeSlashMatches.map((item, idx) => {
-                const isSelected = idx === slashSelectedIndex;
-                const isSystem = item.category === 'System';
-                const skillLabel = isSystem ? 'SISTEM' : (item.skillName || item.skillId || 'SKILL').toUpperCase();
 
-                return (
-                  <div
-                    key={`${item.command}-${idx}`}
-                    className={`slash-menu-item ${isSelected ? 'is-selected' : ''}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setInput(`${item.command} `);
-                      textareaRef.current?.focus();
-                    }}
-                    onMouseEnter={() => setSlashSelectedIndex(idx)}
-                  >
-                    <div className="slash-item-main">
-                      <span className="slash-item-cmd">{item.command}</span>
-                      {item.argsHint && (
-                        <span className="slash-item-args">{item.argsHint}</span>
+            {activeSlashMatches.length === 0 ? (
+              <div className="slash-empty-state">
+                Tidak ada perintah atau skill yang cocok dengan <code>{input.trim()}</code>
+              </div>
+            ) : (
+              <div className="slash-menu-list">
+                {activeSlashMatches.map((item, idx) => {
+                  const isSelected = idx === slashSelectedIndex;
+                  const isSystem = item.category === 'System';
+                  const tagText = isSystem ? 'sistem' : (item.skillName || item.skillId || 'skill');
+
+                  return (
+                    <div
+                      key={`${item.command}-${idx}`}
+                      className={`slash-menu-item ${isSelected ? 'is-selected' : ''}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setInput(`${item.command} `);
+                        textareaRef.current?.focus();
+                      }}
+                      onMouseEnter={() => setSlashSelectedIndex(idx)}
+                    >
+                      <div className="slash-item-main">
+                        <div className="slash-item-left">
+                          <span className="slash-item-cmd">{item.command}</span>
+                          {item.argsHint && (
+                            <span className="slash-item-args">{item.argsHint}</span>
+                          )}
+                        </div>
+                        <span className={`slash-item-badge ${isSystem ? 'is-system' : 'is-skill'}`}>
+                          {tagText}
+                        </span>
+                      </div>
+                      {item.description && (
+                        <div className="slash-item-desc">{item.description}</div>
                       )}
-                      <span className={`slash-item-badge ${isSystem ? 'is-system' : 'is-skill'}`}>
-                        {skillLabel}
-                      </span>
                     </div>
-                    {item.description && (
-                      <div className="slash-item-desc">{item.description}</div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
