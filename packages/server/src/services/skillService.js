@@ -374,7 +374,10 @@ export async function getInstalledSkills(workspacePath = null) {
     }
   }
 
-  return Array.from(skillsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+  // Filter out built-in core capabilities (like superpowers) from user-installed list
+  return Array.from(skillsMap.values())
+    .filter((s) => s.id !== 'superpowers')
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**
@@ -404,8 +407,33 @@ export async function getSkillCommands(workspacePath = null) {
  * Get detailed full information and instructions for a specific skill
  */
 export async function getSkillDetails(skillId, workspacePath = null) {
+  const cleanId = (skillId || '').toLowerCase().trim();
+
+  // In-Built Core Capability: Superpowers Software Methodology
+  if (cleanId === 'superpowers' || cleanId === 'super power' || cleanId === 'super-power') {
+    return {
+      id: 'superpowers',
+      name: 'Superpowers Software Methodology (In-Built Core)',
+      description: 'Metodologi rekayasa perangkat lunak in-built dari Jesse Vincent (obra/superpowers): Socratic Brainstorming, Writing Plans, TDD, Subagent-driven Development, dan Verification Before Completion.',
+      platform: 'universal',
+      version: '1.0.0',
+      author: 'Jesse Vincent (obra) & Orion AI Core',
+      builtIn: true,
+      allowedTools: ['read', 'write', 'edit', 'bash', 'ls', 'find', 'grep', 'delete_file', 'ask_user'],
+      instructions: `1. THE BRAINSTORMING GATE: Bila pengguna meminta membuat atau mendesain fitur baru (misal: buat login, sistem baru, deploy), JANGAN langsung menulis kode secara membabi buta. Ambil langkah mundur, ajak diskusi Sokratik mengenai arsitektur, kebutuhan alur, preferensi desain, dan database.
+2. LAY OUT APPROACHES: Ajukan 2-3 pendekatan konkret dengan trade-offnya, beri rekomendasi, dan gunakan tool 'ask_user' untuk konfirmasi pilihan.
+3. WRITING PLANS: Sizing pekerjaan (small vs project), pecah menjadi langkah-langkah terukur, terapkan YAGNI dan DRY.
+4. TDD & FOCUSED EXECUTION: Bangun secara bertahap, hindari pemotongan kode atau placeholder.
+5. VERIFICATION BEFORE COMPLETION: Selalu jalankan verifikasi nyata (build/test/lint/read) sebelum mengklaim selesai.`,
+      tags: ['superpowers', 'methodology', 'brainstorming', 'tdd', 'verification', 'built-in'],
+      scripts: [],
+      enabled: true,
+      rawContent: '',
+    };
+  }
+
   const all = await getInstalledSkills(workspacePath);
-  const skill = all.find((s) => s.id === skillId.toLowerCase());
+  const skill = all.find((s) => s.id === cleanId);
   if (!skill) {
     throw new Error(`Skill '${skillId}' tidak ditemukan.`);
   }
@@ -712,7 +740,8 @@ export const CURATED_CORE_SKILLS = [
     category: 'Engineering & Architecture',
     version: '1.0.0',
     author: 'Jesse Vincent (obra) & Orion AI Core',
-    tags: ['superpowers', 'methodology', 'brainstorming', 'tdd', 'verification', 'deployment', 'jarvis'],
+    builtIn: true,
+    tags: ['superpowers', 'methodology', 'brainstorming', 'tdd', 'verification', 'deployment', 'jarvis', 'in-built'],
     sourceUrl: 'https://raw.githubusercontent.com/obra/superpowers/main/README.md',
     popular: true,
     downloads: 12500,

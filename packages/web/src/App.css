@@ -9777,6 +9777,26 @@ svg[aria-roledescription="error"] {
   cursor: default;
 }
 
+.skill-btn-inbuilt {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: rgba(14, 165, 233, 0.1);
+  color: #0284c7;
+  border: 1px solid rgba(14, 165, 233, 0.25);
+  border-radius: 6px;
+  cursor: default;
+}
+
+[data-theme='dark'] .skill-btn-inbuilt {
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
 .skill-btn-secondary {
   display: inline-flex;
   align-items: center;
