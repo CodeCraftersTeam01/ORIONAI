@@ -700,6 +700,18 @@ export default function App() {
   const customProvidersRef = useRef(customProviders);
   customProvidersRef.current = customProviders;
 
+  const sessionsRef = useRef(sessions);
+  sessionsRef.current = sessions;
+
+  const activeSessionIdRef = useRef(activeSessionId);
+  activeSessionIdRef.current = activeSessionId;
+
+  const isAgentModeRef = useRef(isAgentMode);
+  isAgentModeRef.current = isAgentMode;
+
+  const authUserRef = useRef(authStatus?.user);
+  authUserRef.current = authStatus?.user;
+
   const voiceSelectedModelRef = useRef(selectedModel);
 
   // Real-time Speech-to-Text Recognition Setup
@@ -908,6 +920,8 @@ export default function App() {
   const handleTriggerVoiceAgentResponse = async (queryText) => {
     if (!queryText || voiceIsProcessingQueryRef.current || !isVoiceCallingRef.current) return;
     voiceIsProcessingQueryRef.current = true;
+    setIsGenerating(true);
+
     if (voiceSilenceTimerRef.current) {
       clearTimeout(voiceSilenceTimerRef.current);
       voiceSilenceTimerRef.current = null;
@@ -944,8 +958,142 @@ export default function App() {
 
     let accumulatedReply = '';
 
+    // ================= SYNC IMMEDIATELY WITH ACTIVE CHAT SESSION =================
+    const currentSessionId = activeSessionIdRef.current;
+    const currentSessions = sessionsRef.current || [];
+    let targetSession = currentSessions.find((s) => s.id === currentSessionId);
+    let targetSessionId = targetSession ? targetSession.id : currentSessionId;
+    if (!targetSession) {
+      targetSessionId = targetSessionId || `session-${Date.now()}`;
+      targetSession = {
+        id: targetSessionId,
+        title: 'Percakapan Baru',
+        createdAt: new Date().toISOString(),
+        messages: [],
+        projectPath: activeProjectPath || null,
+        projectName: activeProjectName || null,
+      };
+    }
+
+    const isFirstMsg = (targetSession.messages || []).length === 0;
+    const updatedTitle = isFirstMsg
+      ? (queryText.length > 24 ? `${queryText.slice(0, 24)}...` : queryText)
+      : targetSession.title;
+
+    const userMsg = {
+      id: `msg-v-user-${Date.now()}`,
+      role: 'user',
+      content: queryText,
+      timestamp: new Date().toISOString(),
+    };
+
+    let modelToUse = voiceSelectedModelRef.current || selectedModelRef.current || selectedModel;
+    try {
+      const savedAux = localStorage.getItem('orion_aux_assignments');
+      const auxAssignments = savedAux ? JSON.parse(savedAux) : {};
+      if (auxAssignments.voice_chat) {
+        modelToUse = auxAssignments.voice_chat;
+      }
+    } catch {}
+
+    const { effectiveModel, activeCustomProvider, userOrionApiKey } = resolveModelAndProvider(
+      modelToUse,
+      customProvidersRef.current || customProviders
+    );
+
+    const aiMsgId = `msg-v-ai-${Date.now()}`;
+    const initialAiMsg = {
+      id: aiMsgId,
+      role: 'assistant',
+      content: '',
+      model: effectiveModel || modelToUse,
+      toolCalls: [],
+      timestamp: new Date().toISOString(),
+    };
+
+    // Helper to sync sessions to server
+    const syncSessionsToServer = (sessionsToSync) => {
+      isSyncingSessionsRef.current = true;
+      fetch('/api/chat/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessions: sessionsToSync, activeSessionId: targetSessionId }),
+      })
+        .then(async (r) => {
+          if (r.ok) {
+            const data = await r.json();
+            if (data.updatedAt) lastServerUpdatedAtRef.current = data.updatedAt;
+          }
+        })
+        .catch(() => {})
+        .finally(() => {
+          isSyncingSessionsRef.current = false;
+        });
+    };
+
+    // Add user message & initial assistant bubble immediately to React state and persistent storage
+    let currentFinalSessions = [];
+    setSessions((prev) => {
+      const exists = prev.some((s) => s.id === targetSessionId);
+      if (exists) {
+        currentFinalSessions = prev.map((s) => {
+          if (s.id === targetSessionId) {
+            return {
+              ...s,
+              title: updatedTitle,
+              messages: [...(s.messages || []), userMsg, initialAiMsg],
+            };
+          }
+          return s;
+        });
+      } else {
+        currentFinalSessions = [
+          {
+            ...targetSession,
+            title: updatedTitle,
+            messages: [userMsg, initialAiMsg],
+          },
+          ...prev,
+        ];
+      }
+      try {
+        localStorage.setItem('orion_chat_sessions', JSON.stringify(currentFinalSessions));
+      } catch {}
+      return currentFinalSessions;
+    });
+
+    syncSessionsToServer(currentFinalSessions);
+
+    // Helper to update the AI message content and/or toolCalls in the active session
+    const updateAiMessageInSessions = (finalContent, toolCalls = null) => {
+      setSessions((prev) => {
+        const next = prev.map((s) => {
+          if (s.id === targetSessionId) {
+            return {
+              ...s,
+              messages: (s.messages || []).map((m) => {
+                if (m.id === aiMsgId) {
+                  return {
+                    ...m,
+                    content: finalContent !== null ? finalContent : m.content,
+                    toolCalls: toolCalls !== null ? toolCalls : m.toolCalls,
+                  };
+                }
+                return m;
+              }),
+            };
+          }
+          return s;
+        });
+        try {
+          localStorage.setItem('orion_chat_sessions', JSON.stringify(next));
+        } catch {}
+        syncSessionsToServer(next);
+        return next;
+      });
+    };
+
     // Helper function to synthesize and play spoken audio via Web Audio or Audio element
-    // onReadyToPlay callback is invoked as soon as the audio buffer is decoded and ready to play in speakers
     const playVoiceAudio = async (textToPlay, signal, onReadyToPlay) => {
       if (!textToPlay || !isVoiceCallingRef.current) return;
       const cleanText = formatVoiceForSpeechAndDisplay(textToPlay);
@@ -1001,7 +1149,6 @@ export default function App() {
             voiceTtsSourceRef.current = source;
             source.connect(audioCtx.destination);
 
-            // AUDIO IS DECODED AND READY TO PLAY: Reveal text and UI elements now
             fireReady();
 
             voiceTtsAnimIntervalRef.current = setInterval(() => {
@@ -1035,7 +1182,6 @@ export default function App() {
           const audio = new Audio(audioUrl);
           voiceTtsAudioRef.current = audio;
 
-          // Fallback HTMLAudio is ready to play
           fireReady();
 
           voiceTtsAnimIntervalRef.current = setInterval(() => {
@@ -1076,29 +1222,16 @@ export default function App() {
     };
 
     try {
-      let modelToUse = voiceSelectedModelRef.current || selectedModelRef.current || selectedModel;
-      try {
-        const savedAux = localStorage.getItem('orion_aux_assignments');
-        const auxAssignments = savedAux ? JSON.parse(savedAux) : {};
-        if (auxAssignments.voice_chat) {
-          modelToUse = auxAssignments.voice_chat;
-        }
-      } catch {}
+      // Natural intent detection: Greetings or conversational talk vs actionable tools
+      const trimmedClean = queryText.trim().replace(/[.,?!]+$/, '').toLowerCase();
+      const isGreetingOrCasual = /^(hello|halo|hai|hi|hey|p|pagi|siang|sore|malam|apa kabar|kamu siapa|tes|test|yo|woi|bro|jarvis|orion)\b/i.test(trimmedClean);
+      const hasAgentActionKeywords = /\b(install|pasang|setup|buatkan|bikin|create|write|tulis|jalankan|run|hapus|delete|remove|edit|ubah|ganti|perbaiki|fix|cek|check|periksa|baca|lihat|tampilkan|list|buka|cari|search|react|vue|vite|npm|yarn|pnpm|git|docker|terminal|bash|ask|tanya|konfirmasi|setuju|setujui|approve|reject)\b/i.test(queryText);
 
-      const { effectiveModel, activeCustomProvider, userOrionApiKey } = resolveModelAndProvider(
-        modelToUse,
-        customProvidersRef.current || customProviders
-      );
-
-      // Detect if user command requires autonomous Agent tool calls (JARVIS Mode)
-      const isActionableAgentTask =
-        isAgentMode ||
-        /\b(install|pasang|setup|buatkan|bikin|create|write|tulis|jalankan|run|hapus|delete|remove|edit|ubah|ganti|perbaiki|fix|cek|check|periksa|baca|lihat|tampilkan|list|buka|cari|search|react|vue|vite|npm|yarn|pnpm|git|docker|terminal|bash|ask|tanya|konfirmasi|setuju|setujui|approve|reject)\b/i.test(
-          queryText
-        );
+      // If user is simply greeting or saying hello, route conversationally so Jarvis greets warmly and swiftly
+      const isActionableAgentTask = (isAgentModeRef.current || hasAgentActionKeywords) && !isGreetingOrCasual;
+      const historyForAi = targetSession.messages || [];
 
       if (isActionableAgentTask) {
-        // Only play intermediate audio if this is a heavy execution action, never for conversational questions
         const isConversationalQuestion = /\b(kamu|ngapain|kenapa|apa|siapa|gimana|bagaimana|sudah|udah|dari tadi|\?)\b/i.test(queryText);
         const isHeavyExecution = /\b(install|pasang|deploy|hapus\s+semua|delete\s+all|build|jalankan\s+server)\b/i.test(queryText);
 
@@ -1129,7 +1262,7 @@ export default function App() {
           },
           body: JSON.stringify({
             message: queryText,
-            history: activeSession ? activeSession.messages : [],
+            history: historyForAi,
             attachments: [],
             model: effectiveModel || modelToUse,
             reasoningTier: 'medium',
@@ -1178,6 +1311,7 @@ export default function App() {
                   },
                 ];
                 setVoiceActiveToolCalls([...toolCallsList]);
+                updateAiMessageInSessions(null, toolCallsList);
               } else if (parsed.type === 'tool_call_waiting_approval' || parsed.type === 'tool_call_waiting_choice') {
                 const isChoice = parsed.type === 'tool_call_waiting_choice';
                 const approvalSpeech = buildApprovalSpeech(parsed);
@@ -1192,7 +1326,6 @@ export default function App() {
                   isChoice,
                 };
 
-                // Track in active tool calls list so visual tracker also knows status
                 toolCallsList = toolCallsList.map((tc) =>
                   tc.id === parsed.toolCallId
                     ? {
@@ -1205,14 +1338,13 @@ export default function App() {
                     : tc
                 );
                 setVoiceActiveToolCalls([...toolCallsList]);
+                updateAiMessageInSessions(null, toolCallsList);
 
-                // Immediately reveal the approval card and set the ref so Approve & Reject buttons are visible right away
                 setVoicePendingApproval(pending);
                 voicePendingApprovalRef.current = pending;
                 setVoiceResponseTurn((prev) => prev + 1);
                 setVoiceAgentResponse(approvalSpeech);
 
-                // Automatically UNMUTE the user's microphone so they can verbally respond immediately
                 setIsVoiceMuted(false);
                 isVoiceMutedRef.current = false;
                 if (voiceMediaStreamRef.current) {
@@ -1221,14 +1353,12 @@ export default function App() {
                   });
                 }
 
-                // Render TTS audio so user also hears the question spoken out loud
                 setVoiceAgentStatus('speaking');
                 await playVoiceAudio(approvalSpeech, controller.signal, () => {
                   setVoiceAgentStatus('speaking');
                 });
                 setVoiceAgentStatus('listening');
 
-                // Re-open microphone to listen for user's spoken "Approve" or "Reject"
                 if (voiceMediaStreamRef.current) {
                   voiceMediaStreamRef.current.getAudioTracks().forEach((t) => {
                     t.enabled = true;
@@ -1244,6 +1374,7 @@ export default function App() {
                   tc.id === parsed.toolCallId ? { ...tc, status: 'running' } : tc
                 );
                 setVoiceActiveToolCalls([...toolCallsList]);
+                updateAiMessageInSessions(null, toolCallsList);
               } else if (parsed.type === 'tool_call_complete') {
                 toolCallsList = toolCallsList.map((tc) =>
                   tc.id === parsed.toolCallId
@@ -1251,6 +1382,7 @@ export default function App() {
                     : tc
                 );
                 setVoiceActiveToolCalls([...toolCallsList]);
+                updateAiMessageInSessions(null, toolCallsList);
               } else if (parsed.type === 'agent_done') {
                 agentFinalAnswer = parsed.finalAnswer;
               }
@@ -1258,7 +1390,6 @@ export default function App() {
           }
         }
 
-        // Format final answer specifically for voice: remove tables/markdown and speak naturally
         const spokenFinal = formatVoiceForSpeechAndDisplay(agentFinalAnswer);
 
         setVoiceUserTranscript('');
@@ -1268,48 +1399,32 @@ export default function App() {
           setVoiceAgentStatus('speaking');
         });
 
-        // Record in active session messages
-        const userMsg = {
-          id: `msg-v-user-${Date.now()}`,
-          role: 'user',
-          content: queryText,
-          timestamp: new Date().toISOString(),
-        };
-        const aiMsg = {
-          id: `msg-v-ai-${Date.now()}`,
-          role: 'assistant',
-          content: agentFinalAnswer || spokenFinal,
-          model: effectiveModel || modelToUse,
-          toolCalls: toolCallsList,
-          timestamp: new Date().toISOString(),
-        };
-        setSessions((prev) =>
-          prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [...s.messages, userMsg, aiMsg] } : s))
-        );
+        // Persist final agent answer into synchronized session
+        updateAiMessageInSessions(agentFinalAnswer || spokenFinal, toolCallsList);
 
         setVoiceActiveToolCalls([]);
         setVoicePendingApproval(null);
         voicePendingApprovalRef.current = null;
       } else {
-        // ================= REGULAR CONVERSATION STREAM =================
-        const voicePrompt = `${queryText}\n\n[Instruksi Panggilan Suara & Persona Jarvis]: Anda adalah JARVIS / mitra cerdas dan sahabat kolaboratif pengguna.
-ATURAN WAJIB:
-1. JAWAB SANGAT SINGKAT & ON-POINT: Berikan jawaban yang SANGAT SINGKAT, PADAT, dan LANGSUNG PADA INTI TOPIK (1 kalimat pendek atau beberapa kata tepat sasaran).
-2. DILARANG BERTELE-TELE: Jangan membuat esai, jangan memberi ceramah, dan DILARANG basa-basi pembuka formal ("Halo", "Tentu saja!", "Sebagai asisten...").
-3. GAYA TEMAN AKRAB: Santai, cerdas, to-the-point seperti ngobrol di telepon antar teman akrab.
-CONTOH GAYA:
-- Tanya: "Kamu dari tadi ngapain aja pas aku lagi tidur?" -> Jawab: "Banyak hal."
-- Tanya: "Apa hal itu?" -> Jawab: "Kamu bilang suruh aku benerin login."
-- Tanya: "Udah beres?" -> Jawab: "Beres, aman."
-- Tanya: "Aku mau buat login." -> Jawab: "Siap. Mau pakai JWT email biasa atau sekalian Google Login?"
-Wajib gunakan spasi pemisah normal antar kata. DILARANG menggunakan markdown, tabel, atau kode.`;
+        // ================= REGULAR CONVERSATION STREAM (JARVIS VOICE) =================
+        const currentUserName = authUserRef.current || authStatus?.user || 'Arjuna';
+        const voicePrompt = `${queryText}\n\n[Instruksi Panggilan Suara & Persona Jarvis]:
+Anda adalah JARVIS / ORION: sahabat karib, mitra teknologi, dan rekan kolaborasi cerdas bagi ${currentUserName}.
+PANDUAN KOMUNIKASI LISAN (VOICE CALL):
+1. SAPAAN RAMAH & ALAMI:
+   - Bila pengguna menyapa ("Halo", "Hello", "Hai", "Orion", "Jarvis", "Pagi", "Siang", "Malam", dsb.), balaslah dengan hangat, ramah, dan bersahabat (contoh: "Halo ${currentUserName}! Ada yang bisa saya bantu hari ini?" atau "Halo! Siap, mau bahas atau kerjakan apa kita sekarang?").
+2. SINGKAT, HIDUP & ON-POINT:
+   - Gunakan gaya bahasa lisan yang natural, santai, cerdas, dan to-the-point seperti berbicara di telepon antar rekan akrab.
+   - Jangan bertele-tele atau membuat esai panjang. Jawab 1-2 kalimat efektif.
+   - Dilarang menggunakan format markdown, tabel, tanda pagar (#), asteris (*), atau blok kode dalam ucapan lisan.
+   - Wajib gunakan spasi pemisah normal antar kata.`;
 
         const res = await fetch('/api/chat/stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             message: voicePrompt,
-            history: activeSession ? activeSession.messages : [],
+            history: historyForAi,
             attachments: [],
             model: effectiveModel || modelToUse,
             reasoningTier: 'low',
@@ -1353,26 +1468,11 @@ Wajib gunakan spasi pemisah normal antar kata. DILARANG menggunakan markdown, ta
         let finalAnswer = formatVoiceForSpeechAndDisplay(stripped);
 
         if (!finalAnswer) {
-          finalAnswer = 'Halo, saya mendengar Anda. Ada yang bisa saya bantu?';
+          finalAnswer = `Halo ${currentUserName}, saya di sini. Ada yang bisa saya bantu?`;
         }
 
-        // Record exchange in active session messages
-        const userMsg = {
-          id: `msg-v-user-${Date.now()}`,
-          role: 'user',
-          content: queryText,
-          timestamp: new Date().toISOString(),
-        };
-        const aiMsg = {
-          id: `msg-v-ai-${Date.now()}`,
-          role: 'assistant',
-          content: finalAnswer,
-          model: effectiveModel || modelToUse,
-          timestamp: new Date().toISOString(),
-        };
-        setSessions((prev) =>
-          prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [...s.messages, userMsg, aiMsg] } : s))
-        );
+        // Persist final assistant answer into synchronized session
+        updateAiMessageInSessions(finalAnswer);
 
         setVoiceUserTranscript('');
         await playVoiceAudio(finalAnswer, controller.signal, () => {
@@ -1381,7 +1481,6 @@ Wajib gunakan spasi pemisah normal antar kata. DILARANG menggunakan markdown, ta
           setVoiceAgentStatus('speaking');
         });
 
-        // If the AI response asks a confirmation / approval question in voice, show Approve & Reject buttons
         const isAskingConfirmation = /(?:apakah anda (?:yakin|setuju)|silakan (?:jawab|pilih|konfirmasi).*?(?:ya|tidak|approve|reject)|(?:approve|setujui).*?(?:atau|atow).*?(?:reject|tolak)|(?:approve\s+atau\s+reject|setujui\s+atau\s+tolak))\b/i.test(finalAnswer);
         if (isAskingConfirmation) {
           const conversationalPending = {
@@ -1402,11 +1501,12 @@ Wajib gunakan spasi pemisah normal antar kata. DILARANG menggunakan markdown, ta
         setVoiceAgentResponse('Maaf, suara kurang jelas. Bisa tolong diulangi?');
       }
     } finally {
+      setIsGenerating(false);
       if (voiceTtsAnimIntervalRef.current) {
         clearInterval(voiceTtsAnimIntervalRef.current);
         voiceTtsAnimIntervalRef.current = null;
       }
-      // 6. Selesai bicara: mikrofon dibuka kembali untuk pertanyaan berikutnya, teks tetap terlihat
+      // Selesai bicara: mikrofon dibuka kembali untuk pertanyaan berikutnya
       if (isVoiceCallingRef.current) {
         voiceIsProcessingQueryRef.current = false;
         voiceTranscriptAccumulatorRef.current = '';
@@ -1414,12 +1514,10 @@ Wajib gunakan spasi pemisah normal antar kata. DILARANG menggunakan markdown, ta
         setVoiceAgentStatus('listening');
         setVoiceAudioLevel(0);
 
-        // Unmute audio tracks if not manually muted by user
         if (voiceMediaStreamRef.current && !isVoiceMutedRef.current) {
           voiceMediaStreamRef.current.getAudioTracks().forEach((t) => { t.enabled = true; });
         }
 
-        // Restart Speech Recognition
         if (!isVoiceMutedRef.current) {
           startVoiceSpeechRecognition();
         }
@@ -3262,6 +3360,7 @@ Wajib gunakan spasi pemisah normal antar kata. DILARANG menggunakan markdown, ta
           responseTurn={voiceResponseTurn}
           activeToolCalls={voiceActiveToolCalls}
           pendingApproval={voicePendingApproval}
+          sessionTitle={activeSession?.title || 'Percakapan Baru'}
           onApproveTool={async (toolCallId) => {
             const currentPending = voicePendingApprovalRef.current;
             setVoicePendingApproval(null);
