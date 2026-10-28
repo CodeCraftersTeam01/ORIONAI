@@ -12,6 +12,7 @@ export default function SettingsModal({
   onSelectThemeMode,
   onClearAllSessions,
   isPage = false,
+  onOpenUpdates,
 }) {
   // Close on Escape
   useEffect(() => {
@@ -141,9 +142,24 @@ export default function SettingsModal({
         </div>
       </div>
 
-      {/* Versi Aplikasi di Kanan Bawah */}
+      {/* Versi Aplikasi & Tombol Periksa Pembaruan di Kanan Bawah */}
       <div className="settings-bottom-version">
         <span>Orion Agent <code>v1.0.0</code></span>
+        {onOpenUpdates && (
+          <>
+            <span className="settings-version-sep">•</span>
+            <button
+              type="button"
+              className="settings-update-link"
+              onClick={() => {
+                if (!isPage) onClose?.();
+                onOpenUpdates();
+              }}
+            >
+              Periksa Pembaruan
+            </button>
+          </>
+        )}
       </div>
 
       {!isPage && (

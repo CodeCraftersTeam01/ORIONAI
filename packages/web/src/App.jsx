@@ -69,6 +69,8 @@ import ProjectDirectoryModal from './components/ProjectDirectoryModal';
 import LogsView from './components/LogsView';
 import ModelsView from './components/ModelsView';
 import SkillsView from './components/SkillsView';
+import UpdateCheckView from './components/UpdateCheckView';
+import UpdateNotificationToast from './components/UpdateNotificationToast';
 import ThinkingIndicator from './components/ThinkingIndicator';
 import ToolCallBlock from './components/ToolCallBlock';
 import { soundEffects } from './utils/soundEffects';
@@ -630,8 +632,36 @@ export default function App() {
     return 'medium';
   });
 
-  // Current View: 'dashboard' (Clean Home with Logo & Greeting) | 'chat' (Full Chat Area)
+  // Current View: 'dashboard' (Clean Home with Logo & Greeting) | 'chat' (Full Chat Area) | 'updates'
   const [currentView, setCurrentView] = useState('dashboard');
+
+  // System Update Checker State
+  const [updateInfo, setUpdateInfo] = useState(null);
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const [isUpdateToastDismissed, setIsUpdateToastDismissed] = useState(false);
+
+  const handleCheckUpdates = useCallback(async (force = false) => {
+    setIsCheckingUpdate(true);
+    try {
+      const res = await fetch(`/api/system/update-check?force=${force ? 'true' : 'false'}`);
+      if (res.ok) {
+        const data = await res.json();
+        setUpdateInfo(data);
+        if (data.hasUpdate && force) {
+          setIsUpdateToastDismissed(false);
+        }
+      }
+    } catch (err) {
+      console.warn('Gagal memeriksa pembaruan:', err);
+    } finally {
+      setIsCheckingUpdate(false);
+    }
+  }, []);
+
+  // Background check once on app mount
+  useEffect(() => {
+    handleCheckUpdates(false);
+  }, [handleCheckUpdates]);
 
   const getTimeGreeting = () => {
     const hour = new Date().getHours();
@@ -2809,6 +2839,7 @@ PANDUAN KOMUNIKASI LISAN (VOICE CALL):
       {/* Super Simple Sidebar */}
       <Sidebar
         currentView={currentView}
+        hasUpdate={Boolean(updateInfo?.hasUpdate)}
         onNavigate={handleNavigateView}
         onOpenProviders={() => setIsManageProvidersOpen(true)}
         sessions={sessions}
@@ -2872,6 +2903,9 @@ PANDUAN KOMUNIKASI LISAN (VOICE CALL):
             )}
             {currentView === 'skills' && (
               <span className="session-active-title">Skills Hub</span>
+            )}
+            {currentView === 'updates' && (
+              <span className="session-active-title">Pembaruan Sistem</span>
             )}
           </div>
 
@@ -2967,6 +3001,7 @@ PANDUAN KOMUNIKASI LISAN (VOICE CALL):
             theme={theme}
             onSelectThemeMode={handleSelectThemeMode}
             onClearAllSessions={handleClearAllSessions}
+            onOpenUpdates={() => setCurrentView('updates')}
           />
         ) : currentView === 'logs' ? (
           <LogsView onClose={() => setCurrentView('dashboard')} />
@@ -2996,6 +3031,14 @@ PANDUAN KOMUNIKASI LISAN (VOICE CALL):
           />
         ) : currentView === 'skills' ? (
           <SkillsView onClose={() => setCurrentView('dashboard')} showToast={showToast} />
+        ) : currentView === 'updates' ? (
+          <div className="page-view-container animate-page-enter">
+            <UpdateCheckView
+              updateInfo={updateInfo}
+              isChecking={isCheckingUpdate}
+              onCheckUpdates={() => handleCheckUpdates(true)}
+            />
+          </div>
         ) : (
           <>
             {/* Message Stream or Unified Spatial Hero (Seamless shared elements) */}
@@ -3446,6 +3489,18 @@ PANDUAN KOMUNIKASI LISAN (VOICE CALL):
             </div>
           </div>
         </div>
+      )}
+
+      {/* Floating Bottom-Right Update Warning Toast Modal */}
+      {updateInfo?.hasUpdate && !isUpdateToastDismissed && currentView !== 'updates' && (
+        <UpdateNotificationToast
+          updateInfo={updateInfo}
+          onOpenUpdates={() => {
+            setIsUpdateToastDismissed(true);
+            setCurrentView('updates');
+          }}
+          onDismiss={() => setIsUpdateToastDismissed(true)}
+        />
       )}
     </div>
   );
