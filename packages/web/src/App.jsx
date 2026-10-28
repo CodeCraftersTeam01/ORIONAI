@@ -759,9 +759,20 @@ export default function App() {
               voicePendingApprovalRef.current = null;
               setVoiceUserTranscript('');
 
+              if (pending.isConversational) {
+                soundEffects.playSend?.();
+                handleTriggerVoiceAgentResponse(isApprove ? 'Ya, saya setuju.' : 'Tidak, batalkan.');
+                return;
+              }
+
               if (isApprove) {
                 soundEffects.playSend?.();
-                handleApproveTool(pending.toolCallId);
+                if (pending.isChoice || pending.tool === 'ask_user') {
+                  const selectedText = pending.options?.[0] || 'Ya, lanjutkan';
+                  handleChooseOption(pending.toolCallId, selectedText, 0);
+                } else {
+                  handleApproveTool(pending.toolCallId);
+                }
               } else {
                 handleRejectTool(pending.toolCallId);
               }
@@ -818,6 +829,11 @@ export default function App() {
 
   // Helper to construct clear, natural conversational approval question
   const buildApprovalSpeech = (parsed) => {
+    if (parsed.tool === 'ask_user' || parsed.type === 'tool_call_waiting_choice') {
+      const q = (parsed.question || parsed.args?.question || 'AI memerlukan konfirmasi atau tanggapan Anda.').replace(/[.,?!]+$/, '');
+      return `${q}? Apakah Anda menyetujuinya, Approve atau Reject?`;
+    }
+
     const tool = parsed.tool || '';
     const args = parsed.args || {};
     const cmd = (args.command || args.cmd || '').trim();
@@ -1077,18 +1093,26 @@ export default function App() {
       // Detect if user command requires autonomous Agent tool calls (JARVIS Mode)
       const isActionableAgentTask =
         isAgentMode ||
-        /\b(install|pasang|setup|buatkan|bikin|create|write|tulis|jalankan|run|hapus|delete|remove|edit|ubah|ganti|perbaiki|fix|cek|check|periksa|baca|lihat|tampilkan|list|buka|cari|search|react|vue|vite|npm|yarn|pnpm|git|docker|terminal|bash)\b/i.test(
+        /\b(install|pasang|setup|buatkan|bikin|create|write|tulis|jalankan|run|hapus|delete|remove|edit|ubah|ganti|perbaiki|fix|cek|check|periksa|baca|lihat|tampilkan|list|buka|cari|search|react|vue|vite|npm|yarn|pnpm|git|docker|terminal|bash|ask|tanya|konfirmasi|setuju|setujui|approve|reject)\b/i.test(
           queryText
         );
 
       if (isActionableAgentTask) {
-        // ================= JARVIS MODE: IMMEDIATE SPOKEN ACKNOWLEDGMENT =================
-        const ackText = 'Baik, mohon tunggu sebentar, saya sedang memprosesnya.';
-        await playVoiceAudio(ackText, controller.signal, () => {
-          setVoiceResponseTurn((prev) => prev + 1);
-          setVoiceAgentResponse(ackText);
-          setVoiceAgentStatus('speaking');
-        });
+        // Only play intermediate audio if this is a heavy execution action, never for conversational questions
+        const isConversationalQuestion = /\b(kamu|ngapain|kenapa|apa|siapa|gimana|bagaimana|sudah|udah|dari tadi|\?)\b/i.test(queryText);
+        const isHeavyExecution = /\b(install|pasang|deploy|hapus\s+semua|delete\s+all|build|jalankan\s+server)\b/i.test(queryText);
+
+        if (isHeavyExecution && !isConversationalQuestion) {
+          let ackText = 'Siap, saya siapkan proses eksekusinya sekarang.';
+          if (/\b(hapus|delete|remove|bersihkan)\b/i.test(queryText)) {
+            ackText = 'Siap, saya periksa target berkas dan mintakan persetujuan Anda.';
+          }
+          await playVoiceAudio(ackText, controller.signal, () => {
+            setVoiceResponseTurn((prev) => prev + 1);
+            setVoiceAgentResponse(ackText);
+            setVoiceAgentStatus('speaking');
+          });
+        }
 
         // Transition to thinking while silently running tool calls in background
         setVoiceAgentResponse('');
@@ -1154,7 +1178,8 @@ export default function App() {
                   },
                 ];
                 setVoiceActiveToolCalls([...toolCallsList]);
-              } else if (parsed.type === 'tool_call_waiting_approval') {
+              } else if (parsed.type === 'tool_call_waiting_approval' || parsed.type === 'tool_call_waiting_choice') {
+                const isChoice = parsed.type === 'tool_call_waiting_choice';
                 const approvalSpeech = buildApprovalSpeech(parsed);
                 const pending = {
                   toolCallId: parsed.toolCallId,
@@ -1162,7 +1187,30 @@ export default function App() {
                   args: parsed.args,
                   reason: parsed.reason,
                   purpose: parsed.purpose || parsed.args?.purpose || '',
+                  question: parsed.question || parsed.args?.question || '',
+                  options: parsed.options || parsed.args?.options || [],
+                  isChoice,
                 };
+
+                // Track in active tool calls list so visual tracker also knows status
+                toolCallsList = toolCallsList.map((tc) =>
+                  tc.id === parsed.toolCallId
+                    ? {
+                        ...tc,
+                        status: isChoice ? 'waiting_choice' : 'waiting_approval',
+                        reason: parsed.reason,
+                        question: parsed.question,
+                        options: parsed.options,
+                      }
+                    : tc
+                );
+                setVoiceActiveToolCalls([...toolCallsList]);
+
+                // Immediately reveal the approval card and set the ref so Approve & Reject buttons are visible right away
+                setVoicePendingApproval(pending);
+                voicePendingApprovalRef.current = pending;
+                setVoiceResponseTurn((prev) => prev + 1);
+                setVoiceAgentResponse(approvalSpeech);
 
                 // Automatically UNMUTE the user's microphone so they can verbally respond immediately
                 setIsVoiceMuted(false);
@@ -1173,12 +1221,9 @@ export default function App() {
                   });
                 }
 
-                // Render TTS audio FIRST! Reveal the text and approval card only once audio is decoded & ready to play
+                // Render TTS audio so user also hears the question spoken out loud
+                setVoiceAgentStatus('speaking');
                 await playVoiceAudio(approvalSpeech, controller.signal, () => {
-                  setVoicePendingApproval(pending);
-                  voicePendingApprovalRef.current = pending;
-                  setVoiceResponseTurn((prev) => prev + 1);
-                  setVoiceAgentResponse(approvalSpeech);
                   setVoiceAgentStatus('speaking');
                 });
                 setVoiceAgentStatus('listening');
@@ -1247,7 +1292,17 @@ export default function App() {
         voicePendingApprovalRef.current = null;
       } else {
         // ================= REGULAR CONVERSATION STREAM =================
-        const voicePrompt = `${queryText}\n\n[Instruksi Panggilan Suara]: Jawablah secara SINGKAT, PADAT, BERBOBOT, dan natural seperti berbicara di telepon (maksimal 1-2 kalimat saja). Wajib gunakan spasi pemisah antar kata yang benar dan normal (jangan menggabungkan kata). DILARANG menggunakan markdown, bullet points, atau kode.`;
+        const voicePrompt = `${queryText}\n\n[Instruksi Panggilan Suara & Persona Jarvis]: Anda adalah JARVIS / mitra cerdas dan sahabat kolaboratif pengguna.
+ATURAN WAJIB:
+1. JAWAB SANGAT SINGKAT & ON-POINT: Berikan jawaban yang SANGAT SINGKAT, PADAT, dan LANGSUNG PADA INTI TOPIK (1 kalimat pendek atau beberapa kata tepat sasaran).
+2. DILARANG BERTELE-TELE: Jangan membuat esai, jangan memberi ceramah, dan DILARANG basa-basi pembuka formal ("Halo", "Tentu saja!", "Sebagai asisten...").
+3. GAYA TEMAN AKRAB: Santai, cerdas, to-the-point seperti ngobrol di telepon antar teman akrab.
+CONTOH GAYA:
+- Tanya: "Kamu dari tadi ngapain aja pas aku lagi tidur?" -> Jawab: "Banyak hal."
+- Tanya: "Apa hal itu?" -> Jawab: "Kamu bilang suruh aku benerin login."
+- Tanya: "Udah beres?" -> Jawab: "Beres, aman."
+- Tanya: "Aku mau buat login." -> Jawab: "Siap. Mau pakai JWT email biasa atau sekalian Google Login?"
+Wajib gunakan spasi pemisah normal antar kata. DILARANG menggunakan markdown, tabel, atau kode.`;
 
         const res = await fetch('/api/chat/stream', {
           method: 'POST',
@@ -1325,6 +1380,18 @@ export default function App() {
           setVoiceAgentResponse(finalAnswer);
           setVoiceAgentStatus('speaking');
         });
+
+        // If the AI response asks a confirmation / approval question in voice, show Approve & Reject buttons
+        const isAskingConfirmation = /(?:apakah anda (?:yakin|setuju)|silakan (?:jawab|pilih|konfirmasi).*?(?:ya|tidak|approve|reject)|(?:approve|setujui).*?(?:atau|atow).*?(?:reject|tolak)|(?:approve\s+atau\s+reject|setujui\s+atau\s+tolak))\b/i.test(finalAnswer);
+        if (isAskingConfirmation) {
+          const conversationalPending = {
+            isConversational: true,
+            question: finalAnswer,
+            tool: 'ask_user',
+          };
+          setVoicePendingApproval(conversationalPending);
+          voicePendingApprovalRef.current = conversationalPending;
+        }
       }
 
     } catch (err) {
@@ -3196,14 +3263,33 @@ export default function App() {
           activeToolCalls={voiceActiveToolCalls}
           pendingApproval={voicePendingApproval}
           onApproveTool={async (toolCallId) => {
+            const currentPending = voicePendingApprovalRef.current;
             setVoicePendingApproval(null);
             voicePendingApprovalRef.current = null;
-            await handleApproveTool(toolCallId);
+            if (currentPending?.isConversational) {
+              soundEffects.playSend?.();
+              handleTriggerVoiceAgentResponse('Ya, saya setuju.');
+            } else if (currentPending?.isChoice || currentPending?.tool === 'ask_user') {
+              const selectedText = currentPending.options?.[0] || 'Ya, lanjutkan';
+              await handleChooseOption(toolCallId, selectedText, 0);
+            } else {
+              await handleApproveTool(toolCallId);
+            }
           }}
           onRejectTool={async (toolCallId) => {
+            const currentPending = voicePendingApprovalRef.current;
             setVoicePendingApproval(null);
             voicePendingApprovalRef.current = null;
-            await handleRejectTool(toolCallId);
+            if (currentPending?.isConversational) {
+              handleTriggerVoiceAgentResponse('Tidak, batalkan.');
+            } else {
+              await handleRejectTool(toolCallId);
+            }
+          }}
+          onChooseOption={async (toolCallId, option, index) => {
+            setVoicePendingApproval(null);
+            voicePendingApprovalRef.current = null;
+            await handleChooseOption(toolCallId, option, index);
           }}
           onToggleMute={handleToggleVoiceMute}
           onEndCall={handleEndVoiceCalling}

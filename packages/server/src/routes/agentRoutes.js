@@ -29,6 +29,12 @@ router.post(['/approve', '/choice'], (req, res) => {
       index: index ?? 0,
       cancelled: approved === false,
     };
+  } else if (approved === false) {
+    resolvePayload = {
+      selected: "Ditolak",
+      index: -1,
+      cancelled: true,
+    };
   } else {
     resolvePayload = Boolean(approved);
   }
