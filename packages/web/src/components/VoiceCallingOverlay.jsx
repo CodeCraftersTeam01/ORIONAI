@@ -98,7 +98,7 @@ export default function VoiceCallingOverlay({
             </div>
           )}
 
-          {/* ================= CENTERED JARVIS APPROVAL CARD ================= */}
+          {/* ================= CENTERED ORION APPROVAL CARD ================= */}
           {pendingApproval ? (
             <div className="voice-approval-card animate-approval-fade">
               <div className="voice-approval-header">

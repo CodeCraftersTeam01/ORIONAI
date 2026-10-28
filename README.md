@@ -32,7 +32,7 @@
 
 ## 🌟 Overview
 
-**Orion AI** adalah platform asisten kecerdasan buatan dan mitra rekayasa perangkat lunak (*Senior Engineering Partner & Collaborator ala JARVIS*) berarsitektur monorepo modern. Didesain dari awal untuk menjembatani komunikasi lisan manusia dan otomasi rekayasa kode presisi tinggi, Orion mengintegrasikan:
+**Orion AI** adalah platform asisten kecerdasan buatan dan mitra rekayasa perangkat lunak (*Senior Engineering Partner & Autonomous Collaborator*) berarsitektur monorepo modern. Didesain dari awal untuk menjembatani komunikasi lisan manusia dan otomasi rekayasa kode presisi tinggi, Orion mengintegrasikan:
 
 - **Voice Dialogue Stage (Mode Panggilan Suara)**: Percakapan audio alami bebas delay dengan pembersihan teks lisan adaptif, kartu persetujuan interaktif (*Approval Cards*), dan sintesis suara tanpa teks robotik.
 - **Terminal & Web Parity**: Pengalaman obrolan terminal berkecepatan tinggi (*Pi-Engine style*) yang tersinkronisasi dua arah secara *real-time* dengan dashboard web.
@@ -45,7 +45,7 @@
 
 | Fitur | Deskripsi |
 | :--- | :--- |
-| 🎙️ **Synchronized Jarvis Voice Mode** | Panggilan suara dua arah dengan antarmuka elegan, deteksi giliran bicara (*turn-taking*), pembersihan teks otomatis, dan kartu persetujuan eksekusi (*system approval card*). |
+| 🎙️ **Synchronized Orion Voice Mode** | Panggilan suara dua arah dengan antarmuka elegan, deteksi giliran bicara (*turn-taking*), pembersihan teks otomatis, dan kartu persetujuan eksekusi (*system approval card*). |
 | ⚡ **Interactive Terminal CLI (`orion`)** | Terminal interaktif kaya fitur: popup rekomendasi perintah instan saat mengetik `/`, pintasan keyboard (`Ctrl+L`, `Shift+Tab`), serta eksekusi shell langsung (`!<perintah>`). |
 | 🧠 **In-Built Superpowers Engine** | Aturan baku arsitektur yang mewajibkan AI berdialog Sokratik sebelum *coding*, mengusulkan opsi dengan *trade-off*, dan memverifikasi hasil nyata sebelum menyatakan tugas selesai. |
 | 💬 **Conversational Tool Feedback** | Respons dinamis, hangat, dan komunikatif saat memeriksa direktori atau menjalankan berkas (misal: *"Oh di folder ini ditemukan berkas .DS_Store nih bang..."*). |
@@ -187,7 +187,7 @@ Ketik tanda seru `!` di awal kalimat untuk mengeksekusi perintah terminal sistem
 
 ---
 
-## 🎙️ Voice Calling Overlay (JARVIS Mode)
+## 🎙️ Voice Calling Overlay (Orion Voice Mode)
 
 Mode panggilan suara Orion dirancang dengan estetika *borderless typography*, bebas gangguan visual, dan responsif:
 - **Zero-Glitch Speech Display**: Didukung algoritma *text cleaner* pintar yang memisahkan kata menempel (*squished compound words*), menjaga ekstensi berkas sistem seperti `.DS_Store`, dan merapikan tanda baca.

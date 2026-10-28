@@ -33,7 +33,7 @@ export const OFFICIAL_CHANGELOG = [
       { type: 'feature', text: 'Halaman Periksa Pembaruan: Tampilan status versi aplikasi dan riwayat changelog interaktif.' },
       { type: 'improvement', text: 'In-built Superpowers: Integrasi native powers ke dalam sistem utama tanpa duplikasi di Skill Hub.' },
       { type: 'improvement', text: 'Pembersih Teks Audio: Akurasi pembersihan teks sebelum TTS berbicara lebih presisi dan natural.' },
-      { type: 'fix', text: 'Sinkronisasi output Jarvis: Respon voice mode dan antarmuka web tersinkronisasi konsisten.' }
+      { type: 'fix', text: 'Sinkronisasi output Orion: Respon voice mode dan antarmuka web tersinkronisasi konsisten.' }
     ]
   },
   {

@@ -741,15 +741,15 @@ export const CURATED_CORE_SKILLS = [
     version: '1.0.0',
     author: 'Jesse Vincent (obra) & Orion AI Core',
     builtIn: true,
-    tags: ['superpowers', 'methodology', 'brainstorming', 'tdd', 'verification', 'deployment', 'jarvis', 'in-built'],
+    tags: ['superpowers', 'methodology', 'brainstorming', 'tdd', 'verification', 'deployment', 'orion', 'in-built'],
     sourceUrl: 'https://raw.githubusercontent.com/obra/superpowers/main/README.md',
     popular: true,
     downloads: 12500,
     content: `---
 name: superpowers
-description: "Metodologi rekayasa perangkat lunak lengkap dari Jesse Vincent (obra/superpowers): Socratic Brainstorming, Writing Plans, TDD, Subagent Development, dan Verification Before Completion untuk mendeploy fitur secara terstruktur bersama pengguna layaknya partner rekayasa sejati (JARVIS)."
+description: "Metodologi rekayasa perangkat lunak lengkap dari Jesse Vincent (obra/superpowers): Socratic Brainstorming, Writing Plans, TDD, Subagent Development, dan Verification Before Completion untuk mendeploy fitur secara terstruktur bersama pengguna layaknya partner rekayasa sejati (Orion)."
 platform: universal
-tags: [superpowers, methodology, brainstorming, tdd, verification, deployment, jarvis]
+tags: [superpowers, methodology, brainstorming, tdd, verification, deployment, orion]
 ---
 # Superpowers: Software Development & Deployment Methodology
 1. THE BRAINSTORMING GATE: Bila pengguna meminta membuat atau mendesain fitur baru (misal: buat login, sistem baru, deploy), JANGAN langsung menulis kode secara membabi buta. Ambil langkah mundur, ajak diskusi Sokratik mengenai arsitektur, kebutuhan, preferensi desain, dan database.
