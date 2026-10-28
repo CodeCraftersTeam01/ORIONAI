@@ -427,6 +427,7 @@ export default function App() {
   });
 
   const [input, setInput] = useState('');
+  const [activeSkill, setActiveSkill] = useState(null);
   const [attachments, setAttachments] = useState([]);
   const [previewImage, setPreviewImage] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -758,9 +759,20 @@ export default function App() {
               voicePendingApprovalRef.current = null;
               setVoiceUserTranscript('');
 
+              if (pending.isConversational) {
+                soundEffects.playSend?.();
+                handleTriggerVoiceAgentResponse(isApprove ? 'Ya, saya setuju.' : 'Tidak, batalkan.');
+                return;
+              }
+
               if (isApprove) {
                 soundEffects.playSend?.();
-                handleApproveTool(pending.toolCallId);
+                if (pending.isChoice || pending.tool === 'ask_user') {
+                  const selectedText = pending.options?.[0] || 'Ya, lanjutkan';
+                  handleChooseOption(pending.toolCallId, selectedText, 0);
+                } else {
+                  handleApproveTool(pending.toolCallId);
+                }
               } else {
                 handleRejectTool(pending.toolCallId);
               }
@@ -817,6 +829,11 @@ export default function App() {
 
   // Helper to construct clear, natural conversational approval question
   const buildApprovalSpeech = (parsed) => {
+    if (parsed.tool === 'ask_user' || parsed.type === 'tool_call_waiting_choice') {
+      const q = (parsed.question || parsed.args?.question || 'AI memerlukan konfirmasi atau tanggapan Anda.').replace(/[.,?!]+$/, '');
+      return `${q}? Apakah Anda menyetujuinya, Approve atau Reject?`;
+    }
+
     const tool = parsed.tool || '';
     const args = parsed.args || {};
     const cmd = (args.command || args.cmd || '').trim();
@@ -1076,18 +1093,26 @@ export default function App() {
       // Detect if user command requires autonomous Agent tool calls (JARVIS Mode)
       const isActionableAgentTask =
         isAgentMode ||
-        /\b(install|pasang|setup|buatkan|bikin|create|write|tulis|jalankan|run|hapus|delete|remove|edit|ubah|ganti|perbaiki|fix|cek|check|periksa|baca|lihat|tampilkan|list|buka|cari|search|react|vue|vite|npm|yarn|pnpm|git|docker|terminal|bash)\b/i.test(
+        /\b(install|pasang|setup|buatkan|bikin|create|write|tulis|jalankan|run|hapus|delete|remove|edit|ubah|ganti|perbaiki|fix|cek|check|periksa|baca|lihat|tampilkan|list|buka|cari|search|react|vue|vite|npm|yarn|pnpm|git|docker|terminal|bash|ask|tanya|konfirmasi|setuju|setujui|approve|reject)\b/i.test(
           queryText
         );
 
       if (isActionableAgentTask) {
-        // ================= JARVIS MODE: IMMEDIATE SPOKEN ACKNOWLEDGMENT =================
-        const ackText = 'Baik, mohon tunggu sebentar, saya sedang memprosesnya.';
-        await playVoiceAudio(ackText, controller.signal, () => {
-          setVoiceResponseTurn((prev) => prev + 1);
-          setVoiceAgentResponse(ackText);
-          setVoiceAgentStatus('speaking');
-        });
+        // Only play intermediate audio if this is a heavy execution action, never for conversational questions
+        const isConversationalQuestion = /\b(kamu|ngapain|kenapa|apa|siapa|gimana|bagaimana|sudah|udah|dari tadi|\?)\b/i.test(queryText);
+        const isHeavyExecution = /\b(install|pasang|deploy|hapus\s+semua|delete\s+all|build|jalankan\s+server)\b/i.test(queryText);
+
+        if (isHeavyExecution && !isConversationalQuestion) {
+          let ackText = 'Siap, saya siapkan proses eksekusinya sekarang.';
+          if (/\b(hapus|delete|remove|bersihkan)\b/i.test(queryText)) {
+            ackText = 'Siap, saya periksa target berkas dan mintakan persetujuan Anda.';
+          }
+          await playVoiceAudio(ackText, controller.signal, () => {
+            setVoiceResponseTurn((prev) => prev + 1);
+            setVoiceAgentResponse(ackText);
+            setVoiceAgentStatus('speaking');
+          });
+        }
 
         // Transition to thinking while silently running tool calls in background
         setVoiceAgentResponse('');
@@ -1153,7 +1178,8 @@ export default function App() {
                   },
                 ];
                 setVoiceActiveToolCalls([...toolCallsList]);
-              } else if (parsed.type === 'tool_call_waiting_approval') {
+              } else if (parsed.type === 'tool_call_waiting_approval' || parsed.type === 'tool_call_waiting_choice') {
+                const isChoice = parsed.type === 'tool_call_waiting_choice';
                 const approvalSpeech = buildApprovalSpeech(parsed);
                 const pending = {
                   toolCallId: parsed.toolCallId,
@@ -1161,7 +1187,30 @@ export default function App() {
                   args: parsed.args,
                   reason: parsed.reason,
                   purpose: parsed.purpose || parsed.args?.purpose || '',
+                  question: parsed.question || parsed.args?.question || '',
+                  options: parsed.options || parsed.args?.options || [],
+                  isChoice,
                 };
+
+                // Track in active tool calls list so visual tracker also knows status
+                toolCallsList = toolCallsList.map((tc) =>
+                  tc.id === parsed.toolCallId
+                    ? {
+                        ...tc,
+                        status: isChoice ? 'waiting_choice' : 'waiting_approval',
+                        reason: parsed.reason,
+                        question: parsed.question,
+                        options: parsed.options,
+                      }
+                    : tc
+                );
+                setVoiceActiveToolCalls([...toolCallsList]);
+
+                // Immediately reveal the approval card and set the ref so Approve & Reject buttons are visible right away
+                setVoicePendingApproval(pending);
+                voicePendingApprovalRef.current = pending;
+                setVoiceResponseTurn((prev) => prev + 1);
+                setVoiceAgentResponse(approvalSpeech);
 
                 // Automatically UNMUTE the user's microphone so they can verbally respond immediately
                 setIsVoiceMuted(false);
@@ -1172,12 +1221,9 @@ export default function App() {
                   });
                 }
 
-                // Render TTS audio FIRST! Reveal the text and approval card only once audio is decoded & ready to play
+                // Render TTS audio so user also hears the question spoken out loud
+                setVoiceAgentStatus('speaking');
                 await playVoiceAudio(approvalSpeech, controller.signal, () => {
-                  setVoicePendingApproval(pending);
-                  voicePendingApprovalRef.current = pending;
-                  setVoiceResponseTurn((prev) => prev + 1);
-                  setVoiceAgentResponse(approvalSpeech);
                   setVoiceAgentStatus('speaking');
                 });
                 setVoiceAgentStatus('listening');
@@ -1246,7 +1292,17 @@ export default function App() {
         voicePendingApprovalRef.current = null;
       } else {
         // ================= REGULAR CONVERSATION STREAM =================
-        const voicePrompt = `${queryText}\n\n[Instruksi Panggilan Suara]: Jawablah secara SINGKAT, PADAT, BERBOBOT, dan natural seperti berbicara di telepon (maksimal 1-2 kalimat saja). Wajib gunakan spasi pemisah antar kata yang benar dan normal (jangan menggabungkan kata). DILARANG menggunakan markdown, bullet points, atau kode.`;
+        const voicePrompt = `${queryText}\n\n[Instruksi Panggilan Suara & Persona Jarvis]: Anda adalah JARVIS / mitra cerdas dan sahabat kolaboratif pengguna.
+ATURAN WAJIB:
+1. JAWAB SANGAT SINGKAT & ON-POINT: Berikan jawaban yang SANGAT SINGKAT, PADAT, dan LANGSUNG PADA INTI TOPIK (1 kalimat pendek atau beberapa kata tepat sasaran).
+2. DILARANG BERTELE-TELE: Jangan membuat esai, jangan memberi ceramah, dan DILARANG basa-basi pembuka formal ("Halo", "Tentu saja!", "Sebagai asisten...").
+3. GAYA TEMAN AKRAB: Santai, cerdas, to-the-point seperti ngobrol di telepon antar teman akrab.
+CONTOH GAYA:
+- Tanya: "Kamu dari tadi ngapain aja pas aku lagi tidur?" -> Jawab: "Banyak hal."
+- Tanya: "Apa hal itu?" -> Jawab: "Kamu bilang suruh aku benerin login."
+- Tanya: "Udah beres?" -> Jawab: "Beres, aman."
+- Tanya: "Aku mau buat login." -> Jawab: "Siap. Mau pakai JWT email biasa atau sekalian Google Login?"
+Wajib gunakan spasi pemisah normal antar kata. DILARANG menggunakan markdown, tabel, atau kode.`;
 
         const res = await fetch('/api/chat/stream', {
           method: 'POST',
@@ -1324,6 +1380,18 @@ export default function App() {
           setVoiceAgentResponse(finalAnswer);
           setVoiceAgentStatus('speaking');
         });
+
+        // If the AI response asks a confirmation / approval question in voice, show Approve & Reject buttons
+        const isAskingConfirmation = /(?:apakah anda (?:yakin|setuju)|silakan (?:jawab|pilih|konfirmasi).*?(?:ya|tidak|approve|reject)|(?:approve|setujui).*?(?:atau|atow).*?(?:reject|tolak)|(?:approve\s+atau\s+reject|setujui\s+atau\s+tolak))\b/i.test(finalAnswer);
+        if (isAskingConfirmation) {
+          const conversationalPending = {
+            isConversational: true,
+            question: finalAnswer,
+            tool: 'ask_user',
+          };
+          setVoicePendingApproval(conversationalPending);
+          voicePendingApprovalRef.current = conversationalPending;
+        }
       }
 
     } catch (err) {
@@ -1575,6 +1643,7 @@ export default function App() {
   const handleSelectSession = (id) => {
     soundEffects.switchSession?.();
     setActiveSessionId(id);
+    setActiveSkill(null);
     setCurrentView('chat');
     fetch('/api/chat/sessions/active', {
       method: 'PUT',
@@ -1798,30 +1867,65 @@ export default function App() {
 
         if (serverSessions.length > 0) {
           lastServerUpdatedAtRef.current = serverUpdated;
-          setSessions(serverSessions);
+          let localSessions = [];
+          try {
+            const saved = localStorage.getItem('orion_chat_sessions');
+            if (saved) localSessions = JSON.parse(saved) || [];
+          } catch {}
+          const localMap = new Map((localSessions || []).map((s) => [s.id, s]));
+          const safeMerged = serverSessions.map((srv) => {
+            const loc = localMap.get(srv.id);
+            if (loc && (loc.messages || []).length > (srv.messages || []).length) {
+              return { ...srv, messages: loc.messages, title: loc.title || srv.title };
+            }
+            return srv;
+          });
+          setSessions(safeMerged);
           if (serverActiveId) {
             setActiveSessionId(serverActiveId);
           }
           try {
-            localStorage.setItem('orion_chat_sessions', JSON.stringify(serverSessions));
+            localStorage.setItem('orion_chat_sessions', JSON.stringify(safeMerged));
           } catch {}
         }
         return;
       }
 
       // Subsequent syncs (focus / visibility / poll):
-      // Apply if server has newer data or if server active session changed
+      // Only apply if server has newer data, and NEVER wipe local sessions that have more messages!
       const hasNewerData = serverUpdated > lastServerUpdatedAtRef.current;
-      const hasDifferentActive = serverActiveId && serverActiveId !== activeSessionId;
-      if ((hasNewerData || hasDifferentActive) && !isGenerating && !isSyncingSessionsRef.current) {
+      if (hasNewerData && !isGenerating && !isSyncingSessionsRef.current) {
         lastServerUpdatedAtRef.current = serverUpdated;
-        setSessions(serverSessions);
+        setSessions((prevSessions) => {
+          const prevMap = new Map((prevSessions || []).map((s) => [s.id, s]));
+          const merged = serverSessions.map((srv) => {
+            const local = prevMap.get(srv.id);
+            if (!local) return srv;
+            const localMsgs = local.messages || [];
+            const srvMsgs = srv.messages || [];
+            if (localMsgs.length > srvMsgs.length) {
+              return {
+                ...srv,
+                title: local.title || srv.title,
+                messages: localMsgs,
+              };
+            }
+            return srv;
+          });
+          for (const local of prevSessions) {
+            if (!merged.some((s) => s.id === local.id)) {
+              merged.push(local);
+            }
+          }
+          try {
+            localStorage.setItem('orion_chat_sessions', JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
+
         if (serverActiveId && serverActiveId !== activeSessionId) {
           setActiveSessionId(serverActiveId);
         }
-        try {
-          localStorage.setItem('orion_chat_sessions', JSON.stringify(serverSessions));
-        } catch {}
       }
     } catch {
       // offline / network error
@@ -2040,42 +2144,61 @@ export default function App() {
   // Real-time Token Streaming
   const handleSendMessage = async (textToSend, customAttachments = null) => {
     const activeAttachments = customAttachments !== null ? customAttachments : attachments;
-    const userText = (textToSend !== undefined ? textToSend : input).trim();
-    if ((!userText && activeAttachments.length === 0) || isGenerating) return;
+    const rawUserText = (textToSend !== undefined ? textToSend : input).trim();
+    if ((!rawUserText && activeAttachments.length === 0 && !activeSkill) || isGenerating) return;
+
+    // Immediately switch view to chat mode so user never bounces to dashboard
+    setCurrentView('chat');
 
     // Handle direct client-side slash commands
-    if (userText.toLowerCase() === '/clear') {
+    if (rawUserText.toLowerCase() === '/clear') {
       setInput('');
+      setActiveSkill(null);
       setSessions((prev) =>
         prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [] } : s))
       );
       showToast('Riwayat percakapan sesi telah dibersihkan');
       return;
     }
-    if (userText.toLowerCase() === '/new') {
+    if (rawUserText.toLowerCase() === '/new') {
       setInput('');
+      setActiveSkill(null);
       handleNewSession();
       showToast('Sesi percakapan baru dimulai');
       return;
     }
-    if (userText.toLowerCase() === '/agent' || userText.toLowerCase().startsWith('/agent ')) {
-      const parts = userText.split(/\s+/);
+    if (rawUserText.toLowerCase() === '/agent' || rawUserText.toLowerCase().startsWith('/agent ')) {
+      const parts = rawUserText.split(/\s+/);
       const arg = parts[1]?.toLowerCase();
       const nextMode = arg === 'on' ? true : arg === 'off' ? false : !isAgentMode;
       setIsAgentMode(nextMode);
       setInput('');
+      setActiveSkill(null);
       showToast(`Mode AI Agent: ${nextMode ? 'AKTIF (Eksekusi Tools & Terminal)' : 'NONAKTIF (Mode Chat Standar)'}`);
       return;
     }
 
+    // Determine active skill context
+    const skillName = activeSkill?.name || activeSkill?.label || null;
+    let promptToSend = rawUserText;
+    if (skillName) {
+      if (!promptToSend) {
+        promptToSend = `/${skillName}`;
+      } else if (!promptToSend.toLowerCase().startsWith(`/${skillName.toLowerCase()}`)) {
+        promptToSend = `/${skillName} ${promptToSend}`;
+      }
+    }
+
     soundEffects.playSend();
 
-    const displayPrompt = userText || (activeAttachments.length > 0 ? 'Tolong analisis dan jelaskan lampiran berikut.' : '');
+    const displayPrompt = promptToSend || (activeAttachments.length > 0 ? 'Tolong analisis dan jelaskan lampiran berikut.' : '');
 
     const userMessage = {
       id: `msg-${Date.now()}`,
       role: 'user',
-      content: displayPrompt,
+      content: rawUserText || (skillName ? `/${skillName}` : displayPrompt),
+      prompt: displayPrompt,
+      skill: skillName,
       attachments: activeAttachments,
       timestamp: new Date().toISOString(),
     };
@@ -2131,26 +2254,68 @@ export default function App() {
       timestamp: new Date().toISOString(),
     };
 
-    setSessions((prev) =>
-      prev.map((s) => {
-        if (s.id === activeSessionId) {
-          const isFirstMessage = s.messages.length === 0;
-          const displayTitle = userText || (activeAttachments[0] ? `Lampiran: ${activeAttachments[0].name}` : 'Percakapan');
-          return {
-            ...s,
-            title: isFirstMessage
-              ? displayTitle.length > 24
-                ? `${displayTitle.slice(0, 24)}...`
-                : displayTitle
-              : s.title,
-            messages: [...s.messages, userMessage, initialAiMessage],
-          };
+    // Determine target session ID and safely ensure session exists
+    let targetSessionId = activeSessionId;
+    let finalSessions = [];
+
+    setSessions((prev) => {
+      const exists = prev.some((s) => s.id === targetSessionId);
+      if (exists) {
+        finalSessions = prev.map((s) => {
+          if (s.id === targetSessionId) {
+            const isFirstMessage = (s.messages || []).length === 0;
+            const displayTitle = rawUserText || (skillName ? `/${skillName}` : (activeAttachments[0] ? `Lampiran: ${activeAttachments[0].name}` : 'Percakapan'));
+            return {
+              ...s,
+              title: isFirstMessage
+                ? displayTitle.length > 24
+                  ? `${displayTitle.slice(0, 24)}...`
+                  : displayTitle
+                : s.title,
+              messages: [...(s.messages || []), userMessage, initialAiMessage],
+            };
+          }
+          return s;
+        });
+      } else {
+        targetSessionId = targetSessionId || `session-${Date.now()}`;
+        setActiveSessionId(targetSessionId);
+        const displayTitle = rawUserText || (skillName ? `/${skillName}` : 'Percakapan Baru');
+        const newSess = {
+          id: targetSessionId,
+          title: displayTitle.length > 24 ? `${displayTitle.slice(0, 24)}...` : displayTitle,
+          createdAt: new Date().toISOString(),
+          messages: [userMessage, initialAiMessage],
+          projectPath: null,
+          projectName: null,
+        };
+        finalSessions = [newSess, ...prev];
+      }
+      try {
+        localStorage.setItem('orion_chat_sessions', JSON.stringify(finalSessions));
+      } catch {}
+      return finalSessions;
+    });
+
+    // Immediate sync to server so ~/.orion/sessions.json has the user message and initial bubble
+    isSyncingSessionsRef.current = true;
+    fetch('/api/chat/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessions: finalSessions, activeSessionId: targetSessionId }),
+    }).then(async (r) => {
+      if (r.ok) {
+        const data = await r.json();
+        if (data.updatedAt) {
+          lastServerUpdatedAtRef.current = data.updatedAt;
         }
-        return s;
-      })
-    );
+      }
+    }).catch(() => {}).finally(() => {
+      isSyncingSessionsRef.current = false;
+    });
 
     setInput('');
+    setActiveSkill(null);
     setAttachments([]);
     setIsGenerating(true);
 
@@ -2167,10 +2332,10 @@ export default function App() {
     const commitUpdate = (text, toolCalls = null) => {
       setSessions((prev) =>
         prev.map((s) => {
-          if (s.id === activeSessionId) {
+          if (s.id === targetSessionId) {
             return {
               ...s,
-              messages: s.messages.map((m) =>
+              messages: (s.messages || []).map((m) =>
                 m.id === aiMessageId
                   ? {
                       ...m,
@@ -2353,7 +2518,7 @@ export default function App() {
               : {}),
           },
           body: JSON.stringify({
-            message: userText,
+            message: displayPrompt,
             history: activeSession ? activeSession.messages : [],
             model: effectiveModel || modelToUseForMessage,
             reasoningTier: activeReasoningTier,
@@ -2389,10 +2554,10 @@ export default function App() {
         if (!accumulated.trim()) {
           setSessions((prev) =>
             prev.map((s) => {
-              if (s.id === activeSessionId) {
+              if (s.id === targetSessionId) {
                 return {
                   ...s,
-                  messages: s.messages.map((m) =>
+                  messages: (s.messages || []).map((m) =>
                     m.id === aiMessageId ? { ...m, content: 'Respon dihentikan oleh pengguna.' } : m
                   ),
                 };
@@ -2410,10 +2575,10 @@ export default function App() {
 
       setSessions((prev) =>
         prev.map((s) => {
-          if (s.id === activeSessionId) {
+          if (s.id === targetSessionId) {
             return {
               ...s,
-              messages: s.messages.map((m) =>
+              messages: (s.messages || []).map((m) =>
                 m.id === aiMessageId ? { ...m, content: errorContent } : m
               ),
             };
@@ -2428,6 +2593,24 @@ export default function App() {
       }
       abortControllerRef.current = null;
       setIsGenerating(false);
+
+      // Persist latest sessions state to disk and server
+      setSessions((latest) => {
+        try {
+          localStorage.setItem('orion_chat_sessions', JSON.stringify(latest));
+        } catch {}
+        fetch('/api/chat/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessions: latest, activeSessionId: targetSessionId }),
+        }).then(async (r) => {
+          if (r.ok) {
+            const data = await r.json();
+            if (data.updatedAt) lastServerUpdatedAtRef.current = data.updatedAt;
+          }
+        }).catch(() => {});
+        return latest;
+      });
     }
   };
 
@@ -2858,7 +3041,43 @@ export default function App() {
                                 ))}
                               </div>
                             )}
-                            {msg.content && <div className="user-text-content">{msg.content}</div>}
+                            {/* If message has active skill or starts with skill slash command, render [<>] skill pill */}
+                            {(() => {
+                              const skillName = msg.skill || (
+                                typeof msg.content === 'string' &&
+                                msg.content.startsWith('/') &&
+                                !['/clear', '/new', '/agent', '/help'].some((c) => msg.content.startsWith(c))
+                                  ? msg.content.split(/\s+/)[0].replace(/^\//, '')
+                                  : null
+                              );
+                              if (!skillName) return null;
+                              return (
+                                <div className="msg-skill-badge-row">
+                                  <div className="active-command-pill in-message">
+                                    <span className="command-pill-icon-box" title="Skill">
+                                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <rect x="1" y="1.5" width="14" height="13" rx="3.5" stroke="currentColor" strokeWidth="1.2" opacity="0.75" />
+                                        <path d="M5.5 5.5L3.5 8L5.5 10.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                                        <path d="M10.5 5.5L12.5 8L10.5 10.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                                      </svg>
+                                    </span>
+                                    <span className="command-pill-label">{skillName}</span>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                            {(() => {
+                              let textToRender = msg.content;
+                              if (msg.skill && textToRender.startsWith(`/${msg.skill}`)) {
+                                textToRender = textToRender.slice(msg.skill.length + 1).trim();
+                              } else if (!msg.skill && textToRender?.startsWith('/') && !['/clear', '/new', '/agent', '/help'].some((c) => textToRender.startsWith(c))) {
+                                const parts = textToRender.split(/\s+/);
+                                textToRender = parts.slice(1).join(' ').trim();
+                              }
+                              return textToRender ? (
+                                <div className="user-text-content">{textToRender}</div>
+                              ) : null;
+                            })()}
                           </div>
                         ) : (
                           <div className="ai-message-wrapper">
@@ -3009,6 +3228,8 @@ export default function App() {
         <ChatInput
           input={input}
           setInput={setInput}
+          activeSkill={activeSkill}
+          setActiveSkill={setActiveSkill}
           attachments={attachments}
           setAttachments={setAttachments}
           onSend={() => handleSendMessage()}
@@ -3042,14 +3263,33 @@ export default function App() {
           activeToolCalls={voiceActiveToolCalls}
           pendingApproval={voicePendingApproval}
           onApproveTool={async (toolCallId) => {
+            const currentPending = voicePendingApprovalRef.current;
             setVoicePendingApproval(null);
             voicePendingApprovalRef.current = null;
-            await handleApproveTool(toolCallId);
+            if (currentPending?.isConversational) {
+              soundEffects.playSend?.();
+              handleTriggerVoiceAgentResponse('Ya, saya setuju.');
+            } else if (currentPending?.isChoice || currentPending?.tool === 'ask_user') {
+              const selectedText = currentPending.options?.[0] || 'Ya, lanjutkan';
+              await handleChooseOption(toolCallId, selectedText, 0);
+            } else {
+              await handleApproveTool(toolCallId);
+            }
           }}
           onRejectTool={async (toolCallId) => {
+            const currentPending = voicePendingApprovalRef.current;
             setVoicePendingApproval(null);
             voicePendingApprovalRef.current = null;
-            await handleRejectTool(toolCallId);
+            if (currentPending?.isConversational) {
+              handleTriggerVoiceAgentResponse('Tidak, batalkan.');
+            } else {
+              await handleRejectTool(toolCallId);
+            }
+          }}
+          onChooseOption={async (toolCallId, option, index) => {
+            setVoicePendingApproval(null);
+            voicePendingApprovalRef.current = null;
+            await handleChooseOption(toolCallId, option, index);
           }}
           onToggleMute={handleToggleVoiceMute}
           onEndCall={handleEndVoiceCalling}

@@ -13,14 +13,52 @@ import {
   AudioWaveform,
   Command,
   Sparkles,
+  Terminal,
+  Wrench,
+  Trash2,
+  Plus,
+  HelpCircle,
 } from 'lucide-react';
 import { processFile, formatFileSize } from '../utils/fileHelpers';
 import ModelSelector from './ModelSelector';
 import ProjectSelector from './ProjectSelector';
 
+const SYSTEM_SLASH_COMMANDS = [
+  {
+    command: '/agent',
+    label: 'agent',
+    argsHint: '[on | off]',
+    description: 'Aktifkan atau nonaktifkan mode AI Agent otonom (tool calls & terminal)',
+    category: 'System',
+  },
+  {
+    command: '/clear',
+    label: 'clear',
+    argsHint: '',
+    description: 'Bersihkan seluruh riwayat percakapan sesi saat ini',
+    category: 'System',
+  },
+  {
+    command: '/new',
+    label: 'new',
+    argsHint: '',
+    description: 'Buka sesi percakapan baru yang segar',
+    category: 'System',
+  },
+  {
+    command: '/help',
+    label: 'help',
+    argsHint: '',
+    description: 'Tampilkan panduan dan daftar bantuan seluruh perintah',
+    category: 'System',
+  },
+];
+
 export default function ChatInput({
   input,
   setInput,
+  activeSkill = null,
+  setActiveSkill,
   attachments = [],
   setAttachments,
   onSend,
@@ -49,7 +87,7 @@ export default function ChatInput({
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
 
   // Slash commands state
-  const [slashCommands, setSlashCommands] = useState([]);
+  const [slashCommands, setSlashCommands] = useState(SYSTEM_SLASH_COMMANDS);
   const [slashSelectedIndex, setSlashSelectedIndex] = useState(0);
   const [isSlashDismissed, setIsSlashDismissed] = useState(false);
 
@@ -60,39 +98,12 @@ export default function ChatInput({
       try {
         const res = await fetch('/api/skills/commands');
         if (res.ok) {
-          const data = await res.json();
-          if (active && Array.isArray(data)) {
-            const systemCommands = [
-              {
-                command: '/agent',
-                label: 'agent',
-                argsHint: '[on | off]',
-                description: 'Aktifkan atau nonaktifkan mode AI Agent otonom (tool calls & terminal)',
-                category: 'System',
-              },
-              {
-                command: '/clear',
-                label: 'clear',
-                argsHint: '',
-                description: 'Bersihkan seluruh riwayat percakapan sesi saat ini',
-                category: 'System',
-              },
-              {
-                command: '/new',
-                label: 'new',
-                argsHint: '',
-                description: 'Buka sesi percakapan baru yang segar',
-                category: 'System',
-              },
-              {
-                command: '/help',
-                label: 'help',
-                argsHint: '',
-                description: 'Tampilkan panduan dan daftar bantuan seluruh perintah',
-                category: 'System',
-              },
-            ];
-            setSlashCommands([...systemCommands, ...data]);
+          const json = await res.json();
+          const items = Array.isArray(json)
+            ? json
+            : (Array.isArray(json?.commands) ? json.commands : []);
+          if (active && items.length > 0) {
+            setSlashCommands([...SYSTEM_SLASH_COMMANDS, ...items]);
           }
         }
       } catch (err) {
@@ -105,13 +116,30 @@ export default function ChatInput({
     };
   }, []);
 
+  // Dismiss slash menu on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (
+        slashMenuRef.current &&
+        !slashMenuRef.current.contains(e.target) &&
+        !textareaRef.current?.contains(e.target)
+      ) {
+        setIsSlashDismissed(true);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, []);
+
   // Auto resize textarea
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = 'auto';
     el.style.height = `${Math.min(el.scrollHeight, 180)}px`;
-  }, [input]);
+  }, [input, activeSkill]);
 
   // Reset dismissed state when input changes or starts fresh with /
   useEffect(() => {
@@ -140,18 +168,33 @@ export default function ChatInput({
     });
   }, [input, slashCommands, isSlashDismissed]);
 
-  const showSlashMenu = activeSlashMatches.length > 0;
+  const showSlashMenu = input.startsWith('/') && !input.includes('\n') && !isSlashDismissed;
 
-  // Auto scroll active item in slash menu
+  // Auto scroll active item in slash menu without clipping top item
   useEffect(() => {
     if (!showSlashMenu || !slashMenuRef.current) return;
-    const activeEl = slashMenuRef.current.querySelector('.slash-menu-item.is-selected');
+    const listEl = slashMenuRef.current.querySelector('.slash-menu-list');
+    if (!listEl) return;
+    if (slashSelectedIndex === 0) {
+      listEl.scrollTop = 0;
+      return;
+    }
+    const activeEl = listEl.querySelector('.slash-menu-item.is-selected');
     if (activeEl) {
       activeEl.scrollIntoView({ block: 'nearest' });
     }
   }, [slashSelectedIndex, showSlashMenu]);
 
   const handleKeyDown = (e) => {
+    // 1. Backspace on empty input removes active skill pill
+    if (e.key === 'Backspace' && input === '' && activeSkill) {
+      e.preventDefault();
+      if (typeof setActiveSkill === 'function') {
+        setActiveSkill(null);
+      }
+      return;
+    }
+
     if (showSlashMenu) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -172,27 +215,76 @@ export default function ChatInput({
         e.preventDefault();
         const selected = activeSlashMatches[slashSelectedIndex] || activeSlashMatches[0];
         if (selected) {
-          setInput(`${selected.command} `);
+          if (selected.category !== 'System') {
+            if (typeof setActiveSkill === 'function') {
+              setActiveSkill({
+                name: selected.label || selected.command.replace(/^\//, ''),
+                command: selected.command,
+                label: selected.label || selected.command.replace(/^\//, ''),
+              });
+            }
+            setInput('');
+            setIsSlashDismissed(true);
+          } else {
+            setInput(`${selected.command} `);
+          }
         }
         return;
       }
       if (e.key === 'Enter' && !e.shiftKey) {
-        // If the user hasn't typed arguments yet (i.e. single word like `/ponytail`), autocomplete the command
+        // If the user hasn't typed arguments yet (e.g. single command like `/antislop`), convert to active skill pill
         const parts = input.trim().split(/\s+/);
         if (parts.length <= 1) {
           e.preventDefault();
-          const selected = activeSlashMatches[slashSelectedIndex] || activeSlashMatches[0];
+          const selected = activeSlashMatches[slashSelectedIndex] || activeSlashMatches[0] || {
+            label: input.trim().replace(/^\//, ''),
+            command: input.trim(),
+            category: 'Skill',
+          };
           if (selected) {
-            setInput(`${selected.command} `);
+            if (selected.category !== 'System') {
+              if (typeof setActiveSkill === 'function') {
+                setActiveSkill({
+                  name: selected.label || selected.command.replace(/^\//, ''),
+                  command: selected.command,
+                  label: selected.label || selected.command.replace(/^\//, ''),
+                });
+              }
+              setInput('');
+              setIsSlashDismissed(true);
+              return;
+            } else {
+              setInput(`${selected.command} `);
+              return;
+            }
           }
-          return;
         }
       }
     }
 
     if (e.key === 'Enter' && !e.shiftKey) {
+      const trimmed = input.trim();
+      const parts = trimmed.split(/\s+/);
+      // If user typed a single slash skill command without clicking menu and hits Enter
+      if (parts.length === 1 && trimmed.startsWith('/') && trimmed.length > 1) {
+        const cmdName = trimmed.replace(/^\//, '').toLowerCase();
+        if (!['clear', 'new', 'agent', 'help'].includes(cmdName)) {
+          e.preventDefault();
+          if (typeof setActiveSkill === 'function') {
+            setActiveSkill({
+              name: cmdName,
+              command: `/${cmdName}`,
+              label: cmdName,
+            });
+          }
+          setInput('');
+          setIsSlashDismissed(true);
+          return;
+        }
+      }
+
       e.preventDefault();
-      if (!isGenerating && (input.trim() || attachments.length > 0) && !isProcessingFiles) {
+      if (!isGenerating && (input.trim() || attachments.length > 0 || activeSkill) && !isProcessingFiles) {
         setIsSlashDismissed(true);
         onSend();
       }
@@ -287,12 +379,28 @@ export default function ChatInput({
     }
   };
 
-  const canSend = (input.trim().length > 0 || attachments.length > 0) && !isGenerating && !isProcessingFiles;
+  const renderCommandIcon = (item) => {
+    if (item.category === 'System') {
+      if (item.command === '/clear') return <Trash2 size={13} />;
+      if (item.command === '/new') return <Plus size={13} />;
+      if (item.command === '/help') return <HelpCircle size={13} />;
+      return <Terminal size={13} />;
+    }
+    return (
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="1" y="1.5" width="14" height="13" rx="3.5" stroke="currentColor" strokeWidth="1.2" opacity="0.8" />
+        <path d="M5.5 5.5L3.5 8L5.5 10.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M10.5 5.5L12.5 8L10.5 10.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  };
+
+  const canSend = (input.trim().length > 0 || attachments.length > 0 || !!activeSkill) && !isGenerating && !isProcessingFiles;
 
   return (
     <div className={`chat-input-wrapper ${isCentered ? 'is-centered' : 'is-docked'} ${isHiddenDashboard ? 'is-hidden-dashboard' : ''}`}>
-      {/* Top Bar: Project Selector (Image 2 style) */}
-      <div className="chat-input-top-bar">
+      {/* Top Bar: Project Selector */}
+      <div className={`chat-input-top-bar ${showSlashMenu ? 'is-dimmed' : ''}`}>
         <ProjectSelector
           projectPath={projectPath}
           projectName={projectName}
@@ -303,7 +411,7 @@ export default function ChatInput({
       </div>
 
       <div
-        className={`chat-input-box ${isDragging ? 'is-drag-over' : ''}`}
+        className={`chat-input-box ${isDragging ? 'is-drag-over' : ''} ${showSlashMenu ? 'has-slash-menu' : ''}`}
         onClick={() => textareaRef.current?.focus()}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -347,52 +455,53 @@ export default function ChatInput({
           </div>
         )}
 
-        {/* Floating Slash Commands Menu */}
+        {/* Floating Slash Commands Menu (Simple & Clean Solid) */}
         {showSlashMenu && (
           <div className="chat-slash-menu" ref={slashMenuRef} onClick={(e) => e.stopPropagation()}>
-            <div className="slash-menu-header">
-              <div className="slash-menu-header-left">
-                <Command size={13} className="slash-menu-icon" />
-                <span className="slash-menu-title">Daftar Perintah ({activeSlashMatches.length})</span>
-              </div>
-              <div className="slash-menu-header-hint">
-                <span>↑↓ navigasi</span>
-                <span>Tab / Enter pilih</span>
-                <span>Esc tutup</span>
-              </div>
-            </div>
             <div className="slash-menu-list">
-              {activeSlashMatches.map((item, idx) => {
-                const isSelected = idx === slashSelectedIndex;
-                const isSystem = item.category === 'System';
-                const skillLabel = isSystem ? 'SISTEM' : (item.skillName || item.skillId || 'SKILL').toUpperCase();
+              {activeSlashMatches.length === 0 ? (
+                <div className="slash-empty-state">
+                  Tidak ada perintah yang cocok dengan <code>{input.trim()}</code>
+                </div>
+              ) : (
+                activeSlashMatches.map((item, idx) => {
+                  const isSelected = idx === slashSelectedIndex;
+                  const label = item.label || item.command.replace(/^\//, '');
 
-                return (
-                  <div
-                    key={`${item.command}-${idx}`}
-                    className={`slash-menu-item ${isSelected ? 'is-selected' : ''}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setInput(`${item.command} `);
-                      textareaRef.current?.focus();
-                    }}
-                    onMouseEnter={() => setSlashSelectedIndex(idx)}
-                  >
-                    <div className="slash-item-main">
-                      <span className="slash-item-cmd">{item.command}</span>
-                      {item.argsHint && (
-                        <span className="slash-item-args">{item.argsHint}</span>
+                  return (
+                    <div
+                      key={`${item.command}-${idx}`}
+                      className={`slash-menu-row ${isSelected ? 'is-selected' : ''}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (item.category !== 'System') {
+                          if (typeof setActiveSkill === 'function') {
+                            setActiveSkill({
+                              name: label,
+                              command: item.command,
+                              label: label,
+                            });
+                          }
+                          setInput('');
+                          setIsSlashDismissed(true);
+                        } else {
+                          setInput(`${item.command} `);
+                        }
+                        textareaRef.current?.focus();
+                      }}
+                      onMouseEnter={() => setSlashSelectedIndex(idx)}
+                    >
+                      <div className="slash-row-icon">
+                        {renderCommandIcon(item)}
+                      </div>
+                      <span className="slash-row-cmd">{label}</span>
+                      {item.description && (
+                        <span className="slash-row-desc">{item.description}</span>
                       )}
-                      <span className={`slash-item-badge ${isSystem ? 'is-system' : 'is-skill'}`}>
-                        {skillLabel}
-                      </span>
                     </div>
-                    {item.description && (
-                      <div className="slash-item-desc">{item.description}</div>
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
         )}
@@ -427,22 +536,59 @@ export default function ChatInput({
             accept="image/*,.pdf,.txt,.md,.csv,.json,.js,.jsx,.ts,.tsx,.py,.html,.css,.sql,.doc,.docx"
           />
 
-          {/* Chat Textarea (Center) */}
-          <textarea
-            ref={textareaRef}
-            className="chat-textarea"
-            placeholder={
-              attachments.length > 0
-                ? 'Tambahkan instruksi untuk lampiran ini...'
-                : 'Tanyakan sesuatu atau tempel gambar/file...'
-            }
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            rows={1}
-            disabled={isGenerating}
-          />
+          {/* Chat Input Text Container (holds activeSkill pill + textarea) */}
+          <div className="chat-input-text-container">
+            {activeSkill && (
+              <div className="active-command-pill">
+                <span className="command-pill-icon-box" title="Skill">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="1" y="1.5" width="14" height="13" rx="3.5" stroke="currentColor" strokeWidth="1.2" opacity="0.75" />
+                    <path d="M5.5 5.5L3.5 8L5.5 10.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M10.5 5.5L12.5 8L10.5 10.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+                <span className="command-pill-label">{activeSkill.name || activeSkill.label}</span>
+                <button
+                  type="button"
+                  className="btn-remove-command-pill"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (typeof setActiveSkill === 'function') {
+                      setActiveSkill(null);
+                    }
+                    textareaRef.current?.focus();
+                  }}
+                  title="Hapus skill"
+                  aria-label="Hapus skill"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            )}
+
+            <textarea
+              ref={textareaRef}
+              className="chat-textarea"
+              placeholder={
+                activeSkill
+                  ? `Ketik instruksi untuk keahlian ${activeSkill.name || activeSkill.label}...`
+                  : attachments.length > 0
+                  ? 'Tambahkan instruksi untuk lampiran ini...'
+                  : 'Tanyakan sesuatu atau ketik / untuk perintah...'
+              }
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onFocus={() => {
+                if (input.startsWith('/')) {
+                  setIsSlashDismissed(false);
+                }
+              }}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              rows={1}
+              disabled={isGenerating}
+            />
+          </div>
 
 
           {/* Model Selector Pill (Right, before Send Button) */}

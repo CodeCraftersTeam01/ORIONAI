@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  HelpCircle,
   Mic,
   MicOff,
   PhoneOff,
@@ -26,6 +27,7 @@ export default function VoiceCallingOverlay({
   pendingApproval = null,
   onApproveTool,
   onRejectTool,
+  onChooseOption,
   onToggleMute,
   onEndCall,
 }) {
@@ -50,6 +52,8 @@ export default function VoiceCallingOverlay({
         return 'Akses Keahlian (Skill)';
       case 'delete_file':
         return 'Hapus Berkas';
+      case 'ask_user':
+        return 'Pertanyaan Konfirmasi';
       case 'ls':
       case 'find':
       case 'grep':
@@ -97,8 +101,16 @@ export default function VoiceCallingOverlay({
           {pendingApproval ? (
             <div className="voice-approval-card animate-approval-fade">
               <div className="voice-approval-header">
-                <ShieldAlert size={20} className="voice-approval-icon" />
-                <span className="voice-approval-title">Persetujuan Eksekusi Sistem</span>
+                {pendingApproval.isChoice || pendingApproval.tool === 'ask_user' || pendingApproval.isConversational || pendingApproval.question ? (
+                  <HelpCircle size={20} className="voice-approval-icon" />
+                ) : (
+                  <ShieldAlert size={20} className="voice-approval-icon" />
+                )}
+                <span className="voice-approval-title">
+                  {pendingApproval.isChoice || pendingApproval.tool === 'ask_user' || pendingApproval.isConversational || pendingApproval.question
+                    ? 'Konfirmasi Tindakan'
+                    : 'Persetujuan Eksekusi Sistem'}
+                </span>
               </div>
 
               <div className="voice-approval-content">
@@ -106,9 +118,24 @@ export default function VoiceCallingOverlay({
                   <Terminal size={13} />
                   <span>{getToolDisplayName(pendingApproval.tool)}</span>
                 </div>
-                <div className="voice-approval-code">
-                  <code>{getToolTargetInfo(pendingApproval.args)}</code>
-                </div>
+                {pendingApproval.question ? (
+                  <p
+                    className="voice-approval-question"
+                    style={{
+                      color: 'var(--text-primary)',
+                      fontSize: '0.94rem',
+                      fontWeight: 600,
+                      margin: '0.4rem 0 0.2rem',
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {pendingApproval.question}
+                  </p>
+                ) : pendingApproval.args ? (
+                  <div className="voice-approval-code">
+                    <code>{getToolTargetInfo(pendingApproval.args)}</code>
+                  </div>
+                ) : null}
                 {pendingApproval.purpose && (
                   <p className="voice-approval-reason" style={{ color: 'var(--text-primary)', fontWeight: 500 }}>
                     Tujuan: {pendingApproval.purpose}
@@ -118,6 +145,67 @@ export default function VoiceCallingOverlay({
                   <p className="voice-approval-reason">{pendingApproval.reason}</p>
                 )}
               </div>
+
+              {/* Dynamic choice options list if provided */}
+              {Array.isArray(pendingApproval.options) && pendingApproval.options.length > 0 && (
+                <div
+                  className="voice-approval-options-list"
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.4rem',
+                    width: '100%',
+                    margin: '0.4rem 0',
+                  }}
+                >
+                  {pendingApproval.options.map((opt, idx) => {
+                    const optLabel = typeof opt === 'string' ? opt : opt.label || opt.value || `Opsi ${idx + 1}`;
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        className="voice-btn-choice-opt"
+                        onClick={() => {
+                          if (onChooseOption) {
+                            onChooseOption(pendingApproval.toolCallId, optLabel, idx);
+                          } else if (idx === 0) {
+                            onApproveTool?.(pendingApproval.toolCallId);
+                          } else {
+                            onRejectTool?.(pendingApproval.toolCallId);
+                          }
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          background: 'rgba(255, 255, 255, 0.06)',
+                          border: '1px solid rgba(255, 255, 255, 0.12)',
+                          borderRadius: '8px',
+                          padding: '0.5rem 0.75rem',
+                          color: 'var(--text-primary)',
+                          fontSize: '0.82rem',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: '0.72rem',
+                            background: 'rgba(255, 255, 255, 0.12)',
+                            padding: '0.1rem 0.4rem',
+                            borderRadius: '4px',
+                            fontWeight: 600,
+                          }}
+                        >
+                          {idx + 1}
+                        </span>
+                        <span>{optLabel}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
               <div className="voice-approval-voice-hint">
                 <Mic size={14} className="animate-pulse" />
