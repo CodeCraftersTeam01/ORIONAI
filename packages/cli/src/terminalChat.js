@@ -1896,7 +1896,15 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
 
       let liveThoughtPreview = '';
 
-      if (isAgentMode) {
+      // Natural intent detection: Greetings or casual conversation vs actionable tools
+      const trimmedClean = userMessage.trim().replace(/[.,?!]+$/, '').toLowerCase();
+      const isGreetingOrCasual = /^(hello|halo|hai|hi|hey|p|pagi|siang|sore|malam|apa kabar|kamu siapa|tes|test|yo|woi|bro|jarvis|orion)\b/i.test(trimmedClean);
+      const hasAgentActionKeywords = /\b(install|pasang|setup|buatkan|bikin|create|write|tulis|jalankan|run|hapus|delete|remove|edit|ubah|ganti|perbaiki|fix|cek|check|periksa|baca|lihat|tampilkan|list|buka|cari|search|react|vue|vite|npm|yarn|pnpm|git|docker|terminal|bash|ask|tanya|konfirmasi|setuju|setujui|approve|reject)\b/i.test(userMessage);
+
+      // If user is simply greeting or saying hello, route conversationally so Jarvis greets warmly and swiftly
+      const isActionableAgentTask = (isAgentMode || hasAgentActionKeywords) && !isGreetingOrCasual;
+
+      if (isActionableAgentTask) {
         try {
           await new Promise((resolveAgent, rejectAgent) => {
             runAgentLoop({
