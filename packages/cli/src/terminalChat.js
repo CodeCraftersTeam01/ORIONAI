@@ -1286,11 +1286,41 @@ function cleanIndonesianSpelling(text) {
   // 7. Punctuation spacing - DO NOT break file extensions!
   res = res.replace(/([?!,;])([a-zA-Z0-9\u00C0-\u017F])/g, '$1 $2');
   res = res.replace(/(?<!https?|ftp|file|ws|wss):([a-zA-Z0-9\u00C0-\u017F])/g, ': $1');
+
+  // Space around parentheses: e.g. "Store(berisi" -> "Store (berisi", ")Tidak" -> ") Tidak"
+  res = res.replace(/([a-zA-Z0-9\u00C0-\u017F])\(/g, '$1 (');
+  res = res.replace(/\)([a-zA-Z0-9\u00C0-\u017F])/g, ') $1');
+
+  // Colons and hyphens list formatting: e.g. "yaitu: -.DS_Store" -> "yaitu: - .DS_Store"
+  res = res.replace(/:\s*-\s*([a-zA-Z0-9.])/g, ': - $1');
+  res = res.replace(/(^|\s)-([a-zA-Z0-9.])/g, '$1- $2');
+
   // Only space dot after word if followed by CAPITAL letter (new sentence)
   res = res.replace(/(?<=[a-zA-Z0-9\u00C0-\u017F])\.([A-Z\u00C0-\u017F])/g, '. $1');
 
   // Heal accidentally spaced file extensions (e.g. "test. txt" -> "test.txt")
   res = res.replace(/\.\s+(txt|html|css|js|jsx|ts|tsx|json|md|py|sh|png|jpg|jpeg|gif|svg|zip|tar|gz)\b/gi, '.$1');
+
+  // 7b. Clitic pronominal "-nya" glued with next word (e.g. "menyapanyalagi" -> "menyapanya lagi")
+  res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,}nya)(lagi|dan|atau|di|ke|dari|pada|yang|ini|itu|bisa|dapat|sudah|telah|akan|juga|saja|tidak|belum|adalah|karena|untuk|dengan|tersebut|pun)\b/gi, '$1 $2');
+
+  // 7c. Squished demonstratives and adverbs (e.g. "inihanyaada" -> "ini hanya ada")
+  res = res.replace(/\b(ini|itu)(hanya|ada|adalah|berisi|terdiri|merupakan|bisa|dapat|satu|dua|tiga|file|folder|berkas|proyek|hasil|saja|juga|tidak|belum)/gi, '$1 $2');
+  res = res.replace(/\b(hanya)(ada|satu|dua|tiga|berisi|file|folder|berkas|item|terdapat|ditemukan)/gi, '$1 $2');
+  res = res.replace(/\b(ada)(satu|dua|tiga|empat|lima|file|folder|berkas|item|beberapa)/gi, '$1 $2');
+  res = res.replace(/\b(satu|dua|tiga|empat|lima)(file|folder|berkas|item|buah|biji)/gi, '$1 $2');
+
+  // 7d. Suffix prepositions glued with nouns (e.g. "folderdari" -> "folder dari")
+  res = res.replace(/\b(folder|file|berkas|tampilan|isi|data|sistem|dokumen|bagian|hasil|catatan|kode|versi|pilihan|pengaturan|keluar|berasal|terdiri|mulai)dari\b/gi, '$1 dari');
+  res = res.replace(/\b(folder|file|berkas|tampilan|isi|data|sistem|dokumen|bagian|hasil|catatan|kode|versi|pilihan|pengaturan)di\b/gi, '$1 di');
+  res = res.replace(/\b(folder|file|berkas|tampilan|isi|data|sistem|dokumen|bagian|hasil|catatan|kode|versi|pilihan|pengaturan)ke\b/gi, '$1 ke');
+  res = res.replace(/\b(folder|file|berkas|tampilan|isi|data|sistem|dokumen|bagian|hasil|catatan|kode|versi|pilihan|pengaturan)pada\b/gi, '$1 pada');
+
+  // 7e. System/tech compound nouns (e.g. "sistemmac" -> "sistem mac")
+  res = res.replace(/\b(sistem|os|perangkat|aplikasi|platform)(mac|macos|windows|linux|ios|android)\b/gi, '$1 $2');
+
+  // 7f. Restore damaged system filenames: e.g. ".DSStore" -> ".DS_Store"
+  res = res.replace(/\.DSStore\b/g, '.DS_Store');
 
   // 8. Specific known squished phrases
   const SQUISHED_MAP = [
@@ -1689,11 +1719,41 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
         // 7. Punctuation spacing - DO NOT break file extensions!
         res = res.replace(/([?!,;])([a-zA-Z0-9\u00C0-\u017F])/g, '$1 $2');
         res = res.replace(/(?<!https?|ftp|file|ws|wss):([a-zA-Z0-9\u00C0-\u017F])/g, ': $1');
+
+        // Space around parentheses: e.g. "Store(berisi" -> "Store (berisi", ")Tidak" -> ") Tidak"
+        res = res.replace(/([a-zA-Z0-9\u00C0-\u017F])\(/g, '$1 (');
+        res = res.replace(/\)([a-zA-Z0-9\u00C0-\u017F])/g, ') $1');
+
+        // Colons and hyphens list formatting: e.g. "yaitu: -.DS_Store" -> "yaitu: - .DS_Store"
+        res = res.replace(/:\s*-\s*([a-zA-Z0-9.])/g, ': - $1');
+        res = res.replace(/(^|\s)-([a-zA-Z0-9.])/g, '$1- $2');
+
         // Only space dot after word if followed by CAPITAL letter (new sentence)
         res = res.replace(/(?<=[a-zA-Z0-9\u00C0-\u017F])\.([A-Z\u00C0-\u017F])/g, '. $1');
 
         // Heal accidentally spaced file extensions (e.g. "test. txt" -> "test.txt")
         res = res.replace(/\.\s+(txt|html|css|js|jsx|ts|tsx|json|md|py|sh|png|jpg|jpeg|gif|svg|zip|tar|gz)\b/gi, '.$1');
+
+        // 7b. Clitic pronominal "-nya" glued with next word (e.g. "menyapanyalagi" -> "menyapanya lagi")
+        res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,}nya)(lagi|dan|atau|di|ke|dari|pada|yang|ini|itu|bisa|dapat|sudah|telah|akan|juga|saja|tidak|belum|adalah|karena|untuk|dengan|tersebut|pun)\b/gi, '$1 $2');
+
+        // 7c. Squished demonstratives and adverbs (e.g. "inihanyaada" -> "ini hanya ada")
+        res = res.replace(/\b(ini|itu)(hanya|ada|adalah|berisi|terdiri|merupakan|bisa|dapat|satu|dua|tiga|file|folder|berkas|proyek|hasil|saja|juga|tidak|belum)/gi, '$1 $2');
+        res = res.replace(/\b(hanya)(ada|satu|dua|tiga|berisi|file|folder|berkas|item|terdapat|ditemukan)/gi, '$1 $2');
+        res = res.replace(/\b(ada)(satu|dua|tiga|empat|lima|file|folder|berkas|item|beberapa)/gi, '$1 $2');
+        res = res.replace(/\b(satu|dua|tiga|empat|lima)(file|folder|berkas|item|buah|biji)/gi, '$1 $2');
+
+        // 7d. Suffix prepositions glued with nouns (e.g. "folderdari" -> "folder dari")
+        res = res.replace(/\b(folder|file|berkas|tampilan|isi|data|sistem|dokumen|bagian|hasil|catatan|kode|versi|pilihan|pengaturan|keluar|berasal|terdiri|mulai)dari\b/gi, '$1 dari');
+        res = res.replace(/\b(folder|file|berkas|tampilan|isi|data|sistem|dokumen|bagian|hasil|catatan|kode|versi|pilihan|pengaturan)di\b/gi, '$1 di');
+        res = res.replace(/\b(folder|file|berkas|tampilan|isi|data|sistem|dokumen|bagian|hasil|catatan|kode|versi|pilihan|pengaturan)ke\b/gi, '$1 ke');
+        res = res.replace(/\b(folder|file|berkas|tampilan|isi|data|sistem|dokumen|bagian|hasil|catatan|kode|versi|pilihan|pengaturan)pada\b/gi, '$1 pada');
+
+        // 7e. System/tech compound nouns (e.g. "sistemmac" -> "sistem mac")
+        res = res.replace(/\b(sistem|os|perangkat|aplikasi|platform)(mac|macos|windows|linux|ios|android)\b/gi, '$1 $2');
+
+        // 7f. Restore damaged system filenames: e.g. ".DSStore" -> ".DS_Store"
+        res = res.replace(/\.DSStore\b/g, '.DS_Store');
 
         // 8. Specific known squished phrases
         const SQUISHED_MAP = [
@@ -1896,7 +1956,15 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
 
       let liveThoughtPreview = '';
 
-      if (isAgentMode) {
+      // Natural intent detection: Greetings or casual conversation vs actionable tools
+      const trimmedClean = userMessage.trim().replace(/[.,?!]+$/, '').toLowerCase();
+      const isGreetingOrCasual = /^(hello|halo|hai|hi|hey|p|pagi|siang|sore|malam|apa kabar|kamu siapa|tes|test|yo|woi|bro|jarvis|orion)\b/i.test(trimmedClean);
+      const hasAgentActionKeywords = /\b(install|pasang|setup|buatkan|bikin|create|write|tulis|jalankan|run|hapus|delete|remove|edit|ubah|ganti|perbaiki|fix|cek|check|periksa|baca|lihat|tampilkan|list|buka|cari|search|react|vue|vite|npm|yarn|pnpm|git|docker|terminal|bash|ask|tanya|konfirmasi|setuju|setujui|approve|reject)\b/i.test(userMessage);
+
+      // If user is simply greeting or saying hello, route conversationally so Jarvis greets warmly and swiftly
+      const isActionableAgentTask = (isAgentMode || hasAgentActionKeywords) && !isGreetingOrCasual;
+
+      if (isActionableAgentTask) {
         try {
           await new Promise((resolveAgent, rejectAgent) => {
             runAgentLoop({

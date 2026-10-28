@@ -14,6 +14,7 @@ import {
   Terminal,
   LogOut,
   Boxes,
+  ArrowUpCircle,
 } from 'lucide-react';
 import OrionLogo from './OrionLogo';
 
@@ -23,6 +24,7 @@ export default function Sidebar({
   onOpenProviders,
   sessions,
   activeSessionId,
+  hasUpdate = false,
   onSelectSession,
   onNewSession,
   onDeleteSession,
@@ -136,6 +138,24 @@ export default function Sidebar({
               >
                 <Terminal size={16} className="nav-item-icon" />
                 <span className="nav-item-label">Logs</span>
+              </button>
+
+              <button
+                type="button"
+                className={`sidebar-nav-item ${currentView === 'updates' ? 'active' : ''}`}
+                onClick={() => {
+                  onNavigate?.('updates');
+                  if (window.innerWidth < 768) onCloseMobile();
+                }}
+              >
+                <ArrowUpCircle size={16} className="nav-item-icon" />
+                <span className="nav-item-label">Pembaruan</span>
+                {hasUpdate && (
+                  <span
+                    className="ml-auto w-2 h-2 rounded-full bg-amber-400"
+                    title="Pembaruan tersedia"
+                  />
+                )}
               </button>
             </nav>
           </div>

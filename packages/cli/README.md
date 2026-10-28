@@ -59,7 +59,9 @@ Antarmuka terminal didesain responsif dan canggih mengikuti filosofi [Pi AI agen
 - **`/clear`** — Bersihkan layar terminal obrolan.
 - **`/new` / `/reset`** — Mulai sesi percakapan baru & kosongkan riwayat obrolan.
 - **`/help`** — Tampilkan panduan lengkap semua perintah.
-- **`/exit` / `/quit` / `/q`** — Keluar dari terminal chat.
+### 4. Sinkronisasi Real-time Web View & Terminal
+- **Dua Arah (Bidirectional Sync)**: Sesi obrolan, perintah, dan percakapan di terminal secara otomatis tersinkronisasi dua arah dengan antarmuka Web View (`localhost:3000` / `localhost:5173`).
+- **Paritas Persona Orion**: Perlakuan sapaan ramah dan eksekusi alat otonom (Superpowers & Orion partner) memiliki paritas 1:1 antara terminal dan antarmuka web, memastikan konsistensi respon tanpa divergensi.
 
 ## Lisensi
 MIT License

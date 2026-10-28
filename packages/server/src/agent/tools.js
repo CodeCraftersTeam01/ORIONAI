@@ -610,6 +610,25 @@ export async function executeTool(name, rawArgs = {}) {
         }
 
         try {
+          // Check for In-Built Core Capabilities (e.g. Superpowers Software Methodology)
+          if (queryName === 'superpowers' || queryName === 'super power' || queryName === 'super-power') {
+            const details = await getSkillDetails('superpowers');
+            return {
+              success: true,
+              skill_id: details.id,
+              name: details.name,
+              platform: details.platform,
+              version: details.version,
+              author: details.author,
+              builtIn: true,
+              allowed_tools: details.allowedTools,
+              instructions: details.instructions,
+              has_scripts: false,
+              scripts: [],
+              message: "Keahlian in-built 'Superpowers Software Methodology' aktif permanen di core sistem Orion Agent.",
+            };
+          }
+
           const installed = await getInstalledSkills();
           const target = installed.find(
             (s) => s.id === queryName || s.name.toLowerCase() === queryName || s.id.includes(queryName)

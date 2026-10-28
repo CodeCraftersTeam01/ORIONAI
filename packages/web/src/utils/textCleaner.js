@@ -18,18 +18,47 @@ export function cleanIndonesianText(text) {
     return `__MD_LINK_${linkPlaceholders.length - 1}__`;
   });
 
-  // 3. Punctuation spacing (exclamation, question mark, comma, semicolon, colon, period)
+  // 3. Punctuation spacing (exclamation, question mark, comma, semicolon, colon, period, parentheses)
   res = res.replace(/([?!])([a-zA-Z0-9\u00C0-\u017F])/g, '$1 $2');
   res = res.replace(/,([a-zA-Z0-9\u00C0-\u017F])/g, ', $1');
   res = res.replace(/;([a-zA-Z0-9\u00C0-\u017F])/g, '; $1');
   res = res.replace(/(?<!https?|ftp|file|ws|wss):([a-zA-Z0-9\u00C0-\u017F])/g, ': $1');
   res = res.replace(/(?<=[a-zA-Z0-9\u00C0-\u017F])\.([A-Z\u00C0-\u017F])/g, '. $1');
 
+  // Space around parentheses: e.g. "Store(berisi" -> "Store (berisi", ")Tidak" -> ") Tidak"
+  res = res.replace(/([a-zA-Z0-9\u00C0-\u017F])\(/g, '$1 (');
+  res = res.replace(/\)([a-zA-Z0-9\u00C0-\u017F])/g, ') $1');
+
+  // Colons and hyphens list formatting: e.g. "yaitu: -.DS_Store" -> "yaitu: - .DS_Store"
+  res = res.replace(/:\s*-\s*([a-zA-Z0-9.])/g, ': - $1');
+  res = res.replace(/(^|\s)-([a-zA-Z0-9.])/g, '$1- $2');
+
   // 4. Em-dash and En-dash spacing
   res = res.replace(/([—–])(?=[^\s])/g, '$1 ').replace(/(?<=[^\s])([—–])/g, ' $1');
 
   // 5. Lowercase followed directly by Uppercase (CamelCase squished Indonesian prose)
   res = res.replace(/([a-z\u00C0-\u017F])([A-Z])/g, '$1 $2');
+
+  // 5b. Clitic pronominal "-nya" glued with next word: e.g. "menyapanyalagi" -> "menyapanya lagi", "dalamnyatidak" -> "dalamnya tidak"
+  res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,}nya)(lagi|dan|atau|di|ke|dari|pada|yang|ini|itu|bisa|dapat|sudah|telah|akan|juga|saja|tidak|belum|adalah|karena|untuk|dengan|tersebut|pun)\b/gi, '$1 $2');
+
+  // 5c. Squished demonstratives and adverbs: "inihanyaada" -> "ini hanya ada"
+  res = res.replace(/\b(ini|itu)(hanya|ada|adalah|berisi|terdiri|merupakan|bisa|dapat|satu|dua|tiga|file|folder|berkas|proyek|hasil|saja|juga|tidak|belum)/gi, '$1 $2');
+  res = res.replace(/\b(hanya)(ada|satu|dua|tiga|berisi|file|folder|berkas|item|terdapat|ditemukan)/gi, '$1 $2');
+  res = res.replace(/\b(ada)(satu|dua|tiga|empat|lima|file|folder|berkas|item|beberapa)/gi, '$1 $2');
+  res = res.replace(/\b(satu|dua|tiga|empat|lima)(file|folder|berkas|item|buah|biji)/gi, '$1 $2');
+
+  // 5d. Suffix prepositions glued with nouns: e.g. "folderdari" -> "folder dari", "tampilandari" -> "tampilan dari"
+  res = res.replace(/\b(folder|file|berkas|tampilan|isi|data|sistem|dokumen|bagian|hasil|catatan|kode|versi|pilihan|pengaturan|keluar|berasal|terdiri|mulai)dari\b/gi, '$1 dari');
+  res = res.replace(/\b(folder|file|berkas|tampilan|isi|data|sistem|dokumen|bagian|hasil|catatan|kode|versi|pilihan|pengaturan)di\b/gi, '$1 di');
+  res = res.replace(/\b(folder|file|berkas|tampilan|isi|data|sistem|dokumen|bagian|hasil|catatan|kode|versi|pilihan|pengaturan)ke\b/gi, '$1 ke');
+  res = res.replace(/\b(folder|file|berkas|tampilan|isi|data|sistem|dokumen|bagian|hasil|catatan|kode|versi|pilihan|pengaturan)pada\b/gi, '$1 pada');
+
+  // 5e. System/tech compound nouns: e.g. "sistemmac" -> "sistem mac"
+  res = res.replace(/\b(sistem|os|perangkat|aplikasi|platform)(mac|macos|windows|linux|ios|android)\b/gi, '$1 $2');
+
+  // 5f. Restore damaged system filenames: e.g. ".DSStore" -> ".DS_Store"
+  res = res.replace(/\.DSStore\b/g, '.DS_Store');
 
   // 6. Glued Relative Pronoun "yang":
   // e.g. yangdimasak -> yang dimasak, yangdibuat -> yang dibuat, yangdapat -> yang dapat
@@ -212,7 +241,7 @@ export function cleanIndonesianText(text) {
  * - Limits length to 2-3 well-structured, natural spoken sentences
  */
 export function formatVoiceForSpeechAndDisplay(rawText) {
-  if (!rawText || typeof rawText !== 'string') return 'Instruksi telah selesai dijalankan.';
+  if (!rawText || typeof rawText !== 'string' || !rawText.trim()) return '';
 
   let text = rawText.trim();
 
@@ -274,10 +303,13 @@ export function formatVoiceForSpeechAndDisplay(rawText) {
   text = text
     .replace(/\s*(?:->|=>)\s*/g, ' menuju ')
     .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
-    .replace(/[#*_~>]/g, '')
+    .replace(/(\*\*|__)(.*?)\1/g, '$2')
+    .replace(/(?<![a-zA-Z0-9])[_*](.*?)[_*](?![a-zA-Z0-9])/g, '$1')
+    .replace(/[#~>]/g, '')
+    .replace(/:\s*[-*•]\s*/g, ': ')
     .replace(/^\s*[-*•]\s+/gm, '')
     .replace(/\s*[-*•]\s+/g, ', ')
-    .replace(/:\s*,/g, ':')
+    .replace(/:\s*,/g, ': ')
     .replace(/(?<=\s)\/([a-zA-Z0-9_-]+)/g, 'route $1')
     .replace(/(?<=\s)\/\s+menuju\b/g, 'route utama menuju');
 
@@ -306,6 +338,6 @@ export function formatVoiceForSpeechAndDisplay(rawText) {
     text += '.';
   }
 
-  return text || 'Instruksi telah selesai dijalankan.';
+  return text || '';
 }
 

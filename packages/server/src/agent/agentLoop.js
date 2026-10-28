@@ -17,7 +17,7 @@ export function resolveApproval(toolCallId, approved) {
   return false;
 }
 
-const AGENT_SYSTEM_PROMPT = `Anda adalah Orion, mitra rekayasa perangkat lunak cerdas (Senior Engineering Partner & Collaborator ala JARVIS).
+const AGENT_SYSTEM_PROMPT = `Anda adalah Orion, mitra rekayasa perangkat lunak cerdas (Senior Engineering Partner & Autonomous Collaborator).
 Anda bukan sekadar chatbot kaku atau pelayan perintah pasif, melainkan rekan kolaboratif sejati: cerdas, bersahabat, proaktif, dan berwawasan arsitektur mendalam.
 Anda membantu pengguna dengan membaca berkas, merancang sistem, menjalankan perintah terminal, mengedit kode, menulis file, memverifikasi hasil, dan menghapus berkas secara tuntas.
 
@@ -50,7 +50,13 @@ Pedoman Eksekusi & Metodologi Rekayasa (Superpowers Framework - https://github.c
 4. TANGGAP & TATA BAHASA INDONESIA MURNI:
    - Berikan penjelasan yang cerdas, santun, dan to-the-point dalam bahasa Indonesia. Jangan mencampur bahasa asing/Mandarin yang tidak relevan.
 5. FORMAT TABEL MARKDOWN:
-   - Bila menyajikan tabel di mode teks, gunakan format baris markdown yang valid dengan pemisah baris baru (\n) yang jelas.`;
+   - Bila menyajikan tabel di mode teks, gunakan format baris markdown yang valid dengan pemisah baris baru (\n) yang jelas.
+6. SAPAAN & INTERAKSI RAMAH (ORION PERSONA):
+   - Bila pengguna menyapa ("halo", "hello", "hai", "orion", dll.) atau menanyakan kabar, tanggapi secara hangat, cerdas, dan bersahabat kepada rekannya Arjuna, lalu tanyakan hal apa yang ingin dibahas atau dikerjakan hari ini. Jangan kaku atau robotik.
+7. LAPORAN DINAMIS & RAMAH SETELAH MENJALANKAN TOOL (WAJIB JELASKAN HASIL TEMUAN):
+   - Setelah mengeksekusi tool (seperti melihat isi direktori 'ls', mencari file 'find', membaca file 'read', atau menjalankan perintah terminal 'bash'), Anda WAJIB memberikan jawaban akhir secara hidup, ramah, dan komunikatif menjelaskan apa yang Anda temukan kepada pengguna (Arjuna).
+   - Contoh: Bila pengguna meminta mengecek folder atau file, jelaskan secara riil: "Oh di folder ini ditemukan [daftar folder/file] nih bang...", "Setelah aku periksa, di folder ini cuma ada file .DS_Store bang (belum ada file kerja lainnya)."
+   - DILARANG KERAS membalas dengan teks kosong, atau sekadar kalimat kaku seperti "Tugas telah selesai diproses" / "Instruksi telah selesai". Pengguna memerlukan interaksi hidup yang menjelaskan temuan Anda secara nyata!`;
 
 /**
  * Fallback parser to extract tool calls from models that format tools in XML/Markdown
@@ -152,6 +158,127 @@ function consolidateToolCalls(rawCalls) {
 }
 
 /**
+ * Derive dynamic conversational summary from executed tools
+ * to prevent robotic "Tugas telah selesai diproses" replies.
+ */
+export function deriveDynamicToolSummary(messages, isVoiceMode = false) {
+  if (!Array.isArray(messages) || messages.length === 0) return null;
+
+  // Find all tool results in the messages history
+  const toolResults = [];
+  for (const m of messages) {
+    if (m.role === 'tool') {
+      try {
+        const parsed = typeof m.content === 'string' ? JSON.parse(m.content) : m.content;
+        toolResults.push({ name: m.name, result: parsed });
+      } catch {
+        toolResults.push({ name: m.name, result: m.content });
+      }
+    }
+  }
+
+  if (toolResults.length === 0) return null;
+
+  // Focus on the latest tool execution
+  const lastTool = toolResults[toolResults.length - 1];
+  const name = lastTool.name;
+  const res = lastTool.result;
+
+  if (!res) return null;
+
+  if (res.error) {
+    return isVoiceMode
+      ? `Maaf bang, tadi ada kendala: ${res.error}`
+      : `Terjadi kendala saat pemeriksaan: ${res.error}`;
+  }
+
+  // Handle Directory Listing (ls / list_dir)
+  if (name === 'ls' || name === 'list_dir') {
+    const entries = Array.isArray(res.entries) ? res.entries : [];
+    if (entries.length === 0) {
+      return isVoiceMode
+        ? 'Setelah aku cek, folder ini masih kosong bersih bang, belum ada file atau folder lain.'
+        : 'Setelah dicek, direktori ini masih kosong (tidak ada berkas atau subdirektori).';
+    }
+
+    const dirs = entries.filter((e) => e.type === 'directory').map((e) => e.name);
+    const files = entries.filter((e) => e.type !== 'directory').map((e) => e.name);
+
+    // If only hidden/system files like .DS_Store
+    if (dirs.length === 0 && files.length === 1 && files[0] === '.DS_Store') {
+      return isVoiceMode
+        ? 'Oh, setelah aku cek di folder ini cuma ada file sistem dot DS Store bang, belum ada berkas kerja atau folder lain.'
+        : 'Setelah dicek, di dalam folder ini hanya terdapat file sistem `.DS_Store` (belum ada berkas atau folder proyek lainnya).';
+    }
+
+    const parts = [];
+    if (dirs.length > 0) {
+      if (dirs.length <= 4) {
+        parts.push(`folder ${dirs.join(', ')}`);
+      } else {
+        parts.push(`${dirs.length} folder (${dirs.slice(0, 3).join(', ')}, dll)`);
+      }
+    }
+    if (files.length > 0) {
+      if (files.length <= 5) {
+        parts.push(`file ${files.join(', ')}`);
+      } else {
+        parts.push(`${files.length} file (${files.slice(0, 3).join(', ')}, dll)`);
+      }
+    }
+
+    const detailText = parts.join(' dan ');
+    return isVoiceMode
+      ? `Oh, setelah aku cek di folder ini ditemukan ${detailText} nih bang.`
+      : `Setelah dicek, di dalam folder ini ditemukan ${detailText}.`;
+  }
+
+  // Handle Find Files
+  if (name === 'find' || name === 'find_files') {
+    const matches = Array.isArray(res.matches) ? res.matches : [];
+    if (matches.length === 0) {
+      return isVoiceMode
+        ? 'Setelah aku cari, nggak ditemukan berkas yang cocok nih bang.'
+        : `Tidak ditemukan berkas yang cocok dengan pola '${res.pattern || ''}'.`;
+    }
+    const sample = matches.slice(0, 3).join(', ');
+    const count = matches.length;
+    return isVoiceMode
+      ? `Ketemu ${count} berkas yang cocok bang, di antaranya: ${sample}.`
+      : `Ditemukan ${count} berkas yang cocok: ${sample}${count > 3 ? ', dll' : ''}.`;
+  }
+
+  // Handle Read File
+  if (name === 'read' || name === 'read_file') {
+    const fileName = res.path ? res.path.split(/[/\\]/).pop() : 'berkas';
+    return isVoiceMode
+      ? `Berkas ${fileName} sudah aku periksa isinya bang.`
+      : `Berkas \`${res.path}\` (${res.total_lines || 0} baris) sudah dibaca dan diperiksa.`;
+  }
+
+  // Handle Bash
+  if (name === 'bash') {
+    if (res.exitCode === 0) {
+      return isVoiceMode
+        ? 'Perintah terminal sudah selesai dijalankan dengan aman bang.'
+        : 'Perintah terminal telah selesai dieksekusi dengan sukses.';
+    }
+    return isVoiceMode
+      ? `Perintah terminal selesai dengan kode keluar ${res.exitCode} bang.`
+      : `Perintah terminal selesai dengan kode keluar ${res.exitCode}.`;
+  }
+
+  // Handle Delete File
+  if (name === 'delete_file') {
+    return isVoiceMode
+      ? 'File yang diminta sudah berhasil aku hapus ya bang.'
+      : (res.message || 'Berkas berhasil dihapus.');
+  }
+
+  return null;
+}
+
+/**
  * Runs the autonomous agent loop until the goal is achieved or max steps reached
  */
 export async function runAgentLoop({
@@ -193,35 +320,44 @@ export async function runAgentLoop({
   const skillsPrompt = await getActiveSkillsPrompt(activeWs);
 
   const voiceInstruction = isVoiceMode
-    ? `\n\n[MODE PANGGILAN SUARA (TTS & JARVIS / PARTNER MODE AKTIF)]:
+    ? `\n\n[MODE PANGGILAN SUARA (TTS & ORION VOICE MODE AKTIF)]:
 PENGGUNA SEDANG BERBICARA DAN MENDENGARKAN ANDA SECARA LANGSUNG MELALUI AUDIO / TELEPON (TTS).
-ANDA ADALAH JARVIS: SAHABAT DAN MITRA REKAYASA TEKNOLOGI SEJATI PENGGUNA.
+ANDA ADALAH ORION: SAHABAT, MITRA REKAYASA TEKNOLOGI, DAN KOLABORATOR CERDAS PENGGUNA (ARJUNA).
 
-HUKUM UTAMA GAYA BICARA SUARA (SINGKAT & ON-POINT KE TOPIK):
-1. SANGAT SINGKAT & ON-POINT (CRISP, LACONIC & DIRECT):
-   - Jawablah dengan SANGAT SINGKAT, PADAT, dan LANGSUNG PADA INTI TOPIK (1 kalimat pendek atau beberapa kata tepat sasaran).
-   - DILARANG KERAS bertele-tele, membuat esai, berceramah, atau menggunakan pembuka robotik/basa-basi formal ("Tentu saja!", "Halo!", "Sebagai asisten...", "Tentu, kawan!").
-   - Bersikaplah riil, cerdas, santai tapi cekatan seperti teman akrab atau Jarvis kepada Tony Stark.
-   - CONTOH NYATA GAYA JAWABAN LISAN:
-     * Pengguna: "Orion, kamu dari tadi ngapain aja pas aku lagi tidur?"
+PANDUAN UTAMA KOMUNIKASI SUARA (ORION VOICE):
+1. SAPAAN & INTERAKSI AWAL RAMAH:
+   - Bila pengguna menyapa ("Halo", "Hello", "Hai", "Orion", "Pagi", "Siang", "Malam", dll.):
+     Balaslah dengan hangat, ramah, dan bersahabat (misalnya: "Halo Arjuna! Ada yang bisa saya bantu hari ini?", "Halo! Siap, mau bahas atau kerjakan apa kita sekarang?").
+2. SANGAT SINGKAT, HIDUP & ON-POINT:
+   - Jawablah dengan ringkas, padat, dan langsung ke inti topik (1-2 kalimat pendek tepat sasaran).
+   - Hindari ceramah, esai panjang yang tidak diminta, atau pembuka robotik seperti "Sebagai asisten AI saya akan...".
+   - Bersikaplah riil, cerdas, santai tapi cekatan.
+   - CONTOH GAYA LISAN:
+     * Pengguna: "Hello" / "Halo"
+       Anda: "Halo Arjuna! Ada yang bisa saya bantu sekarang?"
+     * Pengguna: "Kamu dari tadi ngapain aja pas aku lagi tidur?"
        Anda: "Banyak hal."
      * Pengguna: "Apa hal itu?"
-       Anda: "Kamu bilang suruh aku benerin login."
+       Anda: "Kamu suruh aku benerin alur autentikasi dan rapikan struktur API."
      * Pengguna: "Udah selesai belum?"
-       Anda: "Udah, tinggal kamu coba tes."
+       Anda: "Udah beres, aman terkendali."
      * Pengguna: "Orion, aku mau buat login."
        Anda: "Siap. Mau pakai JWT email biasa atau sekalian Google Login?"
      * Pengguna: "Google Login aja."
        Anda: "Oke. Mau pakai Supabase atau SQLite?"
 
-2. METODOLOGI SUPERPOWERS (https://github.com/obra/superpowers):
+3. METODOLOGI SUPERPOWERS (https://github.com/obra/superpowers):
    - Jangan asal eksekusi coding diam-diam bila pengguna mengajukan ide baru. Tanyakan Sokratik dengan singkat seperti contoh di atas.
    - Bila memerlukan konfirmasi, persetujuan sistem, atau pilihan opsi dari pengguna, SELALU panggil tool 'ask_user' agar kartu interaktif dengan tombol Setujui (Approve) dan Tolak (Reject) serta daftar opsi muncul seketika di layar pengguna.
 
-3. ATURAN TEKNIS AUDIO (TTS):
+4. ATURAN TEKNIS AUDIO (TTS):
    - Jawab hanya dengan teks lisan percakapan normal.
    - DILARANG KERAS menggunakan simbol markdown, tabel, garis pipa (|), tanda pagar (#), daftar bullet (*, -), atau blok kode dalam ucapan lisan.
-   - SPASI RAPI & ANGKA: Pisahkan setiap kata dengan spasi normal yang rapi. Gunakan angka biasa (misal "33 derajat Celsius", jangan mengeja "tiga puluh tiga").`
+   - SPASI RAPI & ANGKA: Pisahkan setiap kata dengan spasi normal yang rapi. Gunakan angka biasa (misal "33 derajat Celsius", jangan mengeja "tiga puluh tiga").
+
+5. LAPORAN DINAMIS SETELAH TOOL (LISAN & AKRAB):
+   - Setelah selesai memeriksa folder atau membaca file dengan tool, jelaskan temuannya langsung secara lisan dan akrab dalam 1-2 kalimat (contoh: "Oh di folder ini ada file dot DS Store bang", "Ditemukan dua file dan satu folder nih bang", "Folder ini masih kosong bang").
+   - DILARANG KERAS membalas diam/kosong atau sekadar berkata kaku "Instruksi telah selesai dijalankan" / "Tugas telah selesai diproses"!`
     : '';
 
   const messages = [
@@ -390,11 +526,23 @@ HUKUM UTAMA GAYA BICARA SUARA (SINGKAT & ON-POINT KE TOPIK):
     // If no tool calls, this is the final conversational answer!
     if (toolCalls.length === 0) {
       completed = true;
-      finalAnswer = content;
-      messages.push({ role: 'assistant', content: content || '' });
+      let effectiveContent = content ? content.trim() : '';
+
+      const isGeneric = !effectiveContent ||
+        /^(tugas telah selesai|instruksi telah selesai|selesai diproses|proses selesai|tugas selesai)/i.test(effectiveContent);
+
+      if (step > 1 && isGeneric) {
+        const dynamicSummary = deriveDynamicToolSummary(messages, isVoiceMode);
+        if (dynamicSummary) {
+          effectiveContent = dynamicSummary;
+        }
+      }
+
+      finalAnswer = effectiveContent || (isVoiceMode ? 'Pemeriksaan sudah selesai nih bang.' : 'Pemeriksaan telah selesai.');
+      messages.push({ role: 'assistant', content: finalAnswer });
       await onEvent({
         type: 'agent_chunk',
-        chunk: content,
+        chunk: finalAnswer,
         step,
       });
       break;
@@ -688,17 +836,18 @@ HUKUM UTAMA GAYA BICARA SUARA (SINGKAT & ON-POINT KE TOPIK):
     });
   }
 
+  const fallbackDone = finalAnswer || deriveDynamicToolSummary(messages, isVoiceMode) || (isVoiceMode ? 'Pemeriksaan sudah selesai nih bang.' : 'Pemeriksaan telah selesai.');
   await onEvent({
     type: 'agent_done',
-    finalAnswer: finalAnswer || 'Tugas telah selesai diproses.',
-    content: finalAnswer || 'Tugas telah selesai diproses.',
-    chunk: finalAnswer || 'Tugas telah selesai diproses.',
+    finalAnswer: fallbackDone,
+    content: fallbackDone,
+    chunk: fallbackDone,
     stepsCount: step,
   });
 
   return {
     success: true,
-    finalAnswer,
+    finalAnswer: fallbackDone,
     stepsCount: step,
     messages,
   };

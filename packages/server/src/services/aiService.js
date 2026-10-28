@@ -162,6 +162,35 @@ export function cleanIndonesianText(text) {
   // 1. Punctuation followed by letter/number without space
   res = res.replace(/([?!.,;:])([a-zA-Z0-9\u00C0-\u017F])/g, '$1 $2');
 
+  // Space around parentheses: e.g. "Store(berisi" -> "Store (berisi", ")Tidak" -> ") Tidak"
+  res = res.replace(/([a-zA-Z0-9\u00C0-\u017F])\(/g, '$1 (');
+  res = res.replace(/\)([a-zA-Z0-9\u00C0-\u017F])/g, ') $1');
+
+  // Colons and hyphens list formatting: e.g. "yaitu: -.DS_Store" -> "yaitu: - .DS_Store"
+  res = res.replace(/:\s*-\s*([a-zA-Z0-9.])/g, ': - $1');
+  res = res.replace(/(^|\s)-([a-zA-Z0-9.])/g, '$1- $2');
+
+  // Clitic pronominal "-nya" glued with next word (e.g. "menyapanyalagi" -> "menyapanya lagi")
+  res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,}nya)(lagi|dan|atau|di|ke|dari|pada|yang|ini|itu|bisa|dapat|sudah|telah|akan|juga|saja|tidak|belum|adalah|karena|untuk|dengan|tersebut|pun)\b/gi, '$1 $2');
+
+  // Squished demonstratives and adverbs (e.g. "inihanyaada" -> "ini hanya ada")
+  res = res.replace(/\b(ini|itu)(hanya|ada|adalah|berisi|terdiri|merupakan|bisa|dapat|satu|dua|tiga|file|folder|berkas|proyek|hasil|saja|juga|tidak|belum)/gi, '$1 $2');
+  res = res.replace(/\b(hanya)(ada|satu|dua|tiga|berisi|file|folder|berkas|item|terdapat|ditemukan)/gi, '$1 $2');
+  res = res.replace(/\b(ada)(satu|dua|tiga|empat|lima|file|folder|berkas|item|beberapa)/gi, '$1 $2');
+  res = res.replace(/\b(satu|dua|tiga|empat|lima)(file|folder|berkas|item|buah|biji)/gi, '$1 $2');
+
+  // Suffix prepositions glued with nouns (e.g. "folderdari" -> "folder dari")
+  res = res.replace(/\b(folder|file|berkas|tampilan|isi|data|sistem|dokumen|bagian|hasil|catatan|kode|versi|pilihan|pengaturan|keluar|berasal|terdiri|mulai)dari\b/gi, '$1 dari');
+  res = res.replace(/\b(folder|file|berkas|tampilan|isi|data|sistem|dokumen|bagian|hasil|catatan|kode|versi|pilihan|pengaturan)di\b/gi, '$1 di');
+  res = res.replace(/\b(folder|file|berkas|tampilan|isi|data|sistem|dokumen|bagian|hasil|catatan|kode|versi|pilihan|pengaturan)ke\b/gi, '$1 ke');
+  res = res.replace(/\b(folder|file|berkas|tampilan|isi|data|sistem|dokumen|bagian|hasil|catatan|kode|versi|pilihan|pengaturan)pada\b/gi, '$1 pada');
+
+  // System/tech compound nouns (e.g. "sistemmac" -> "sistem mac")
+  res = res.replace(/\b(sistem|os|perangkat|aplikasi|platform)(mac|macos|windows|linux|ios|android)\b/gi, '$1 $2');
+
+  // Restore damaged system filenames: e.g. ".DSStore" -> ".DS_Store"
+  res = res.replace(/\.DSStore\b/g, '.DS_Store');
+
   // 2. Dash/Em-dash spacing
   res = res.replace(/([—–])(?=[^\s])/g, '$1 ').replace(/(?<=[^\s])([—–])/g, ' $1');
 

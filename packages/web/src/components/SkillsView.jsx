@@ -52,7 +52,7 @@ export default function SkillsView({ onClose, showToast }) {
       ]);
 
       if (installedRes.success) {
-        setInstalledSkills(installedRes.skills || []);
+        setInstalledSkills((installedRes.skills || []).filter((s) => s.id !== 'superpowers'));
       }
       if (hubRes.success) {
         setHubCatalog(hubRes.catalog || []);
@@ -104,6 +104,9 @@ export default function SkillsView({ onClose, showToast }) {
   // Filtered Installed skills
   const filteredInstalled = useMemo(() => {
     return installedSkills.filter((item) => {
+      // Exclude in-built capabilities like superpowers from installed view
+      if (item.id === 'superpowers') return false;
+
       const matchesSearch =
         searchQuery === '' ||
         item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -490,7 +493,11 @@ export default function SkillsView({ onClose, showToast }) {
                             <Eye size={13} />
                           </button>
 
-                          {isInstalled ? (
+                          {item.builtIn || item.id === 'superpowers' ? (
+                            <span className="skill-btn-inbuilt" title="Keahlian bawaan inti Orion Agent">
+                              <CheckCircle2 size={13} /> Bawaan Inti
+                            </span>
+                          ) : isInstalled ? (
                             <button
                               type="button"
                               className="skill-btn-installed"

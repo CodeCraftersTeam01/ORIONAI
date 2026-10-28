@@ -5605,17 +5605,50 @@ svg[aria-roledescription="error"] {
   max-width: 520px;
 }
 
-.settings-status-badge {
-  display: inline-flex;
+.settings-bottom-version {
+  display: flex;
+  justify-content: flex-end;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.35rem 0.75rem;
-  border-radius: 100px;
-  background: rgba(16, 185, 129, 0.12);
-  color: #10b981;
+  width: 100%;
+  margin-top: 3.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-tertiary, #64748b);
+  font-size: 0.8rem;
+  letter-spacing: 0.01em;
+}
+
+.settings-bottom-version code {
+  font-family: var(--font-mono, monospace);
   font-size: 0.76rem;
-  font-weight: 600;
-  border: 1px solid rgba(16, 185, 129, 0.25);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  background: var(--bg-surface-hover, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  color: var(--text-secondary, #94a3b8);
+  margin-left: 0.4rem;
+}
+
+.settings-version-sep {
+  margin: 0 0.5rem;
+  color: var(--border-subtle, #334155);
+}
+
+.settings-update-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent-primary, #60a5fa);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.15s ease;
+}
+
+.settings-update-link:hover {
+  color: #93c5fd;
 }
 
 .provider-page-content.is-page-mode .provider-modal-body {
@@ -6324,7 +6357,7 @@ svg[aria-roledescription="error"] {
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  padding-top: 18vh; /* Positioned in upper-middle of content area */
+  padding-top: 18vh;
   padding-bottom: 7rem;
   margin: 0 auto;
 }
@@ -9764,6 +9797,26 @@ svg[aria-roledescription="error"] {
   border: 1px solid var(--border-subtle);
   border-radius: 6px;
   cursor: default;
+}
+
+.skill-btn-inbuilt {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: rgba(14, 165, 233, 0.1);
+  color: #0284c7;
+  border: 1px solid rgba(14, 165, 233, 0.25);
+  border-radius: 6px;
+  cursor: default;
+}
+
+[data-theme='dark'] .skill-btn-inbuilt {
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.3);
 }
 
 .skill-btn-secondary {

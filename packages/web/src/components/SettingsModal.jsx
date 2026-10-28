@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { X, Sun, Moon, Laptop, Volume2, Trash2, ArrowLeft, ShieldCheck, Cpu } from 'lucide-react';
+import { X, Sun, Moon, Laptop, Volume2, Trash2 } from 'lucide-react';
 import { soundEffects } from '../utils/soundEffects';
 
 export default function SettingsModal({
@@ -12,6 +12,7 @@ export default function SettingsModal({
   onSelectThemeMode,
   onClearAllSessions,
   isPage = false,
+  onOpenUpdates,
 }) {
   // Close on Escape
   useEffect(() => {
@@ -117,20 +118,6 @@ export default function SettingsModal({
           </div>
         </div>
 
-        {/* Section: AI Model & Endpoint */}
-        <div className="settings-row">
-          <div>
-            <div className="settings-item-title">Status Sistem & Mesin AI</div>
-            <div className="settings-item-desc">
-              Orion Agent <code>v1.0.0</code> — Fullstack Core Engine aktif dengan enkripsi lokal.
-            </div>
-          </div>
-          <div className="settings-status-badge">
-            <ShieldCheck size={13} />
-            <span>Terlindungi & Online</span>
-          </div>
-        </div>
-
         {/* Section: Clear History */}
         <div className="settings-row danger">
           <div>
@@ -153,6 +140,26 @@ export default function SettingsModal({
             <span>Bersihkan Semua</span>
           </button>
         </div>
+      </div>
+
+      {/* Versi Aplikasi & Tombol Periksa Pembaruan di Kanan Bawah */}
+      <div className="settings-bottom-version">
+        <span>Orion Agent <code>v1.0.0</code></span>
+        {onOpenUpdates && (
+          <>
+            <span className="settings-version-sep">•</span>
+            <button
+              type="button"
+              className="settings-update-link"
+              onClick={() => {
+                if (!isPage) onClose?.();
+                onOpenUpdates();
+              }}
+            >
+              Periksa Pembaruan
+            </button>
+          </>
+        )}
       </div>
 
       {!isPage && (
