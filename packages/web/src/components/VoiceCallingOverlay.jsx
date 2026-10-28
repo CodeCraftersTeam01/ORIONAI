@@ -25,6 +25,7 @@ export default function VoiceCallingOverlay({
   responseTurn = 0,
   activeToolCalls = [],
   pendingApproval = null,
+  sessionTitle = '',
   onApproveTool,
   onRejectTool,
   onChooseOption,
@@ -76,6 +77,12 @@ export default function VoiceCallingOverlay({
   return (
     <div className="voice-calling-overlay" aria-live="polite">
       <div className="voice-calling-container">
+        {/* Synchronized Session Status Badge */}
+        <div className="voice-sync-session-badge">
+          <span className="voice-sync-dot" />
+          <span className="voice-sync-text">Jarvis Voice • Tersinkron: {sessionTitle || 'Percakapan Baru'}</span>
+        </div>
+
         {/* Typographic Voice Dialogue Stage */}
         <div className="voice-dialogue-stage">
           {/* User Spoken Transcript (During speech & while agent thinks) */}
