@@ -212,7 +212,7 @@ export function cleanIndonesianText(text) {
  * - Limits length to 2-3 well-structured, natural spoken sentences
  */
 export function formatVoiceForSpeechAndDisplay(rawText) {
-  if (!rawText || typeof rawText !== 'string') return 'Instruksi telah selesai dijalankan.';
+  if (!rawText || typeof rawText !== 'string' || !rawText.trim()) return '';
 
   let text = rawText.trim();
 
@@ -306,6 +306,6 @@ export function formatVoiceForSpeechAndDisplay(rawText) {
     text += '.';
   }
 
-  return text || 'Instruksi telah selesai dijalankan.';
+  return text || '';
 }
 
