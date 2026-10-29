@@ -88,7 +88,7 @@ export default function Sidebar({
                   if (window.innerWidth < 768) onCloseMobile();
                 }}
               >
-                <MessageSquare size={16} className="nav-item-icon" />
+                <MessageSquare size={14} className="nav-item-icon" />
                 <span className="nav-item-label">Chat</span>
               </button>
 
@@ -100,7 +100,7 @@ export default function Sidebar({
                   if (window.innerWidth < 768) onCloseMobile();
                 }}
               >
-                <Cpu size={16} className="nav-item-icon" />
+                <Cpu size={14} className="nav-item-icon" />
                 <span className="nav-item-label">Provider</span>
               </button>
 
@@ -112,7 +112,7 @@ export default function Sidebar({
                   if (window.innerWidth < 768) onCloseMobile();
                 }}
               >
-                <Sparkles size={16} className="nav-item-icon" />
+                <Sparkles size={14} className="nav-item-icon" />
                 <span className="nav-item-label">Models</span>
               </button>
 
@@ -124,7 +124,7 @@ export default function Sidebar({
                   if (window.innerWidth < 768) onCloseMobile();
                 }}
               >
-                <Boxes size={16} className="nav-item-icon" />
+                <Boxes size={14} className="nav-item-icon" />
                 <span className="nav-item-label">Skills Hub</span>
               </button>
 
@@ -136,7 +136,7 @@ export default function Sidebar({
                   if (window.innerWidth < 768) onCloseMobile();
                 }}
               >
-                <Terminal size={16} className="nav-item-icon" />
+                <Terminal size={14} className="nav-item-icon" />
                 <span className="nav-item-label">Logs</span>
               </button>
 
@@ -148,11 +148,11 @@ export default function Sidebar({
                   if (window.innerWidth < 768) onCloseMobile();
                 }}
               >
-                <ArrowUpCircle size={16} className="nav-item-icon" />
+                <ArrowUpCircle size={14} className="nav-item-icon" />
                 <span className="nav-item-label">Pembaruan</span>
                 {hasUpdate && (
                   <span
-                    className="ml-auto w-2 h-2 rounded-full bg-amber-400"
+                    className="ml-auto w-1.5 h-1.5 rounded-full bg-amber-400"
                     title="Pembaruan tersedia"
                   />
                 )}
@@ -173,7 +173,7 @@ export default function Sidebar({
                 }}
                 title="Kembali ke Dashboard Utama"
               >
-                <ArrowLeft size={14} className="back-arrow-icon" />
+                <ArrowLeft size={13} className="back-arrow-icon" />
                 <span>Kembali ke Dashboard</span>
               </button>
             </div>
@@ -188,7 +188,7 @@ export default function Sidebar({
                   if (window.innerWidth < 768) onCloseMobile();
                 }}
               >
-                <Plus size={15} />
+                <Plus size={13} />
                 <span>Chat Baru</span>
               </button>
             </div>
@@ -211,7 +211,7 @@ export default function Sidebar({
                         if (window.innerWidth < 768) onCloseMobile();
                       }}
                     >
-                      <MessageSquare size={14} className="session-icon" />
+                      <MessageSquare size={13} className="session-icon" />
                       <span className="session-title" title={session.title}>
                         {session.title || 'Percakapan Tanpa Judul'}
                       </span>
@@ -226,7 +226,7 @@ export default function Sidebar({
                           title="Hapus obrolan"
                           aria-label="Hapus obrolan"
                         >
-                          <Trash2 size={12} />
+                          <Trash2 size={11} />
                         </button>
                       )}
                     </div>
@@ -280,7 +280,7 @@ export default function Sidebar({
               title={soundEnabled ? 'Audio Respon: Aktif' : 'Audio Respon: Senyap'}
               aria-label="Toggle Sound"
             >
-              {soundEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
+              {soundEnabled ? <Volume2 size={13} /> : <VolumeX size={13} />}
             </button>
 
             <button
@@ -294,7 +294,7 @@ export default function Sidebar({
               title="Log Sistem dan Gateway"
               aria-label="Logs"
             >
-              <Terminal size={14} />
+              <Terminal size={13} />
             </button>
 
             <button
@@ -308,7 +308,7 @@ export default function Sidebar({
               title="Pengaturan Aplikasi"
               aria-label="Settings"
             >
-              <Settings size={14} />
+              <Settings size={13} />
             </button>
 
             {onLogout && (
@@ -322,7 +322,7 @@ export default function Sidebar({
                 title="Keluar dari Akun"
                 aria-label="Logout"
               >
-                <LogOut size={14} />
+                <LogOut size={13} />
               </button>
             )}
           </div>

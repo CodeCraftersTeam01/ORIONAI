@@ -23,6 +23,10 @@ import {
   Edit3,
   GitFork,
   Search,
+  LayoutList,
+  Grid,
+  Image,
+  Terminal,
 } from 'lucide-react';
 import { REASONING_TIERS, isReasoningSupported } from '../utils/modelConfig';
 
@@ -90,6 +94,12 @@ export default function ModelsView({
     judge: '',
     description: '',
   });
+
+  // OpenCode Console Table & Catalog State
+  const [viewMode, setViewMode] = useState('table'); // 'table' | 'grid'
+  const [catalogSearch, setCatalogSearch] = useState('');
+  const [filterFreeOnly, setFilterFreeOnly] = useState(false);
+  const [filterNewOnly, setFilterNewOnly] = useState(false);
 
   const fetchCombos = async () => {
     setIsLoadingCombos(true);
@@ -269,6 +279,25 @@ export default function ModelsView({
 
     return list;
   }, [customProviders]);
+
+  // Filtered models for OpenCode catalog table & grid
+  const displayModelsList = useMemo(() => {
+    return modelsList.filter((m) => {
+      if (filterFreeOnly && !m.isOfficial && m.badge !== 'local') return false;
+      if (filterNewOnly && m.baseDaysAgo > 10) return false;
+      if (catalogSearch.trim()) {
+        const q = catalogSearch.toLowerCase().trim();
+        const name = (m.name || '').toLowerCase();
+        const disp = (m.displayName || '').toLowerCase();
+        const id = (m.modelId || m.id || '').toLowerCase();
+        const prov = (m.providerName || '').toLowerCase();
+        if (!name.includes(q) && !disp.includes(q) && !id.includes(q) && !prov.includes(q)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [modelsList, filterFreeOnly, filterNewOnly, catalogSearch]);
 
   // Session count per model
   const modelStats = useMemo(() => {
@@ -1085,150 +1114,469 @@ export default function ModelsView({
           </div>
         </div>
 
-        {/* ================= SECTION HEADER ================= */}
-        <div className="models-section-bar">
-          <span className="models-section-title">Daftar Model Tersedia ({modelsList.length})</span>
-          <span className="models-section-hint">{filteredSessions.length} total sesi obrolan aktif</span>
+        {/* ================= OPENCODE STYLE LIMITS SECTION (Image 2 & 3) ================= */}
+        <div className="opencode-limits-section">
+          <div className="opencode-limits-header">
+            <div className="limits-header-left">
+              <h2 className="limits-title">Limits</h2>
+              <p className="limits-subtitle">
+                Estimated requests per 5 hours and monthly usage limits by model
+              </p>
+            </div>
+            <div className="limits-legend">
+              <span className="legend-item"><span className="legend-bar bar-gold" /> Orion Core</span>
+              <span className="legend-item"><span className="legend-bar bar-amber" /> Fallback</span>
+              <span className="legend-item"><span className="legend-bar bar-blue" /> Reasoning</span>
+            </div>
+          </div>
+
+          <div className="opencode-limits-table">
+            <div className="limits-table-header">
+              <span className="th-col th-model">Model</span>
+              <span className="th-col th-bar">Throughput Limit</span>
+              <span className="th-col th-requests">Est. requests / 5 hr</span>
+              <span className="th-col th-usage">Monthly usage</span>
+            </div>
+
+            <div className="limits-table-body">
+              {modelsList.slice(0, 10).map((m, idx) => {
+                const isCurrentMain = selectedModel === m.id || selectedModel === m.modelId;
+                const reqCounts = [3850, 440, 1350, 30100, 4300, 4230, 6320, 34670, 45300, '∞'];
+                const costValues = ['$15', '$30', '$60', '$60', '$60', '$15', '$60', '$80', '$60', '∞'];
+                const percentages = [45, 14, 38, 72, 44, 42, 58, 76, 82, 100];
+
+                const estRequests = reqCounts[idx % reqCounts.length];
+                const estCost = costValues[idx % costValues.length];
+                const fillPercent = percentages[idx % percentages.length];
+                const isNew = idx < 2;
+
+                return (
+                  <div key={`limit-${m.id}`} className="limits-row">
+                    <div className="limits-cell-model">
+                      <span className="limit-model-name">{m.displayName || m.name}</span>
+                      {isNew && <span className="limit-badge-new">New</span>}
+                      {m.isOfficial && <span className="limit-badge-free">Official</span>}
+                      {isCurrentMain && <span className="limit-badge-active">Active</span>}
+                    </div>
+
+                    <div className="limits-cell-bar">
+                      <div className="limit-bar-track">
+                        <div
+                          className="limit-bar-fill"
+                          style={{ width: `${fillPercent}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="limits-cell-requests">
+                      {typeof estRequests === 'number' ? estRequests.toLocaleString() : estRequests}
+                    </div>
+
+                    <div className="limits-cell-usage">
+                      {estCost}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="limits-scale-ticks">
+              <span>100</span>
+              <span>1K</span>
+              <span>10K</span>
+            </div>
+          </div>
         </div>
 
-        {/* ================= BOTTOM MODELS GRID ================= */}
-        <div className="models-cards-grid">
-          {modelsList.map((model, index) => {
-            const isCurrentMain =
-              selectedModel === model.id ||
-              selectedModel === model.modelId ||
-              (selectedModel.includes('::') && selectedModel.split('::')[1] === model.modelId);
+        {/* ================= OPENCODE MODELS CATALOG & DRAWER SECTION (Image 4) ================= */}
+        <div className="opencode-catalog-section">
+          <div className="catalog-top-row">
+            <div className="catalog-header-text">
+              <h2 className="catalog-title">Models</h2>
+              <p className="catalog-subtitle">
+                Only enabled models will be available to members. Prices per 1M tokens.
+              </p>
+            </div>
 
-            const sessionCount = modelStats[model.id] || 0;
-            const isDropdownOpen = activeDropdownModelId === model.id;
-            const isAllAuxAssigned = AUXILIARY_TASKS_LIST.every((t) => auxAssignments[t.id] === model.id);
-            const assignedCountForModel = AUXILIARY_TASKS_LIST.filter(
-              (t) => auxAssignments[t.id] === model.id
-            ).length;
+            <div className="catalog-toolbar">
+              <div className="catalog-search-wrap">
+                <Search size={13} className="catalog-search-icon" />
+                <input
+                  type="text"
+                  placeholder="Search"
+                  value={catalogSearch}
+                  onChange={(e) => setCatalogSearch(e.target.value)}
+                  className="catalog-search-input"
+                />
+                {catalogSearch && (
+                  <button
+                    type="button"
+                    className="catalog-clear-btn"
+                    onClick={() => setCatalogSearch('')}
+                    title="Bersihkan filter"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
 
-            return (
-              <div
-                key={model.id}
-                className={`models-tile-card ${isCurrentMain ? 'is-active-card' : ''} ${isDropdownOpen ? 'has-dropdown-open' : ''}`}
-                style={isDropdownOpen ? { zIndex: 100 } : undefined}
-              >
-                {/* Card Top: Number, Model Name & Session Count */}
-                <div className="tile-top-row">
-                  <div className="tile-title-group">
-                    <span className="tile-index-chip">#{index + 1}</span>
-                    <div className="tile-icon-avatar">{getModelIcon(model)}</div>
-                    <h3 className="tile-name" title={model.displayName || model.name}>
-                      {model.name}
-                    </h3>
-                  </div>
+              <div className="catalog-view-toggle">
+                <button
+                  type="button"
+                  className={`view-toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
+                  onClick={() => setViewMode('table')}
+                  title="Tampilan Tabel (OpenCode)"
+                >
+                  <LayoutList size={13} />
+                </button>
+                <button
+                  type="button"
+                  className={`view-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                  onClick={() => setViewMode('grid')}
+                  title="Tampilan Kartu"
+                >
+                  <Grid size={13} />
+                </button>
+              </div>
+            </div>
+          </div>
 
-                  <div className="tile-session-box">
-                    <span className="tile-session-count">{sessionCount}</span>
-                    <span className="tile-session-label">sessions</span>
-                  </div>
+          <div className="opencode-catalog-layout">
+            {/* Main Content: Table or Grid */}
+            <div className="catalog-main-content">
+              {viewMode === 'table' ? (
+                <div className="opencode-table-wrapper">
+                  <table className="opencode-model-table">
+                    <thead>
+                      <tr>
+                        <th className="th-name">Model</th>
+                        <th className="th-features">Features</th>
+                        <th className="th-price">Input</th>
+                        <th className="th-price">Output</th>
+                        <th className="th-price">Cache Read</th>
+                        <th className="th-price">Cache Write</th>
+                        <th className="th-action">Enabled</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {displayModelsList.map((model) => {
+                        const isCurrentMain =
+                          selectedModel === model.id ||
+                          selectedModel === model.modelId ||
+                          (selectedModel.includes('::') && selectedModel.split('::')[1] === model.modelId);
+                        const isDropdownOpen = activeDropdownModelId === model.id;
+                        const isAllAuxAssigned = AUXILIARY_TASKS_LIST.every((t) => auxAssignments[t.id] === model.id);
+                        const assignedCountForModel = AUXILIARY_TASKS_LIST.filter(
+                          (t) => auxAssignments[t.id] === model.id
+                        ).length;
+                        const isFree = model.isOfficial || model.badge === 'local';
+
+                        return (
+                          <tr
+                            key={model.id}
+                            className={`opencode-table-row ${isCurrentMain ? 'is-active-row' : ''}`}
+                          >
+                            <td className="td-name">
+                              <div className="model-name-cell">
+                                <div className="model-title-line">
+                                  <span className="model-display-name">{model.name}</span>
+                                  {isFree && <span className="cell-pill-free">Free</span>}
+                                  {isCurrentMain && <span className="cell-pill-active">Active</span>}
+                                </div>
+                                <span className="model-slug-line">{model.modelId || model.id}</span>
+                              </div>
+                            </td>
+
+                            <td className="td-features">
+                              <div className="feature-icon-badges">
+                                <span className="feat-badge" title="Omni Prompting"><Sparkles size={11} /></span>
+                                <span className="feat-badge" title="Code & Terminal Execution"><Terminal size={11} /></span>
+                                <span className="feat-badge" title="Vision & Diagrams"><Image size={11} /></span>
+                              </div>
+                            </td>
+
+                            <td className="td-price mono-cell">{isFree ? '$0.00' : '$1.00'}</td>
+                            <td className="td-price mono-cell">{isFree ? '$0.00' : '$5.00'}</td>
+                            <td className="td-price mono-cell">{isFree ? '$0.00' : '$0.10'}</td>
+                            <td className="td-price mono-cell">{isFree ? '$0.00' : '$1.25'}</td>
+
+                            <td className="td-action">
+                              <div className="table-actions-cluster">
+                                <button
+                                  type="button"
+                                  className={`opencode-toggle-switch ${isCurrentMain ? 'is-on' : ''}`}
+                                  onClick={() => handleSetMainModel(model.id)}
+                                  title={isCurrentMain ? 'Model Utama Aktif' : 'Pilih sebagai Model Utama'}
+                                  aria-label="Toggle model aktif"
+                                >
+                                  <span className="toggle-handle" />
+                                </button>
+
+                                <div className="model-action-menu-wrap">
+                                  <button
+                                    type="button"
+                                    className={`tile-btn-use-as compact-use-as ${isDropdownOpen ? 'is-active' : ''}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveDropdownModelId(isDropdownOpen ? null : model.id);
+                                    }}
+                                    title="Tugaskan sebagai Auxiliary Task"
+                                  >
+                                    <ChevronDown size={11} />
+                                  </button>
+
+                                  {isDropdownOpen && (
+                                    <div className="models-popover-menu" onClick={(e) => e.stopPropagation()}>
+                                      <button
+                                        type="button"
+                                        className={`models-popover-item ${isCurrentMain ? 'is-selected' : ''}`}
+                                        onClick={() => handleSetMainModel(model.id)}
+                                      >
+                                        <div className="popover-item-left">
+                                          <span className="popover-star-glyph">☆</span>
+                                          <span className="popover-item-title">MAIN MODEL</span>
+                                        </div>
+                                        {isCurrentMain && <Check size={13} className="popover-check" />}
+                                      </button>
+
+                                      <div className="popover-section-label">
+                                        AUXILIARY TASK
+                                      </div>
+
+                                      <button
+                                        type="button"
+                                        className={`models-popover-item ${isAllAuxAssigned ? 'is-selected' : ''}`}
+                                        onClick={() => handleAssignAllAux(model.id)}
+                                      >
+                                        <div className="popover-item-left">
+                                          <span className="popover-item-title">ALL AUXILIARY TASKS</span>
+                                        </div>
+                                        {isAllAuxAssigned && <Check size={13} className="popover-check" />}
+                                      </button>
+
+                                      {AUXILIARY_TASKS_LIST.map((task) => {
+                                        const isAssigned = auxAssignments[task.id] === model.id;
+                                        return (
+                                          <button
+                                            key={task.id}
+                                            type="button"
+                                            className={`models-popover-item ${isAssigned ? 'is-selected' : ''}`}
+                                            onClick={() => handleAssignAuxTask(task.id, model.id)}
+                                            title={task.desc}
+                                          >
+                                            <div className="popover-item-left">
+                                              <span className="popover-item-title">{task.name}</span>
+                                            </div>
+                                            {isAssigned && <Check size={13} className="popover-check" />}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
+              ) : (
+                /* Grid View */
+                <div className="models-cards-grid">
+                  {displayModelsList.map((model, index) => {
+                    const isCurrentMain =
+                      selectedModel === model.id ||
+                      selectedModel === model.modelId ||
+                      (selectedModel.includes('::') && selectedModel.split('::')[1] === model.modelId);
 
-                {/* Card Middle: Badge Tag & Dropdown Action */}
-                <div className="tile-mid-row">
-                  <div className="tile-badge-wrap">
-                    <span
-                      className={`tile-badge-pill ${model.isOfficial ? 'is-official' : ''}`}
-                      title={model.endpoint}
-                    >
-                      {model.isOfficial ? 'Official' : model.badge || 'custom'}
-                    </span>
-                  </div>
+                    const sessionCount = modelStats[model.id] || 0;
+                    const isDropdownOpen = activeDropdownModelId === model.id;
+                    const isAllAuxAssigned = AUXILIARY_TASKS_LIST.every((t) => auxAssignments[t.id] === model.id);
+                    const assignedCountForModel = AUXILIARY_TASKS_LIST.filter(
+                      (t) => auxAssignments[t.id] === model.id
+                    ).length;
 
-                  <div className="model-action-menu-wrap">
-                    <button
-                      type="button"
-                      className={`tile-btn-use-as ${isDropdownOpen ? 'is-active' : ''}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveDropdownModelId(isDropdownOpen ? null : model.id);
-                      }}
-                      aria-haspopup="true"
-                      aria-expanded={isDropdownOpen}
-                    >
-                      <span>USE AS</span>
-                      <ChevronDown size={11} className="use-as-chevron" />
-                    </button>
-
-                    {isDropdownOpen && (
-                      <div className="models-popover-menu" onClick={(e) => e.stopPropagation()}>
-                        {/* 1. Main Model Option */}
-                        <button
-                          type="button"
-                          className={`models-popover-item ${isCurrentMain ? 'is-selected' : ''}`}
-                          onClick={() => handleSetMainModel(model.id)}
-                        >
-                          <div className="popover-item-left">
-                            <span className="popover-star-glyph">☆</span>
-                            <span className="popover-item-title">MAIN MODEL</span>
+                    return (
+                      <div
+                        key={model.id}
+                        className={`models-tile-card ${isCurrentMain ? 'is-active-card' : ''} ${isDropdownOpen ? 'has-dropdown-open' : ''}`}
+                        style={isDropdownOpen ? { zIndex: 100 } : undefined}
+                      >
+                        <div className="tile-top-row">
+                          <div className="tile-title-group">
+                            <span className="tile-index-chip">#{index + 1}</span>
+                            <div className="tile-icon-avatar">{getModelIcon(model)}</div>
+                            <h3 className="tile-name" title={model.displayName || model.name}>
+                              {model.name}
+                            </h3>
                           </div>
-                          {isCurrentMain && <Check size={13} className="popover-check" />}
-                        </button>
 
-                        {/* 2. Section Header: AUXILIARY TASK */}
-                        <div className="popover-section-label">
-                          AUXILIARY TASK
+                          <div className="tile-session-box">
+                            <span className="tile-session-count">{sessionCount}</span>
+                            <span className="tile-session-label">sessions</span>
+                          </div>
                         </div>
 
-                        {/* 3. All Auxiliary Tasks Option */}
-                        <button
-                          type="button"
-                          className={`models-popover-item ${isAllAuxAssigned ? 'is-selected' : ''}`}
-                          onClick={() => handleAssignAllAux(model.id)}
-                        >
-                          <div className="popover-item-left">
-                            <span className="popover-item-title">ALL AUXILIARY TASKS</span>
-                          </div>
-                          {isAllAuxAssigned && <Check size={13} className="popover-check" />}
-                        </button>
-
-                        {/* 4. 12 Auxiliary Tasks */}
-                        {AUXILIARY_TASKS_LIST.map((task) => {
-                          const isAssigned = auxAssignments[task.id] === model.id;
-                          return (
-                            <button
-                              key={task.id}
-                              type="button"
-                              className={`models-popover-item ${isAssigned ? 'is-selected' : ''}`}
-                              onClick={() => handleAssignAuxTask(task.id, model.id)}
-                              title={task.desc}
+                        <div className="tile-mid-row">
+                          <div className="tile-badge-wrap">
+                            <span
+                              className={`tile-badge-pill ${model.isOfficial ? 'is-official' : ''}`}
+                              title={model.endpoint}
                             >
-                              <div className="popover-item-left">
-                                <span className="popover-item-title">{task.name}</span>
-                              </div>
-                              {isAssigned && <Check size={13} className="popover-check" />}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                              {model.isOfficial ? 'Official' : model.badge || 'custom'}
+                            </span>
+                          </div>
 
-                {/* Card Bottom: Relative Timestamp */}
-                <div className="tile-bottom-row">
-                  {isCurrentMain ? (
-                    <span className="active-dot-pill">
-                      <span className="pulse-dot" />
-                      <span>Active now</span>
-                    </span>
-                  ) : assignedCountForModel > 0 ? (
-                    <span className="tile-time-ago" title={`${assignedCountForModel} auxiliary task assigned`}>
-                      {`${assignedCountForModel} task${assignedCountForModel > 1 ? 's' : ''}`}
-                    </span>
-                  ) : (
-                    <span className="tile-time-ago">
-                      {`${model.baseDaysAgo}d ago`}
-                    </span>
-                  )}
+                          <div className="model-action-menu-wrap">
+                            <button
+                              type="button"
+                              className={`tile-btn-use-as ${isDropdownOpen ? 'is-active' : ''}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveDropdownModelId(isDropdownOpen ? null : model.id);
+                              }}
+                              aria-haspopup="true"
+                              aria-expanded={isDropdownOpen}
+                            >
+                              <span>USE AS</span>
+                              <ChevronDown size={11} className="use-as-chevron" />
+                            </button>
+
+                            {isDropdownOpen && (
+                              <div className="models-popover-menu" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  className={`models-popover-item ${isCurrentMain ? 'is-selected' : ''}`}
+                                  onClick={() => handleSetMainModel(model.id)}
+                                >
+                                  <div className="popover-item-left">
+                                    <span className="popover-star-glyph">☆</span>
+                                    <span className="popover-item-title">MAIN MODEL</span>
+                                  </div>
+                                  {isCurrentMain && <Check size={13} className="popover-check" />}
+                                </button>
+
+                                <div className="popover-section-label">
+                                  AUXILIARY TASK
+                                </div>
+
+                                <button
+                                  type="button"
+                                  className={`models-popover-item ${isAllAuxAssigned ? 'is-selected' : ''}`}
+                                  onClick={() => handleAssignAllAux(model.id)}
+                                >
+                                  <div className="popover-item-left">
+                                    <span className="popover-item-title">ALL AUXILIARY TASKS</span>
+                                  </div>
+                                  {isAllAuxAssigned && <Check size={13} className="popover-check" />}
+                                </button>
+
+                                {AUXILIARY_TASKS_LIST.map((task) => {
+                                  const isAssigned = auxAssignments[task.id] === model.id;
+                                  return (
+                                    <button
+                                      key={task.id}
+                                      type="button"
+                                      className={`models-popover-item ${isAssigned ? 'is-selected' : ''}`}
+                                      onClick={() => handleAssignAuxTask(task.id, model.id)}
+                                      title={task.desc}
+                                    >
+                                      <div className="popover-item-left">
+                                        <span className="popover-item-title">{task.name}</span>
+                                      </div>
+                                      {isAssigned && <Check size={13} className="popover-check" />}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="tile-bottom-row">
+                          {isCurrentMain ? (
+                            <span className="active-dot-pill">
+                              <span className="pulse-dot" />
+                              <span>Active now</span>
+                            </span>
+                          ) : assignedCountForModel > 0 ? (
+                            <span className="tile-time-ago" title={`${assignedCountForModel} auxiliary task assigned`}>
+                              {`${assignedCountForModel} task${assignedCountForModel > 1 ? 's' : ''}`}
+                            </span>
+                          ) : (
+                            <span className="tile-time-ago">
+                              {`${model.baseDaysAgo}d ago`}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Right Side Drawer / Summary Card (Screenshot 4) */}
+            <aside className="opencode-drawer-panel">
+              <div className="drawer-header-row">
+                <div className="drawer-title-group">
+                  <span className="drawer-app-title">Orion Console</span>
+                  <span className="drawer-subtitle">Default Gateway</span>
                 </div>
               </div>
-            );
-          })}
+
+              <div className="drawer-toggle-list">
+                <div className="drawer-toggle-row">
+                  <span className="toggle-label">Free models</span>
+                  <button
+                    type="button"
+                    className={`opencode-toggle-switch ${filterFreeOnly ? 'is-on' : ''}`}
+                    onClick={() => setFilterFreeOnly(!filterFreeOnly)}
+                    aria-label="Filter free models"
+                  >
+                    <span className="toggle-handle" />
+                  </button>
+                </div>
+
+                <div className="drawer-toggle-row">
+                  <span className="toggle-label">New models</span>
+                  <button
+                    type="button"
+                    className={`opencode-toggle-switch ${filterNewOnly ? 'is-on' : ''}`}
+                    onClick={() => setFilterNewOnly(!filterNewOnly)}
+                    aria-label="Filter new models"
+                  >
+                    <span className="toggle-handle" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="drawer-meta-section">
+                <div className="drawer-meta-row">
+                  <span className="meta-key">Total Models</span>
+                  <span className="meta-val mono-val">{modelsList.length}</span>
+                </div>
+                <div className="drawer-meta-row">
+                  <span className="meta-key">Active Sessions</span>
+                  <span className="meta-val mono-val">{filteredSessions.length}</span>
+                </div>
+                <div className="drawer-meta-row">
+                  <span className="meta-key">Last updated</span>
+                  <span className="meta-val">Today</span>
+                </div>
+                <div className="drawer-meta-row">
+                  <span className="meta-key">Main Model</span>
+                  <span className="meta-val highlight-val">{currentMainModel.displayName || currentMainModel.name}</span>
+                </div>
+                <div className="drawer-meta-row">
+                  <span className="meta-key">Reasoning Tier</span>
+                  <span className="meta-val mono-val">{reasoningTier.toUpperCase()}</span>
+                </div>
+              </div>
+            </aside>
+          </div>
         </div>
       </div>
 

@@ -37,6 +37,8 @@ import {
   Terminal,
   Eye,
   HelpCircle,
+  ChevronDown,
+  Search,
 } from 'lucide-react';
 import AuroraBackground from './components/AuroraBackground';
 import OrionLogo from './components/OrionLogo';
@@ -2947,122 +2949,184 @@ PANDUAN KOMUNIKASI LISAN (VOICE CALL):
 
       {/* Main Area */}
       <main className={`chat-main ${isVoiceCalling ? 'is-voice-calling-active' : ''}`}>
-        {/* Simple Transparent Header (No Background) */}
-        <header className="chat-header-simple">
-          <div className="header-simple-left">
-            <button
-              type="button"
-              className="btn-toggle-sidebar"
-              onClick={() => setIsSidebarOpen(true)}
-              aria-label="Buka navigasi"
-              title="Menu Navigasi"
-            >
-              <Menu size={18} />
-            </button>
-            {currentView !== 'dashboard' && (
+        {/* Top Header: OpenCode Console sub-nav for non-chat views, simple header for chat/dashboard */}
+        {['models', 'providers', 'skills', 'logs', 'updates', 'settings'].includes(currentView) ? (
+          <header className="opencode-console-header">
+            <div className="opencode-header-left">
               <button
                 type="button"
-                className="btn-header-back-home"
+                className="btn-toggle-sidebar"
+                onClick={() => setIsSidebarOpen(true)}
+                aria-label="Buka navigasi"
+                title="Menu Navigasi"
+              >
+                <Menu size={16} />
+              </button>
+
+              <div
+                className="opencode-workspace-badge"
                 onClick={() => setCurrentView('dashboard')}
                 title="Kembali ke Dashboard Utama"
               >
-                <ArrowLeft size={13} />
-                <span>Dashboard</span>
+                <span className="workspace-dot" />
+                <span className="workspace-name">Default</span>
+                <ChevronDown size={11} className="workspace-chevron" />
+              </div>
+            </div>
+
+            {/* Non-duplicate Console Breadcrumb & Telemetry */}
+            <div className="opencode-header-center">
+              <div className="opencode-breadcrumb">
+                <span className="breadcrumb-root">Console</span>
+                <span className="breadcrumb-separator">/</span>
+                <span className="breadcrumb-leaf">
+                  {currentView === 'models' && 'Models & Router'}
+                  {currentView === 'providers' && 'AI Providers'}
+                  {currentView === 'skills' && 'Skills Hub'}
+                  {currentView === 'logs' && 'System Logs'}
+                  {currentView === 'updates' && 'Pembaruan Sistem'}
+                  {currentView === 'settings' && 'Pengaturan'}
+                </span>
+              </div>
+
+              <div className="opencode-node-pill" title="Server Gateway">
+                <span className="node-pip" />
+                <span className="node-label">pi.leopard-gila.ts.net</span>
+              </div>
+            </div>
+
+            <div className="opencode-header-right">
+              <div className="opencode-status-badge">
+                <span className="status-live-dot" />
+                <span>Online</span>
+              </div>
+
+              <div
+                className="opencode-user-pill"
+                onClick={() => setCurrentView('settings')}
+                title={authStatus.user || 'wardilanang46@gmail.com'}
+              >
+                <span className="user-pill-avatar">
+                  {(authStatus.user || 'w').charAt(0).toLowerCase()}
+                </span>
+                <span className="user-pill-email">
+                  {authStatus.user || 'wardilanang46@gmail.com'}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                className="btn-simple-new-chat"
+                onClick={() => {
+                  handleNewSession();
+                  setCurrentView('chat');
+                }}
+                title="Mulai Obrolan Baru"
+              >
+                <Plus size={13} />
+                <span>Chat Baru</span>
               </button>
-            )}
-          </div>
-
-          <div className="header-simple-center">
-            {currentView === 'chat' && messages.length > 0 && (
-              <span className="session-active-title">
-                {activeSession ? activeSession.title : 'Orion'}
-              </span>
-            )}
-            {currentView === 'providers' && (
-              <span className="session-active-title">Kelola Provider AI</span>
-            )}
-            {currentView === 'models' && (
-              <span className="session-active-title">Models</span>
-            )}
-            {currentView === 'settings' && (
-              <span className="session-active-title">Pengaturan</span>
-            )}
-            {currentView === 'logs' && (
-              <span className="session-active-title">System & Gateway Logs</span>
-            )}
-            {currentView === 'skills' && (
-              <span className="session-active-title">Skills Hub</span>
-            )}
-            {currentView === 'updates' && (
-              <span className="session-active-title">Pembaruan Sistem</span>
-            )}
-          </div>
-
-          <div className="header-simple-right">
-            <button
-              type="button"
-              className="btn-simple-new-chat"
-              onClick={() => {
-                handleNewSession();
-                setCurrentView('chat');
-              }}
-              title="Mulai Obrolan Baru"
-            >
-              <Plus size={14} />
-              <span>Chat Baru</span>
-            </button>
-
-            {currentView === 'chat' && messages.length > 0 && (
-              <>
+            </div>
+          </header>
+        ) : (
+          <header className="chat-header-simple">
+            <div className="header-simple-left">
+              <button
+                type="button"
+                className="btn-toggle-sidebar"
+                onClick={() => setIsSidebarOpen(true)}
+                aria-label="Buka navigasi"
+                title="Menu Navigasi"
+              >
+                <Menu size={18} />
+              </button>
+              {currentView !== 'dashboard' && (
                 <button
                   type="button"
-                  className="nav-icon-simple"
-                  onClick={handleExportChat}
-                  title="Ekspor obrolan (.md)"
-                  aria-label="Ekspor obrolan"
+                  className="btn-header-back-home"
+                  onClick={() => setCurrentView('dashboard')}
+                  title="Kembali ke Dashboard Utama"
                 >
-                  <Download size={15} />
+                  <ArrowLeft size={13} />
+                  <span>Dashboard</span>
                 </button>
+              )}
+            </div>
 
-                <button
-                  type="button"
-                  className="nav-icon-simple"
-                  onClick={() => {
-                    if (confirm('Bersihkan percakapan ini?')) {
-                      setSessions((prev) =>
-                        prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [] } : s))
-                      );
-                    }
-                  }}
-                  title="Bersihkan obrolan"
-                  aria-label="Bersihkan obrolan"
-                >
-                  <Trash2 size={15} />
-                </button>
-              </>
-            )}
+            <div className="header-simple-center">
+              {currentView === 'chat' && messages.length > 0 && (
+                <span className="session-active-title">
+                  {activeSession ? activeSession.title : 'Orion'}
+                </span>
+              )}
+            </div>
 
-            <button
-              type="button"
-              className={`nav-icon-simple ${currentView === 'logs' ? 'active' : ''}`}
-              onClick={() => setCurrentView(currentView === 'logs' ? 'dashboard' : 'logs')}
-              title="System & Gateway Logs"
-              aria-label="Logs"
-            >
-              <Terminal size={15} />
-            </button>
+            <div className="header-simple-right">
+              <button
+                type="button"
+                className="btn-simple-new-chat"
+                onClick={() => {
+                  handleNewSession();
+                  setCurrentView('chat');
+                }}
+                title="Mulai Obrolan Baru"
+              >
+                <Plus size={14} />
+                <span>Chat Baru</span>
+              </button>
 
-            <button
-              type="button"
-              className={`nav-icon-simple ${currentView === 'settings' ? 'active' : ''}`}
-              onClick={() => setCurrentView(currentView === 'settings' ? 'dashboard' : 'settings')}
-              title="Pengaturan"
-              aria-label="Pengaturan"
-            >
-              <Settings size={15} />
-            </button>
-          </div>
-        </header>
+              {currentView === 'chat' && messages.length > 0 && (
+                <>
+                  <button
+                    type="button"
+                    className="nav-icon-simple"
+                    onClick={handleExportChat}
+                    title="Ekspor obrolan (.md)"
+                    aria-label="Ekspor obrolan"
+                  >
+                    <Download size={15} />
+                  </button>
+
+                  <button
+                    type="button"
+                    className="nav-icon-simple"
+                    onClick={() => {
+                      if (confirm('Bersihkan percakapan ini?')) {
+                        setSessions((prev) =>
+                          prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [] } : s))
+                        );
+                      }
+                    }}
+                    title="Bersihkan obrolan"
+                    aria-label="Bersihkan obrolan"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </>
+              )}
+
+              <button
+                type="button"
+                className={`nav-icon-simple ${currentView === 'logs' ? 'active' : ''}`}
+                onClick={() => setCurrentView(currentView === 'logs' ? 'dashboard' : 'logs')}
+                title="System & Gateway Logs"
+                aria-label="Logs"
+              >
+                <Terminal size={15} />
+              </button>
+
+              <button
+                type="button"
+                className={`nav-icon-simple ${currentView === 'settings' ? 'active' : ''}`}
+                onClick={() => setCurrentView(currentView === 'settings' ? 'dashboard' : 'settings')}
+                title="Pengaturan"
+                aria-label="Pengaturan"
+              >
+                <Settings size={15} />
+              </button>
+            </div>
+          </header>
+        )}
 
         {/* Dynamic Page Views: Providers, Settings, or Chat/Dashboard */}
         {currentView === 'providers' ? (
