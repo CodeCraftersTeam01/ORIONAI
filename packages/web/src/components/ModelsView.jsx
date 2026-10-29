@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   RotateCw,
   Star,
@@ -1125,7 +1126,7 @@ export default function ModelsView({
       </div>
 
       {/* ================= MODAL: CHANGE MAIN MODEL ================= */}
-      {isChangeModelModalOpen && (
+      {isChangeModelModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="modal-backdrop" onClick={() => setIsChangeModelModalOpen(false)}>
           <div
             className="modal-dialog modal-content"
@@ -1248,11 +1249,12 @@ export default function ModelsView({
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ================= MODAL: AUXILIARY TASKS ================= */}
-      {isAuxModalOpen && (
+      {isAuxModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="modal-backdrop" onClick={() => setIsAuxModalOpen(false)}>
           <div
             className="modal-dialog modal-content"
@@ -1330,11 +1332,12 @@ export default function ModelsView({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ================= MODAL: MIXTURE OF AGENTS & REASONING ================= */}
-      {isMoaModalOpen && (
+      {isMoaModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="modal-backdrop" onClick={() => setIsMoaModalOpen(false)}>
           <div
             className="modal-dialog modal-content"
@@ -1403,11 +1406,12 @@ export default function ModelsView({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ================= MODAL: CREATE / EDIT COMBO ================= */}
-      {isComboModalOpen && (
+      {isComboModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="modal-backdrop" onClick={() => setIsComboModalOpen(false)}>
           <div
             className="modal-dialog modal-content combo-modal-dialog"
@@ -1430,8 +1434,8 @@ export default function ModelsView({
               </button>
             </div>
 
-            <form onSubmit={handleSaveCombo} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-              <div className="modal-body custom-scrollbar" style={{ overflowY: 'auto', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <form onSubmit={handleSaveCombo} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+              <div className="modal-body custom-scrollbar" style={{ overflowY: 'auto', flex: 1, minHeight: 0, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 {/* Field 1: Name */}
                 <div className="combo-form-field">
                   <label className="combo-form-label">
@@ -1631,7 +1635,8 @@ export default function ModelsView({
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

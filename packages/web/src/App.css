@@ -2355,19 +2355,20 @@
 
 .modal-backdrop {
   position: fixed;
-  /* Overshoot viewport by 60px to completely eliminate Safari/WebKit backdrop-filter edge bleed dark border */
-  top: -60px;
-  left: -60px;
-  right: -60px;
-  bottom: -60px;
+  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: rgba(250, 249, 245, 0.55);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 999;
+  z-index: 10000;
   padding: 1.5rem;
+  overflow-y: auto;
   border: none;
   outline: none;
   animation: modalFadeIn 0.2s ease-out forwards;
