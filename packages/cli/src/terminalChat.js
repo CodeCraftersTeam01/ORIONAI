@@ -1000,7 +1000,7 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
       }
       const gap1 = Math.max(2, width - leftCwd.length - cleanRight.length);
       const rightModel = isCombo
-        ? `\x1b[38;5;141m(Combo)\x1b[0m \x1b[1m\x1b[37m${displayModel}\x1b[0m \x1b[90m•\x1b[0m \x1b[36m${matchedModel?.strategyLabel || 'Router'}\x1b[0m`
+        ? `\x1b[38;5;244m(Combo)\x1b[0m \x1b[1m\x1b[37m${displayModel}\x1b[0m \x1b[90m•\x1b[0m \x1b[37m${matchedModel?.strategyLabel || 'Router'}\x1b[0m`
         : `\x1b[38;5;244m(${provName})\x1b[0m \x1b[1m\x1b[37m${displayModel}\x1b[0m \x1b[90m•\x1b[0m \x1b[36m${reasoningTier}\x1b[0m`;
       out += `\x1b[90m${leftCwd}${' '.repeat(gap1)}${rightModel}\x1b[0m\x1b[K\n`;
       linesBelow++;
@@ -2398,15 +2398,15 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
       }
 
       if (cleanArg === 'list') {
-        console.log(`\n${c.bold}${c.brightCyan}✦ Daftar Model Combo & Router Tersedia:${c.reset}`);
+        console.log(`\n${c.bold}${c.white}✦ Daftar Model Combo & Router Tersedia:${c.reset}`);
         combos.forEach((combo) => {
           const isCur = currentModel === `combo::${combo.id}` || currentModel === combo.id;
           const strat = combo.strategy === 'fallback' ? 'Fallback' : combo.strategy === 'round_robin' ? 'Round Robin' : 'Fusion';
           const status = isCur ? ` ${c.bold}${c.green}[AKTIF]${c.reset}` : '';
-          console.log(`  ${isCur ? c.green + '●' : c.gray + '○'} ${c.bold}${combo.name}${c.reset} ${c.magenta}[${strat}]${c.reset} (${combo.models?.length || 0} model panel)${status}`);
+          console.log(`  ${isCur ? c.green + '●' : c.gray + '○'} ${c.bold}${combo.name}${c.reset} ${c.bold}${c.white}[${strat}]${c.reset} (${combo.models?.length || 0} model panel)${status}`);
           console.log(`     ${c.dim}Panel:${c.reset} ${(combo.models || []).join(' → ')}`);
         });
-        console.log(`\n${c.gray}Gunakan: ${c.yellow}/combo <nama_combo>${c.gray} untuk beralih.${c.reset}\n`);
+        console.log(`\n${c.gray}Gunakan: ${c.white}/combo <nama_combo>${c.gray} untuk beralih.${c.reset}\n`);
         return false;
       }
 
@@ -2421,7 +2421,7 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
         currentModel = `combo::${match.id}`;
         saveSyncedConfig({ selectedModel: currentModel });
         const strat = match.strategy === 'fallback' ? 'Fallback' : match.strategy === 'round_robin' ? 'Round Robin' : 'Fusion';
-        console.log(`\n${c.green}✓ Model AI dialihkan ke Combo: ${c.bold}${match.name}${c.reset} ${c.magenta}[${strat}]${c.reset}`);
+        console.log(`\n${c.green}✓ Model AI dialihkan ke Combo: ${c.bold}${match.name}${c.reset} ${c.bold}${c.white}[${strat}]${c.reset}`);
         console.log(`  ${c.gray}Panel Model:${c.reset} ${(match.models || []).join(', ')}`);
         if (match.strategy === 'fusion') {
           console.log(`  ${c.gray}Juri Sintesis:${c.reset} ${match.judge || match.models[0] || 'orion'}\n`);

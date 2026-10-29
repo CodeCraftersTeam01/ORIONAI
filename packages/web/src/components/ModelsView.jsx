@@ -1176,7 +1176,7 @@ export default function ModelsView({
                                 <span className="model-picker-name">
                                   {combo.name}
                                 </span>
-                                <span className="tile-badge-pill" style={{ borderColor: 'rgba(59, 130, 246, 0.4)', color: '#3b82f6' }}>
+                                <span className="tile-badge-pill" style={{ borderColor: 'rgba(255, 255, 255, 0.25)', color: 'var(--text-primary)' }}>
                                   {stratLabel}
                                 </span>
                               </div>
@@ -1290,7 +1290,7 @@ export default function ModelsView({
                             {task.name}
                           </span>
                           {assignedModel ? (
-                            <span className="tile-badge-pill" style={{ color: '#3b82f6', borderColor: 'rgba(59, 130, 246, 0.4)' }}>
+                            <span className="tile-badge-pill" style={{ color: 'var(--text-primary)', borderColor: 'rgba(255, 255, 255, 0.25)' }}>
                               {assignedModel.displayName || assignedModel.name}
                             </span>
                           ) : (
@@ -1372,8 +1372,8 @@ export default function ModelsView({
                         alignItems: 'flex-start',
                         padding: '0.85rem',
                         cursor: 'pointer',
-                        borderColor: isSelected ? '#3b82f6' : undefined,
-                        background: isSelected ? 'rgba(59, 130, 246, 0.05)' : undefined,
+                        borderColor: isSelected ? 'var(--text-primary)' : undefined,
+                        background: isSelected ? 'rgba(255, 255, 255, 0.08)' : undefined,
                       }}
                       onClick={() => onSelectReasoningTier?.(tier.id)}
                     >
@@ -1381,7 +1381,7 @@ export default function ModelsView({
                         <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                           {tier.name}
                         </span>
-                        {isSelected && <Check size={14} style={{ color: '#3b82f6' }} />}
+                        {isSelected && <Check size={14} style={{ color: 'var(--text-primary)' }} />}
                       </div>
                       <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                         {tier.desc}
