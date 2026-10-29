@@ -1252,32 +1252,17 @@ export default function App() {
     };
 
     try {
-      // Natural intent detection: Greetings or conversational talk vs actionable tools
+      // Natural intent detection: Greetings or casual talk vs actionable tools
       const trimmedClean = queryText.trim().replace(/[.,?!]+$/, '').toLowerCase();
-      const isGreetingOrCasual = /^(hello|halo|hai|hi|hey|p|pagi|siang|sore|malam|apa kabar|kamu siapa|tes|test|yo|woi|bro|jarvis|orion)\b/i.test(trimmedClean);
+      const isGreetingOrCasual = /^(hello|halo|hai|hi|hey|p|pagi|siang|sore|malam|apa kabar|kamu siapa|tes|test|yo|woi|bro|orion)\b/i.test(trimmedClean);
       const hasAgentActionKeywords = /\b(install|pasang|setup|buatkan|bikin|create|write|tulis|jalankan|run|hapus|delete|remove|edit|ubah|ganti|perbaiki|fix|cek|check|periksa|baca|lihat|tampilkan|list|buka|cari|search|react|vue|vite|npm|yarn|pnpm|git|docker|terminal|bash|ask|tanya|konfirmasi|setuju|setujui|approve|reject)\b/i.test(queryText);
 
-      // If user is simply greeting or saying hello, route conversationally so Jarvis greets warmly and swiftly
+      // If user is simply greeting or casual chat, route conversationally so Orion greets warmly and swiftly
       const isActionableAgentTask = (isAgentModeRef.current || hasAgentActionKeywords) && !isGreetingOrCasual;
       const historyForAi = targetSession.messages || [];
 
       if (isActionableAgentTask) {
-        const isConversationalQuestion = /\b(kamu|ngapain|kenapa|apa|siapa|gimana|bagaimana|sudah|udah|dari tadi|\?)\b/i.test(queryText);
-        const isHeavyExecution = /\b(install|pasang|deploy|hapus\s+semua|delete\s+all|build|jalankan\s+server)\b/i.test(queryText);
-
-        if (isHeavyExecution && !isConversationalQuestion) {
-          let ackText = 'Siap, saya siapkan proses eksekusinya sekarang.';
-          if (/\b(hapus|delete|remove|bersihkan)\b/i.test(queryText)) {
-            ackText = 'Siap, saya periksa target berkas dan mintakan persetujuan Anda.';
-          }
-          await playVoiceAudio(ackText, controller.signal, () => {
-            setVoiceResponseTurn((prev) => prev + 1);
-            setVoiceAgentResponse(ackText);
-            setVoiceAgentStatus('speaking');
-          });
-        }
-
-        // Transition to thinking while silently running tool calls in background
+        // Transition to thinking while agent performs conversational approach or tool evaluation
         setVoiceAgentResponse('');
         setVoiceAgentStatus('thinking');
         setVoiceActiveToolCalls([]);
