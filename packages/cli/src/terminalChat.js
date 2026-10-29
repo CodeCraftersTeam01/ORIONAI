@@ -17,6 +17,7 @@ import {
   formatRelativeTime,
 } from '../../server/src/services/sessionService.js';
 import { getSkillCommands } from '../../server/src/services/skillService.js';
+import { getCombos, getComboById } from '../../server/src/services/comboService.js';
 
 function copyToClipboard(text) {
   try {
@@ -711,6 +712,45 @@ export function getAvailableModels(syncedConfig) {
     }
   });
 
+  // Append configured Model Combos & Routers (Fallback, Round Robin, Fusion)
+  try {
+    const combos = getCombos();
+    combos.forEach((c) => {
+      const strategy = c.strategy || 'fallback';
+      const strategyLabel =
+        strategy === 'fallback'
+          ? 'Fallback'
+          : strategy === 'round_robin'
+          ? 'Round Robin'
+          : 'Fusion';
+      const count = Array.isArray(c.models) ? c.models.length : 0;
+      const desc = `Router [${strategyLabel}] : ${count} model panel`;
+      const id = `combo::${c.id}`;
+
+      if (!modelList.some((existing) => existing.id === id || existing.id === c.id)) {
+        modelList.push({
+          id,
+          name: c.name,
+          desc,
+          isCombo: true,
+          strategy,
+          strategyLabel,
+          models: c.models,
+          judge: c.judge,
+          provider: {
+            id: 'combo',
+            name: 'Model Combo & Router',
+            baseUrl: '',
+            requiresApiKey: false,
+          },
+          supportsReasoning: false,
+        });
+      }
+    });
+  } catch {
+    // ignore read error
+  }
+
   return modelList;
 }
 
@@ -803,9 +843,11 @@ export function printHeader(modelId, tier, hasKey = false, activeSessionTitle = 
 
 const COMMAND_ITEMS = [
   { label: 'agent', detail: 'Toggle mode AI Agent otonom (tool call & terminal)', action: 'agent' },
+  { label: 'combos', detail: 'Pilih & kelola Model Combo & Router (Fallback, Round Robin, Fusion)', action: 'combos' },
+  { label: 'combo', detail: 'Alias /combos untuk router kombinasi model', action: 'combos' },
   { label: 'reload', detail: 'Muat ulang konfigurasi, provider & environment (/reload)', action: 'reload' },
   { label: 'settings', detail: 'Buka menu pengaturan & preferensi aktif', action: 'settings' },
-  { label: 'model', detail: '<provider/model> — Pilih & beralih model AI (Ctrl+L)', action: 'model' },
+  { label: 'model', detail: '<provider/model> : Pilih & beralih model AI (Ctrl+L)', action: 'model' },
   { label: 'thinking', detail: 'Atur tingkat penalaran (low/medium/high, Shift+Tab)', action: 'thinking' },
   { label: 'tier', detail: 'Alias /thinking untuk tingkat penalaran', action: 'tier' },
   { label: 'session', detail: 'Kelola & alihkan sesi obrolan (tersinkron dengan View)', action: 'session' },
@@ -942,16 +984,24 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
       const leftCwd = '~';
       const availableModels = getAvailableModels(syncedConfig);
       const matchedModel = availableModels.find((m) => m.id === currentModel);
-      const rawProvName = matchedModel?.provider?.name || matchedModel?.provider?.id || 'orion';
-      const provName = rawProvName.replace(/::.*/, '').replace(/\s*\(Official\)/, '');
-      const displayModel = currentModel.replace(/^orion::/, '');
+      const isCombo = Boolean(matchedModel?.isCombo || currentModel.startsWith('combo::'));
+      const provName = isCombo
+        ? 'Combo'
+        : (matchedModel?.provider?.name || matchedModel?.provider?.id || 'orion').replace(/::.*/, '').replace(/\s*\(Official\)/, '');
+      const displayModel = isCombo
+        ? (matchedModel?.name || currentModel.replace(/^combo::/, ''))
+        : currentModel.replace(/^orion::/, '');
       const maxRightLen = Math.max(10, width - leftCwd.length - 4);
-      let cleanRight = `(${provName}) ${displayModel} • ${reasoningTier}`;
+      let cleanRight = isCombo
+        ? `(Combo) ${displayModel} • ${matchedModel?.strategyLabel || 'Router'}`
+        : `(${provName}) ${displayModel} • ${reasoningTier}`;
       if (cleanRight.length > maxRightLen) {
         cleanRight = cleanRight.slice(0, maxRightLen - 1) + '…';
       }
       const gap1 = Math.max(2, width - leftCwd.length - cleanRight.length);
-      const rightModel = `\x1b[38;5;244m(${provName})\x1b[0m \x1b[1m\x1b[37m${displayModel}\x1b[0m \x1b[90m•\x1b[0m \x1b[36m${reasoningTier}\x1b[0m`;
+      const rightModel = isCombo
+        ? `\x1b[38;5;141m(Combo)\x1b[0m \x1b[1m\x1b[37m${displayModel}\x1b[0m \x1b[90m•\x1b[0m \x1b[36m${matchedModel?.strategyLabel || 'Router'}\x1b[0m`
+        : `\x1b[38;5;244m(${provName})\x1b[0m \x1b[1m\x1b[37m${displayModel}\x1b[0m \x1b[90m•\x1b[0m \x1b[36m${reasoningTier}\x1b[0m`;
       out += `\x1b[90m${leftCwd}${' '.repeat(gap1)}${rightModel}\x1b[0m\x1b[K\n`;
       linesBelow++;
 
@@ -1519,16 +1569,16 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
     if (inputResult.type === 'open_model_menu') {
       const models = getAvailableModels(freshConfig);
       const modelItems = models.map((m) => ({
-        label: m.id,
-        detail: m.name !== m.id ? `${m.name} — ${m.desc}` : m.desc,
+        label: m.isCombo ? `[Combo] ${m.name}` : m.id,
+        detail: m.name !== m.id ? `${m.name} : ${m.desc}` : m.desc,
         id: m.id,
         name: m.name,
-        badge: m.id === currentModel ? 'Aktif' : '',
+        badge: m.id === currentModel ? 'Aktif' : (m.isCombo ? m.strategyLabel : ''),
       }));
       const activeIdx = Math.max(0, modelItems.findIndex((m) => m.id === currentModel));
 
       const picked = await selectModelInteractive({
-        title: '✦ Pilih Model AI Aktif:',
+        title: '✦ Pilih Model AI atau Combo Router Aktif:',
         items: modelItems,
         initialIndex: activeIdx,
       });
@@ -2326,11 +2376,131 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
     }
   }
 
+  // Interactive Combos & Router Manager for Terminal Chat
+  async function handleCombosMenuInteractive(arg) {
+    const combos = getCombos();
+
+    if (arg) {
+      const cleanArg = arg.toLowerCase().trim();
+
+      if (cleanArg === 'info' || cleanArg === 'guide' || cleanArg === 'help') {
+        console.log(`\n${c.bold}${c.brightCyan}✦ Panduan 3 Strategi Routing Model Combo (Tersinkron dengan Web):${c.reset}\n`);
+        console.log(`  ${c.bold}${c.green}1. Fallback${c.reset}`);
+        console.log(`     ${c.white}Fungsi:${c.reset} Menggunakan satu penyedia utama, dan hanya beralih ke penyedia cadangan jika terjadi error atau batas kuota habis.`);
+        console.log(`     ${c.dim}Kapan Digunakan:${c.reset} Saat Anda memiliki penyedia favorit, tetapi ingin cadangan otomatis jika sewaktu-waktu layanan terganggu.\n`);
+        console.log(`  ${c.bold}${c.green}2. Round Robin${c.reset}`);
+        console.log(`     ${c.white}Fungsi:${c.reset} Membagi beban kerja secara bergiliran (Penyedia A, lalu B, lalu C, lalu kembali ke A).`);
+        console.log(`     ${c.dim}Kapan Digunakan:${c.reset} Saat Anda memiliki beberapa penyedia dengan kapasitas setara dan ingin meratakan penggunaan kuota atau biaya.\n`);
+        console.log(`  ${c.bold}${c.green}3. Fusion${c.reset}`);
+        console.log(`     ${c.white}Fungsi:${c.reset} Mengirimkan satu permintaan ke beberapa model sekaligus dan menggabungkan atau membandingkan hasilnya.`);
+        console.log(`     ${c.dim}Kapan Digunakan:${c.reset} Saat Anda membutuhkan tingkat akurasi tinggi dan ingin melihat perspektif dari beberapa AI berbeda secara bersamaan.\n`);
+        return false;
+      }
+
+      if (cleanArg === 'list') {
+        console.log(`\n${c.bold}${c.brightCyan}✦ Daftar Model Combo & Router Tersedia:${c.reset}`);
+        combos.forEach((combo) => {
+          const isCur = currentModel === `combo::${combo.id}` || currentModel === combo.id;
+          const strat = combo.strategy === 'fallback' ? 'Fallback' : combo.strategy === 'round_robin' ? 'Round Robin' : 'Fusion';
+          const status = isCur ? ` ${c.bold}${c.green}[AKTIF]${c.reset}` : '';
+          console.log(`  ${isCur ? c.green + '●' : c.gray + '○'} ${c.bold}${combo.name}${c.reset} ${c.magenta}[${strat}]${c.reset} (${combo.models?.length || 0} model panel)${status}`);
+          console.log(`     ${c.dim}Panel:${c.reset} ${(combo.models || []).join(' → ')}`);
+        });
+        console.log(`\n${c.gray}Gunakan: ${c.yellow}/combo <nama_combo>${c.gray} untuk beralih.${c.reset}\n`);
+        return false;
+      }
+
+      const match = combos.find(
+        (cb) =>
+          cb.id.toLowerCase() === cleanArg ||
+          cb.name.toLowerCase() === cleanArg ||
+          `combo::${cb.id}`.toLowerCase() === cleanArg
+      );
+
+      if (match) {
+        currentModel = `combo::${match.id}`;
+        saveSyncedConfig({ selectedModel: currentModel });
+        const strat = match.strategy === 'fallback' ? 'Fallback' : match.strategy === 'round_robin' ? 'Round Robin' : 'Fusion';
+        console.log(`\n${c.green}✓ Model AI dialihkan ke Combo: ${c.bold}${match.name}${c.reset} ${c.magenta}[${strat}]${c.reset}`);
+        console.log(`  ${c.gray}Panel Model:${c.reset} ${(match.models || []).join(', ')}`);
+        if (match.strategy === 'fusion') {
+          console.log(`  ${c.gray}Juri Sintesis:${c.reset} ${match.judge || match.models[0] || 'orion'}\n`);
+        } else {
+          console.log('');
+        }
+        return false;
+      }
+
+      console.log(`\n${c.yellow}⚠️  Combo '${arg}' tidak ditemukan.${c.reset} Ketik ${c.yellow}/combos${c.reset} untuk melihat daftar.\n`);
+      return false;
+    }
+
+    // Interactive selector if no arg passed
+    const comboItems = combos.map((cb) => {
+      const isCur = currentModel === `combo::${cb.id}` || currentModel === cb.id;
+      const strat = cb.strategy === 'fallback' ? 'Fallback' : cb.strategy === 'round_robin' ? 'Round Robin' : 'Fusion';
+      const panelShort = (cb.models || []).map((m) => m.replace(/.*::/, '')).join(' → ');
+      return {
+        label: cb.name,
+        detail: `[${strat}] : ${cb.models?.length || 0} model (${panelShort})`,
+        badge: isCur ? 'Aktif' : strat,
+        value: cb.id,
+        combo: cb,
+      };
+    });
+
+    const menuItems = [
+      ...comboItems,
+      { label: '📖 Panduan 3 Strategi Combo', detail: 'Fallback, Round Robin, dan Fusion', value: '__guide__' },
+      { label: '🔄 Muat Ulang Daftar Combo', detail: 'Sinkronisasi ulang dari ~/.orion/combos.json', value: '__reload__' },
+    ];
+
+    const picked = await selectOptionInteractive({
+      title: '✦ Pilih Model Combo & Router Aktif (Tersinkron dengan Web):',
+      items: menuItems,
+    });
+
+    if (!picked) {
+      return false;
+    }
+
+    if (picked.value === '__guide__') {
+      return handleCombosMenuInteractive('info');
+    }
+
+    if (picked.value === '__reload__') {
+      const reloaded = getCombos();
+      console.log(`\n${c.green}✓ Konfigurasi Combos dimuat ulang (${reloaded.length} combo terdeteksi).${c.reset}\n`);
+      return false;
+    }
+
+    const selectedCombo = picked.combo || combos.find((cb) => cb.id === picked.value);
+    if (selectedCombo) {
+      currentModel = `combo::${selectedCombo.id}`;
+      saveSyncedConfig({ selectedModel: currentModel });
+      const strat = selectedCombo.strategy === 'fallback' ? 'Fallback' : selectedCombo.strategy === 'round_robin' ? 'Round Robin' : 'Fusion';
+      console.log(`\n${c.green}✓ Model AI dialihkan ke Combo: ${c.bold}${selectedCombo.name}${c.reset} ${c.magenta}[${strat}]${c.reset}`);
+      console.log(`  ${c.gray}Panel Model:${c.reset} ${(selectedCombo.models || []).join(', ')}`);
+      if (selectedCombo.strategy === 'fusion') {
+        console.log(`  ${c.gray}Juri Sintesis:${c.reset} ${selectedCombo.judge || selectedCombo.models[0] || 'orion'}\n`);
+      } else {
+        console.log('');
+      }
+    }
+
+    return false;
+  }
+
   // Helper function to handle commands
   async function handleExecuteCommand(cmd) {
     const parts = cmd.split(/\s+/);
     const action = parts[0].toLowerCase();
     const arg = parts.slice(1).join(' ').trim();
+
+    if (action === '/combo' || action === '/combos') {
+      await handleCombosMenuInteractive(arg);
+      return false;
+    }
 
     if (action === '/exit' || action === '/quit' || action === '/q') {
       console.log(`\n${c.brightCyan}✦ Terima kasih telah menggunakan Orion Agent. Sampai jumpa!${c.reset}\n`);
@@ -2611,20 +2781,49 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
     }
 
     if (action === '/model' || action.startsWith('/mod')) {
+      const freshConfig = loadSyncedConfig();
+      const availableModels = getAvailableModels(freshConfig);
+
       if (arg) {
-        const freshConfig = loadSyncedConfig();
-        const availableModels = getAvailableModels(freshConfig);
+        const cleanArg = arg.toLowerCase().trim();
         const targetModel = availableModels.find(
-          (m) => m.id.toLowerCase() === arg.toLowerCase() || m.name.toLowerCase() === arg.toLowerCase()
+          (m) =>
+            m.id.toLowerCase() === cleanArg ||
+            m.name.toLowerCase() === cleanArg ||
+            m.id.toLowerCase() === `combo::${cleanArg}`
         );
         if (targetModel) {
           currentModel = targetModel.id;
           saveSyncedConfig({ selectedModel: currentModel });
+          const tag = targetModel.isCombo ? ` ${c.magenta}[Combo: ${targetModel.strategyLabel}]${c.reset}` : '';
           console.log(
-            `\n${c.green}✓ Model AI dialihkan ke: ${c.bold}${targetModel.name || targetModel.id}${c.reset} ${c.dim}(${targetModel.id})${c.reset}\n`
+            `\n${c.green}✓ Model AI dialihkan ke: ${c.bold}${targetModel.name || targetModel.id}${c.reset}${tag} ${c.dim}(${targetModel.id})${c.reset}\n`
           );
         } else {
-          console.log(`\n${c.yellow}⚠️  Model '${arg}' tidak ditemukan.${c.reset} Ketik ${c.yellow}/model${c.reset} untuk memilih dari daftar.\n`);
+          console.log(`\n${c.yellow}⚠️  Model '${arg}' tidak ditemukan.${c.reset} Ketik ${c.yellow}/model${c.reset} atau ${c.yellow}/combos${c.reset} untuk memilih dari daftar.\n`);
+        }
+      } else {
+        const modelItems = availableModels.map((m) => ({
+          label: m.isCombo ? `[Combo] ${m.name}` : m.id,
+          detail: m.name !== m.id ? `${m.name} : ${m.desc}` : m.desc,
+          id: m.id,
+          name: m.name,
+          badge: m.id === currentModel ? 'Aktif' : (m.isCombo ? m.strategyLabel : ''),
+        }));
+        const activeIdx = Math.max(0, modelItems.findIndex((m) => m.id === currentModel));
+
+        const picked = await selectModelInteractive({
+          title: '✦ Pilih Model AI atau Combo Router Aktif:',
+          items: modelItems,
+          initialIndex: activeIdx,
+        });
+
+        if (picked) {
+          currentModel = picked.id;
+          saveSyncedConfig({ selectedModel: currentModel });
+          console.log(
+            `\n${c.green}✓ Model AI dialihkan ke: ${c.bold}${picked.name || picked.id}${c.reset} ${c.dim}(${picked.id})${c.reset}\n`
+          );
         }
       }
       return false;
@@ -2683,6 +2882,7 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
     if (action === '/help' || action === '/h' || action === '/?') {
       console.log(`\n${c.bold}${c.brightCyan}✦ Panduan Perintah Orion Terminal Chat (Pi Style):${c.reset}`);
       console.log(`  ${c.yellow}/agent${c.reset} [on/off]           Aktifkan/nonaktifkan mode AI Agent otonom (tool calls)`);
+      console.log(`  ${c.yellow}/combos, /combo${c.reset} [nama]       Pilih & kelola Model Combo & Router (Fallback, Round Robin, Fusion)`);
       console.log(`  ${c.yellow}/model${c.reset} [nama]            Pilih model AI interaktif (atau gunakan Ctrl+L)`);
       console.log(`  ${c.yellow}/thinking, /tier${c.reset} [level]  Atur penalaran (low/medium/high, atau Shift+Tab)`);
       console.log(`  ${c.yellow}!perintah${c.reset}                Jalankan perintah shell terminal (hasil masuk konteks)`);
