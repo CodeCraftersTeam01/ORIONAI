@@ -2977,18 +2977,6 @@ PANDUAN KOMUNIKASI LISAN (VOICE CALL):
               >
                 <Menu size={16} />
               </button>
-
-              <div
-                className="opencode-workspace-badge"
-                onClick={() => setCurrentView('dashboard')}
-                title="Workspace: Default (Local Orion Gateway)"
-              >
-                <span className="workspace-icon-box">
-                  <Square size={11} strokeWidth={2.5} />
-                </span>
-                <span className="workspace-name">Default</span>
-                <ChevronDown size={11} className="workspace-chevron" />
-              </div>
             </div>
 
             {/* Global Search & Command Trigger (No duplicate sidebar links) */}
@@ -3005,23 +2993,6 @@ PANDUAN KOMUNIKASI LISAN (VOICE CALL):
             </div>
 
             <div className="opencode-header-right">
-              {/* Telemetry & Gateway Uptime */}
-              <div className="opencode-telemetry-chip" title="Server Gateway: pi.leopard-gila.ts.net">
-                <span className="telemetry-live-dot" />
-                <span className="telemetry-label">28ms</span>
-              </div>
-
-              {/* OpenCode Credits Pill */}
-              <button
-                type="button"
-                className="opencode-credits-btn"
-                onClick={() => showToast('Status Kuota: Aktif & Unlimited (Local Gateway)')}
-                title="Status Kuota AI"
-              >
-                <Clock size={12} />
-                <span>Add credits</span>
-              </button>
-
               {/* User Account Dropdown Pill */}
               <div
                 className="opencode-user-pill"
@@ -3125,11 +3096,6 @@ PANDUAN KOMUNIKASI LISAN (VOICE CALL):
                   </button>
                 </>
               )}
-
-              <div className="opencode-telemetry-chip" title="Server Gateway: pi.leopard-gila.ts.net">
-                <span className="telemetry-live-dot" />
-                <span className="telemetry-label">Online</span>
-              </div>
 
               <button
                 type="button"
