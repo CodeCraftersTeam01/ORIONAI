@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   RefreshCw,
   CheckCircle2,
@@ -7,22 +7,17 @@ import {
   RotateCcw,
   GitCommit,
   Calendar,
-  Layers,
-  Wrench,
-  ShieldCheck,
   ExternalLink,
-  Download,
-  Palette,
-  BookOpen
+  Download
 } from 'lucide-react';
 
 /**
  * UpdateCheckView
- * Crafted according to /antislop-ui guidelines:
- * 1. Actionable "Perbarui Sekarang" button with honest progress and success states (no terminal copy commands).
- * 2. Restrained monochrome palette matching Orion system tokens.
- * 3. Zero AI slop: no decorative emoji, no generic sparkles, no em dashes, no glowing pill badges.
- * 4. Dynamic GitHub changelog with live commit hashes, author badges, and branch detection.
+ * Minimalist antislop monochrome aesthetic:
+ * 1. Restrained monochrome palette matching the Orion design system.
+ * 2. Clean, un-nested status rows without loud rainbow borders or colors.
+ * 3. Minimalist monospace badges for commit hashes, branches, and changelog categories.
+ * 4. Crisp typography, honest copy without AI hype.
  */
 export default function UpdateCheckView({
   updateInfo,
@@ -41,50 +36,21 @@ export default function UpdateCheckView({
   const changelog = updateInfo?.changelog || [];
 
   const getTagBadge = (type) => {
-    switch (type) {
-      case 'feature':
-        return (
-          <span className="changelog-type-pill feature">
-            <Layers size={11} strokeWidth={2.2} />
-            Fitur
-          </span>
-        );
-      case 'improvement':
-        return (
-          <span className="changelog-type-pill improvement">
-            <Wrench size={11} strokeWidth={2.2} />
-            Peningkatan
-          </span>
-        );
-      case 'fix':
-        return (
-          <span className="changelog-type-pill fix">
-            <ShieldCheck size={11} strokeWidth={2.2} />
-            Perbaikan
-          </span>
-        );
-      case 'style':
-        return (
-          <span className="changelog-type-pill style">
-            <Palette size={11} strokeWidth={2.2} />
-            Tampilan
-          </span>
-        );
-      case 'docs':
-        return (
-          <span className="changelog-type-pill docs">
-            <BookOpen size={11} strokeWidth={2.2} />
-            Dokumen
-          </span>
-        );
-      default:
-        return (
-          <span className="changelog-type-pill change">
-            <GitCommit size={11} strokeWidth={2.2} />
-            Kode
-          </span>
-        );
-    }
+    const labelMap = {
+      feature: 'Fitur',
+      improvement: 'Peningkatan',
+      fix: 'Perbaikan',
+      style: 'Tampilan',
+      docs: 'Dokumen',
+      change: 'Kode'
+    };
+    const label = labelMap[type] || 'Kode';
+
+    return (
+      <span className="changelog-type-pill">
+        {label}
+      </span>
+    );
   };
 
   return (
@@ -93,31 +59,32 @@ export default function UpdateCheckView({
       <div className="update-page-header">
         <h1 className="update-page-title">Pembaruan Sistem</h1>
         <p className="update-page-subtitle">
-          Periksa sinkronisasi versi lokal dengan repositori GitHub dan perbarui aplikasi secara langsung.
+          Status versi lokal dan sinkronisasi dengan repositori GitHub.
         </p>
       </div>
 
-      {/* 2. MAIN CARD: App Name, Current Version & Direct Action */}
+      {/* 2. Main Card: Version info + Status row */}
       <div className="update-main-card">
         <div className="update-card-top-row">
-          {/* Identity & Current Version */}
           <div className="update-brand-info">
             <div className="update-brand-tags">
               <span className="update-brand-name">Orion AI</span>
               <span className="update-version-badge">v{currentVersion}</span>
               {currentCommit && currentCommit !== 'unknown' && (
                 <span className="update-commit-badge" title="Git commit aktif">
-                  <GitCommit size={13} strokeWidth={2} />
+                  <GitCommit size={12} strokeWidth={2} />
                   {currentCommit}
                 </span>
               )}
+              <span className="update-branch-badge">
+                {activeBranch}
+              </span>
             </div>
             <p className="update-brand-tagline">
-              Asisten rekayasa perangkat lunak dan kecerdasan komputasi otonom
+              Cabang kerja aktif dan sinkronisasi repositori lokal.
             </p>
           </div>
 
-          {/* Action Button: Check for Updates */}
           <div>
             <button
               type="button"
@@ -127,7 +94,7 @@ export default function UpdateCheckView({
               aria-label="Periksa ketersediaan pembaruan"
             >
               <RefreshCw
-                size={14}
+                size={13}
                 className={isChecking ? 'animate-spin' : ''}
                 style={isChecking ? { animation: 'orionSpin 1s linear infinite' } : {}}
               />
@@ -136,151 +103,129 @@ export default function UpdateCheckView({
           </div>
         </div>
 
-        {/* Status Panel inside Card */}
+        {/* Status Section */}
         <div className="update-status-panel">
           {/* CASE A: Update Just Succeeded */}
           {updateResult ? (
-            <div className="update-alert-box is-success">
-              <CheckCircle2 className="update-alert-icon" size={20} />
-              <div className="update-alert-content">
-                <div className="update-alert-title-row">
-                  <span className="update-alert-title">
-                    Pembaruan Berhasil Dipasang
-                  </span>
-                </div>
-                <p className="update-alert-desc">
-                  {updateResult.restarting
-                    ? `Versi terbaru v${String(updateResult.currentVersion || '').replace(/^v+/i, '')} telah berhasil dipasang. Service Orion Agent sedang di-restart otomatis di latar belakang. Halaman akan termuat ulang otomatis saat server siap.`
-                    : `Versi terbaru v${String(updateResult.currentVersion || '').replace(/^v+/i, '')} telah berhasil dipasang. Muat ulang halaman untuk menerapkan perubahan antarmuka.`}
-                </p>
-                <div className="update-action-row">
-                  <button
-                    type="button"
-                    onClick={() => window.location.reload()}
-                    className="btn-update-primary"
-                  >
-                    <RotateCcw size={14} />
-                    Muat Ulang Halaman
-                  </button>
+            <div className="update-status-row is-success">
+              <div className="update-status-left">
+                <CheckCircle2 size={16} className="update-icon-success" />
+                <div className="update-status-text-wrap">
+                  <span className="update-status-title">Pembaruan Berhasil Dipasang</span>
+                  <p className="update-status-desc">
+                    {updateResult.restarting
+                      ? `Versi terbaru v${String(updateResult.currentVersion || '').replace(/^v+/i, '')} telah terpasang. Server sedang memuat ulang otomatis.`
+                      : `Versi terbaru v${String(updateResult.currentVersion || '').replace(/^v+/i, '')} telah terpasang. Muat ulang halaman untuk menerapkan perubahan.`}
+                  </p>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="btn-update-primary"
+              >
+                <RotateCcw size={13} />
+                Muat Ulang
+              </button>
             </div>
           ) : isUpdating ? (
-            /* CASE B: Currently Updating (In Progress) */
-            <div className="update-alert-box is-updating">
-              <RefreshCw className="update-alert-icon animate-spin" size={20} style={{ animation: 'orionSpin 1s linear infinite' }} />
-              <div className="update-alert-content">
-                <div className="update-alert-title-row">
-                  <span className="update-alert-title">
-                    Sedang Memasang Pembaruan
-                  </span>
+            /* CASE B: Currently Updating */
+            <div className="update-status-row is-updating">
+              <div className="update-status-left">
+                <RefreshCw size={16} className="animate-spin update-icon-spin" style={{ animation: 'orionSpin 1s linear infinite' }} />
+                <div className="update-status-text-wrap">
+                  <span className="update-status-title">Sedang Memasang Pembaruan</span>
+                  <p className="update-status-desc">
+                    Menarik kode terbaru dari branch {activeBranch} dan mengompilasi bundel aplikasi...
+                  </p>
                 </div>
-                <p className="update-alert-desc">
-                  Sistem sedang menarik kode terbaru dari repositori dan mengompilasi ulang bundle antarmuka web. Mohon tunggu sebentar.
-                </p>
               </div>
             </div>
           ) : updateError ? (
             /* CASE C: Update Failed */
-            <div className="update-alert-box is-error">
-              <AlertCircle className="update-alert-icon" size={20} />
-              <div className="update-alert-content">
-                <div className="update-alert-title-row">
-                  <span className="update-alert-title">
-                    Pembaruan Belum Berhasil
-                  </span>
-                </div>
-                <p className="update-alert-desc">
-                  {updateError}
-                </p>
-                <div className="update-action-row">
-                  <button
-                    type="button"
-                    onClick={onPerformUpdate}
-                    className="btn-update-primary"
-                  >
-                    <RefreshCw size={14} />
-                    Coba Perbarui Lagi
-                  </button>
+            <div className="update-status-row is-error">
+              <div className="update-status-left">
+                <AlertCircle size={16} className="update-icon-error" />
+                <div className="update-status-text-wrap">
+                  <span className="update-status-title">Pembaruan Belum Berhasil</span>
+                  <p className="update-status-desc">{updateError}</p>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={onPerformUpdate}
+                className="btn-update-primary"
+              >
+                <RefreshCw size={13} />
+                Coba Lagi
+              </button>
             </div>
           ) : hasUpdate ? (
             /* CASE D: Update Available */
-            <div className="update-alert-box is-warning">
-              <ArrowUpCircle className="update-alert-icon" size={20} />
-              <div className="update-alert-content">
-                <div className="update-alert-title-row">
-                  <span className="update-alert-title">
-                    Pembaruan Tersedia: {latestVersion}
-                  </span>
-                  {updateInfo?.latestCommit && (
-                    <span className="update-alert-commit">
-                      (komit {updateInfo.latestCommit})
-                    </span>
-                  )}
+            <div className="update-status-row is-available">
+              <div className="update-status-left">
+                <span className="status-indicator-dot is-warning" />
+                <div className="update-status-text-wrap">
+                  <div className="update-available-title-row">
+                    <span className="update-status-title">Pembaruan Tersedia: {latestVersion}</span>
+                    {updateInfo?.latestCommit && (
+                      <span className="update-commit-pill">#{updateInfo.latestCommit}</span>
+                    )}
+                  </div>
+                  <p className="update-status-desc">
+                    {updateInfo?.updateReason || 'Terdapat perbaikan kode dan peningkatan fitur baru di repositori.'}
+                  </p>
                 </div>
-                <p className="update-alert-desc">
-                  {updateInfo?.updateReason || 'Terdapat perbaikan kode atau rilis baru di repositori GitHub.'}
-                </p>
-
-                {/* Direct Action Button (NO terminal command needed!) */}
-                <div className="update-action-row">
-                  <button
-                    type="button"
-                    onClick={onPerformUpdate}
-                    disabled={isUpdating}
-                    className="btn-update-primary"
-                  >
-                    <Download size={15} />
-                    Perbarui Sekarang
-                  </button>
-
-                  <a
-                    href="https://github.com/CodeCraftersTeam01/ORIONAI"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn-update-secondary"
-                  >
-                    Lihat di GitHub
-                    <ExternalLink size={12} />
-                  </a>
-                </div>
+              </div>
+              <div className="update-action-group">
+                <button
+                  type="button"
+                  onClick={onPerformUpdate}
+                  disabled={isUpdating}
+                  className="btn-update-primary"
+                >
+                  <Download size={13} />
+                  Perbarui Sekarang
+                </button>
+                <a
+                  href="https://github.com/CodeCraftersTeam01/ORIONAI"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-update-secondary"
+                >
+                  GitHub
+                  <ExternalLink size={11} />
+                </a>
               </div>
             </div>
           ) : (
-            /* CASE E: Up to Date */
-            <div className="update-alert-box is-success">
-              <CheckCircle2 className="update-alert-icon" size={20} />
-              <div className="update-alert-content">
-                <div className="update-alert-title-row">
-                  <span className="update-alert-title">
-                    Orion AI Sudah Menggunakan Versi Terbaru
-                  </span>
-                </div>
-                <p className="update-alert-desc">
-                  Aplikasi di komputer Anda telah selaras dengan branch repositori GitHub.
-                </p>
-                {updateInfo?.checkedAt && (
-                  <div className="update-alert-timestamp">
-                    Terakhir diperiksa: {new Date(updateInfo.checkedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </div>
-                )}
+            /* CASE E: Up to Date (Clean, quiet status row) */
+            <div className="update-status-row is-uptodate">
+              <div className="update-status-left">
+                <span className="status-indicator-dot is-online" />
+                <span className="update-uptodate-text">
+                  Aplikasi telah menggunakan versi terbaru
+                </span>
               </div>
+              {updateInfo?.checkedAt && (
+                <span className="update-status-timestamp">
+                  Diperiksa {new Date(updateInfo.checkedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
             </div>
           )}
         </div>
       </div>
 
-      {/* 3. OUTSIDE THE CARD (BELOW): DYNAMIC CHANGELOG SECTION */}
+      {/* 3. Changelog Section */}
       <div className="update-changelog-block">
         <div className="update-changelog-header-row">
           <div>
             <h2 className="update-changelog-section-title">
-              Catatan Rilis & Riwayat Perubahan
+              Catatan Perubahan
             </h2>
             <p className="update-changelog-section-desc">
-              Riwayat commit dan perubahan kode dinamis langsung dari repositori GitHub branch <code>{activeBranch}</code>.
+              Riwayat komit dari branch <code>{activeBranch}</code>
             </p>
           </div>
           <div className="update-changelog-header-actions">
@@ -289,7 +234,7 @@ export default function UpdateCheckView({
               onClick={() => onCheckUpdates && onCheckUpdates(true)}
               disabled={isChecking}
               className="changelog-refresh-btn"
-              title="Segarkan catatan rilis dari GitHub"
+              title="Segarkan riwayat commit"
             >
               <RefreshCw
                 size={12}
@@ -304,8 +249,8 @@ export default function UpdateCheckView({
               rel="noopener noreferrer"
               className="update-changelog-repo-link"
             >
-              Repositori GitHub
-              <ExternalLink size={12} />
+              <span>GitHub</span>
+              <ExternalLink size={11} />
             </a>
           </div>
         </div>
@@ -314,19 +259,17 @@ export default function UpdateCheckView({
         <div className="changelog-card-list">
           {changelog.map((entry, idx) => (
             <div key={entry.version || idx} className="changelog-card-item">
-              {/* Header: Version & Date */}
               <div className="changelog-card-header">
                 <div className="changelog-version-group">
                   <span className="changelog-version-tag">{entry.version}</span>
-                  <h3 className="changelog-release-title">{entry.title}</h3>
+                  <span className="changelog-release-title">{entry.title}</span>
                 </div>
                 <span className="changelog-release-date">
-                  <Calendar size={12} />
+                  <Calendar size={11} />
                   {entry.date}
                 </span>
               </div>
 
-              {/* Highlights / Commit List */}
               <ul className="changelog-entry-list">
                 {entry.highlights.map((item, hIdx) => (
                   <li key={hIdx} className="changelog-entry-item">
@@ -338,7 +281,7 @@ export default function UpdateCheckView({
                           target="_blank"
                           rel="noopener noreferrer"
                           className="changelog-hash-link"
-                          title="Buka commit ini di GitHub"
+                          title="Buka commit di GitHub"
                         >
                           #{item.hash}
                         </a>
@@ -348,7 +291,7 @@ export default function UpdateCheckView({
                       <span className="changelog-entry-text">{item.text}</span>
                       {item.author && (
                         <span className="changelog-author-tag">
-                          oleh {item.author}
+                          {item.author}
                         </span>
                       )}
                     </div>

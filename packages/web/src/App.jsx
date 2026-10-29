@@ -637,7 +637,19 @@ export default function App() {
   });
 
   // Current View: 'dashboard' (Clean Home with Logo & Greeting) | 'chat' (Full Chat Area) | 'updates'
-  const [currentView, setCurrentView] = useState('dashboard');
+  const [currentView, setCurrentView] = useState(() => {
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const viewParam = searchParams.get('view');
+      if (viewParam) return viewParam;
+      if (window.location.hash) {
+        return window.location.hash.replace('#', '');
+      }
+    } catch {
+      // ignore
+    }
+    return 'dashboard';
+  });
 
   // System Update Checker State
   const [updateInfo, setUpdateInfo] = useState(null);
