@@ -72,6 +72,7 @@ export default function ChatInput({
   reasoningTier = 'medium',
   setReasoningTier,
   customProviders = [],
+  combos = [],
   onOpenManageProviders,
   isAgentMode = true,
   setIsAgentMode,
@@ -597,6 +598,7 @@ export default function ChatInput({
               selectedModel={selectedModel}
               reasoningTier={reasoningTier}
               customProviders={customProviders}
+              combos={combos}
               onSelectModel={setSelectedModel}
               onSelectReasoningTier={setReasoningTier}
               onOpenManageProviders={onOpenManageProviders}

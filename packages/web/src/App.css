@@ -10421,8 +10421,8 @@ svg[aria-roledescription="error"] {
 
 .combos-strategy-item {
   display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
+  align-items: flex-start;
+  gap: 0.65rem;
   font-size: 0.8rem;
 }
 
@@ -10431,15 +10431,62 @@ svg[aria-roledescription="error"] {
   color: var(--text-primary);
   min-width: 105px;
   flex-shrink: 0;
+  margin-top: 0.05rem;
 }
 
-.strategy-sep {
-  display: none;
+.strategy-desc-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
 }
 
 .strategy-desc {
-  color: var(--text-secondary);
+  color: var(--text-primary);
   line-height: 1.45;
+  font-weight: 450;
+}
+
+.strategy-usecase {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.strategy-card-hint {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+  margin-top: 0.25rem;
+  opacity: 0.85;
+}
+
+.gemini-combo-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.60rem;
+  font-weight: 600;
+  padding: 0.05rem 0.35rem;
+  margin-left: 0.4rem;
+  border-radius: 9999px;
+  background: rgba(59, 130, 246, 0.12);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  vertical-align: middle;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.gemini-combo-pill.round_robin {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.gemini-combo-pill.fusion {
+  background: rgba(139, 92, 246, 0.12);
+  color: #a78bfa;
+  border-color: rgba(139, 92, 246, 0.25);
 }
 
 .combos-select-bar {

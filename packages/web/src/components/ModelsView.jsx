@@ -57,6 +57,8 @@ export default function ModelsView({
   reasoningTier = 'medium',
   onSelectReasoningTier,
   customProviders = [],
+  combos: externalCombos = [],
+  onCombosUpdated,
   sessions = [],
   onNavigate,
   onOpenProviders,
@@ -70,7 +72,7 @@ export default function ModelsView({
   const [isChangeModelModalOpen, setIsChangeModelModalOpen] = useState(false);
 
   // Combos State
-  const [combos, setCombos] = useState([]);
+  const [combos, setCombos] = useState(externalCombos);
   const [isLoadingCombos, setIsLoadingCombos] = useState(false);
   const [isComboModalOpen, setIsComboModalOpen] = useState(false);
   const [editingCombo, setEditingCombo] = useState(null);
@@ -93,6 +95,7 @@ export default function ModelsView({
       const data = await res.json();
       if (data.success && Array.isArray(data.combos)) {
         setCombos(data.combos);
+        onCombosUpdated?.();
       }
     } catch (err) {
       console.warn('Failed to fetch combos:', err);
@@ -102,8 +105,12 @@ export default function ModelsView({
   };
 
   useEffect(() => {
-    fetchCombos();
-  }, []);
+    if (Array.isArray(externalCombos) && externalCombos.length > 0) {
+      setCombos(externalCombos);
+    } else {
+      fetchCombos();
+    }
+  }, [externalCombos]);
 
   // Auxiliary tasks assignment state (persisted to localStorage)
   const [auxAssignments, setAuxAssignments] = useState(() => {
@@ -431,6 +438,7 @@ export default function ModelsView({
         setCombos((prev) =>
           prev.map((c) => (c.id === combo.id ? { ...c, strategy: newStrategy } : c))
         );
+        onCombosUpdated?.();
         if (showToast) {
           showToast(`Strategi combo ${combo.name} diubah ke ${newStrategy}`);
         }
@@ -461,6 +469,7 @@ export default function ModelsView({
       const data = await res.json();
       if (data.success) {
         await fetchCombos();
+        onCombosUpdated?.();
         setIsComboModalOpen(false);
         if (showToast) {
           showToast(editingCombo ? `Combo "${data.combo.name}" berhasil diperbarui.` : `Combo "${data.combo.name}" berhasil dibuat!`);
@@ -485,6 +494,7 @@ export default function ModelsView({
       if (data.success) {
         setCombos((prev) => prev.filter((c) => c.id !== id));
         setSelectedComboIds((prev) => prev.filter((item) => item !== id));
+        onCombosUpdated?.();
         if (selectedModel === `combo::${id}` || selectedModel === id) {
           onSelectModel?.('orion::orion');
         }
@@ -762,21 +772,36 @@ export default function ModelsView({
             <div className="combos-strategies-guide">
               <div className="combos-strategy-item">
                 <span className="strategy-strong">Fallback:</span>
-                <span className="strategy-desc">
-                  Mengeksekusi model cadangan secara berurutan bila model utama mengalami limit atau error.
-                </span>
+                <div className="strategy-desc-wrap">
+                  <span className="strategy-desc">
+                    Menggunakan satu penyedia utama, dan hanya beralih ke penyedia cadangan jika terjadi error atau batas kuota habis.
+                  </span>
+                  <span className="strategy-usecase">
+                    Saat Anda memiliki penyedia favorit, tetapi ingin cadangan otomatis jika sewaktu-waktu layanan terganggu.
+                  </span>
+                </div>
               </div>
               <div className="combos-strategy-item">
                 <span className="strategy-strong">Round Robin:</span>
-                <span className="strategy-desc">
-                  Meratakan beban antrean permintaan secara bergantian ke seluruh model yang dipilih.
-                </span>
+                <div className="strategy-desc-wrap">
+                  <span className="strategy-desc">
+                    Membagi beban kerja secara bergiliran (Penyedia A, lalu B, lalu C, lalu kembali ke A).
+                  </span>
+                  <span className="strategy-usecase">
+                    Saat Anda memiliki beberapa penyedia dengan kapasitas setara dan ingin meratakan penggunaan kuota atau biaya.
+                  </span>
+                </div>
               </div>
               <div className="combos-strategy-item">
                 <span className="strategy-strong">Fusion:</span>
-                <span className="strategy-desc">
-                  Menggabungkan hasil respon dari beberapa model panel secara paralel dan menyatukannya lewat model juri.
-                </span>
+                <div className="strategy-desc-wrap">
+                  <span className="strategy-desc">
+                    Mengirimkan satu permintaan ke beberapa model sekaligus dan menggabungkan atau membandingkan hasilnya.
+                  </span>
+                  <span className="strategy-usecase">
+                    Saat Anda membutuhkan tingkat akurasi tinggi dan ingin melihat perspektif dari beberapa AI berbeda secara bersamaan.
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -1127,6 +1152,59 @@ export default function ModelsView({
               </p>
 
               <div className="model-picker-list">
+                {combos.length > 0 && (
+                  <>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', padding: '0.2rem 0.1rem' }}>
+                      Model Combo & Router
+                    </div>
+                    {combos.map((combo) => {
+                      const comboId = `combo::${combo.id}`;
+                      const isSelected = selectedModel === comboId || selectedModel === combo.id;
+                      const stratLabel = combo.strategy === 'fallback' ? 'Fallback' : combo.strategy === 'round_robin' ? 'Round Robin' : 'Fusion';
+                      return (
+                        <div
+                          key={combo.id}
+                          className={`model-picker-card ${isSelected ? 'is-active' : ''}`}
+                          onClick={() => handleSetMainModel(comboId)}
+                        >
+                          <div className="model-picker-info">
+                            <div className="model-picker-avatar">
+                              <Layers size={16} />
+                            </div>
+                            <div className="model-picker-meta">
+                              <div className="model-picker-name-row">
+                                <span className="model-picker-name">
+                                  {combo.name}
+                                </span>
+                                <span className="tile-badge-pill" style={{ borderColor: 'rgba(59, 130, 246, 0.4)', color: '#3b82f6' }}>
+                                  {stratLabel}
+                                </span>
+                              </div>
+                              <span className="model-picker-sub">
+                                Router : {combo.models?.length || 0} model panel
+                              </span>
+                            </div>
+                          </div>
+
+                          {isSelected ? (
+                            <div className="model-picker-badge-active">
+                              <Check size={13} />
+                              <span>Utama</span>
+                            </div>
+                          ) : (
+                            <button type="button" className="model-picker-select-btn">
+                              Pilih
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                    <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', padding: '0.5rem 0.1rem 0.2rem' }}>
+                      Model Provider Standar
+                    </div>
+                  </>
+                )}
+
                 {modelsList.map((m) => {
                   const isSelected = selectedModel === m.id || selectedModel === m.modelId;
                   return (
@@ -1381,17 +1459,20 @@ export default function ModelsView({
                       {
                         id: 'fallback',
                         title: 'Fallback',
-                        desc: 'Tries models sequentially in order upon failure or timeout',
+                        desc: 'Menggunakan satu penyedia utama, dan hanya beralih ke cadangan jika terjadi error atau kuota habis.',
+                        hint: 'Ideal bila punya penyedia favorit namun ingin failover otomatis.',
                       },
                       {
                         id: 'round_robin',
                         title: 'Round Robin',
-                        desc: 'Rotates requests evenly across models to spread load',
+                        desc: 'Membagi beban kerja bergiliran (Penyedia A -> B -> C -> A berulang).',
+                        hint: 'Meratakan penggunaan kuota dan biaya antar penyedia setara.',
                       },
                       {
                         id: 'fusion',
                         title: 'Fusion',
-                        desc: 'Queries all models in parallel, then a judge synthesizes one unified answer',
+                        desc: 'Mengirimkan permintaan ke beberapa model sekaligus dan menyatukan hasilnya lewat juri.',
+                        hint: 'Akurasi maksimal dan perspektif multi-AI secara bersamaan.',
                       },
                     ].map((s) => {
                       const isSelected = comboForm.strategy === s.id;
@@ -1406,6 +1487,7 @@ export default function ModelsView({
                             {isSelected && <Check size={14} className="strategy-check" />}
                           </div>
                           <span className="strategy-card-desc">{s.desc}</span>
+                          <span className="strategy-card-hint">{s.hint}</span>
                         </div>
                       );
                     })}

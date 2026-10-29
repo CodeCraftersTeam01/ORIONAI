@@ -617,7 +617,7 @@ export default function App() {
   });
   const [isManageProvidersOpen, setIsManageProvidersOpen] = useState(false);
 
-  // Selected AI Model (Dynamic format: providerId::modelId, e.g. orion::orion)
+  // Selected AI Model (Dynamic format: providerId::modelId, e.g. orion::orion or combo::id)
   const [selectedModel, setSelectedModel] = useState(() => {
     const saved = localStorage.getItem('orion_selected_model');
     if (saved === 'orion') return 'orion::orion';
@@ -626,6 +626,9 @@ export default function App() {
     if (saved) return saved;
     return 'orion::orion';
   });
+
+  // Configured AI Model Combos & Router
+  const [combos, setCombos] = useState([]);
 
   const [reasoningTier, setReasoningTier] = useState(() => {
     const saved = localStorage.getItem('orion_reasoning_tier');
@@ -1924,13 +1927,32 @@ PANDUAN KOMUNIKASI LISAN (VOICE CALL):
       .catch(() => {});
   };
 
+  const fetchCombos = useCallback(async () => {
+    try {
+      const res = await fetch('/api/combos');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.combos)) {
+          setCombos(data.combos);
+        }
+      }
+    } catch (err) {
+      console.warn('Gagal memuat daftar combos:', err);
+    }
+  }, []);
+
   useEffect(() => {
     syncConfigFromServer();
-    window.addEventListener('focus', syncConfigFromServer);
-    return () => {
-      window.removeEventListener('focus', syncConfigFromServer);
+    fetchCombos();
+    const handleFocus = () => {
+      syncConfigFromServer();
+      fetchCombos();
     };
-  }, []);
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [fetchCombos]);
 
   const handleModelChange = (modelId) => {
     setSelectedModel(modelId);
@@ -3072,6 +3094,8 @@ PANDUAN KOMUNIKASI LISAN (VOICE CALL):
               handleReasoningTierChange(tierId);
             }}
             customProviders={customProviders}
+            combos={combos}
+            onCombosUpdated={fetchCombos}
             sessions={sessions}
             onNavigate={(view) => {
               if (view === 'chat') {
@@ -3443,6 +3467,7 @@ PANDUAN KOMUNIKASI LISAN (VOICE CALL):
           reasoningTier={reasoningTier}
           setReasoningTier={handleReasoningTierChange}
           customProviders={customProviders}
+          combos={combos}
           onOpenManageProviders={() => setCurrentView('providers')}
           isAgentMode={isAgentMode}
           setIsAgentMode={handleToggleAgentMode}
