@@ -79,6 +79,7 @@ import { isReasoningSupported } from './utils/modelConfig';
 import VoiceCallingOverlay from './components/VoiceCallingOverlay';
 import { playCosmicHumSound, playCosmicEndCallSound } from './utils/audioEffects';
 import { cleanIndonesianText, formatVoiceForSpeechAndDisplay } from './utils/textCleaner';
+import { detectLanguage } from './utils/languageDetector';
 import './App.css';
 
 function formatUserFacingError(errMessage) {
@@ -1423,7 +1424,23 @@ export default function App() {
       } else {
         // ================= REGULAR CONVERSATION STREAM (ORION VOICE) =================
         const currentUserName = authUserRef.current || authStatus?.user || 'Arjuna';
-        const voicePrompt = `${queryText}\n\n[Instruksi Panggilan Suara & Persona Orion]:
+        const isEnglish = detectLanguage(queryText) === 'en';
+        const voicePrompt = isEnglish
+          ? `${queryText}\n\n[CRITICAL VOICE INSTRUCTION - SPEAK IN ENGLISH]:
+You are ORION: close friend, tech partner, and intelligent collaborator for ${currentUserName}.
+VOICE CALL COMMUNICATION GUIDELINES:
+1. STRICT LANGUAGE ENFORCEMENT:
+   - The user is speaking/asking in English ("${queryText}").
+   - You MUST respond 100% completely in natural, fluent, spoken English.
+   - NEVER reply in Indonesian when addressed in English!
+2. WARM & NATURAL GREETING:
+   - If the user greets ("Hello", "Hi", "Good morning", "Hey Orion", etc.), greet back warmly as a close friend (e.g. "Hello ${currentUserName}! How can I help you today?").
+3. CONCISE & SPOKEN:
+   - Natural spoken tone, like a quick phone call between close tech colleagues.
+   - Keep it to 1-2 punchy sentences.
+   - Absolutely NO markdown, lists, asterisks, hashtags, or code blocks in voice calls.
+   - Always ensure words are properly spaced.`
+          : `${queryText}\n\n[Instruksi Panggilan Suara & Persona Orion]:
 Anda adalah ORION: sahabat karib, mitra teknologi, dan rekan kolaborasi cerdas bagi ${currentUserName}.
 PANDUAN KOMUNIKASI LISAN (VOICE CALL):
 1. ADAPTASI BAHASA (LANGUAGE MATCHING):

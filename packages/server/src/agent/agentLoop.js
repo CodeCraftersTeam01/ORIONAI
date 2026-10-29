@@ -3,6 +3,7 @@ import { safetyGuard } from './safetyGuard.js';
 import { getModelConfig, resolveEndpointAndHeaders, resolveProviderForModel } from '../services/aiService.js';
 import { getActiveSkillsPrompt } from '../services/skillService.js';
 import { getComboById, getNextRoundRobinModel } from '../services/comboService.js';
+import { detectLanguage } from '../utils/languageDetector.js';
 
 // Pending approvals registry for interactive web/cli sessions
 export const pendingApprovals = new Map();
@@ -377,10 +378,16 @@ PANDUAN UTAMA KOMUNIKASI SUARA (ORION VOICE):
    - DILARANG KERAS membalas diam/kosong atau sekadar berkata kaku "Instruksi telah selesai dijalankan" / "Tugas telah selesai diproses"!`
     : '';
 
+  const userLang = detectLanguage(message);
+  const langDirective = userLang === 'en'
+    ? `\n\n[CRITICAL MULTILINGUAL INSTRUCTION - ENGLISH]:
+The user has spoken or written in English ("${message}"). You MUST converse, explain, and reply completely in fluent, natural English. Do NOT answer in Indonesian!`
+    : '';
+
   const messages = [
     {
       role: 'system',
-      content: `${AGENT_SYSTEM_PROMPT}${voiceInstruction}\n\n[WORKSPACE PROYEK AKTIF]\nDirektori kerja (CWD) saat ini: ${activeWs}\nSemua perintah bash dan operasi berkas akan dieksekusi di dalam direktori proyek ini.${skillsPrompt}`,
+      content: `${AGENT_SYSTEM_PROMPT}${voiceInstruction}${langDirective}\n\n[WORKSPACE PROYEK AKTIF]\nDirektori kerja (CWD) saat ini: ${activeWs}\nSemua perintah bash dan operasi berkas akan dieksekusi di dalam direktori proyek ini.${skillsPrompt}`,
     },
   ];
 

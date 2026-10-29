@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { getActiveSkillsPromptSync } from './skillService.js';
 import { getComboById, getNextRoundRobinModel } from './comboService.js';
+import { detectLanguage } from '../utils/languageDetector.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -317,7 +318,16 @@ export function cleanIndonesianText(text) {
     [/\bdisajikandengan\b/gi, 'disajikan dengan'],
     [/\btingkatkematangan\b/gi, 'tingkat kematangan'],
     [/\bsesuaiselera\b/gi, 'sesuai selera'],
+    [/\bberbicarabahasa\b/gi, 'berbicara bahasa'],
+    [/\bbahasainggris\b/gi, 'bahasa Inggris'],
+    [/\bbahasaindonesia\b/gi, 'bahasa Indonesia'],
+    [/\bbahasalainnya\b/gi, 'bahasa lainnya'],
+    [/\bbisaberbicara\b/gi, 'bisa berbicara'],
+    [/\bdapatberbicara\b/gi, 'dapat berbicara'],
   ];
+
+  res = res.replace(/\b(berbicara|bicara)(bahasa)\b/gi, '$1 $2');
+  res = res.replace(/\b(bahasa)(inggris|indonesia|lainnya|daerah|asing)\b/gi, '$1 $2');
 
   for (const [re, repl] of SQUISHED_MAP) {
     res = res.replace(re, repl);
@@ -428,7 +438,13 @@ function buildMessagesPayload({ message, history = [], attachments = [], modelId
   });
 
   const skillsPrompt = getActiveSkillsPromptSync();
-  const fullSystemPrompt = `${SYSTEM_PROMPT}\n${modelConfig.systemPromptExtra}${skillsPrompt ? `\n${skillsPrompt}` : ''}`;
+  const userLang = detectLanguage(message);
+  let langDirective = '';
+  if (userLang === 'en') {
+    langDirective = `\n\n[CRITICAL MULTILINGUAL INSTRUCTION - ENGLISH]:
+The user's question or message is in English. You MUST respond completely in natural, fluent, and precise English. Do NOT answer in Indonesian!`;
+  }
+  const fullSystemPrompt = `${SYSTEM_PROMPT}\n${modelConfig.systemPromptExtra}${skillsPrompt ? `\n${skillsPrompt}` : ''}${langDirective}`;
 
   return {
     messages: [
