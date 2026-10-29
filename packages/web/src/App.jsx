@@ -480,8 +480,15 @@ export default function App() {
     localStorage.setItem('orion_agent_mode', String(newVal));
   };
 
-  const handleApproveTool = async (toolCallId) => {
+  // Session-level set of approved command binaries/tasks so subsequent related commands are auto-approved
+  const approvedCommandsRef = useRef(new Set());
+
+  const handleApproveTool = async (toolCallId, baseCmd = null) => {
     try {
+      if (baseCmd) {
+        approvedCommandsRef.current.add(baseCmd.toLowerCase());
+      }
+      approvedCommandsRef.current.add('approved_session');
       await fetch('/api/agent/approve', {
         method: 'POST',
         headers: {
@@ -518,6 +525,9 @@ export default function App() {
   const handleChooseOption = async (toolCallId, option, index) => {
     try {
       const selectedText = typeof option === 'string' ? option : option.label || option.value;
+      if (/^(ya|setuju|approve|lanjut|ok|yes)/i.test(selectedText)) {
+        approvedCommandsRef.current.add('approved_session');
+      }
       await fetch('/api/agent/approve', {
         method: 'POST',
         headers: {
@@ -891,11 +901,18 @@ export default function App() {
 
               if (isApprove) {
                 soundEffects.playSend?.();
+                const cmd = (pending.args?.command || pending.args?.cmd || '').trim();
+                const baseCmd = cmd ? cmd.split(/\s+/)[0]?.replace(/^[./\\]+/, '').toLowerCase() : (pending.tool || '');
+                if (baseCmd) approvedCommandsRef.current.add(baseCmd);
+                approvedCommandsRef.current.add('approved_session');
+                const qCmd = (pending.question || '').match(/\b(curl|wget|npm|pnpm|yarn|git|pkill|kill|node|python|bash|sh|rm)\b/i);
+                if (qCmd) approvedCommandsRef.current.add(qCmd[1].toLowerCase());
+
                 if (pending.isChoice || pending.tool === 'ask_user') {
                   const selectedText = pending.options?.[0] || 'Ya, lanjutkan';
                   handleChooseOption(pending.toolCallId, selectedText, 0);
                 } else {
-                  handleApproveTool(pending.toolCallId);
+                  handleApproveTool(pending.toolCallId, baseCmd);
                 }
               } else {
                 handleRejectTool(pending.toolCallId);
@@ -1411,6 +1428,26 @@ export default function App() {
                 updateAiMessageInSessions(null, toolCallsList);
               } else if (parsed.type === 'tool_call_waiting_approval' || parsed.type === 'tool_call_waiting_choice') {
                 const isChoice = parsed.type === 'tool_call_waiting_choice';
+                const cmd = (parsed.args?.command || parsed.args?.cmd || '').trim();
+                const baseCmd = cmd ? cmd.split(/\s+/)[0]?.replace(/^[./\\]+/, '').toLowerCase() : (parsed.tool || '');
+                const qText = (parsed.question || parsed.args?.question || '').toLowerCase();
+                const qCmd = qText.match(/\b(curl|wget|npm|pnpm|yarn|git|pkill|kill|node|python|bash|sh|rm)\b/i);
+                const isRelatedApproved = approvedCommandsRef.current.has(baseCmd) ||
+                  (qCmd && approvedCommandsRef.current.has(qCmd[1].toLowerCase())) ||
+                  (approvedCommandsRef.current.has('curl') && (baseCmd === 'curl' || qText.includes('curl'))) ||
+                  (approvedCommandsRef.current.has('approved_session') && (isChoice || baseCmd === 'curl'));
+
+                if (isRelatedApproved) {
+                  // Auto-approve directly without speaking or pausing
+                  if (isChoice) {
+                    const selectedText = parsed.options?.[0] || 'Ya, lanjutkan';
+                    handleChooseOption(parsed.toolCallId, selectedText, 0);
+                  } else {
+                    handleApproveTool(parsed.toolCallId, baseCmd);
+                  }
+                  continue;
+                }
+
                 const approvalSpeech = buildApprovalSpeech(parsed);
                 const pending = {
                   toolCallId: parsed.toolCallId,
