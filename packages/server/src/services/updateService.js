@@ -1,50 +1,53 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { execSync } from 'child_process';
+import { execSync, spawn } from 'child_process';
 import { logger } from './loggerService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Root package.json path
-const rootPackagePath = path.resolve(__dirname, '../../../../package.json');
+// Monorepo root directory
+const rootDir = path.resolve(__dirname, '../../../../');
+const rootPackagePath = path.resolve(rootDir, 'package.json');
 const serverPackagePath = path.resolve(__dirname, '../../package.json');
 
 const REPO_OWNER = 'CodeCraftersTeam01';
 const REPO_NAME = 'ORIONAI';
-const BRANCH = 'main';
 
 // In-memory cache for update check to avoid hitting GitHub API rate limits
 let cachedUpdateInfo = null;
 let lastCheckTime = 0;
-const CACHE_DURATION_MS = 3 * 60 * 1000; // 3 minutes
+const CACHE_DURATION_MS = 2 * 60 * 1000; // 2 minutes
+
+/**
+ * Get active git branch
+ */
+export function getActiveBranch() {
+  try {
+    const branch = execSync('git rev-parse --abbrev-ref HEAD', {
+      cwd: rootDir,
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+    }).trim();
+    if (branch && branch !== 'HEAD') return branch;
+  } catch {}
+  return 'main';
+}
 
 /**
  * Curated changelog history
  */
 export const OFFICIAL_CHANGELOG = [
   {
-    version: 'v1.0.5',
-    date: '2026-10-28',
-    title: 'In-built Superpowers, Auto Update Checker & Audio Sync',
-    highlights: [
-      { type: 'feature', text: 'Sistem Deteksi Pembaruan Otomatis: Notifikasi toast peringatan di pojok kanan bawah saat ada commit baru di branch main.' },
-      { type: 'feature', text: 'Halaman Periksa Pembaruan: Tampilan status versi aplikasi dan riwayat changelog interaktif.' },
-      { type: 'improvement', text: 'In-built Superpowers: Integrasi native powers ke dalam sistem utama tanpa duplikasi di Skill Hub.' },
-      { type: 'improvement', text: 'Pembersih Teks Audio: Akurasi pembersihan teks sebelum TTS berbicara lebih presisi dan natural.' },
-      { type: 'fix', text: 'Sinkronisasi output Orion: Respon voice mode dan antarmuka web tersinkronisasi konsisten.' }
-    ]
-  },
-  {
     version: 'v1.0.0',
-    date: '2026-10-20',
-    title: 'Peluncuran Perdana Orion AI Monorepo',
+    date: '2026-10-28',
+    title: 'Pembaruan 1-Klik, Antarmuka antislop-ui & Restart Otomatis',
     highlights: [
-      { type: 'feature', text: 'Voice Calling Mode: Komunikasi dua arah langsung menggunakan WebSocket dan Kokoro TTS.' },
-      { type: 'feature', text: 'Skill Hub: Manajemen skill modular (browser automation, coding, web search).' },
-      { type: 'feature', text: 'Multi-Provider Engine: Dukungan Gemini, Groq, Ollama, OpenRouter, dan OpenAI.' },
-      { type: 'improvement', text: 'Terminal CLI & Web UI: Integrasi penuh antara antarmuka CLI dan Web UI.' }
+      { type: 'feature', text: 'Tombol Pembaruan 1-Klik: Memperbarui sistem langsung dari tombol tanpa mengetik perintah di terminal.' },
+      { type: 'feature', text: 'Restart Otomatis Service: Daemon Orion Agent me-restart service secara mandiri setelah pembaruan selesai.' },
+      { type: 'improvement', text: 'Desain antislop-ui Bersih: Desain modal dan toast fungsional tanpa AI-slop, kontras tinggi, dan responsif.' },
+      { type: 'fix', text: 'Deteksi Versi Presisi: Sinkronisasi commit aktif branch lokal dengan origin GitHub tanpa notifikasi palsu.' }
     ]
   }
 ];
@@ -70,21 +73,41 @@ export function getLocalVersionInfo() {
   }
 
   let commitHash = 'unknown';
+  let commitFullHash = '';
   let commitDate = null;
+  const activeBranch = getActiveBranch();
+
   try {
-    commitHash = execSync('git rev-parse --short HEAD', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
-    const dateStr = execSync('git log -1 --format=%cd --date=iso', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+    commitHash = execSync('git rev-parse --short HEAD', {
+      cwd: rootDir,
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+    }).trim();
+
+    commitFullHash = execSync('git rev-parse HEAD', {
+      cwd: rootDir,
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+    }).trim();
+
+    const dateStr = execSync('git log -1 --format=%cd --date=iso', {
+      cwd: rootDir,
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+    }).trim();
     if (dateStr) commitDate = dateStr;
-  } catch (err) {
-    // If not in a git repo or git not found
+  } catch {
     commitHash = '1.0.0-stable';
+    commitFullHash = '1.0.0-stable';
   }
 
   return {
     name: 'Orion AI',
     version,
     commitHash,
+    commitFullHash,
     commitDate,
+    activeBranch,
   };
 }
 
@@ -92,7 +115,7 @@ export function getLocalVersionInfo() {
  * Compare two semver strings (returns >0 if v1 > v2, <0 if v1 < v2, 0 if equal)
  */
 function compareSemver(v1, v2) {
-  const parse = (v) => v.replace(/^v/, '').split('.').map((n) => parseInt(n, 10) || 0);
+  const parse = (v) => String(v).replace(/^v/i, '').split('.').map((n) => parseInt(n, 10) || 0);
   const [maj1, min1, pat1] = parse(v1);
   const [maj2, min2, pat2] = parse(v2);
 
@@ -111,18 +134,60 @@ export async function checkForUpdates(force = false) {
   }
 
   const localInfo = getLocalVersionInfo();
+  const currentBranch = localInfo.activeBranch || 'main';
   let remoteVersion = localInfo.version;
   let remoteCommitHash = null;
   let remoteCommitMessage = null;
   let remoteCommitDate = null;
   let hasUpdate = false;
   let updateReason = '';
+  let gitChecked = false;
 
+  // 1. Precise local git check against remote origin
   try {
-    // 1. Fetch remote package.json from raw GitHub
-    const rawPkgUrl = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${BRANCH}/package.json`;
+    const lsRemoteOut = execSync(`git ls-remote origin ${currentBranch}`, {
+      cwd: rootDir,
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+      timeout: 7000,
+    }).trim();
+
+    if (lsRemoteOut) {
+      const [remoteSha] = lsRemoteOut.split(/\s+/);
+      if (remoteSha) {
+        gitChecked = true;
+        remoteCommitHash = remoteSha.substring(0, 7);
+
+        // Check if local commit is already equal to or starts with remoteSha
+        if (localInfo.commitHash === remoteCommitHash || localInfo.commitFullHash.startsWith(remoteSha)) {
+          hasUpdate = false;
+        } else {
+          // Check if remoteSha is already an ancestor of local HEAD (meaning local is ahead or already contains it)
+          try {
+            execSync(`git merge-base --is-ancestor ${remoteSha} HEAD`, {
+              cwd: rootDir,
+              stdio: ['pipe', 'pipe', 'ignore'],
+            });
+            // Exit 0: HEAD contains remoteSha, so local is up to date or ahead
+            hasUpdate = false;
+          } catch {
+            // remoteSha is not in HEAD: there are newer remote commits to pull
+            hasUpdate = true;
+            updateReason = `Terdapat commit pembaruan baru (${remoteCommitHash}) di branch ${currentBranch}.`;
+          }
+        }
+      }
+    }
+  } catch (gitErr) {
+    // ls-remote timed out or network error, fallback to GitHub HTTP API below
+  }
+
+  // 2. Fetch package.json and commit details from GitHub API if needed
+  try {
+    // Fetch remote package.json from raw GitHub for current branch
+    const rawPkgUrl = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${currentBranch}/package.json`;
     const pkgRes = await fetch(rawPkgUrl, {
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(4000),
       headers: { 'User-Agent': 'OrionAI-UpdateChecker' }
     });
 
@@ -133,40 +198,52 @@ export async function checkForUpdates(force = false) {
       }
     }
 
-    // 2. Fetch latest commit on main branch from GitHub API
-    const commitUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/commits/${BRANCH}`;
-    const commitRes = await fetch(commitUrl, {
-      signal: AbortSignal.timeout(5000),
-      headers: {
-        'User-Agent': 'OrionAI-UpdateChecker',
-        'Accept': 'application/vnd.github.v3+json'
-      }
-    });
-
-    if (commitRes.ok) {
-      const commitData = await commitRes.json();
-      if (commitData) {
-        remoteCommitHash = commitData.sha ? commitData.sha.substring(0, 7) : null;
-        remoteCommitMessage = commitData.commit?.message || '';
-        remoteCommitDate = commitData.commit?.committer?.date || null;
-      }
-    }
-
-    // Compare versions
     const semverDiff = compareSemver(remoteVersion, localInfo.version);
     if (semverDiff > 0) {
       hasUpdate = true;
-      updateReason = `Versi baru v${remoteVersion} tersedia di branch ${BRANCH}.`;
-    } else if (remoteCommitHash && localInfo.commitHash !== 'unknown' && localInfo.commitHash !== '1.0.0-stable') {
-      // If version is equal but remote commit is different from local commit
-      if (remoteCommitHash !== localInfo.commitHash) {
-        hasUpdate = true;
-        updateReason = `Ada pembaruan kode baru (${remoteCommitHash}) di branch ${BRANCH}.`;
+      updateReason = `Versi baru v${remoteVersion} tersedia di repositori.`;
+    }
+
+    // If git ls-remote was not able to verify, inspect commits via GitHub API
+    if (!gitChecked) {
+      const commitUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/commits/${currentBranch}`;
+      const commitRes = await fetch(commitUrl, {
+        signal: AbortSignal.timeout(4000),
+        headers: {
+          'User-Agent': 'OrionAI-UpdateChecker',
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
+
+      if (commitRes.ok) {
+        const commitData = await commitRes.json();
+        if (commitData) {
+          remoteCommitHash = commitData.sha ? commitData.sha.substring(0, 7) : null;
+          remoteCommitMessage = commitData.commit?.message || '';
+          remoteCommitDate = commitData.commit?.committer?.date || null;
+
+          if (semverDiff === 0 && remoteCommitHash) {
+            if (localInfo.commitHash === remoteCommitHash || localInfo.commitFullHash.startsWith(commitData.sha)) {
+              hasUpdate = false;
+            } else {
+              try {
+                execSync(`git merge-base --is-ancestor ${commitData.sha} HEAD`, {
+                  cwd: rootDir,
+                  stdio: ['pipe', 'pipe', 'ignore'],
+                });
+                hasUpdate = false;
+              } catch {
+                hasUpdate = true;
+                updateReason = `Ada pembaruan kode baru (${remoteCommitHash}) di branch ${currentBranch}.`;
+              }
+            }
+          }
+        }
       }
     }
   } catch (err) {
-    logger.warn('Gagal menghubungi GitHub untuk pengecekan pembaruan:', err.message);
-    // Offline or rate limit: fallback to checking if local version is older than latest known official changelog
+    logger.warn('Gagal menghubungi GitHub API untuk pengecekan pembaruan:', err.message);
+    // Offline / rate-limited: check official changelog semver strictly
     const latestOfficial = OFFICIAL_CHANGELOG[0];
     if (latestOfficial && compareSemver(latestOfficial.version, localInfo.version) > 0) {
       hasUpdate = true;
@@ -175,19 +252,23 @@ export async function checkForUpdates(force = false) {
     }
   }
 
+  // Format clean version string
+  const cleanRemoteVersion = String(remoteVersion).replace(/^v+/i, '');
+  const latestVersionDisplay = `v${cleanRemoteVersion}`;
+
   const result = {
     appName: localInfo.name,
     currentVersion: localInfo.version,
     currentCommit: localInfo.commitHash,
     currentCommitDate: localInfo.commitDate,
-    latestVersion: remoteVersion.startsWith('v') ? remoteVersion : `v${remoteVersion}`,
+    activeBranch: currentBranch,
+    latestVersion: latestVersionDisplay,
     latestCommit: remoteCommitHash,
     latestCommitMessage: remoteCommitMessage,
     latestCommitDate: remoteCommitDate,
     hasUpdate,
     updateReason,
     checkedAt: new Date().toISOString(),
-    updateCommand: 'git pull origin main && npm install && npm run build',
     changelog: OFFICIAL_CHANGELOG
   };
 
@@ -197,18 +278,13 @@ export async function checkForUpdates(force = false) {
 }
 
 /**
- * Execute automated update: pull changes from repository and rebuild frontend
+ * Execute automated update: pull changes from repository, rebuild frontend,
+ * and autorun Orion restart daemon.
  */
 export async function performUpdate() {
-  const rootDir = path.resolve(__dirname, '../../../../');
-  let currentBranch = 'feat/cli-package';
-  try {
-    currentBranch = execSync('git rev-parse --abbrev-ref HEAD', { cwd: rootDir, encoding: 'utf8' }).trim() || 'feat/cli-package';
-  } catch (err) {
-    logger.warn('Gagal mendeteksi git branch:', err.message);
-  }
-
+  const currentBranch = getActiveBranch();
   const logs = [];
+
   try {
     logger.info(`Memulai auto-update: git pull origin ${currentBranch}...`, {}, 'SYSTEM', 'system');
     const pullOutput = execSync(`git pull origin ${currentBranch}`, {
@@ -250,11 +326,29 @@ export async function performUpdate() {
 
   const newLocalInfo = getLocalVersionInfo();
 
+  // Autorun Orion Agent restart in background after response is sent
+  setTimeout(() => {
+    try {
+      const cliScript = path.resolve(rootDir, 'packages/cli/bin/orion.js');
+      logger.info('Menjalankan autorun restart Orion Agent di latar belakang...', {}, 'SYSTEM', 'system');
+      const child = spawn(process.execPath, [cliScript, '--restart', '--bg'], {
+        detached: true,
+        stdio: 'ignore',
+        cwd: rootDir,
+      });
+      child.unref();
+    } catch (restartErr) {
+      logger.error('Gagal autorun restart Orion:', restartErr.message);
+    }
+  }, 1200);
+
   return {
     success: true,
-    message: 'Orion AI berhasil diperbarui ke versi terbaru.',
+    message: 'Orion AI berhasil diperbarui. Layanan sedang di-restart otomatis di latar belakang.',
+    restarting: true,
     currentVersion: newLocalInfo.version,
     currentCommit: newLocalInfo.commitHash,
+    activeBranch: currentBranch,
     logs,
     updatedAt: new Date().toISOString(),
   };

@@ -33,11 +33,13 @@ export default function UpdateNotificationToast({
         <div className="update-toast-body">
           <div className="update-toast-headline-row">
             <h4 className="update-toast-title">Pembaruan Tersedia</h4>
-            <span className="update-toast-badge">v{updateInfo.latestVersion}</span>
+            <span className="update-toast-badge">
+              v{String(updateInfo.latestVersion || '').replace(/^v+/i, '')}
+            </span>
           </div>
 
           <p className="update-toast-message">
-            Versi baru tersedia di repositori. Versi komputer saat ini: <code>v{updateInfo.currentVersion}</code>.
+            Versi baru tersedia di repositori. Versi komputer saat ini: <code>v{String(updateInfo.currentVersion || '').replace(/^v+/i, '')}</code>.
           </p>
 
           {/* Action buttons */}

@@ -658,7 +658,31 @@ export default function App() {
         throw new Error(data.error || 'Gagal memperbarui aplikasi.');
       }
       setUpdateResult(data);
-      await handleCheckUpdates(true);
+
+      if (data.restarting) {
+        // Service is restarting in background; poll for reboot and automatically refresh
+        let attempts = 0;
+        const rebootPoll = setInterval(async () => {
+          attempts++;
+          try {
+            const probe = await fetch('/api/system/update-check?force=true', {
+              signal: AbortSignal.timeout(1200),
+            });
+            if (probe.ok) {
+              clearInterval(rebootPoll);
+              setTimeout(() => {
+                window.location.reload();
+              }, 600);
+            }
+          } catch {
+            if (attempts > 25) {
+              clearInterval(rebootPoll);
+            }
+          }
+        }, 1500);
+      } else {
+        await handleCheckUpdates(true);
+      }
     } catch (err) {
       setUpdateError(err.message || 'Terjadi kesalahan saat memperbarui aplikasi.');
     } finally {

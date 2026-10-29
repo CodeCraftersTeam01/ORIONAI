@@ -127,7 +127,9 @@ export default function UpdateCheckView({
                   </span>
                 </div>
                 <p className="update-alert-desc">
-                  Versi terbaru <code>v{updateResult.currentVersion}</code> telah berhasil diunduh dan dikompilasi. Muat ulang halaman untuk menerapkan seluruh antarmuka baru.
+                  {updateResult.restarting
+                    ? `Versi terbaru v${String(updateResult.currentVersion || '').replace(/^v+/i, '')} telah berhasil dipasang. Service Orion Agent sedang di-restart otomatis di latar belakang. Halaman akan termuat ulang otomatis saat server siap.`
+                    : `Versi terbaru v${String(updateResult.currentVersion || '').replace(/^v+/i, '')} telah berhasil dipasang. Muat ulang halaman untuk menerapkan perubahan antarmuka.`}
                 </p>
                 <div className="update-action-row">
                   <button
