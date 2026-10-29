@@ -11045,6 +11045,280 @@ svg[aria-roledescription="error"] {
   border-radius: 4px;
 }
 
+/* Combo Presets Row */
+.combo-presets-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  margin-top: 0.35rem;
+}
+
+.combo-preset-chip {
+  background: var(--bg-surface-hover, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+  border-radius: 6px;
+  padding: 0.22rem 0.55rem;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.combo-preset-chip:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--text-primary);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+/* Custom Model Add Box */
+.combo-custom-add-box {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.65rem;
+}
+
+.combo-custom-input {
+  flex: 1;
+  background: var(--bg-secondary, #14161a);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-radius: 8px;
+  padding: 0.48rem 0.75rem;
+  color: var(--text-primary);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.8rem;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+[data-theme='dark'] .combo-custom-input {
+  background: #18191e;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.combo-custom-input:focus {
+  border-color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15);
+}
+
+.combo-add-custom-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.48rem 0.85rem;
+  background: #ffffff;
+  color: #000000;
+  border: 1px solid #ffffff;
+  border-radius: 8px;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+[data-theme='light'] .combo-add-custom-btn {
+  background: #000000;
+  color: #ffffff;
+  border-color: #000000;
+}
+
+.combo-add-custom-btn:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.combo-add-custom-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Ordered Execution Panel */
+.combo-selected-panel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.65rem;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: 8px;
+  margin-bottom: 0.85rem;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+[data-theme='dark'] .combo-selected-panel-list {
+  background: #111215;
+}
+
+.combo-selected-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 0.2rem;
+}
+
+.combo-selected-panel-hint {
+  font-size: 0.68rem;
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
+.combo-selected-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 0.65rem;
+  background: var(--bg-surface, #1e2025);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.combo-selected-left {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.combo-priority-badge {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #000000;
+  background: #ffffff;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+[data-theme='light'] .combo-priority-badge {
+  background: #000000;
+  color: #ffffff;
+}
+
+.combo-selected-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.combo-selected-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.combo-selected-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.combo-origin-tag {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  letter-spacing: 0.02em;
+}
+
+.combo-origin-tag.is-custom {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.combo-origin-tag.is-builtin {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+}
+
+.combo-selected-role {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.combo-code-id {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.68rem;
+  color: var(--text-tertiary);
+}
+
+.combo-selected-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.combo-order-btn,
+.combo-remove-btn {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  padding: 3px 5px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s;
+}
+
+.combo-order-btn:hover:not(:disabled) {
+  border-color: var(--text-primary);
+  color: var(--text-primary);
+  background: var(--bg-surface-hover);
+}
+
+.combo-order-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.combo-remove-btn:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.combo-empty-models-notice {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  padding: 0.75rem;
+  border: 1px dashed var(--border-subtle);
+  border-radius: 6px;
+  text-align: center;
+  margin-bottom: 0.65rem;
+}
+
+.combo-builtin-section-header {
+  margin-top: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
 /* ==========================================================================
    SLASH COMMANDS AUTOCOMPLETE (Orion Native Glassmorphic System)
    ========================================================================== */

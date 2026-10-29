@@ -17,7 +17,7 @@ import {
   formatRelativeTime,
 } from '../../server/src/services/sessionService.js';
 import { getSkillCommands } from '../../server/src/services/skillService.js';
-import { getCombos, getComboById } from '../../server/src/services/comboService.js';
+import { getCombos, getComboById, saveCombo } from '../../server/src/services/comboService.js';
 
 function copyToClipboard(text) {
   try {
@@ -2382,6 +2382,33 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
         return false;
       }
 
+      if (cleanArg.startsWith('add ') || cleanArg.startsWith('create ') || cleanArg === 'add' || cleanArg === 'create') {
+        const subParts = cleanArg.replace(/^(add|create)\s*/, '').trim().split(/\s+/);
+        let customName = subParts[0] || `COMBO_${Date.now().toString().slice(-4)}`;
+        let customStrategy = subParts[1] ? subParts[1].toLowerCase() : 'fallback';
+        if (!['fallback', 'round_robin', 'fusion'].includes(customStrategy)) {
+          customStrategy = 'fallback';
+        }
+        let customModels = subParts[2]
+          ? subParts[2].split(',').map((s) => s.trim()).filter(Boolean)
+          : ['orion::orion', 'agnes-2.5-flash'];
+
+        const saved = saveCombo({
+          name: customName,
+          strategy: customStrategy,
+          models: customModels,
+          judge: customModels[0] || 'orion::orion',
+          description: `Custom combo dibuat via terminal CLI (${customStrategy}).`,
+        });
+
+        currentModel = `combo::${saved.id}`;
+        saveSyncedConfig({ selectedModel: currentModel });
+        console.log(`\n${c.green}✓ Combo kustom '${c.bold}${saved.name}${c.reset}${c.green}' berhasil dibuat & diaktifkan!${c.reset}`);
+        console.log(`  ${c.gray}Strategi:${c.reset} ${saved.strategy.toUpperCase()}`);
+        console.log(`  ${c.gray}Model Panel:${c.reset} ${saved.models.join(' → ')}\n`);
+        return false;
+      }
+
       const match = combos.find(
         (cb) =>
           cb.id.toLowerCase() === cleanArg ||
@@ -2403,7 +2430,7 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
         return false;
       }
 
-      console.log(`\n${c.yellow}⚠️  Combo '${arg}' tidak ditemukan.${c.reset} Ketik ${c.yellow}/combos${c.reset} untuk melihat daftar.\n`);
+      console.log(`\n${c.yellow}⚠️  Combo '${arg}' tidak ditemukan.${c.reset} Ketik ${c.yellow}/combos${c.reset} untuk melihat daftar atau ${c.yellow}/combo add <nama>${c.reset} untuk membuat combo kustom.\n`);
       return false;
     }
 
@@ -2423,6 +2450,7 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
 
     const menuItems = [
       ...comboItems,
+      { label: '➕ Buat Combo Kustom Baru', detail: 'Tambah router combo kustom langsung dari terminal', value: '__create__' },
       { label: '📖 Panduan 3 Strategi Combo', detail: 'Fallback, Round Robin, dan Fusion', value: '__guide__' },
       { label: '🔄 Muat Ulang Daftar Combo', detail: 'Sinkronisasi ulang dari ~/.orion/combos.json', value: '__reload__' },
     ];
@@ -2438,6 +2466,45 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
 
     if (picked.value === '__guide__') {
       return handleCombosMenuInteractive('info');
+    }
+
+    if (picked.value === '__create__') {
+      const stratPick = await selectOptionInteractive({
+        title: '✦ Pilih Strategi Router untuk Combo Baru:',
+        items: [
+          { label: 'Fallback (Urutan Failover)', detail: 'Penyedia utama + cadangan otomatis jika error/habis', value: 'fallback' },
+          { label: 'Round Robin (Bagi Beban)', detail: 'Beban kerja dibagi bergantian merata ke model panel', value: 'round_robin' },
+          { label: 'Fusion (Panel + Juri)', detail: 'Kirim serentak ke panel dan disatukan hasilnya', value: 'fusion' },
+        ],
+      });
+      if (!stratPick) return false;
+
+      const templatePick = await selectOptionInteractive({
+        title: '✦ Pilih Kombinasi Model Panel Awal:',
+        items: [
+          { label: '⚡ Orion + Agnes Flash', detail: 'Failover cepat kuota hemat', models: ['orion::orion', 'agnes-2.5-flash'] },
+          { label: '⚖️ Orion + Agnes + Nemotron Ultra', detail: '3 model multi-provider seimbang', models: ['orion::orion', 'agnes-2.5-flash', 'nvidia/nemotron-3-ultra-550b-a55b:free'] },
+          { label: '🔮 Agnes Flash + Nemotron Ultra', detail: 'Kombinasi model open provider', models: ['agnes-2.5-flash', 'nvidia/nemotron-3-ultra-550b-a55b:free'] },
+        ],
+      });
+      if (!templatePick) return false;
+
+      const newName = `CUSTOM_${stratPick.value.toUpperCase()}_${Date.now().toString().slice(-4)}`;
+      const saved = saveCombo({
+        name: newName,
+        strategy: stratPick.value,
+        models: templatePick.models,
+        judge: templatePick.models[0] || 'orion::orion',
+        description: `Custom combo ${stratPick.value} dibuat dari terminal CLI.`,
+      });
+
+      currentModel = `combo::${saved.id}`;
+      saveSyncedConfig({ selectedModel: currentModel });
+      console.log(`\n${c.green}✓ Combo kustom '${c.bold}${saved.name}${c.reset}${c.green}' berhasil dibuat & diaktifkan!${c.reset}`);
+      console.log(`  ${c.gray}Strategi:${c.reset} ${saved.strategy.toUpperCase()}`);
+      console.log(`  ${c.gray}Model Panel:${c.reset} ${saved.models.join(' → ')}`);
+      console.log(`  ${c.gray}Identifier:${c.reset} combo::${saved.id}\n`);
+      return false;
     }
 
     if (picked.value === '__reload__') {

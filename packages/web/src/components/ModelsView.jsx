@@ -5,6 +5,7 @@ import {
   Star,
   Settings,
   ChevronDown,
+  ChevronUp,
   Check,
   Sparkles,
   Zap,
@@ -79,6 +80,7 @@ export default function ModelsView({
   const [editingCombo, setEditingCombo] = useState(null);
   const [selectedComboIds, setSelectedComboIds] = useState([]);
   const [comboModelSearch, setComboModelSearch] = useState('');
+  const [customModelInput, setCustomModelInput] = useState('');
   const [isSavingCombo, setIsSavingCombo] = useState(false);
   const [comboForm, setComboForm] = useState({
     id: '',
@@ -372,6 +374,7 @@ export default function ModelsView({
       judge: modelsList[0]?.id || 'orion::orion',
       description: '',
     });
+    setCustomModelInput('');
     setComboModelSearch('');
     setIsComboModalOpen(true);
   };
@@ -386,8 +389,27 @@ export default function ModelsView({
       judge: combo.judge || combo.models?.[0] || 'orion::orion',
       description: combo.description || '',
     });
+    setCustomModelInput('');
     setComboModelSearch('');
     setIsComboModalOpen(true);
+  };
+
+  const handleDuplicateCombo = (combo) => {
+    setEditingCombo(null);
+    setComboForm({
+      id: '',
+      name: `${combo.name}_CUSTOM`,
+      strategy: combo.strategy || 'fallback',
+      models: Array.isArray(combo.models) ? [...combo.models] : [],
+      judge: combo.judge || combo.models?.[0] || 'orion::orion',
+      description: combo.description ? `${combo.description} (Kustom)` : 'Kombinasi model kustom.',
+    });
+    setCustomModelInput('');
+    setComboModelSearch('');
+    setIsComboModalOpen(true);
+    if (showToast) {
+      showToast(`Menduplikasi konfigurasi "${combo.name}" untuk kustomisasi baru.`);
+    }
   };
 
   const handleToggleSelectCombo = (id) => {
@@ -545,6 +567,81 @@ export default function ModelsView({
         judge: newJudge,
       };
     });
+  };
+
+  const handleAddCustomModel = (e) => {
+    if (e) e.preventDefault();
+    const trimmed = customModelInput.trim();
+    if (!trimmed) return;
+    if (comboForm.models.includes(trimmed)) {
+      if (showToast) showToast(`Model "${trimmed}" sudah ada di dalam panel combo.`);
+      return;
+    }
+    setComboForm((prev) => ({
+      ...prev,
+      models: [...prev.models, trimmed],
+      judge: prev.judge || trimmed,
+    }));
+    setCustomModelInput('');
+    if (showToast) showToast(`Model kustom "${trimmed}" ditambahkan ke panel combo.`);
+  };
+
+  const handleRemoveModelFromCombo = (modelId) => {
+    setComboForm((prev) => {
+      const nextModels = prev.models.filter((m) => m !== modelId);
+      const nextJudge = prev.judge === modelId ? nextModels[0] || 'orion::orion' : prev.judge;
+      return {
+        ...prev,
+        models: nextModels,
+        judge: nextJudge,
+      };
+    });
+  };
+
+  const handleMoveModel = (index, direction) => {
+    setComboForm((prev) => {
+      const models = [...prev.models];
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= models.length) return prev;
+      const temp = models[index];
+      models[index] = models[targetIndex];
+      models[targetIndex] = temp;
+      return { ...prev, models };
+    });
+  };
+
+  const handleApplyPreset = (presetKey) => {
+    if (presetKey === 'fast_fallback') {
+      setComboForm((prev) => ({
+        ...prev,
+        name: prev.name || 'FAST_FALLBACK_CUSTOM',
+        strategy: 'fallback',
+        models: ['orion::orion', 'agnes-2.5-flash'],
+        judge: 'orion::orion',
+        description: 'Failover cepat: Orion utama, cadangan otomatis ke Agnes jika kuota habis atau error.',
+      }));
+      if (showToast) showToast('Preset Fallback Cepat diterapkan ke formulir.');
+    } else if (presetKey === 'load_balancer') {
+      setComboForm((prev) => ({
+        ...prev,
+        name: prev.name || 'BALANCED_ROUTER_CUSTOM',
+        strategy: 'round_robin',
+        models: ['orion::orion', 'agnes-2.5-flash', 'nvidia/nemotron-3-ultra-550b-a55b:free'],
+        judge: 'orion::orion',
+        description: 'Round robin membagi rata beban request bergantian antar model.',
+      }));
+      if (showToast) showToast('Preset Load Balancer diterapkan ke formulir.');
+    } else if (presetKey === 'multi_fusion') {
+      setComboForm((prev) => ({
+        ...prev,
+        name: prev.name || 'TRIO_FUSION_CUSTOM',
+        strategy: 'fusion',
+        models: ['orion::orion', 'agnes-2.5-flash', 'nvidia/nemotron-3-ultra-550b-a55b:free'],
+        judge: 'orion::orion',
+        description: 'Kirim prompt serentak ke 3 model dan disatukan analisanya oleh model juri.',
+      }));
+      if (showToast) showToast('Preset Multi-AI Fusion diterapkan ke formulir.');
+    }
   };
 
   const modelsUsedCount = Math.max(1, modelsList.filter((m) => (modelStats[m.id] || 0) > 0).length);
@@ -934,6 +1031,16 @@ export default function ModelsView({
                         >
                           <Copy size={13} />
                           <span>Salin</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          className="combo-action-btn"
+                          onClick={() => handleDuplicateCombo(combo)}
+                          title="Duplikasi konfigurasi combo ini sebagai custom combo baru"
+                        >
+                          <Plus size={13} />
+                          <span>Duplikasi</span>
                         </button>
 
                         <button
@@ -1436,12 +1543,15 @@ export default function ModelsView({
 
             <form onSubmit={handleSaveCombo} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
               <div className="modal-body custom-scrollbar" style={{ overflowY: 'auto', flex: 1, minHeight: 0, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                {/* Field 1: Name */}
+                {/* Field 1: Name & Presets */}
                 <div className="combo-form-field">
-                  <label className="combo-form-label">
-                    <span>NAMA COMBO</span>
-                    <span className="combo-form-required">*</span>
-                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <label className="combo-form-label" style={{ margin: 0 }}>
+                      <span>NAMA COMBO</span>
+                      <span className="combo-form-required">*</span>
+                    </label>
+                    <span className="combo-form-help">Pilih preset cepat:</span>
+                  </div>
                   <input
                     type="text"
                     required
@@ -1450,9 +1560,33 @@ export default function ModelsView({
                     placeholder="e.g. ORION_FALLBACK_ROUTER"
                     className="combo-form-input"
                   />
-                  <span className="combo-form-help">
-                    Nama unik combo model (otomatis kapital & tanpa spasi).
-                  </span>
+                  {/* Quick Preset Buttons */}
+                  <div className="combo-presets-row">
+                    <button
+                      type="button"
+                      className="combo-preset-chip"
+                      onClick={() => handleApplyPreset('fast_fallback')}
+                      title="Setel preset Fallback Cepat (Orion + Agnes)"
+                    >
+                      ⚡ Preset Fallback
+                    </button>
+                    <button
+                      type="button"
+                      className="combo-preset-chip"
+                      onClick={() => handleApplyPreset('load_balancer')}
+                      title="Setel preset Round Robin (3 Provider Balancer)"
+                    >
+                      ⚖️ Preset Round Robin
+                    </button>
+                    <button
+                      type="button"
+                      className="combo-preset-chip"
+                      onClick={() => handleApplyPreset('multi_fusion')}
+                      title="Setel preset Fusion Panel (3 Model + Juri)"
+                    >
+                      🔮 Preset Fusion
+                    </button>
+                  </div>
                 </div>
 
                 {/* Field 2: Strategy */}
@@ -1498,11 +1632,11 @@ export default function ModelsView({
                   </div>
                 </div>
 
-                {/* Field 3: Multi-select Models */}
+                {/* Field 3: Multi-select Models & Custom Model Input */}
                 <div className="combo-form-field">
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
                     <label className="combo-form-label" style={{ margin: 0 }}>
-                      MODEL PANEL ({comboForm.models.length} DIPILIH)
+                      MODEL PANEL ({comboForm.models.length} TERPILIH)
                       <span className="combo-form-required">*</span>
                     </label>
                     <div style={{ display: 'flex', gap: '0.4rem' }}>
@@ -1511,26 +1645,132 @@ export default function ModelsView({
                         className="combo-mini-btn"
                         onClick={() => setComboForm({ ...comboForm, models: modelsList.map((m) => m.id) })}
                       >
-                        Pilih Semua
+                        Pilih Semua Bawaan
                       </button>
                       <button
                         type="button"
                         className="combo-mini-btn"
                         onClick={() => setComboForm({ ...comboForm, models: [] })}
                       >
-                        Hapus Semua
+                        Kosongkan
                       </button>
                     </div>
                   </div>
 
-                  {/* Search box for models */}
+                  {/* A. Custom Model Input Field */}
+                  <div className="combo-custom-add-box">
+                    <input
+                      type="text"
+                      value={customModelInput}
+                      onChange={(e) => setCustomModelInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddCustomModel();
+                        }
+                      }}
+                      placeholder="Ketik model kustom (misal: openai/gpt-4o, claude-3-5-sonnet, ollama/llama3)..."
+                      className="combo-custom-input"
+                    />
+                    <button
+                      type="button"
+                      className="combo-add-custom-btn"
+                      onClick={handleAddCustomModel}
+                      disabled={!customModelInput.trim()}
+                      title="Tambahkan model kustom ini ke panel combo"
+                    >
+                      <Plus size={13} />
+                      <span>+ Tambah Kustom</span>
+                    </button>
+                  </div>
+
+                  {/* B. Ordered Execution List (Active Panel) */}
+                  {comboForm.models.length > 0 ? (
+                    <div className="combo-selected-panel-list">
+                      <div className="combo-selected-panel-header">
+                        <span>Urutan Eksekusi Model ({comboForm.strategy.toUpperCase()})</span>
+                        <span className="combo-selected-panel-hint">Atur urutan prioritas dengan panah</span>
+                      </div>
+                      {comboForm.models.map((modelId, idx) => {
+                        const found = modelsList.find((m) => m.id === modelId || m.modelId === modelId);
+                        const isCustom = !found;
+                        const roleLabel =
+                          comboForm.strategy === 'fallback'
+                            ? idx === 0
+                              ? 'Model Utama'
+                              : `Cadangan #${idx}`
+                            : comboForm.strategy === 'round_robin'
+                            ? `Giliran #${idx + 1}`
+                            : `Panelist #${idx + 1}`;
+
+                        return (
+                          <div key={`${modelId}-${idx}`} className="combo-selected-item">
+                            <div className="combo-selected-left">
+                              <span className="combo-priority-badge">#{idx + 1}</span>
+                              <div className="combo-selected-info">
+                                <div className="combo-selected-name-row">
+                                  <span className="combo-selected-name">
+                                    {found?.displayName || found?.name || modelId}
+                                  </span>
+                                  <span className={`combo-origin-tag ${isCustom ? 'is-custom' : 'is-builtin'}`}>
+                                    {isCustom ? 'Kustom' : 'Bawaan'}
+                                  </span>
+                                </div>
+                                <span className="combo-selected-role">
+                                  {roleLabel} • <code className="combo-code-id">{modelId}</code>
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="combo-selected-actions">
+                              <button
+                                type="button"
+                                className="combo-order-btn"
+                                disabled={idx === 0}
+                                onClick={() => handleMoveModel(idx, -1)}
+                                title="Naikkan prioritas (geser ke atas)"
+                              >
+                                <ChevronUp size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                className="combo-order-btn"
+                                disabled={idx === comboForm.models.length - 1}
+                                onClick={() => handleMoveModel(idx, 1)}
+                                title="Turunkan prioritas (geser ke bawah)"
+                              >
+                                <ChevronDown size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                className="combo-remove-btn"
+                                onClick={() => handleRemoveModelFromCombo(modelId)}
+                                title="Hapus model dari combo"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="combo-empty-models-notice">
+                      Belum ada model dipilih. Tambahkan model kustom di atas atau centang model bawaan di bawah.
+                    </div>
+                  )}
+
+                  {/* C. Built-in Models Checklist with Search */}
+                  <div className="combo-builtin-section-header">
+                    <span className="combo-form-label" style={{ margin: 0 }}>MODEL BAWAAN TERSEDIA</span>
+                  </div>
                   <div className="combo-model-search-box">
                     <Search size={14} className="search-icon" />
                     <input
                       type="text"
                       value={comboModelSearch}
                       onChange={(e) => setComboModelSearch(e.target.value)}
-                      placeholder="Cari model dalam daftar..."
+                      placeholder="Cari dalam model bawaan..."
                       className="combo-search-input"
                     />
                   </div>
@@ -1567,7 +1807,7 @@ export default function ModelsView({
                                 {model.displayName || model.name}
                               </span>
                               <span className="combo-model-item-provider">
-                                {model.providerId || model.endpoint || 'Provider'}
+                                {model.providerId || model.endpoint || 'Provider'} • {model.id}
                               </span>
                             </div>
 
@@ -1591,14 +1831,28 @@ export default function ModelsView({
                       onChange={(e) => setComboForm({ ...comboForm, judge: e.target.value })}
                       className="combo-form-select"
                     >
-                      {modelsList.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.displayName || m.name} ({m.providerId || 'Official'})
-                        </option>
-                      ))}
+                      <optgroup label="Model dari Panel Terpilih">
+                        {comboForm.models.map((mId) => {
+                          const found = modelsList.find((m) => m.id === mId || m.modelId === mId);
+                          return (
+                            <option key={mId} value={mId}>
+                              {found?.displayName || found?.name || mId}
+                            </option>
+                          );
+                        })}
+                      </optgroup>
+                      <optgroup label="Model Bawaan Lainnya">
+                        {modelsList
+                          .filter((m) => !comboForm.models.includes(m.id))
+                          .map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.displayName || m.name} ({m.providerId || 'Official'})
+                            </option>
+                          ))}
+                      </optgroup>
                     </select>
                     <span className="combo-form-help">
-                      Model ini bertindak sebagai juri yang mengevaluasi draf dari semua model panel dan menyusun jawaban akhir terbaik.
+                      Model juri mengevaluasi jawaban dari semua panelis dan menyusun sintesis jawaban final terbaik.
                     </span>
                   </div>
                 )}
