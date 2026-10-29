@@ -1,12 +1,20 @@
 import React from 'react';
-import { ArrowUpCircle, X, ExternalLink } from 'lucide-react';
+import { ArrowUpCircle, X, Download, RefreshCw } from 'lucide-react';
 
 /**
  * UpdateNotificationToast
- * Floating bottom-right warning modal toast when GitHub has newer updates/commits.
- * Strictly designed without AI-slop (clean, subtle borders, high contrast, pure Vanilla CSS).
+ * Floating bottom-right notification card following /antislop-ui:
+ * 1. Actionable direct update trigger ("Perbarui Sekarang").
+ * 2. Matte surface, no glowing orbs or endless pulsing.
+ * 3. Restrained typography and WCAG AA contrast.
  */
-export default function UpdateNotificationToast({ updateInfo, onOpenUpdates, onDismiss }) {
+export default function UpdateNotificationToast({
+  updateInfo,
+  isUpdating,
+  onPerformUpdate,
+  onOpenUpdates,
+  onDismiss,
+}) {
   if (!updateInfo || !updateInfo.hasUpdate) return null;
 
   return (
@@ -25,22 +33,40 @@ export default function UpdateNotificationToast({ updateInfo, onOpenUpdates, onD
         <div className="update-toast-body">
           <div className="update-toast-headline-row">
             <h4 className="update-toast-title">Pembaruan Tersedia</h4>
-            <span className="update-toast-badge">Update</span>
+            <span className="update-toast-badge">v{updateInfo.latestVersion}</span>
           </div>
 
           <p className="update-toast-message">
-            Versi <code>{updateInfo.latestVersion}</code> tersedia di GitHub. Komputer Anda saat ini menggunakan <code>v{updateInfo.currentVersion}</code>.
+            Versi baru tersedia di repositori. Versi komputer saat ini: <code>v{updateInfo.currentVersion}</code>.
           </p>
 
           {/* Action buttons */}
           <div className="update-toast-actions">
             <button
               type="button"
-              onClick={onOpenUpdates}
-              className="btn-toast-view"
+              disabled={isUpdating}
+              onClick={onPerformUpdate}
+              className="btn-toast-primary"
             >
-              Lihat Pembaruan
-              <ExternalLink size={12} strokeWidth={2} />
+              {isUpdating ? (
+                <>
+                  <RefreshCw size={12} className="animate-spin" style={{ animation: 'orionSpin 1s linear infinite' }} />
+                  Memperbarui...
+                </>
+              ) : (
+                <>
+                  <Download size={13} strokeWidth={2.2} />
+                  Perbarui
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={onOpenUpdates}
+              className="btn-toast-secondary"
+            >
+              Lihat Detail
             </button>
 
             <button
@@ -48,7 +74,7 @@ export default function UpdateNotificationToast({ updateInfo, onOpenUpdates, onD
               onClick={onDismiss}
               className="btn-toast-dismiss"
             >
-              Nanti Saja
+              Nanti
             </button>
           </div>
         </div>

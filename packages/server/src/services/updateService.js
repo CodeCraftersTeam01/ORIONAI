@@ -195,3 +195,67 @@ export async function checkForUpdates(force = false) {
   lastCheckTime = now;
   return result;
 }
+
+/**
+ * Execute automated update: pull changes from repository and rebuild frontend
+ */
+export async function performUpdate() {
+  const rootDir = path.resolve(__dirname, '../../../../');
+  let currentBranch = 'feat/cli-package';
+  try {
+    currentBranch = execSync('git rev-parse --abbrev-ref HEAD', { cwd: rootDir, encoding: 'utf8' }).trim() || 'feat/cli-package';
+  } catch (err) {
+    logger.warn('Gagal mendeteksi git branch:', err.message);
+  }
+
+  const logs = [];
+  try {
+    logger.info(`Memulai auto-update: git pull origin ${currentBranch}...`, {}, 'SYSTEM', 'system');
+    const pullOutput = execSync(`git pull origin ${currentBranch}`, {
+      cwd: rootDir,
+      encoding: 'utf8',
+      timeout: 45000,
+    });
+    logs.push({ step: 'git_pull', status: 'success', detail: pullOutput.trim() });
+  } catch (err) {
+    logger.error('Gagal git pull saat auto-update:', err.message);
+    try {
+      const fallbackPull = execSync('git pull', {
+        cwd: rootDir,
+        encoding: 'utf8',
+        timeout: 45000,
+      });
+      logs.push({ step: 'git_pull', status: 'success', detail: fallbackPull.trim() });
+    } catch (fallbackErr) {
+      throw new Error(`Gagal mengunduh pembaruan dari repository: ${err.message || fallbackErr.message}`);
+    }
+  }
+
+  try {
+    logger.info('Membangun ulang bundle web antarmuka...', {}, 'SYSTEM', 'system');
+    const buildOutput = execSync('npm run build --prefix packages/web', {
+      cwd: rootDir,
+      encoding: 'utf8',
+      timeout: 60000,
+    });
+    logs.push({ step: 'web_build', status: 'success', detail: 'Bundle antarmuka web berhasil di-build ulang.' });
+  } catch (err) {
+    logger.warn('Peringatan saat build frontend:', err.message);
+    logs.push({ step: 'web_build', status: 'warning', detail: err.message });
+  }
+
+  // Invalidate update check cache
+  cachedUpdateInfo = null;
+  lastCheckTime = 0;
+
+  const newLocalInfo = getLocalVersionInfo();
+
+  return {
+    success: true,
+    message: 'Orion AI berhasil diperbarui ke versi terbaru.',
+    currentVersion: newLocalInfo.version,
+    currentCommit: newLocalInfo.commitHash,
+    logs,
+    updatedAt: new Date().toISOString(),
+  };
+}

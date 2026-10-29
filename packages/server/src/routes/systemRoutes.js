@@ -1,5 +1,5 @@
 import express from 'express';
-import { checkForUpdates, getLocalVersionInfo, OFFICIAL_CHANGELOG } from '../services/updateService.js';
+import { checkForUpdates, getLocalVersionInfo, performUpdate, OFFICIAL_CHANGELOG } from '../services/updateService.js';
 
 const router = express.Router();
 
@@ -16,6 +16,22 @@ router.get('/update-check', async (req, res) => {
     res.status(500).json({
       error: 'Gagal memeriksa pembaruan sistem',
       details: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/system/perform-update
+ * Triggers git pull and web build to update local deployment
+ */
+router.post('/perform-update', async (req, res) => {
+  try {
+    const result = await performUpdate();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Gagal memperbarui aplikasi'
     });
   }
 });

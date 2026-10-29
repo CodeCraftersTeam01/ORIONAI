@@ -11249,9 +11249,14 @@ svg[aria-roledescription="error"] {
   border: 1px solid rgba(16, 185, 129, 0.28);
 }
 
-.update-alert-box.is-warning {
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.3);
+.update-alert-box.is-updating {
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.28);
+}
+
+.update-alert-box.is-error {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.28);
 }
 
 .update-alert-icon {
@@ -11265,6 +11270,14 @@ svg[aria-roledescription="error"] {
 
 .update-alert-box.is-warning .update-alert-icon {
   color: #f59e0b;
+}
+
+.update-alert-box.is-updating .update-alert-icon {
+  color: #3b82f6;
+}
+
+.update-alert-box.is-error .update-alert-icon {
+  color: #ef4444;
 }
 
 .update-alert-content {
@@ -11292,6 +11305,14 @@ svg[aria-roledescription="error"] {
   color: #fbbf24;
 }
 
+.update-alert-box.is-updating .update-alert-title {
+  color: #60a5fa;
+}
+
+.update-alert-box.is-error .update-alert-title {
+  color: #f87171;
+}
+
 .update-alert-commit {
   font-family: var(--font-mono, monospace);
   font-size: 0.75rem;
@@ -11306,6 +11327,15 @@ svg[aria-roledescription="error"] {
   margin-top: 0.3rem;
 }
 
+.update-alert-desc code {
+  font-family: var(--font-mono, monospace);
+  padding: 0.1rem 0.35rem;
+  background: var(--bg-surface-hover, rgba(255, 255, 255, 0.06));
+  border-radius: 4px;
+  font-size: 0.78rem;
+  color: var(--text-primary);
+}
+
 .update-alert-timestamp {
   font-family: var(--font-mono, monospace);
   font-size: 0.74rem;
@@ -11313,61 +11343,60 @@ svg[aria-roledescription="error"] {
   margin-top: 0.4rem;
 }
 
-/* Terminal Snippet Box */
-.update-terminal-section {
-  margin-top: 0.9rem;
-}
-
-.update-terminal-label {
-  font-size: 0.74rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-tertiary);
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  margin-bottom: 0.45rem;
-}
-
-.update-terminal-bar {
+/* Action Button Row inside Alert Box */
+.update-action-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 0.75rem;
-  background: #0d0f12;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 7px;
-  padding: 0.55rem 0.85rem;
-  font-family: var(--font-mono, monospace);
-  font-size: 0.78rem;
-  color: #e2e8f0;
+  margin-top: 0.95rem;
+  flex-wrap: wrap;
 }
 
-.update-terminal-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.btn-copy-command {
+.btn-update-primary {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  font-size: 0.74rem;
-  font-weight: 500;
-  padding: 0.3rem 0.65rem;
-  border-radius: 5px;
-  background: rgba(255, 255, 255, 0.1);
-  color: #f1f5f9;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  gap: 0.45rem;
+  padding: 0.52rem 1.15rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: var(--text-primary);
+  color: var(--bg-app);
+  border: none;
   cursor: pointer;
-  flex-shrink: 0;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.btn-update-primary:hover:not(:disabled) {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.btn-update-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-update-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.95rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  text-decoration: none;
+  cursor: pointer;
   transition: all 0.15s ease;
 }
 
-.btn-copy-command:hover {
-  background: rgba(255, 255, 255, 0.18);
+.btn-update-secondary:hover {
+  background: var(--bg-surface-hover);
+  color: var(--text-primary);
+  border-color: var(--border-strong, #475569);
 }
 
 /* 2. Outside the Card: Changelog Section */
@@ -11601,23 +11630,49 @@ svg[aria-roledescription="error"] {
   margin-top: 0.75rem;
 }
 
-.btn-toast-view {
+.btn-toast-primary {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
   font-size: 0.75rem;
   font-weight: 600;
-  padding: 0.4rem 0.8rem;
+  padding: 0.42rem 0.85rem;
   border-radius: 6px;
   background: #f8fafc;
   color: #0f172a;
   border: none;
   cursor: pointer;
-  transition: opacity 0.15s ease;
+  transition: opacity 0.15s ease, transform 0.1s ease;
 }
 
-.btn-toast-view:hover {
-  opacity: 0.9;
+.btn-toast-primary:hover:not(:disabled) {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.btn-toast-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-toast-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-toast-secondary:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .btn-toast-dismiss {

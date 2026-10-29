@@ -639,7 +639,32 @@ export default function App() {
   // System Update Checker State
   const [updateInfo, setUpdateInfo] = useState(null);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateResult, setUpdateResult] = useState(null);
+  const [updateError, setUpdateError] = useState(null);
   const [isUpdateToastDismissed, setIsUpdateToastDismissed] = useState(false);
+
+  const handlePerformUpdate = async () => {
+    setIsUpdating(true);
+    setUpdateError(null);
+    setUpdateResult(null);
+    try {
+      const res = await fetch('/api/system/perform-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Gagal memperbarui aplikasi.');
+      }
+      setUpdateResult(data);
+      await handleCheckUpdates(true);
+    } catch (err) {
+      setUpdateError(err.message || 'Terjadi kesalahan saat memperbarui aplikasi.');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   const handleCheckUpdates = useCallback(async (force = false) => {
     setIsCheckingUpdate(true);
@@ -3042,7 +3067,11 @@ PANDUAN KOMUNIKASI LISAN (VOICE CALL):
             <UpdateCheckView
               updateInfo={updateInfo}
               isChecking={isCheckingUpdate}
+              isUpdating={isUpdating}
+              updateResult={updateResult}
+              updateError={updateError}
               onCheckUpdates={() => handleCheckUpdates(true)}
+              onPerformUpdate={handlePerformUpdate}
             />
           </div>
         ) : (
@@ -3501,6 +3530,11 @@ PANDUAN KOMUNIKASI LISAN (VOICE CALL):
       {updateInfo?.hasUpdate && !isUpdateToastDismissed && currentView !== 'updates' && (
         <UpdateNotificationToast
           updateInfo={updateInfo}
+          isUpdating={isUpdating}
+          onPerformUpdate={() => {
+            setCurrentView('updates');
+            handlePerformUpdate();
+          }}
           onOpenUpdates={() => {
             setIsUpdateToastDismissed(true);
             setCurrentView('updates');
