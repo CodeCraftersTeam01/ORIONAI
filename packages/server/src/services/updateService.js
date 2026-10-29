@@ -256,6 +256,9 @@ export async function checkForUpdates(force = false) {
   const cleanRemoteVersion = String(remoteVersion).replace(/^v+/i, '');
   const latestVersionDisplay = `v${cleanRemoteVersion}`;
 
+  // Generate dynamic changelog from GitHub commits or local git log
+  const dynamicChangelog = await getDynamicChangelog(currentBranch);
+
   const result = {
     appName: localInfo.name,
     currentVersion: localInfo.version,
@@ -269,12 +272,154 @@ export async function checkForUpdates(force = false) {
     hasUpdate,
     updateReason,
     checkedAt: new Date().toISOString(),
-    changelog: OFFICIAL_CHANGELOG
+    changelog: dynamicChangelog
   };
 
   cachedUpdateInfo = result;
   lastCheckTime = now;
   return result;
+}
+
+/**
+ * Dynamic changelog builder:
+ * Pulls recent commits from GitHub API (or local git log as fallback),
+ * classifies them by conventional commit prefix, and groups by date.
+ */
+export async function getDynamicChangelog(branch = null) {
+  const targetBranch = branch || getActiveBranch();
+  let rawCommits = [];
+
+  // 1. Fetch from GitHub commits API
+  try {
+    const commitUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/commits?sha=${encodeURIComponent(targetBranch)}&per_page=25`;
+    const res = await fetch(commitUrl, {
+      signal: AbortSignal.timeout(4000),
+      headers: {
+        'User-Agent': 'OrionAI-UpdateChecker',
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        rawCommits = data.map((c) => ({
+          sha: c.sha,
+          shortSha: c.sha ? c.sha.substring(0, 7) : '',
+          author: c.commit?.author?.name || c.author?.login || 'Developer',
+          date: c.commit?.author?.date || c.commit?.committer?.date || new Date().toISOString(),
+          message: c.commit?.message || '',
+          url: c.html_url || `https://github.com/${REPO_OWNER}/${REPO_NAME}/commit/${c.sha}`,
+        }));
+      }
+    }
+  } catch (err) {
+    logger.warn('GitHub API commit fetch warning:', err.message);
+  }
+
+  // 2. Fallback to local git log if GitHub API was empty or unreachable
+  if (rawCommits.length === 0) {
+    try {
+      const gitOut = execSync('git log -n 25 --format="%H|%h|%an|%aI|%s"', {
+        cwd: rootDir,
+        encoding: 'utf8',
+        stdio: ['pipe', 'pipe', 'ignore'],
+      }).trim();
+
+      if (gitOut) {
+        rawCommits = gitOut.split('\n').filter(Boolean).map((line) => {
+          const [sha, shortSha, author, date, ...rest] = line.split('|');
+          const message = rest.join('|');
+          return {
+            sha,
+            shortSha,
+            author,
+            date,
+            message,
+            url: `https://github.com/${REPO_OWNER}/${REPO_NAME}/commit/${sha}`,
+          };
+        });
+      }
+    } catch (gitErr) {
+      logger.warn('Local git log read warning:', gitErr.message);
+    }
+  }
+
+  if (rawCommits.length === 0) {
+    return OFFICIAL_CHANGELOG;
+  }
+
+  // Group commits by day (YYYY-MM-DD)
+  const groupsMap = new Map();
+
+  for (const c of rawCommits) {
+    const firstLine = (c.message || '').split('\n')[0].trim();
+    if (!firstLine || firstLine.startsWith('Merge pull request') || firstLine.startsWith('Merge branch')) {
+      continue;
+    }
+
+    let type = 'change';
+    if (/^feat(\(.*\))?:/i.test(firstLine)) {
+      type = 'feature';
+    } else if (/^fix(\(.*\))?:/i.test(firstLine)) {
+      type = 'fix';
+    } else if (/^style(\(.*\))?:/i.test(firstLine)) {
+      type = 'style';
+    } else if (/^docs(\(.*\))?:/i.test(firstLine)) {
+      type = 'docs';
+    } else if (/^refactor(\(.*\))?|^perf(\(.*\))?:/i.test(firstLine)) {
+      type = 'improvement';
+    }
+
+    const dayKey = c.date ? c.date.substring(0, 10) : 'Terbaru';
+
+    if (!groupsMap.has(dayKey)) {
+      groupsMap.set(dayKey, []);
+    }
+
+    groupsMap.get(dayKey).push({
+      type,
+      text: firstLine,
+      hash: c.shortSha,
+      author: c.author,
+      url: c.url,
+      time: c.date,
+    });
+  }
+
+  const dynamicChangelog = [];
+  const todayStr = new Date().toISOString().substring(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().substring(0, 10);
+
+  let groupIndex = 0;
+  for (const [dayKey, highlights] of groupsMap.entries()) {
+    if (highlights.length === 0) continue;
+
+    let dateLabel = dayKey;
+    let title = `Pembaruan Kode (${highlights.length} perubahan)`;
+
+    if (dayKey === todayStr) {
+      dateLabel = `${dayKey} (Hari Ini)`;
+      title = `Pembaruan Hari Ini (${targetBranch})`;
+    } else if (dayKey === yesterday) {
+      dateLabel = `${dayKey} (Kemarin)`;
+      title = `Pembaruan Kemarin (${targetBranch})`;
+    }
+
+    const versionTag = groupIndex === 0 ? `v1.0.0` : `v1.0.0-${dayKey.replace(/-/g, '')}`;
+
+    dynamicChangelog.push({
+      version: versionTag,
+      date: dateLabel,
+      title,
+      branch: targetBranch,
+      highlights,
+    });
+
+    groupIndex++;
+  }
+
+  return dynamicChangelog.length > 0 ? dynamicChangelog : OFFICIAL_CHANGELOG;
 }
 
 /**

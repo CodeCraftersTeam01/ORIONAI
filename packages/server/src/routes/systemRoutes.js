@@ -1,5 +1,11 @@
 import express from 'express';
-import { checkForUpdates, getLocalVersionInfo, performUpdate, OFFICIAL_CHANGELOG } from '../services/updateService.js';
+import {
+  checkForUpdates,
+  getLocalVersionInfo,
+  performUpdate,
+  getDynamicChangelog,
+  OFFICIAL_CHANGELOG,
+} from '../services/updateService.js';
 
 const router = express.Router();
 
@@ -54,10 +60,14 @@ router.get('/version', (req, res) => {
 /**
  * GET /api/system/changelog
  */
-router.get('/changelog', (req, res) => {
-  res.json({
-    changelog: OFFICIAL_CHANGELOG
-  });
+router.get('/changelog', async (req, res) => {
+  try {
+    const branch = req.query.branch;
+    const changelog = await getDynamicChangelog(branch);
+    res.json({ changelog });
+  } catch (error) {
+    res.json({ changelog: OFFICIAL_CHANGELOG });
+  }
 });
 
 export default router;

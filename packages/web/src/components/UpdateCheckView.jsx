@@ -11,7 +11,9 @@ import {
   Wrench,
   ShieldCheck,
   ExternalLink,
-  Download
+  Download,
+  Palette,
+  BookOpen
 } from 'lucide-react';
 
 /**
@@ -20,7 +22,7 @@ import {
  * 1. Actionable "Perbarui Sekarang" button with honest progress and success states (no terminal copy commands).
  * 2. Restrained monochrome palette matching Orion system tokens.
  * 3. Zero AI slop: no decorative emoji, no generic sparkles, no em dashes, no glowing pill badges.
- * 4. Changelog section placed cleanly outside and below the main card.
+ * 4. Dynamic GitHub changelog with live commit hashes, author badges, and branch detection.
  */
 export default function UpdateCheckView({
   updateInfo,
@@ -35,6 +37,7 @@ export default function UpdateCheckView({
   const currentVersion = updateResult?.currentVersion || updateInfo?.currentVersion || '1.0.0';
   const latestVersion = updateInfo?.latestVersion || `v${currentVersion}`;
   const currentCommit = updateResult?.currentCommit || updateInfo?.currentCommit;
+  const activeBranch = updateInfo?.activeBranch || 'feat/cli-package';
   const changelog = updateInfo?.changelog || [];
 
   const getTagBadge = (type) => {
@@ -60,8 +63,27 @@ export default function UpdateCheckView({
             Perbaikan
           </span>
         );
+      case 'style':
+        return (
+          <span className="changelog-type-pill style">
+            <Palette size={11} strokeWidth={2.2} />
+            Tampilan
+          </span>
+        );
+      case 'docs':
+        return (
+          <span className="changelog-type-pill docs">
+            <BookOpen size={11} strokeWidth={2.2} />
+            Dokumen
+          </span>
+        );
       default:
-        return null;
+        return (
+          <span className="changelog-type-pill change">
+            <GitCommit size={11} strokeWidth={2.2} />
+            Kode
+          </span>
+        );
     }
   };
 
@@ -250,7 +272,7 @@ export default function UpdateCheckView({
         </div>
       </div>
 
-      {/* 3. OUTSIDE THE CARD (BELOW): CHANGELOG SECTION */}
+      {/* 3. OUTSIDE THE CARD (BELOW): DYNAMIC CHANGELOG SECTION */}
       <div className="update-changelog-block">
         <div className="update-changelog-header-row">
           <div>
@@ -258,24 +280,40 @@ export default function UpdateCheckView({
               Catatan Rilis & Riwayat Perubahan
             </h2>
             <p className="update-changelog-section-desc">
-              Daftar pembaruan fitur, perbaikan bug, dan optimasi performa Orion AI.
+              Riwayat commit dan perubahan kode dinamis langsung dari repositori GitHub branch <code>{activeBranch}</code>.
             </p>
           </div>
-          <a
-            href="https://github.com/CodeCraftersTeam01/ORIONAI"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="update-changelog-repo-link"
-          >
-            Repositori GitHub
-            <ExternalLink size={12} />
-          </a>
+          <div className="update-changelog-header-actions">
+            <button
+              type="button"
+              onClick={() => onCheckUpdates && onCheckUpdates(true)}
+              disabled={isChecking}
+              className="changelog-refresh-btn"
+              title="Segarkan catatan rilis dari GitHub"
+            >
+              <RefreshCw
+                size={12}
+                className={isChecking ? 'animate-spin' : ''}
+                style={isChecking ? { animation: 'orionSpin 1s linear infinite' } : {}}
+              />
+              <span>Segarkan</span>
+            </button>
+            <a
+              href={`https://github.com/CodeCraftersTeam01/ORIONAI/commits/${activeBranch}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="update-changelog-repo-link"
+            >
+              Repositori GitHub
+              <ExternalLink size={12} />
+            </a>
+          </div>
         </div>
 
-        {/* Changelog Entries List */}
+        {/* Dynamic Changelog Entries List */}
         <div className="changelog-card-list">
-          {changelog.map((entry) => (
-            <div key={entry.version} className="changelog-card-item">
+          {changelog.map((entry, idx) => (
+            <div key={entry.version || idx} className="changelog-card-item">
               {/* Header: Version & Date */}
               <div className="changelog-card-header">
                 <div className="changelog-version-group">
@@ -288,12 +326,32 @@ export default function UpdateCheckView({
                 </span>
               </div>
 
-              {/* Highlights List */}
+              {/* Highlights / Commit List */}
               <ul className="changelog-entry-list">
-                {entry.highlights.map((item, idx) => (
-                  <li key={idx} className="changelog-entry-item">
-                    {getTagBadge(item.type)}
-                    <span>{item.text}</span>
+                {entry.highlights.map((item, hIdx) => (
+                  <li key={hIdx} className="changelog-entry-item">
+                    <div className="changelog-entry-meta">
+                      {getTagBadge(item.type)}
+                      {item.hash && (
+                        <a
+                          href={item.url || `https://github.com/CodeCraftersTeam01/ORIONAI/commit/${item.hash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="changelog-hash-link"
+                          title="Buka commit ini di GitHub"
+                        >
+                          #{item.hash}
+                        </a>
+                      )}
+                    </div>
+                    <div className="changelog-entry-content">
+                      <span className="changelog-entry-text">{item.text}</span>
+                      {item.author && (
+                        <span className="changelog-author-tag">
+                          oleh {item.author}
+                        </span>
+                      )}
+                    </div>
                   </li>
                 ))}
               </ul>
