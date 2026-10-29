@@ -10326,6 +10326,9 @@ svg[aria-roledescription="error"] {
 /* ========================================================
    9ROUTER-INSPIRED COMBOS SECTION & MODALS
 ======================================================== */
+/* ==========================================================================
+   COMBOS & ROUTER SECTION (Refined antislop-ui style)
+   ========================================================================== */
 .models-combos-section {
   margin-top: 1.5rem;
   margin-bottom: 2.25rem;
@@ -10348,11 +10351,11 @@ svg[aria-roledescription="error"] {
 }
 
 .combos-main-icon {
-  color: #ea580c;
+  color: var(--accent-primary, #6366f1);
 }
 
 .combos-title {
-  font-size: 1.35rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
@@ -10361,57 +10364,59 @@ svg[aria-roledescription="error"] {
 
 .combos-subtitle {
   font-size: 0.82rem;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   margin: 0.25rem 0 0;
+  line-height: 1.45;
 }
 
 .combos-create-btn {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  padding: 0.55rem 1.15rem;
-  background: #ea580c;
+  padding: 0.5rem 1rem;
+  background: var(--accent-primary, #6366f1);
   color: #ffffff;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 2px 8px rgba(234, 88, 12, 0.25);
+  transition: all 0.18s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
 }
 
 .combos-create-btn:hover {
-  background: #c2410c;
+  background: var(--accent-hover, #4f46e5);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.35);
+  box-shadow: 0 3px 10px rgba(99, 102, 241, 0.25);
 }
 
 .combos-explainer-box {
-  background: rgba(255, 255, 255, 0.015);
-  border: 1px dashed var(--border-subtle);
-  border-radius: 12px;
-  padding: 1.15rem 1.35rem;
+  background: var(--bg-secondary, #14161a);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
   font-size: 0.82rem;
   color: var(--text-secondary);
   line-height: 1.55;
 }
 
 [data-theme='dark'] .combos-explainer-box {
-  background: rgba(255, 255, 255, 0.02);
-  border-color: #2b2b2e;
+  background: #14161a;
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .combos-explainer-intro {
   margin: 0 0 0.65rem;
   color: var(--text-primary);
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 0.84rem;
 }
 
 .combos-strategies-guide {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.45rem;
 }
 
 .combos-strategy-item {
@@ -10422,18 +10427,19 @@ svg[aria-roledescription="error"] {
 }
 
 .strategy-strong {
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
-  min-width: 95px;
+  min-width: 105px;
   flex-shrink: 0;
 }
 
 .strategy-sep {
-  color: var(--text-muted);
+  display: none;
 }
 
 .strategy-desc {
-  color: var(--text-muted);
+  color: var(--text-secondary);
+  line-height: 1.45;
 }
 
 .combos-select-bar {
@@ -10448,15 +10454,15 @@ svg[aria-roledescription="error"] {
   align-items: center;
   gap: 0.5rem;
   font-size: 0.8rem;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   cursor: pointer;
   user-select: none;
 }
 
 .combos-checkbox {
-  accent-color: #ea580c;
-  width: 16px;
-  height: 16px;
+  accent-color: var(--accent-primary, #6366f1);
+  width: 15px;
+  height: 15px;
   cursor: pointer;
   border-radius: 4px;
 }
@@ -10469,7 +10475,7 @@ svg[aria-roledescription="error"] {
 
 .combos-selected-count {
   font-size: 0.78rem;
-  color: #ea580c;
+  color: var(--accent-primary, #6366f1);
   font-weight: 600;
 }
 
@@ -10498,26 +10504,26 @@ svg[aria-roledescription="error"] {
 }
 
 .combo-item-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
+  background: var(--bg-card, #14161a);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
   border-radius: 12px;
-  padding: 1.15rem 1.45rem;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 1.15rem 1.35rem;
+  transition: all 0.18s ease;
   position: relative;
 }
 
 [data-theme='dark'] .combo-item-card {
-  background: #151516;
-  border-color: #27272a;
+  background: #14161a;
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .combo-item-card:hover {
-  border-color: #3f3f46;
+  border-color: var(--border-hover, rgba(255, 255, 255, 0.18));
 }
 
 .combo-item-card.is-active-combo {
-  border-color: #ea580c;
-  box-shadow: 0 0 0 1px #ea580c, 0 4px 16px rgba(234, 88, 12, 0.12);
+  border-color: rgba(99, 102, 241, 0.45);
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.25), 0 4px 16px rgba(0, 0, 0, 0.25);
 }
 
 .combo-card-main-row {
@@ -10537,15 +10543,15 @@ svg[aria-roledescription="error"] {
 }
 
 .combo-card-icon-box {
-  width: 38px;
-  height: 38px;
-  border-radius: 9px;
-  background: rgba(234, 88, 12, 0.1);
-  border: 1px solid rgba(234, 88, 12, 0.2);
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #ea580c;
+  color: var(--accent-primary, #6366f1);
   flex-shrink: 0;
 }
 
@@ -10563,11 +10569,10 @@ svg[aria-roledescription="error"] {
 }
 
 .combo-name {
-  font-family: var(--font-mono);
-  font-size: 0.96rem;
-  font-weight: 700;
+  font-size: 0.95rem;
+  font-weight: 600;
   color: var(--text-primary);
-  letter-spacing: 0.03em;
+  letter-spacing: -0.01em;
 }
 
 .combo-active-pill {
@@ -10575,10 +10580,10 @@ svg[aria-roledescription="error"] {
   align-items: center;
   gap: 0.25rem;
   font-size: 0.68rem;
-  font-weight: 700;
-  background: rgba(34, 197, 94, 0.12);
-  color: #22c55e;
-  border: 1px solid rgba(34, 197, 94, 0.25);
+  font-weight: 600;
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.25);
   border-radius: 9999px;
   padding: 1px 7px;
 }
@@ -10594,28 +10599,37 @@ svg[aria-roledescription="error"] {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  font-size: 0.73rem;
-  font-family: var(--font-mono);
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  font-size: 0.74rem;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
   padding: 2px 7px;
-  border-radius: 6px;
+  border-radius: 5px;
   color: var(--text-secondary);
 }
 
 [data-theme='dark'] .combo-model-chip {
-  background: #1e1e21;
-  border-color: #333338;
+  background: rgba(255, 255, 255, 0.035);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.combo-order-dot {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--accent-primary, #6366f1);
+  font-size: 0.62rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .combo-more-chip {
-  color: var(--text-muted);
-  font-style: italic;
-}
-
-.combo-chip-icon {
-  color: #ea580c;
-  opacity: 0.85;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  font-style: normal;
 }
 
 .combo-judge-row {
@@ -10627,10 +10641,9 @@ svg[aria-roledescription="error"] {
 
 .combo-judge-label {
   font-size: 0.72rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  font-family: var(--font-mono);
-  font-weight: 600;
+  color: var(--text-secondary);
+  opacity: 0.8;
+  font-weight: 500;
 }
 
 .combo-judge-chip {
@@ -10638,18 +10651,19 @@ svg[aria-roledescription="error"] {
   align-items: center;
   gap: 0.35rem;
   font-size: 0.73rem;
-  font-family: var(--font-mono);
-  background: rgba(234, 88, 12, 0.08);
-  border: 1px dashed rgba(234, 88, 12, 0.35);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.22);
   padding: 2px 8px;
-  border-radius: 6px;
-  color: #ea580c;
+  border-radius: 5px;
+  color: var(--accent-primary, #6366f1);
 }
 
 .combo-card-right {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.85rem;
+  flex-wrap: wrap;
 }
 
 .combo-strategy-select-wrap {
@@ -10660,36 +10674,37 @@ svg[aria-roledescription="error"] {
 
 .combo-strategy-select {
   appearance: none;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  background: var(--bg-secondary, #14161a);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
   color: var(--text-primary);
   font-size: 0.78rem;
   font-weight: 500;
-  border-radius: 8px;
-  padding: 0.45rem 2rem 0.45rem 0.85rem;
+  border-radius: 7px;
+  padding: 0.42rem 2rem 0.42rem 0.8rem;
   cursor: pointer;
   transition: all 0.15s;
   outline: none;
 }
 
 [data-theme='dark'] .combo-strategy-select {
-  background: #1c1c1f;
-  border-color: #333338;
+  background: #18191e;
+  border-color: rgba(255, 255, 255, 0.09);
 }
 
 .combo-strategy-select:hover {
-  border-color: var(--border-default);
+  border-color: var(--border-hover, rgba(255, 255, 255, 0.2));
 }
 
 .combo-strategy-select:focus {
-  border-color: #ea580c;
+  border-color: var(--accent-primary, #6366f1);
 }
 
 .combo-select-arrow {
   position: absolute;
   right: 0.65rem;
   pointer-events: none;
-  color: var(--text-muted);
+  color: var(--text-secondary);
+  opacity: 0.7;
 }
 
 .combo-card-actions {
@@ -10702,11 +10717,11 @@ svg[aria-roledescription="error"] {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  background: transparent;
-  border: 1px solid var(--border-subtle);
+  background: var(--bg-secondary, #14161a);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
   color: var(--text-secondary);
   border-radius: 6px;
-  padding: 0.4rem 0.65rem;
+  padding: 0.38rem 0.65rem;
   font-size: 0.74rem;
   font-weight: 500;
   cursor: pointer;
@@ -10714,15 +10729,15 @@ svg[aria-roledescription="error"] {
 }
 
 .combo-action-btn:hover {
-  background: var(--bg-surface);
+  background: var(--bg-hover, rgba(255, 255, 255, 0.05));
   color: var(--text-primary);
-  border-color: var(--border-default);
+  border-color: var(--border-hover, rgba(255, 255, 255, 0.2));
 }
 
 .combo-action-btn.is-active-btn {
-  background: rgba(34, 197, 94, 0.1);
-  color: #22c55e;
-  border-color: rgba(34, 197, 94, 0.3);
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.3);
 }
 
 .combo-action-btn.btn-delete:hover {
@@ -10734,10 +10749,10 @@ svg[aria-roledescription="error"] {
 .combos-empty-state {
   text-align: center;
   padding: 3rem 1.5rem;
-  background: rgba(255, 255, 255, 0.015);
-  border: 1px dashed var(--border-subtle);
+  background: var(--bg-secondary, #14161a);
+  border: 1px dashed var(--border-color, rgba(255, 255, 255, 0.08));
   border-radius: 12px;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -10755,11 +10770,10 @@ svg[aria-roledescription="error"] {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  font-family: var(--font-mono);
   font-size: 0.74rem;
-  font-weight: 700;
-  color: var(--text-muted);
-  letter-spacing: 0.05em;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.03em;
 }
 
 .combo-form-required {
@@ -10769,8 +10783,8 @@ svg[aria-roledescription="error"] {
 .combo-form-input,
 .combo-form-select,
 .combo-form-textarea {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  background: var(--bg-secondary, #14161a);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
   border-radius: 8px;
   padding: 0.55rem 0.75rem;
   color: var(--text-primary);
@@ -10784,20 +10798,21 @@ svg[aria-roledescription="error"] {
 [data-theme='dark'] .combo-form-input,
 [data-theme='dark'] .combo-form-select,
 [data-theme='dark'] .combo-form-textarea {
-  background: #1c1c1f;
-  border-color: #333338;
+  background: #18191e;
+  border-color: rgba(255, 255, 255, 0.09);
 }
 
 .combo-form-input:focus,
 .combo-form-select:focus,
 .combo-form-textarea:focus {
-  border-color: #ea580c;
-  box-shadow: 0 0 0 2px rgba(234, 88, 12, 0.15);
+  border-color: var(--accent-primary, #6366f1);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
 }
 
 .combo-form-help {
   font-size: 0.73rem;
-  color: var(--text-muted);
+  color: var(--text-secondary);
+  opacity: 0.75;
   line-height: 1.4;
 }
 
@@ -10808,8 +10823,8 @@ svg[aria-roledescription="error"] {
 }
 
 .combo-strategy-card {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  background: var(--bg-secondary, #14161a);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
   border-radius: 8px;
   padding: 0.75rem;
   cursor: pointer;
@@ -10820,13 +10835,13 @@ svg[aria-roledescription="error"] {
 }
 
 [data-theme='dark'] .combo-strategy-card {
-  background: #1c1c1f;
-  border-color: #333338;
+  background: #18191e;
+  border-color: rgba(255, 255, 255, 0.09);
 }
 
 .combo-strategy-card.is-selected {
-  border-color: #ea580c;
-  background: rgba(234, 88, 12, 0.06);
+  border-color: var(--accent-primary, #6366f1);
+  background: rgba(99, 102, 241, 0.08);
 }
 
 .strategy-card-header {
@@ -10837,17 +10852,17 @@ svg[aria-roledescription="error"] {
 
 .strategy-card-title {
   font-size: 0.84rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
 .strategy-check {
-  color: #ea580c;
+  color: var(--accent-primary, #6366f1);
 }
 
 .strategy-card-desc {
   font-size: 0.72rem;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   line-height: 1.35;
 }
 

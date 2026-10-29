@@ -731,15 +731,17 @@ export default function ModelsView({
           </div>
         </div>
 
-        {/* ================= COMBOS SECTION (9Router Proxy Style) ================= */}
+        {/* ================= COMBOS SECTION ================= */}
         <div className="models-combos-section" id="models-combos-section">
           <div className="combos-section-header">
             <div className="combos-header-left">
               <div className="combos-title-wrap">
-                <GitFork size={20} className="combos-main-icon" />
-                <h2 className="combos-title">Combos</h2>
+                <Layers size={19} className="combos-main-icon" />
+                <h2 className="combos-title">Model Combo & Router</h2>
               </div>
-              <p className="combos-subtitle">Model combos with fallback & router</p>
+              <p className="combos-subtitle">
+                Kombinasi multi-model dengan sistem failover otomatis dan load balancing pintar.
+              </p>
             </div>
 
             <button
@@ -748,30 +750,33 @@ export default function ModelsView({
               onClick={handleOpenCreateCombo}
             >
               <Plus size={15} />
-              <span>Create Combo</span>
+              <span>Buat Combo</span>
             </button>
           </div>
 
           {/* Guidelines Explainer */}
           <div className="combos-explainer-box">
             <p className="combos-explainer-intro">
-              Group models under one name, then pick a strategy per combo:
+              Pilih strategi routing untuk mengatur alur kerja kombinasi model:
             </p>
             <div className="combos-strategies-guide">
               <div className="combos-strategy-item">
-                <span className="strategy-strong">Fallback</span>
-                <span className="strategy-sep">—</span>
-                <span className="strategy-desc">tries models in order (next on failure)</span>
+                <span className="strategy-strong">Fallback:</span>
+                <span className="strategy-desc">
+                  Mengeksekusi model cadangan secara berurutan bila model utama mengalami limit atau error.
+                </span>
               </div>
               <div className="combos-strategy-item">
-                <span className="strategy-strong">Round Robin</span>
-                <span className="strategy-sep">—</span>
-                <span className="strategy-desc">rotates models across requests to spread load</span>
+                <span className="strategy-strong">Round Robin:</span>
+                <span className="strategy-desc">
+                  Meratakan beban antrean permintaan secara bergantian ke seluruh model yang dipilih.
+                </span>
               </div>
               <div className="combos-strategy-item">
-                <span className="strategy-strong">Fusion</span>
-                <span className="strategy-sep">—</span>
-                <span className="strategy-desc">queries all models in parallel, then a judge synthesizes one answer. Best quality, but costs the most: every request bills all panel models + the judge (N+1 calls)</span>
+                <span className="strategy-strong">Fusion:</span>
+                <span className="strategy-desc">
+                  Menggabungkan hasil respon dari beberapa model panel secara paralel dan menyatukannya lewat model juri.
+                </span>
               </div>
             </div>
           </div>
@@ -785,7 +790,7 @@ export default function ModelsView({
                 onChange={handleToggleSelectAllCombos}
                 className="combos-checkbox"
               />
-              <span>Select all ({combos.length})</span>
+              <span>Pilih semua ({combos.length})</span>
             </label>
 
             {selectedComboIds.length > 0 && (
@@ -823,7 +828,7 @@ export default function ModelsView({
                         className="combos-checkbox"
                       />
                       <div className="combo-card-icon-box">
-                        <Layers size={18} className="combo-card-icon" />
+                        <Layers size={17} className="combo-card-icon" />
                       </div>
 
                       <div className="combo-card-info">
@@ -831,26 +836,26 @@ export default function ModelsView({
                           <span className="combo-name">{combo.name}</span>
                           {isCurrentMain && (
                             <span className="combo-active-pill">
-                              <Check size={11} />
-                              ACTIVE MODEL
+                              <Check size={11} strokeWidth={2.4} />
+                              Model Aktif
                             </span>
                           )}
                         </div>
 
                         {/* Model tags row */}
                         <div className="combo-models-chips-wrap">
-                          {(combo.models || []).slice(0, 4).map((mId) => {
+                          {(combo.models || []).slice(0, 4).map((mId, idx) => {
                             const cleanName = mId.includes('::') ? mId.split('::')[1] : mId;
                             return (
                               <span key={mId} className="combo-model-chip" title={mId}>
-                                <Zap size={11} className="combo-chip-icon" />
+                                <span className="combo-order-dot">{idx + 1}</span>
                                 <span>{cleanName}</span>
                               </span>
                             );
                           })}
                           {(combo.models || []).length > 4 && (
                             <span className="combo-model-chip combo-more-chip" title={(combo.models || []).slice(4).join(', ')}>
-                              +{(combo.models || []).length - 4} more
+                              +{(combo.models || []).length - 4} lainnya
                             </span>
                           )}
                         </div>
@@ -858,7 +863,7 @@ export default function ModelsView({
                         {/* Judge indicator if Fusion */}
                         {combo.strategy === 'fusion' && (
                           <div className="combo-judge-row">
-                            <span className="combo-judge-label">Judge</span>
+                            <span className="combo-judge-label">Juri Sintesis:</span>
                             <span className="combo-judge-chip" title={combo.judge || 'Default'}>
                               <Bot size={11} className="judge-chip-icon" />
                               <span>{combo.judge ? (combo.judge.includes('::') ? combo.judge.split('::')[1] : combo.judge) : 'orion'}</span>
@@ -876,9 +881,9 @@ export default function ModelsView({
                           onChange={(e) => handleQuickChangeStrategy(combo, e.target.value)}
                           className="combo-strategy-select"
                         >
-                          <option value="fallback">Fallback — try in order</option>
-                          <option value="round_robin">Round Robin — spread load</option>
-                          <option value="fusion">Fusion — panel + judge</option>
+                          <option value="fallback">Fallback (Urutan Failover)</option>
+                          <option value="round_robin">Round Robin (Bagi Beban)</option>
+                          <option value="fusion">Fusion (Panel + Juri)</option>
                         </select>
                         <ChevronDown size={13} className="combo-select-arrow" />
                       </div>
@@ -889,10 +894,10 @@ export default function ModelsView({
                           type="button"
                           className={`combo-action-btn ${isCurrentMain ? 'is-active-btn' : ''}`}
                           onClick={() => handleSelectComboAsMain(combo)}
-                          title={isCurrentMain ? 'Model ini sedang aktif' : 'Jadikan Model Utama'}
+                          title={isCurrentMain ? 'Model ini sedang digunakan' : 'Gunakan model combo ini'}
                         >
-                          <CheckCircle2 size={14} />
-                          <span>{isCurrentMain ? 'Active' : 'Use'}</span>
+                          <CheckCircle2 size={13} />
+                          <span>{isCurrentMain ? 'Aktif' : 'Gunakan'}</span>
                         </button>
 
                         <button
@@ -901,18 +906,18 @@ export default function ModelsView({
                           onClick={() => handleCopyCombo(combo)}
                           title="Salin identifier model"
                         >
-                          <Copy size={14} />
-                          <span>Copy</span>
+                          <Copy size={13} />
+                          <span>Salin</span>
                         </button>
 
                         <button
                           type="button"
                           className="combo-action-btn"
                           onClick={() => handleOpenEditCombo(combo)}
-                          title="Edit combo ini"
+                          title="Ubah konfigurasi combo"
                         >
-                          <Edit3 size={14} />
-                          <span>Edit</span>
+                          <Edit3 size={13} />
+                          <span>Ubah</span>
                         </button>
 
                         <button
@@ -921,8 +926,8 @@ export default function ModelsView({
                           onClick={() => handleDeleteCombo(combo.id, combo.name)}
                           title="Hapus combo ini"
                         >
-                          <Trash2 size={14} />
-                          <span>Delete</span>
+                          <Trash2 size={13} />
+                          <span>Hapus</span>
                         </button>
                       </div>
                     </div>
