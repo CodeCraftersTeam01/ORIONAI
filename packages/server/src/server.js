@@ -14,6 +14,9 @@ import workspaceRoutes from './routes/workspaceRoutes.js';
 import skillRoutes from './routes/skillRoutes.js';
 import comboRoutes from './routes/comboRoutes.js';
 import systemRoutes from './routes/systemRoutes.js';
+import mcpRoutes from './routes/mcpRoutes.js';
+import jobRoutes from './routes/jobRoutes.js';
+import cronRoutes from './routes/cronRoutes.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 import { logger } from './services/loggerService.js';
 
@@ -118,6 +121,10 @@ app.use('/api/tts', ttsRoutes);
 app.use('/api/skills', skillRoutes);
 app.use('/api/combos', comboRoutes);
 app.use('/api/system', systemRoutes);
+app.use('/api/mcp', mcpRoutes);
+app.use('/api/jobs', jobRoutes);
+app.use('/api/tasks', jobRoutes);
+app.use('/api/cron', cronRoutes);
 
 // SPA routing: any non-API GET request serves web index.html if dist exists
 if (hasDist) {

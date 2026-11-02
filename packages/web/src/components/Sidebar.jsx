@@ -15,6 +15,9 @@ import {
   LogOut,
   Boxes,
   ArrowUpCircle,
+  Server,
+  Workflow,
+  Clock,
 } from 'lucide-react';
 import OrionLogo from './OrionLogo';
 
@@ -126,6 +129,42 @@ export default function Sidebar({
               >
                 <Boxes size={14} className="nav-item-icon" />
                 <span className="nav-item-label">Skills Hub</span>
+              </button>
+
+              <button
+                type="button"
+                className={`sidebar-nav-item ${currentView === 'mcp' ? 'active' : ''}`}
+                onClick={() => {
+                  onNavigate?.('mcp');
+                  if (window.innerWidth < 768) onCloseMobile();
+                }}
+              >
+                <Server size={14} className="nav-item-icon" />
+                <span className="nav-item-label">MCP Server</span>
+              </button>
+
+              <button
+                type="button"
+                className={`sidebar-nav-item ${currentView === 'jobs' ? 'active' : ''}`}
+                onClick={() => {
+                  onNavigate?.('jobs');
+                  if (window.innerWidth < 768) onCloseMobile();
+                }}
+              >
+                <Workflow size={14} className="nav-item-icon" />
+                <span className="nav-item-label">Job & Task</span>
+              </button>
+
+              <button
+                type="button"
+                className={`sidebar-nav-item ${currentView === 'cron' ? 'active' : ''}`}
+                onClick={() => {
+                  onNavigate?.('cron');
+                  if (window.innerWidth < 768) onCloseMobile();
+                }}
+              >
+                <Clock size={14} className="nav-item-icon" />
+                <span className="nav-item-label">Cron Job AI</span>
               </button>
 
               <button

@@ -73,6 +73,9 @@ import CommandPaletteModal from './components/CommandPaletteModal';
 import LogsView from './components/LogsView';
 import ModelsView from './components/ModelsView';
 import SkillsView from './components/SkillsView';
+import McpView from './components/McpView';
+import JobsView from './components/JobsView';
+import CronJobsView from './components/CronJobsView';
 import UpdateCheckView from './components/UpdateCheckView';
 import UpdateNotificationToast from './components/UpdateNotificationToast';
 import ThinkingIndicator from './components/ThinkingIndicator';
@@ -3002,7 +3005,7 @@ PANDUAN KOMUNIKASI LISAN (VOICE CALL):
       {/* Main Area */}
       <main className={`chat-main ${isVoiceCalling ? 'is-voice-calling-active' : ''}`}>
         {/* Top Header: OpenCode Console header for non-chat views, simple header for chat/dashboard */}
-        {['models', 'providers', 'skills', 'logs', 'updates', 'settings'].includes(currentView) ? (
+        {['models', 'providers', 'skills', 'logs', 'updates', 'settings', 'jobs', 'mcp', 'cron'].includes(currentView) ? (
           <header className="opencode-console-header">
             <div className="opencode-header-left">
               <button
@@ -3208,6 +3211,12 @@ PANDUAN KOMUNIKASI LISAN (VOICE CALL):
           />
         ) : currentView === 'skills' ? (
           <SkillsView onClose={() => setCurrentView('dashboard')} showToast={showToast} />
+        ) : currentView === 'mcp' ? (
+          <McpView onClose={() => setCurrentView('dashboard')} showToast={showToast} />
+        ) : currentView === 'jobs' ? (
+          <JobsView onClose={() => setCurrentView('dashboard')} showToast={showToast} />
+        ) : currentView === 'cron' ? (
+          <CronJobsView onClose={() => setCurrentView('dashboard')} showToast={showToast} />
         ) : currentView === 'updates' ? (
           <div className="page-view-container animate-page-enter">
             <UpdateCheckView

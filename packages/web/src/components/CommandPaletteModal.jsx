@@ -11,6 +11,10 @@ import {
   X,
   ArrowRight,
   Sparkles,
+  Server,
+  Workflow,
+  Boxes,
+  Clock,
 } from 'lucide-react';
 
 export default function CommandPaletteModal({
@@ -88,6 +92,54 @@ export default function CommandPaletteModal({
       icon: <Zap size={14} />,
       action: () => {
         onNavigate('providers');
+        onClose();
+      },
+    });
+
+    list.push({
+      id: 'action-manage-skills',
+      category: 'Navigasi',
+      title: 'Skills Hub',
+      subtitle: 'Katalog keahlian eksternal agen open-source',
+      icon: <Boxes size={14} />,
+      action: () => {
+        onNavigate('skills');
+        onClose();
+      },
+    });
+
+    list.push({
+      id: 'action-manage-mcp',
+      category: 'Navigasi',
+      title: 'MCP Server Hub',
+      subtitle: 'Model Context Protocol: Filesystem, Git, SQLite, Brave, Web',
+      icon: <Server size={14} />,
+      action: () => {
+        onNavigate('mcp');
+        onClose();
+      },
+    });
+
+    list.push({
+      id: 'action-manage-jobs',
+      category: 'Navigasi',
+      title: 'Job & Task Automation',
+      subtitle: 'Tugas latar belakang, security audit, dan batch testing',
+      icon: <Workflow size={14} />,
+      action: () => {
+        onNavigate('jobs');
+        onClose();
+      },
+    });
+
+    list.push({
+      id: 'action-manage-cron',
+      category: 'Navigasi',
+      title: 'AI Cron Job Scheduler',
+      subtitle: 'Jadwalkan eksekusi agen otomatis berkala dengan ekspresi cron',
+      icon: <Clock size={14} />,
+      action: () => {
+        onNavigate('cron');
         onClose();
       },
     });
