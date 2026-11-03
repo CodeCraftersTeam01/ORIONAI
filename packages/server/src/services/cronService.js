@@ -199,6 +199,61 @@ const DEFAULT_CRON_JOBS = [
   },
 ];
 
+// Third-party & custom AI Cron Jobs (default: disabled / paused)
+const THIRD_PARTY_CRON_JOBS = [
+  {
+    id: 'cron-stripe-mrr',
+    name: 'Stripe Daily Revenue & Invoice Briefing',
+    expression: '0 8 * * *',
+    humanSchedule: 'Setiap hari pukul 08:00 WIB',
+    model: 'orion',
+    enabled: false,
+    status: 'paused',
+    isBuiltin: false,
+    allowedTools: ['read_file', 'fetch_url'],
+    prompt: 'Tarik laporan ringkasan transaksi Stripe 24 jam terakhir, hitung MRR, churn rate, dan transaksi sukses.',
+    lastRun: 'Belum pernah',
+    nextRun: calculateNextRun('0 8 * * *'),
+    totalRuns: 0,
+    lastDuration: '-',
+    history: [],
+  },
+  {
+    id: 'cron-uptime-probe',
+    name: 'External Webhook & Production Endpoint Uptime Probe',
+    expression: '*/15 * * * *',
+    humanSchedule: 'Setiap 15 menit',
+    model: 'orion',
+    enabled: false,
+    status: 'paused',
+    isBuiltin: false,
+    allowedTools: ['fetch_url', 'check_headers'],
+    prompt: 'Kirim ping HTTP HEAD ke endpoint API publik dan laporkan response code serta degradasi performa.',
+    lastRun: 'Belum pernah',
+    nextRun: calculateNextRun('*/15 * * * *'),
+    totalRuns: 0,
+    lastDuration: '-',
+    history: [],
+  },
+  {
+    id: 'cron-github-stale-prs',
+    name: 'GitHub Stale Issues & Pull Requests Auto-Reviewer',
+    expression: '0 10 * * 1',
+    humanSchedule: 'Setiap hari Senin pukul 10:00 WIB',
+    model: 'orion',
+    enabled: false,
+    status: 'paused',
+    isBuiltin: false,
+    allowedTools: ['git_log', 'git_status'],
+    prompt: 'Identifikasi Pull Request dan issues yang belum disentuh lebih dari 14 hari dan buat rekomendasi tindak lanjut.',
+    lastRun: 'Belum pernah',
+    nextRun: calculateNextRun('0 10 * * 1'),
+    totalRuns: 0,
+    lastDuration: '-',
+    history: [],
+  },
+];
+
 class CronService {
   /** @type {NodeJS.Timeout | null} */
   #timer = null;
@@ -217,7 +272,40 @@ class CronService {
 
   #initStorage() {
     if (!fs.existsSync(CRON_FILE)) {
-      this.#writeCronJobs(DEFAULT_CRON_JOBS);
+      this.#writeCronJobs([
+        ...DEFAULT_CRON_JOBS.map((c) => ({ ...c, isBuiltin: true })),
+        ...THIRD_PARTY_CRON_JOBS,
+      ]);
+    } else {
+      const current = this.#readCronJobs();
+      const existingIds = new Set(current.map((c) => c.id));
+      let updated = false;
+
+      current.forEach((c) => {
+        if (DEFAULT_CRON_JOBS.some((d) => d.id === c.id)) {
+          c.isBuiltin = true;
+          updated = true;
+        }
+      });
+
+      THIRD_PARTY_CRON_JOBS.forEach((tp) => {
+        if (!existingIds.has(tp.id)) {
+          current.push(tp);
+          updated = true;
+        }
+      });
+
+      current.forEach((c) => {
+        if (!c.isBuiltin && c.enabled === true && !c.userManuallyEnabled) {
+          c.enabled = false;
+          c.status = 'paused';
+          updated = true;
+        }
+      });
+
+      if (updated) {
+        this.#writeCronJobs(current);
+      }
     }
   }
 
@@ -326,8 +414,10 @@ class CronService {
       expression,
       humanSchedule,
       model: data.model || 'orion',
-      enabled: true,
-      status: 'scheduled',
+      enabled: false,
+      status: 'paused',
+      isBuiltin: false,
+      userManuallyEnabled: false,
       allowedTools: Array.isArray(data.allowedTools) ? data.allowedTools : ['read_file', 'git_status'],
       prompt: data.prompt.trim(),
       lastRun: 'Belum pernah',
@@ -396,6 +486,7 @@ class CronService {
 
     target.enabled = !target.enabled;
     target.status = target.enabled ? 'scheduled' : 'paused';
+    target.userManuallyEnabled = target.enabled;
     if (target.enabled) {
       target.nextRun = calculateNextRun(target.expression);
     }

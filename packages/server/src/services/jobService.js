@@ -150,6 +150,70 @@ const DEFAULT_JOBS = [
   },
 ];
 
+// Third-party & custom background Jobs (default: disabled / non-aktif)
+const THIRD_PARTY_JOBS = [
+  {
+    id: 'job-sentry-triage',
+    title: 'Sentry Error Monitoring & Bug Auto-Triage',
+    description: 'Mengambil error crash terbaru dari Sentry, menganalisis stack trace, dan membuat draft patch perbaikan.',
+    category: 'Security',
+    status: 'ready',
+    schedule: 'Tiap 4 Jam',
+    cron: '0 */4 * * *',
+    model: 'orion',
+    progress: 0,
+    lastRun: 'Belum pernah',
+    lastDuration: '-',
+    nextRun: 'Menunggu trigger',
+    successRate: '100%',
+    totalRuns: 0,
+    enabled: false,
+    isBuiltin: false,
+    prompt: 'Query event unresolved di project Sentry dan kelompokkan berdasarkan root cause.',
+    logs: [],
+  },
+  {
+    id: 'job-postgres-s3-backup',
+    title: 'PostgreSQL Database Dump to Remote AWS S3',
+    description: 'Menjalankan pg_dump terkompresi dan mengunggah snapshot database ke S3 cold storage.',
+    category: 'Backup',
+    status: 'ready',
+    schedule: 'Setiap Hari @ 03:30 WIB',
+    cron: '30 3 * * *',
+    model: 'orion',
+    progress: 0,
+    lastRun: 'Belum pernah',
+    lastDuration: '-',
+    nextRun: 'Menunggu trigger',
+    successRate: '100%',
+    totalRuns: 0,
+    enabled: false,
+    isBuiltin: false,
+    prompt: 'Lakukan pg_dump skema dan data tabel, kompresi gzip, dan verifikasi checksum arsip.',
+    logs: [],
+  },
+  {
+    id: 'job-slack-ci-broadcast',
+    title: 'Slack CI/CD Pipeline Summary Dispatcher',
+    description: 'Mengirim notifikasi status build, ringkasan testing, dan metrik latensi ke channel dev-ops Slack.',
+    category: 'Maintenance',
+    status: 'ready',
+    schedule: 'Event Hook',
+    cron: 'on-event',
+    model: 'orion',
+    progress: 0,
+    lastRun: 'Belum pernah',
+    lastDuration: '-',
+    nextRun: 'Menunggu trigger',
+    successRate: '100%',
+    totalRuns: 0,
+    enabled: false,
+    isBuiltin: false,
+    prompt: 'Kompilasi ringkasan testing dan publish update ke webhook channel Slack.',
+    logs: [],
+  },
+];
+
 class JobService {
   constructor() {
     this.#ensureDataDir();
@@ -164,7 +228,40 @@ class JobService {
 
   #initStorage() {
     if (!fs.existsSync(JOBS_FILE)) {
-      this.#writeJobs(DEFAULT_JOBS);
+      this.#writeJobs([
+        ...DEFAULT_JOBS.map((j) => ({ ...j, isBuiltin: true })),
+        ...THIRD_PARTY_JOBS,
+      ]);
+    } else {
+      const current = this.#readJobs();
+      const existingIds = new Set(current.map((j) => j.id));
+      let updated = false;
+
+      current.forEach((j) => {
+        if (DEFAULT_JOBS.some((d) => d.id === j.id)) {
+          j.isBuiltin = true;
+          updated = true;
+        }
+      });
+
+      THIRD_PARTY_JOBS.forEach((tp) => {
+        if (!existingIds.has(tp.id)) {
+          current.push(tp);
+          updated = true;
+        }
+      });
+
+      current.forEach((j) => {
+        if (!j.isBuiltin && j.enabled === true && !j.userManuallyEnabled) {
+          j.enabled = false;
+          j.status = 'ready';
+          updated = true;
+        }
+      });
+
+      if (updated) {
+        this.#writeJobs(current);
+      }
     }
   }
 
@@ -231,7 +328,7 @@ class JobService {
       title: data.title.trim(),
       description: data.description || 'Automated background agent job.',
       category: data.category || 'Custom',
-      status: 'queued',
+      status: 'ready',
       schedule: data.schedule || 'Manual',
       cron: data.cron || 'manual',
       model: data.model || 'orion',
@@ -241,13 +338,15 @@ class JobService {
       nextRun: data.schedule === 'Manual' ? 'Sesuai permintaan' : 'Terjadwal',
       successRate: '100%',
       totalRuns: 0,
-      enabled: true,
+      enabled: false,
+      isBuiltin: false,
+      userManuallyEnabled: false,
       prompt: data.prompt || '',
       logs: [
         {
           timestamp: new Date().toLocaleTimeString('id-ID'),
           level: 'info',
-          text: `Job '${data.title}' berhasil dibuat dan siap dieksekusi.`,
+          text: `Job '${data.title}' berhasil dibuat (status: Nonaktif).`,
         },
       ],
     };
