@@ -207,8 +207,17 @@ export function cleanIndonesianText(text) {
     [/\byangterinstall\b/gi, 'yang terpasang'],
     [/\bterinstall\b/gi, 'terpasang'],
     [/\bversidependency\b/gi, 'versi dependensi'],
+    [/\bberbicarabahasa\b/gi, 'berbicara bahasa'],
+    [/\bbahasainggris\b/gi, 'bahasa Inggris'],
+    [/\bbahasaindonesia\b/gi, 'bahasa Indonesia'],
+    [/\bbahasalainnya\b/gi, 'bahasa lainnya'],
+    [/\bbisaberbicara\b/gi, 'bisa berbicara'],
+    [/\bdapatberbicara\b/gi, 'dapat berbicara'],
     [/\b(sanbox|sanbox)\b/gi, 'sandbox'],
   ];
+
+  res = res.replace(/\b(berbicara|bicara)(bahasa)\b/gi, '$1 $2');
+  res = res.replace(/\b(bahasa)(inggris|indonesia|lainnya|daerah|asing)\b/gi, '$1 $2');
 
   for (const [re, repl] of SQUISHED_MAP) {
     res = res.replace(re, repl);

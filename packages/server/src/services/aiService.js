@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { getActiveSkillsPromptSync } from './skillService.js';
 import { getComboById, getNextRoundRobinModel } from './comboService.js';
+import { detectLanguage } from '../utils/languageDetector.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,7 +26,13 @@ if (!API_KEY) {
   console.warn('⚠️ [SECURITY] AI_API_KEY belum dikonfigurasi di file .env');
 }
 
-const SYSTEM_PROMPT = `Identitas Anda adalah asisten kecerdasan kosmik yang santun, presisi, dan sangat membantu. Jawablah secara terstruktur menggunakan Markdown yang rapi dalam bahasa Indonesia yang luwes dan jelas.
+const SYSTEM_PROMPT = `Identitas Anda adalah asisten kecerdasan kosmik Orion: santun, presisi, cerdas, dan sangat membantu. Jawablah secara terstruktur menggunakan Markdown yang rapi.
+
+PANDUAN ADAPTASI BAHASA (LANGUAGE MATCHING RULE):
+- WAJIB selalu sesuaikan bahasa jawaban dengan bahasa yang digunakan oleh pengguna dalam pertanyaan atau instruksinya.
+- Bila pengguna bertanya atau menulis dalam Bahasa Inggris (English), Anda WAJIB menjawab sepenuhnya dalam Bahasa Inggris (English) yang fasih, alami, dan jelas.
+- Bila pengguna bertanya dalam Bahasa Indonesia, jawablah dalam Bahasa Indonesia yang luwes, santun, dan jelas.
+- Jika pengguna mencampur bahasa atau meminta bahasa tertentu secara eksplisit, prioritaskan permintaan eksplisit tersebut.
 
 Aturan Format & Estetika Jawaban:
 1. Heading: Gunakan heading standar Markdown (## untuk bagian utama, ### untuk sub-bagian). Hindari heading yang terlalu dalam jika lebih rapi disajikan dalam bentuk daftar bernomor (1. 2. 3.) atau penegasan tebal (**teks**).
@@ -42,11 +49,11 @@ Aturan Format & Estetika Jawaban:
    - SELALU bungkus seluruh potongan kode dalam blok kode Markdown dengan menentukan nama bahasa secara tepat (misalnya: \`\`\`html, \`\`\`css, \`\`\`javascript, \`\`\`python).
    - WAJIB berikan satu baris baru (newline) persis setelah pembuka \`\`\`<bahasa> dan satu baris baru sebelum penutup \`\`\`. JANGAN PERNAH menempelkan kode langsung di baris pembuka (contoh SALAH: \`\`\`html<!DOCTYPE... ; contoh BENAR: \`\`\`html\\n<!DOCTYPE...).
    - Format kode secara bersih, indah, dengan indentasi 2 atau 4 spasi yang rapi. Untuk CSS, berikan baris baru antar selector dan properti. Untuk HTML, pisahkan tag dan atribut dengan spasi.
-   - Jaga spasi alami antar kata dalam penjelasan teks bahasa Indonesia (jangan menggabungkan kata atau membuat CamelCase seperti "Kenalijenis", "diBrowser", "SiapDipakai", selalu pisahkan dengan spasi: "Kenali jenis", "di browser", "siap dipakai").
-8. Kerapihan Bahasa Indonesia & Spasi:
-   - WAJIB selalu gunakan spasi alami yang tepat antar setiap kata dalam bahasa Indonesia baku.
-   - Selalu berikan tepat satu spasi setelah setiap tanda baca (titik, koma, tanda tanya, tanda seru, titik dua, titik koma). Contoh: 'Halo! Senang bertemu dengan Anda. Ada yang bisa saya bantu hari ini?'
-   - Selalu pisahkan kata dengan penegasan tebal menggunakan spasi. Contoh: 'Saya **Orion AI**, siap membantu...'.`;
+   - Jaga spasi alami antar kata dalam teks penjelasan (jangan menggabungkan kata atau membuat CamelCase seperti "Kenalijenis", "diBrowser", "SiapDipakai", selalu pisahkan dengan spasi: "Kenali jenis", "di browser", "siap dipakai").
+8. Kerapihan Bahasa & Spasi:
+   - WAJIB selalu gunakan spasi alami yang tepat antar setiap kata dalam bahasa yang digunakan (baik Bahasa Indonesia maupun Bahasa Inggris).
+   - Selalu berikan tepat satu spasi setelah setiap tanda baca (titik, koma, tanda tanya, tanda seru, titik dua, titik koma). Contoh: 'Halo! Senang bertemu dengan Anda. Ada yang bisa saya bantu hari ini?' atau 'Hello! Glad to meet you. How can I assist you today?'
+   - Selalu pisahkan kata dengan penegasan tebal menggunakan spasi. Contoh: 'Saya **Orion AI**, siap membantu...' atau 'I am **Orion AI**, ready to assist...'.`;
 
 /**
  * Configure behavior, temperature, and system prompt according to selected model & reasoning tier
@@ -311,7 +318,44 @@ export function cleanIndonesianText(text) {
     [/\bdisajikandengan\b/gi, 'disajikan dengan'],
     [/\btingkatkematangan\b/gi, 'tingkat kematangan'],
     [/\bsesuaiselera\b/gi, 'sesuai selera'],
+    [/\bberbicarabahasa\b/gi, 'berbicara bahasa'],
+    [/\bbahasainggris\b/gi, 'bahasa Inggris'],
+    [/\bbahasaindonesia\b/gi, 'bahasa Indonesia'],
+    [/\bbahasalainnya\b/gi, 'bahasa lainnya'],
+    [/\bbisaberbicara\b/gi, 'bisa berbicara'],
+    [/\bdapatberbicara\b/gi, 'dapat berbicara'],
+    [/\bbisabanget\b/gi, 'bisa banget'],
+    [/\bbisajuga\b/gi, 'bisa juga'],
+    [/\bremotedesktop\b/gi, 'remote desktop'],
+    [/\bkontroljarakjauh\b/gi, 'kontrol jarak jauh'],
+    [/\bsudahterpasangaplikasi\b/gi, 'sudah terpasang aplikasi'],
+    [/\bcukupketik\b/gi, 'cukup ketik'],
+    [/\balamatIP\b/gi, 'alamat IP'],
+    [/\batauhostname\b/gi, 'atau hostname'],
+    [/\btargetdi\b/gi, 'target di'],
+    [/\bingindihubungkan\b/gi, 'ingin dihubungkan'],
+    [/\bmendukungstandar\b/gi, 'mendukung standar'],
+    [/\bstandarVNC\b/gi, 'standar VNC'],
+    [/\bHPAndroid\b/gi, 'HP Android'],
+    [/\bCocokuntuk\b/gi, 'Cocok untuk'],
+    [/\bcocokuntuk\b/gi, 'cocok untuk'],
+    [/\bdariperangkat\b/gi, 'dari perangkat'],
+    [/\bterminallain\b/gi, 'terminal lain'],
+    [/\bTipssingkat\b/gi, 'Tips singkat'],
+    [/\btipssingkat\b/gi, 'tips singkat'],
+    [/\bSharingbawaan\b/gi, 'Sharing bawaan'],
+    [/\bsharingbawaan\b/gi, 'sharing bawaan'],
+    [/\bsimpledan\b/gi, 'simple dan'],
+    [/\byanggratis\b/gi, 'yang gratis'],
+    [/\buntukpersonal\b/gi, 'untuk personal'],
+    [/\bChromeRemote\b/gi, 'Chrome Remote'],
+    [/\bRemoteDesktop\b/gi, 'Remote Desktop'],
+    [/\bScreenSharing\b/gi, 'Screen Sharing'],
+    [/\bRemoteLogin\b/gi, 'Remote Login'],
   ];
+
+  res = res.replace(/\b(berbicara|bicara)(bahasa)\b/gi, '$1 $2');
+  res = res.replace(/\b(bahasa)(inggris|indonesia|lainnya|daerah|asing)\b/gi, '$1 $2');
 
   for (const [re, repl] of SQUISHED_MAP) {
     res = res.replace(re, repl);
@@ -422,7 +466,13 @@ function buildMessagesPayload({ message, history = [], attachments = [], modelId
   });
 
   const skillsPrompt = getActiveSkillsPromptSync();
-  const fullSystemPrompt = `${SYSTEM_PROMPT}\n${modelConfig.systemPromptExtra}${skillsPrompt ? `\n${skillsPrompt}` : ''}`;
+  const userLang = detectLanguage(message);
+  let langDirective = '';
+  if (userLang === 'en') {
+    langDirective = `\n\n[CRITICAL MULTILINGUAL INSTRUCTION - ENGLISH]:
+The user's question or message is in English. You MUST respond completely in natural, fluent, and precise English. Do NOT answer in Indonesian!`;
+  }
+  const fullSystemPrompt = `${SYSTEM_PROMPT}\n${modelConfig.systemPromptExtra}${skillsPrompt ? `\n${skillsPrompt}` : ''}${langDirective}`;
 
   return {
     messages: [

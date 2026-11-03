@@ -14,6 +14,9 @@ import workspaceRoutes from './routes/workspaceRoutes.js';
 import skillRoutes from './routes/skillRoutes.js';
 import comboRoutes from './routes/comboRoutes.js';
 import systemRoutes from './routes/systemRoutes.js';
+import mcpRoutes from './routes/mcpRoutes.js';
+import jobRoutes from './routes/jobRoutes.js';
+import cronRoutes from './routes/cronRoutes.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 import { logger } from './services/loggerService.js';
 
@@ -118,6 +121,10 @@ app.use('/api/tts', ttsRoutes);
 app.use('/api/skills', skillRoutes);
 app.use('/api/combos', comboRoutes);
 app.use('/api/system', systemRoutes);
+app.use('/api/mcp', mcpRoutes);
+app.use('/api/jobs', jobRoutes);
+app.use('/api/tasks', jobRoutes);
+app.use('/api/cron', cronRoutes);
 
 // SPA routing: any non-API GET request serves web index.html if dist exists
 if (hasDist) {
@@ -172,6 +179,21 @@ export function startServer({ port = PORT, openBrowser = false } = {}) {
       logger.info(`Orion Agent service listening on ${url}`, { port: actualPort }, 'GATEWAY', 'gateway');
       logger.info(`Fullstack mode: Serving web UI from ${distPath}`, { hasDist }, 'AGENT', 'agent');
       logger.info('Gateway connection established. Ready for agent operations.', {}, 'GATEWAY', 'gateway');
+
+      // Also bind to fallback port 3000 if primary port is different (e.g. 5001) so both URLs work
+      if (actualPort !== 3000) {
+        try {
+          const fallbackServer = app.listen(3000, () => {
+            console.log(`🌌 Orion Agent juga aktif di http://localhost:3000`);
+            logger.info('Orion Agent dual-listener active on http://localhost:3000', { port: 3000 }, 'GATEWAY', 'gateway');
+          });
+          fallbackServer.on('error', () => {
+            // Port 3000 in use or unavailable, ignore gracefully
+          });
+        } catch {
+          // Ignore
+        }
+      }
 
       if (openBrowser) {
         console.log(`🌐 Membuka browser: ${url}`);

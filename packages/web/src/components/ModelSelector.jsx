@@ -11,6 +11,7 @@ export default function ModelSelector({
   selectedModel = null,
   reasoningTier = 'medium',
   customProviders = [],
+  combos = [],
   onSelectModel,
   onSelectReasoningTier,
   onOpenManageProviders,
@@ -21,7 +22,7 @@ export default function ModelSelector({
   const containerRef = useRef(null);
   const flyoutTimeoutRef = useRef(null);
 
-  // 1. Extract ONLY scanned & checked (enabled) models across all providers, deduplicating duplicate groups/models
+  // 1. Extract ONLY scanned & checked (enabled) models across all providers + configured Combos
   const providerGroups = useMemo(() => {
     const groupsMap = new Map();
     const seenModelKeys = new Set();
@@ -75,10 +76,53 @@ export default function ModelSelector({
       });
     });
 
-    return Array.from(groupsMap.values()).filter((g) => g.items.length > 0);
-  }, [customProviders]);
+    // Append Model Combos as a dedicated router group
+    if (Array.isArray(combos) && combos.length > 0) {
+      const comboItems = combos.map((c) => {
+        const strategy = c.strategy || 'fallback';
+        const strategyLabel =
+          strategy === 'fallback'
+            ? 'Fallback'
+            : strategy === 'round_robin'
+            ? 'Round Robin'
+            : 'Fusion';
 
-  // 2. Flattened list of strictly active models
+        const subtitle =
+          strategy === 'fallback'
+            ? `Fallback : Failover Otomatis (${c.models?.length || 0} model)`
+            : strategy === 'round_robin'
+            ? `Round Robin : Beban Bergiliran (${c.models?.length || 0} model)`
+            : `Fusion : Sintesis Panel Paralel (${c.models?.length || 0} model)`;
+
+        return {
+          id: `combo::${c.id}`,
+          name: c.name,
+          displayName: c.name,
+          subtitle,
+          providerName: 'Model Combo & Router',
+          providerId: 'combo',
+          modelId: c.id,
+          strategy,
+          strategyLabel,
+          isCombo: true,
+          comboDetails: c,
+          supportsReasoning: false,
+          hasModel: true,
+        };
+      });
+
+      groupsMap.set('Model Combo & Router', {
+        providerId: 'combo',
+        providerName: 'Model Combo & Router',
+        isComboGroup: true,
+        items: comboItems,
+      });
+    }
+
+    return Array.from(groupsMap.values()).filter((g) => g.items.length > 0);
+  }, [customProviders, combos]);
+
+  // 2. Flattened list of strictly active models (including combos)
   const allModels = useMemo(() => {
     return providerGroups.flatMap((g) => g.items);
   }, [providerGroups]);
@@ -88,11 +132,11 @@ export default function ModelSelector({
     if (allModels.length === 0) return null;
 
     if (selectedModel) {
-      // Direct ID match (e.g. 'custom-123::orion')
+      // Direct ID match (e.g. 'custom-123::orion' or 'combo::combo_orion_fallback')
       const exact = allModels.find((m) => m.id === selectedModel);
       if (exact) return exact;
 
-      // Model ID match (e.g. 'orion' or 'orion::orion' maps to active provider's 'orion')
+      // Model ID match (e.g. 'combo_orion_fallback' or 'orion' or 'orion::orion')
       const targetModId = selectedModel.includes('::') ? selectedModel.split('::')[1] : selectedModel;
       const modMatch = allModels.find((m) => m.modelId === targetModId);
       if (modMatch) return modMatch;
@@ -188,6 +232,9 @@ export default function ModelSelector({
           {currentModel ? (
             <>
               {currentModel.displayName || currentModel.name}
+              {currentModel.isCombo && (
+                <span className="gemini-pill-tier-tag"> • {currentModel.strategyLabel}</span>
+              )}
               {currentModel.supportsReasoning && (
                 <span className="gemini-pill-tier-tag"> • {currentTier.name}</span>
               )}
@@ -250,6 +297,11 @@ export default function ModelSelector({
                           <div className="gemini-item-text-col">
                             <span className="gemini-item-title">
                               {item.displayName}
+                              {item.isCombo && (
+                                <span className={`gemini-combo-pill ${item.strategy}`}>
+                                  {item.strategyLabel}
+                                </span>
+                              )}
                               {item.supportsReasoning && (
                                 <span className="gemini-thinking-badge">Thinking</span>
                               )}

@@ -11,15 +11,24 @@ function ensureConfigDir() {
   }
 }
 
-// Initial default combos inspired by 9Router
+// Initial default combos supporting Fallback, Round Robin, and Fusion
 const DEFAULT_COMBOS = [
   {
     id: 'combo_orion_fallback',
     name: 'ORION_FALLBACK',
-    strategy: 'fallback', // 'fallback' | 'round_robin' | 'fusion'
+    strategy: 'fallback',
     models: ['orion::orion', 'agnes-2.5-flash', 'nvidia/nemotron-3-ultra-550b-a55b:free'],
     judge: 'orion::orion',
-    description: 'Tries primary Orion first, automatically falling back to Agnes and Nemotron upon failure.',
+    description: 'Menggunakan satu penyedia utama, dan hanya beralih ke penyedia cadangan jika terjadi error atau batas kuota habis.',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'combo_round_robin',
+    name: 'ORION_ROUND_ROBIN',
+    strategy: 'round_robin',
+    models: ['orion::orion', 'agnes-2.5-flash'],
+    judge: 'orion::orion',
+    description: 'Membagi beban kerja secara bergiliran (Penyedia A, lalu B, lalu C, lalu kembali ke A).',
     createdAt: new Date().toISOString(),
   },
   {
@@ -28,7 +37,7 @@ const DEFAULT_COMBOS = [
     strategy: 'fusion',
     models: ['orion::orion', 'agnes-2.5-flash'],
     judge: 'orion::orion',
-    description: 'Queries Orion and Agnes in parallel, then synthesizes a unified, highly refined response.',
+    description: 'Mengirimkan satu permintaan ke beberapa model sekaligus dan menggabungkan atau membandingkan hasilnya.',
     createdAt: new Date().toISOString(),
   },
 ];
@@ -45,7 +54,19 @@ export function getCombos() {
   try {
     const raw = fs.readFileSync(combosConfigFile, 'utf8');
     const data = JSON.parse(raw);
-    return Array.isArray(data.combos) ? data.combos : DEFAULT_COMBOS;
+    let list = Array.isArray(data.combos) ? data.combos : DEFAULT_COMBOS;
+
+    // Ensure round_robin default exists if not present
+    const hasRoundRobin = list.some((c) => c.strategy === 'round_robin' || c.id === 'combo_round_robin');
+    if (!hasRoundRobin) {
+      const rrDefault = DEFAULT_COMBOS.find((c) => c.strategy === 'round_robin');
+      if (rrDefault) {
+        list.splice(1, 0, rrDefault);
+        saveCombos(list);
+      }
+    }
+
+    return list;
   } catch (err) {
     console.error('Error reading combos.json:', err.message);
     return DEFAULT_COMBOS;

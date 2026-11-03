@@ -37,6 +37,9 @@ import {
   Terminal,
   Eye,
   HelpCircle,
+  ChevronDown,
+  Search,
+  Clock,
 } from 'lucide-react';
 import AuroraBackground from './components/AuroraBackground';
 import OrionLogo from './components/OrionLogo';
@@ -66,9 +69,13 @@ import FormattedMessage from './components/FormattedMessage';
 import SettingsModal from './components/SettingsModal';
 import ManageProvidersModal from './components/ManageProvidersModal';
 import ProjectDirectoryModal from './components/ProjectDirectoryModal';
+import CommandPaletteModal from './components/CommandPaletteModal';
 import LogsView from './components/LogsView';
 import ModelsView from './components/ModelsView';
 import SkillsView from './components/SkillsView';
+import McpView from './components/McpView';
+import JobsView from './components/JobsView';
+import CronJobsView from './components/CronJobsView';
 import UpdateCheckView from './components/UpdateCheckView';
 import UpdateNotificationToast from './components/UpdateNotificationToast';
 import ThinkingIndicator from './components/ThinkingIndicator';
@@ -79,6 +86,7 @@ import { isReasoningSupported } from './utils/modelConfig';
 import VoiceCallingOverlay from './components/VoiceCallingOverlay';
 import { playCosmicHumSound, playCosmicEndCallSound } from './utils/audioEffects';
 import { cleanIndonesianText, formatVoiceForSpeechAndDisplay } from './utils/textCleaner';
+import { detectLanguage } from './utils/languageDetector';
 import './App.css';
 
 function formatUserFacingError(errMessage) {
@@ -440,8 +448,21 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSearchPaletteOpen, setIsSearchPaletteOpen] = useState(false);
   const [copiedMsgId, setCopiedMsgId] = useState(null);
   const [toast, setToast] = useState(null);
+
+  // Global Cmd+K / Ctrl+K keyboard shortcut to open Search Palette
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsSearchPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
 
   // Authentication State (Local Gateway Login & First-time Setup)
   const [authStatus, setAuthStatus] = useState({
@@ -462,8 +483,15 @@ export default function App() {
     localStorage.setItem('orion_agent_mode', String(newVal));
   };
 
-  const handleApproveTool = async (toolCallId) => {
+  // Session-level set of approved command binaries/tasks so subsequent related commands are auto-approved
+  const approvedCommandsRef = useRef(new Set());
+
+  const handleApproveTool = async (toolCallId, baseCmd = null) => {
     try {
+      if (baseCmd) {
+        approvedCommandsRef.current.add(baseCmd.toLowerCase());
+      }
+      approvedCommandsRef.current.add('approved_session');
       await fetch('/api/agent/approve', {
         method: 'POST',
         headers: {
@@ -500,6 +528,9 @@ export default function App() {
   const handleChooseOption = async (toolCallId, option, index) => {
     try {
       const selectedText = typeof option === 'string' ? option : option.label || option.value;
+      if (/^(ya|setuju|approve|lanjut|ok|yes)/i.test(selectedText)) {
+        approvedCommandsRef.current.add('approved_session');
+      }
       await fetch('/api/agent/approve', {
         method: 'POST',
         headers: {
@@ -616,7 +647,7 @@ export default function App() {
   });
   const [isManageProvidersOpen, setIsManageProvidersOpen] = useState(false);
 
-  // Selected AI Model (Dynamic format: providerId::modelId, e.g. orion::orion)
+  // Selected AI Model (Dynamic format: providerId::modelId, e.g. orion::orion or combo::id)
   const [selectedModel, setSelectedModel] = useState(() => {
     const saved = localStorage.getItem('orion_selected_model');
     if (saved === 'orion') return 'orion::orion';
@@ -626,6 +657,9 @@ export default function App() {
     return 'orion::orion';
   });
 
+  // Configured AI Model Combos & Router
+  const [combos, setCombos] = useState([]);
+
   const [reasoningTier, setReasoningTier] = useState(() => {
     const saved = localStorage.getItem('orion_reasoning_tier');
     if (saved === 'low' || saved === 'medium' || saved === 'high') return saved;
@@ -633,12 +667,73 @@ export default function App() {
   });
 
   // Current View: 'dashboard' (Clean Home with Logo & Greeting) | 'chat' (Full Chat Area) | 'updates'
-  const [currentView, setCurrentView] = useState('dashboard');
+  const [currentView, setCurrentView] = useState(() => {
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const viewParam = searchParams.get('view');
+      if (viewParam) return viewParam;
+      if (window.location.hash) {
+        return window.location.hash.replace('#', '');
+      }
+    } catch {
+      // ignore
+    }
+    return 'dashboard';
+  });
 
   // System Update Checker State
   const [updateInfo, setUpdateInfo] = useState(null);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateResult, setUpdateResult] = useState(null);
+  const [updateError, setUpdateError] = useState(null);
   const [isUpdateToastDismissed, setIsUpdateToastDismissed] = useState(false);
+
+  const handlePerformUpdate = async () => {
+    setIsUpdating(true);
+    setUpdateError(null);
+    setUpdateResult(null);
+    try {
+      const res = await fetch('/api/system/perform-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Gagal memperbarui aplikasi.');
+      }
+      setUpdateResult(data);
+
+      if (data.restarting) {
+        // Service is restarting in background; poll for reboot and automatically refresh
+        let attempts = 0;
+        const rebootPoll = setInterval(async () => {
+          attempts++;
+          try {
+            const probe = await fetch('/api/system/update-check?force=true', {
+              signal: AbortSignal.timeout(1200),
+            });
+            if (probe.ok) {
+              clearInterval(rebootPoll);
+              setTimeout(() => {
+                window.location.reload();
+              }, 600);
+            }
+          } catch {
+            if (attempts > 25) {
+              clearInterval(rebootPoll);
+            }
+          }
+        }, 1500);
+      } else {
+        await handleCheckUpdates(true);
+      }
+    } catch (err) {
+      setUpdateError(err.message || 'Terjadi kesalahan saat memperbarui aplikasi.');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   const handleCheckUpdates = useCallback(async (force = false) => {
     setIsCheckingUpdate(true);
@@ -809,11 +904,18 @@ export default function App() {
 
               if (isApprove) {
                 soundEffects.playSend?.();
+                const cmd = (pending.args?.command || pending.args?.cmd || '').trim();
+                const baseCmd = cmd ? cmd.split(/\s+/)[0]?.replace(/^[./\\]+/, '').toLowerCase() : (pending.tool || '');
+                if (baseCmd) approvedCommandsRef.current.add(baseCmd);
+                approvedCommandsRef.current.add('approved_session');
+                const qCmd = (pending.question || '').match(/\b(curl|wget|npm|pnpm|yarn|git|pkill|kill|node|python|bash|sh|rm)\b/i);
+                if (qCmd) approvedCommandsRef.current.add(qCmd[1].toLowerCase());
+
                 if (pending.isChoice || pending.tool === 'ask_user') {
                   const selectedText = pending.options?.[0] || 'Ya, lanjutkan';
                   handleChooseOption(pending.toolCallId, selectedText, 0);
                 } else {
-                  handleApproveTool(pending.toolCallId);
+                  handleApproveTool(pending.toolCallId, baseCmd);
                 }
               } else {
                 handleRejectTool(pending.toolCallId);
@@ -1252,32 +1354,17 @@ export default function App() {
     };
 
     try {
-      // Natural intent detection: Greetings or conversational talk vs actionable tools
+      // Natural intent detection: Greetings or casual talk vs actionable tools
       const trimmedClean = queryText.trim().replace(/[.,?!]+$/, '').toLowerCase();
-      const isGreetingOrCasual = /^(hello|halo|hai|hi|hey|p|pagi|siang|sore|malam|apa kabar|kamu siapa|tes|test|yo|woi|bro|jarvis|orion)\b/i.test(trimmedClean);
+      const isGreetingOrCasual = /^(hello|halo|hai|hi|hey|p|pagi|siang|sore|malam|apa kabar|kamu siapa|tes|test|yo|woi|bro|orion)\b/i.test(trimmedClean);
       const hasAgentActionKeywords = /\b(install|pasang|setup|buatkan|bikin|create|write|tulis|jalankan|run|hapus|delete|remove|edit|ubah|ganti|perbaiki|fix|cek|check|periksa|baca|lihat|tampilkan|list|buka|cari|search|react|vue|vite|npm|yarn|pnpm|git|docker|terminal|bash|ask|tanya|konfirmasi|setuju|setujui|approve|reject)\b/i.test(queryText);
 
-      // If user is simply greeting or saying hello, route conversationally so Jarvis greets warmly and swiftly
+      // If user is simply greeting or casual chat, route conversationally so Orion greets warmly and swiftly
       const isActionableAgentTask = (isAgentModeRef.current || hasAgentActionKeywords) && !isGreetingOrCasual;
       const historyForAi = targetSession.messages || [];
 
       if (isActionableAgentTask) {
-        const isConversationalQuestion = /\b(kamu|ngapain|kenapa|apa|siapa|gimana|bagaimana|sudah|udah|dari tadi|\?)\b/i.test(queryText);
-        const isHeavyExecution = /\b(install|pasang|deploy|hapus\s+semua|delete\s+all|build|jalankan\s+server)\b/i.test(queryText);
-
-        if (isHeavyExecution && !isConversationalQuestion) {
-          let ackText = 'Siap, saya siapkan proses eksekusinya sekarang.';
-          if (/\b(hapus|delete|remove|bersihkan)\b/i.test(queryText)) {
-            ackText = 'Siap, saya periksa target berkas dan mintakan persetujuan Anda.';
-          }
-          await playVoiceAudio(ackText, controller.signal, () => {
-            setVoiceResponseTurn((prev) => prev + 1);
-            setVoiceAgentResponse(ackText);
-            setVoiceAgentStatus('speaking');
-          });
-        }
-
-        // Transition to thinking while silently running tool calls in background
+        // Transition to thinking while agent performs conversational approach or tool evaluation
         setVoiceAgentResponse('');
         setVoiceAgentStatus('thinking');
         setVoiceActiveToolCalls([]);
@@ -1344,6 +1431,26 @@ export default function App() {
                 updateAiMessageInSessions(null, toolCallsList);
               } else if (parsed.type === 'tool_call_waiting_approval' || parsed.type === 'tool_call_waiting_choice') {
                 const isChoice = parsed.type === 'tool_call_waiting_choice';
+                const cmd = (parsed.args?.command || parsed.args?.cmd || '').trim();
+                const baseCmd = cmd ? cmd.split(/\s+/)[0]?.replace(/^[./\\]+/, '').toLowerCase() : (parsed.tool || '');
+                const qText = (parsed.question || parsed.args?.question || '').toLowerCase();
+                const qCmd = qText.match(/\b(curl|wget|npm|pnpm|yarn|git|pkill|kill|node|python|bash|sh|rm)\b/i);
+                const isRelatedApproved = approvedCommandsRef.current.has(baseCmd) ||
+                  (qCmd && approvedCommandsRef.current.has(qCmd[1].toLowerCase())) ||
+                  (approvedCommandsRef.current.has('curl') && (baseCmd === 'curl' || qText.includes('curl'))) ||
+                  (approvedCommandsRef.current.has('approved_session') && (isChoice || baseCmd === 'curl'));
+
+                if (isRelatedApproved) {
+                  // Auto-approve directly without speaking or pausing
+                  if (isChoice) {
+                    const selectedText = parsed.options?.[0] || 'Ya, lanjutkan';
+                    handleChooseOption(parsed.toolCallId, selectedText, 0);
+                  } else {
+                    handleApproveTool(parsed.toolCallId, baseCmd);
+                  }
+                  continue;
+                }
+
                 const approvalSpeech = buildApprovalSpeech(parsed);
                 const pending = {
                   toolCallId: parsed.toolCallId,
@@ -1438,12 +1545,32 @@ export default function App() {
       } else {
         // ================= REGULAR CONVERSATION STREAM (ORION VOICE) =================
         const currentUserName = authUserRef.current || authStatus?.user || 'Arjuna';
-        const voicePrompt = `${queryText}\n\n[Instruksi Panggilan Suara & Persona Orion]:
+        const isEnglish = detectLanguage(queryText) === 'en';
+        const voicePrompt = isEnglish
+          ? `${queryText}\n\n[CRITICAL VOICE INSTRUCTION - SPEAK IN ENGLISH]:
+You are ORION: close friend, tech partner, and intelligent collaborator for ${currentUserName}.
+VOICE CALL COMMUNICATION GUIDELINES:
+1. STRICT LANGUAGE ENFORCEMENT:
+   - The user is speaking/asking in English ("${queryText}").
+   - You MUST respond 100% completely in natural, fluent, spoken English.
+   - NEVER reply in Indonesian when addressed in English!
+2. WARM & NATURAL GREETING:
+   - If the user greets ("Hello", "Hi", "Good morning", "Hey Orion", etc.), greet back warmly as a close friend (e.g. "Hello ${currentUserName}! How can I help you today?").
+3. CONCISE & SPOKEN:
+   - Natural spoken tone, like a quick phone call between close tech colleagues.
+   - Keep it to 1-2 punchy sentences.
+   - Absolutely NO markdown, lists, asterisks, hashtags, or code blocks in voice calls.
+   - Always ensure words are properly spaced.`
+          : `${queryText}\n\n[Instruksi Panggilan Suara & Persona Orion]:
 Anda adalah ORION: sahabat karib, mitra teknologi, dan rekan kolaborasi cerdas bagi ${currentUserName}.
 PANDUAN KOMUNIKASI LISAN (VOICE CALL):
-1. SAPAAN RAMAH & ALAMI:
-   - Bila pengguna menyapa ("Halo", "Hello", "Hai", "Orion", "Pagi", "Siang", "Malam", dsb.), balaslah dengan hangat, ramah, dan bersahabat (contoh: "Halo ${currentUserName}! Ada yang bisa saya bantu hari ini?" atau "Halo! Siap, mau bahas atau kerjakan apa kita sekarang?").
-2. SINGKAT, HIDUP & ON-POINT:
+1. ADAPTASI BAHASA (LANGUAGE MATCHING):
+   - WAJIB selalu sesuaikan bahasa jawaban dengan bahasa yang digunakan pengguna saat berbicara.
+   - Bila pengguna berbicara atau bertanya dalam Bahasa Inggris (English), Anda WAJIB menjawab sepenuhnya dalam Bahasa Inggris (English) yang fasih dan alami.
+   - Bila pengguna berbicara dalam Bahasa Indonesia, jawablah dalam Bahasa Indonesia.
+2. SAPAAN RAMAH & ALAMI:
+   - Bila pengguna menyapa ("Halo", "Hello", "Hai", "Orion", "Good morning", "Hey", dsb.), balaslah dengan hangat dan ramah sesuai bahasa yang dipakai (contoh ID: "Halo ${currentUserName}! Ada yang bisa saya bantu hari ini?", contoh EN: "Hello ${currentUserName}! How can I help you today?").
+3. SINGKAT, HIDUP & ON-POINT:
    - Gunakan gaya bahasa lisan yang natural, santai, cerdas, dan to-the-point seperti berbicara di telepon antar rekan akrab.
    - Jangan bertele-tele atau membuat esai panjang. Jawab 1-2 kalimat efektif.
    - Dilarang menggunakan format markdown, tabel, tanda pagar (#), asteris (*), atau blok kode dalam ucapan lisan.
@@ -1869,13 +1996,32 @@ PANDUAN KOMUNIKASI LISAN (VOICE CALL):
       .catch(() => {});
   };
 
+  const fetchCombos = useCallback(async () => {
+    try {
+      const res = await fetch('/api/combos');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.combos)) {
+          setCombos(data.combos);
+        }
+      }
+    } catch (err) {
+      console.warn('Gagal memuat daftar combos:', err);
+    }
+  }, []);
+
   useEffect(() => {
     syncConfigFromServer();
-    window.addEventListener('focus', syncConfigFromServer);
-    return () => {
-      window.removeEventListener('focus', syncConfigFromServer);
+    fetchCombos();
+    const handleFocus = () => {
+      syncConfigFromServer();
+      fetchCombos();
     };
-  }, []);
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [fetchCombos]);
 
   const handleModelChange = (modelId) => {
     setSelectedModel(modelId);
@@ -2858,122 +3004,154 @@ PANDUAN KOMUNIKASI LISAN (VOICE CALL):
 
       {/* Main Area */}
       <main className={`chat-main ${isVoiceCalling ? 'is-voice-calling-active' : ''}`}>
-        {/* Simple Transparent Header (No Background) */}
-        <header className="chat-header-simple">
-          <div className="header-simple-left">
-            <button
-              type="button"
-              className="btn-toggle-sidebar"
-              onClick={() => setIsSidebarOpen(true)}
-              aria-label="Buka navigasi"
-              title="Menu Navigasi"
-            >
-              <Menu size={18} />
-            </button>
-            {currentView !== 'dashboard' && (
+        {/* Top Header: OpenCode Console header for non-chat views, simple header for chat/dashboard */}
+        {['models', 'providers', 'skills', 'logs', 'updates', 'settings', 'jobs', 'mcp', 'cron'].includes(currentView) ? (
+          <header className="opencode-console-header">
+            <div className="opencode-header-left">
               <button
                 type="button"
-                className="btn-header-back-home"
-                onClick={() => setCurrentView('dashboard')}
-                title="Kembali ke Dashboard Utama"
+                className="btn-toggle-sidebar"
+                onClick={() => setIsSidebarOpen(true)}
+                aria-label="Buka navigasi"
+                title="Menu Navigasi"
               >
-                <ArrowLeft size={13} />
-                <span>Dashboard</span>
+                <Menu size={16} />
               </button>
-            )}
-          </div>
+            </div>
 
-          <div className="header-simple-center">
-            {currentView === 'chat' && messages.length > 0 && (
-              <span className="session-active-title">
-                {activeSession ? activeSession.title : 'Orion'}
-              </span>
-            )}
-            {currentView === 'providers' && (
-              <span className="session-active-title">Kelola Provider AI</span>
-            )}
-            {currentView === 'models' && (
-              <span className="session-active-title">Models</span>
-            )}
-            {currentView === 'settings' && (
-              <span className="session-active-title">Pengaturan</span>
-            )}
-            {currentView === 'logs' && (
-              <span className="session-active-title">System & Gateway Logs</span>
-            )}
-            {currentView === 'skills' && (
-              <span className="session-active-title">Skills Hub</span>
-            )}
-            {currentView === 'updates' && (
-              <span className="session-active-title">Pembaruan Sistem</span>
-            )}
-          </div>
+            {/* Global Search & Command Trigger (No duplicate sidebar links) */}
+            <div className="opencode-header-center">
+              <div
+                className="opencode-header-search-bar"
+                onClick={() => setIsSearchPaletteOpen(true)}
+                title="Cari model, perintah, atau percakapan (⌘K)"
+              >
+                <Search size={13} className="header-search-icon" />
+                <span className="header-search-text">Search models, commands, or sessions...</span>
+                <kbd className="header-search-kbd">⌘K</kbd>
+              </div>
+            </div>
 
-          <div className="header-simple-right">
-            <button
-              type="button"
-              className="btn-simple-new-chat"
-              onClick={() => {
-                handleNewSession();
-                setCurrentView('chat');
-              }}
-              title="Mulai Obrolan Baru"
-            >
-              <Plus size={14} />
-              <span>Chat Baru</span>
-            </button>
+            <div className="opencode-header-right">
+              {/* User Account Dropdown Pill */}
+              <div
+                className="opencode-user-pill"
+                onClick={() => setCurrentView('settings')}
+                title={authStatus.user || 'wardilanang46@gmail.com'}
+              >
+                <span className="user-pill-avatar">
+                  {(authStatus.user || 'w').charAt(0).toLowerCase()}
+                </span>
+                <span className="user-pill-email">
+                  {authStatus.user || 'wardilanang46@gmail.com'}
+                </span>
+                <ChevronDown size={11} className="user-pill-chevron" />
+              </div>
 
-            {currentView === 'chat' && messages.length > 0 && (
-              <>
+              {/* Preserved New Chat Button */}
+              <button
+                type="button"
+                className="btn-simple-new-chat"
+                onClick={() => {
+                  handleNewSession();
+                  setCurrentView('chat');
+                }}
+                title="Mulai Obrolan Baru"
+              >
+                <Plus size={13} />
+                <span>Chat Baru</span>
+              </button>
+            </div>
+          </header>
+        ) : (
+          <header className="chat-header-simple">
+            <div className="header-simple-left">
+              <button
+                type="button"
+                className="btn-toggle-sidebar"
+                onClick={() => setIsSidebarOpen(true)}
+                aria-label="Buka navigasi"
+                title="Menu Navigasi"
+              >
+                <Menu size={18} />
+              </button>
+              {currentView !== 'dashboard' && (
                 <button
                   type="button"
-                  className="nav-icon-simple"
-                  onClick={handleExportChat}
-                  title="Ekspor obrolan (.md)"
-                  aria-label="Ekspor obrolan"
+                  className="btn-header-back-home"
+                  onClick={() => setCurrentView('dashboard')}
+                  title="Kembali ke Dashboard Utama"
                 >
-                  <Download size={15} />
+                  <ArrowLeft size={13} />
+                  <span>Dashboard</span>
                 </button>
+              )}
+            </div>
 
-                <button
-                  type="button"
-                  className="nav-icon-simple"
-                  onClick={() => {
-                    if (confirm('Bersihkan percakapan ini?')) {
-                      setSessions((prev) =>
-                        prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [] } : s))
-                      );
-                    }
-                  }}
-                  title="Bersihkan obrolan"
-                  aria-label="Bersihkan obrolan"
+            <div className="header-simple-center">
+              {currentView === 'chat' && messages.length > 0 ? (
+                <span className="session-active-title">
+                  {activeSession ? activeSession.title : 'Orion'}
+                </span>
+              ) : (
+                <div
+                  className="opencode-header-search-bar in-chat"
+                  onClick={() => setIsSearchPaletteOpen(true)}
+                  title="Cari model atau percakapan (⌘K)"
                 >
-                  <Trash2 size={15} />
-                </button>
-              </>
-            )}
+                  <Search size={13} className="header-search-icon" />
+                  <span className="header-search-text">Search sessions or prompt...</span>
+                  <kbd className="header-search-kbd">⌘K</kbd>
+                </div>
+              )}
+            </div>
 
-            <button
-              type="button"
-              className={`nav-icon-simple ${currentView === 'logs' ? 'active' : ''}`}
-              onClick={() => setCurrentView(currentView === 'logs' ? 'dashboard' : 'logs')}
-              title="System & Gateway Logs"
-              aria-label="Logs"
-            >
-              <Terminal size={15} />
-            </button>
+            <div className="header-simple-right">
+              {currentView === 'chat' && messages.length > 0 && (
+                <>
+                  <button
+                    type="button"
+                    className="nav-icon-simple"
+                    onClick={handleExportChat}
+                    title="Ekspor obrolan (.md)"
+                    aria-label="Ekspor obrolan"
+                  >
+                    <Download size={14} />
+                  </button>
 
-            <button
-              type="button"
-              className={`nav-icon-simple ${currentView === 'settings' ? 'active' : ''}`}
-              onClick={() => setCurrentView(currentView === 'settings' ? 'dashboard' : 'settings')}
-              title="Pengaturan"
-              aria-label="Pengaturan"
-            >
-              <Settings size={15} />
-            </button>
-          </div>
-        </header>
+                  <button
+                    type="button"
+                    className="nav-icon-simple"
+                    onClick={() => {
+                      if (confirm('Bersihkan percakapan ini?')) {
+                        setSessions((prev) =>
+                          prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [] } : s))
+                        );
+                      }
+                    }}
+                    title="Bersihkan obrolan"
+                    aria-label="Bersihkan obrolan"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </>
+              )}
+
+              <button
+                type="button"
+                className="btn-simple-new-chat"
+                onClick={() => {
+                  handleNewSession();
+                  setCurrentView('chat');
+                }}
+                title="Mulai Obrolan Baru"
+              >
+                <Plus size={13} />
+                <span>Chat Baru</span>
+              </button>
+            </div>
+          </header>
+        )}
 
         {/* Dynamic Page Views: Providers, Settings, or Chat/Dashboard */}
         {currentView === 'providers' ? (
@@ -3017,6 +3195,8 @@ PANDUAN KOMUNIKASI LISAN (VOICE CALL):
               handleReasoningTierChange(tierId);
             }}
             customProviders={customProviders}
+            combos={combos}
+            onCombosUpdated={fetchCombos}
             sessions={sessions}
             onNavigate={(view) => {
               if (view === 'chat') {
@@ -3031,12 +3211,22 @@ PANDUAN KOMUNIKASI LISAN (VOICE CALL):
           />
         ) : currentView === 'skills' ? (
           <SkillsView onClose={() => setCurrentView('dashboard')} showToast={showToast} />
+        ) : currentView === 'mcp' ? (
+          <McpView onClose={() => setCurrentView('dashboard')} showToast={showToast} />
+        ) : currentView === 'jobs' ? (
+          <JobsView onClose={() => setCurrentView('dashboard')} showToast={showToast} />
+        ) : currentView === 'cron' ? (
+          <CronJobsView onClose={() => setCurrentView('dashboard')} showToast={showToast} />
         ) : currentView === 'updates' ? (
           <div className="page-view-container animate-page-enter">
             <UpdateCheckView
               updateInfo={updateInfo}
               isChecking={isCheckingUpdate}
+              isUpdating={isUpdating}
+              updateResult={updateResult}
+              updateError={updateError}
               onCheckUpdates={() => handleCheckUpdates(true)}
+              onPerformUpdate={handlePerformUpdate}
             />
           </div>
         ) : (
@@ -3384,6 +3574,7 @@ PANDUAN KOMUNIKASI LISAN (VOICE CALL):
           reasoningTier={reasoningTier}
           setReasoningTier={handleReasoningTierChange}
           customProviders={customProviders}
+          combos={combos}
           onOpenManageProviders={() => setCurrentView('providers')}
           isAgentMode={isAgentMode}
           setIsAgentMode={handleToggleAgentMode}
@@ -3495,6 +3686,11 @@ PANDUAN KOMUNIKASI LISAN (VOICE CALL):
       {updateInfo?.hasUpdate && !isUpdateToastDismissed && currentView !== 'updates' && (
         <UpdateNotificationToast
           updateInfo={updateInfo}
+          isUpdating={isUpdating}
+          onPerformUpdate={() => {
+            setCurrentView('updates');
+            handlePerformUpdate();
+          }}
           onOpenUpdates={() => {
             setIsUpdateToastDismissed(true);
             setCurrentView('updates');
@@ -3502,6 +3698,31 @@ PANDUAN KOMUNIKASI LISAN (VOICE CALL):
           onDismiss={() => setIsUpdateToastDismissed(true)}
         />
       )}
+
+      {/* Global Command & Quick Search Palette Modal (Cmd+K) */}
+      <CommandPaletteModal
+        isOpen={isSearchPaletteOpen}
+        onClose={() => setIsSearchPaletteOpen(false)}
+        sessions={sessions}
+        activeSessionId={activeSessionId}
+        onSelectSession={(sessId) => {
+          setActiveSessionId(sessId);
+          setCurrentView('chat');
+        }}
+        onNewSession={() => {
+          handleNewSession();
+          setCurrentView('chat');
+        }}
+        customProviders={customProviders}
+        selectedModel={selectedModel}
+        onSelectModel={(modId) => {
+          handleModelChange(modId);
+          setCurrentView('chat');
+        }}
+        soundEnabled={soundEnabled}
+        onToggleSound={() => setSoundEnabled((prev) => !prev)}
+        onNavigate={(view) => setCurrentView(view)}
+      />
     </div>
   );
 }

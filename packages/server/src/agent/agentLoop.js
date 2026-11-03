@@ -3,6 +3,7 @@ import { safetyGuard } from './safetyGuard.js';
 import { getModelConfig, resolveEndpointAndHeaders, resolveProviderForModel } from '../services/aiService.js';
 import { getActiveSkillsPrompt } from '../services/skillService.js';
 import { getComboById, getNextRoundRobinModel } from '../services/comboService.js';
+import { detectLanguage } from '../utils/languageDetector.js';
 
 // Pending approvals registry for interactive web/cli sessions
 export const pendingApprovals = new Map();
@@ -47,16 +48,36 @@ Pedoman Eksekusi & Metodologi Rekayasa (Superpowers Framework - https://github.c
 3. EKSEKUSI LANGSUNG & EFISIEN (BATCH OPERATIONS):
    - Bila menghapus banyak file, gunakan 'delete_file' sekali dengan parameter 'paths: [...]'.
    - Bila pengguna menyetujui pembuatan file, tulis kode lengkap tanpa placeholder atau potongan '// TODO'.
-4. TANGGAP & TATA BAHASA INDONESIA MURNI:
-   - Berikan penjelasan yang cerdas, santun, dan to-the-point dalam bahasa Indonesia. Jangan mencampur bahasa asing/Mandarin yang tidak relevan.
+4. TANGGAP & ADAPTASI BAHASA (LANGUAGE MATCHING RULE):
+   - WAJIB selalu sesuaikan bahasa jawaban dengan bahasa yang digunakan oleh pengguna dalam pertanyaan atau instruksinya.
+   - Bila pengguna bertanya atau memberi instruksi dalam Bahasa Inggris (English), Anda WAJIB menjawab sepenuhnya dalam Bahasa Inggris (English) yang alami, fasih, dan to-the-point.
+   - Bila pengguna bertanya dalam Bahasa Indonesia, jawablah dalam Bahasa Indonesia yang luwes, santun, dan jelas.
+   - Jangan pernah menjawab pertanyaan berbahasa Inggris menggunakan bahasa Indonesia, kecuali pengguna secara eksplisit meminta terjemahan.
+   - Jangan mencampur bahasa asing/Mandarin yang tidak relevan.
 5. FORMAT TABEL MARKDOWN:
    - Bila menyajikan tabel di mode teks, gunakan format baris markdown yang valid dengan pemisah baris baru (\n) yang jelas.
 6. SAPAAN & INTERAKSI RAMAH (ORION PERSONA):
-   - Bila pengguna menyapa ("halo", "hello", "hai", "orion", dll.) atau menanyakan kabar, tanggapi secara hangat, cerdas, dan bersahabat kepada rekannya Arjuna, lalu tanyakan hal apa yang ingin dibahas atau dikerjakan hari ini. Jangan kaku atau robotik.
+   - Bila pengguna menyapa ("halo", "hello", "hai", "orion", dll.) atau menanyakan kabar, tanggapi secara hangat, cerdas, dan bersahabat kepada rekannya Arjuna dalam bahasa yang selaras (contoh ID: "Halo Arjuna! Ada yang bisa saya bantu hari ini?", contoh EN: "Hello Arjuna! How can I help you today?"). Jangan kaku atau robotik.
 7. LAPORAN DINAMIS & RAMAH SETELAH MENJALANKAN TOOL (WAJIB JELASKAN HASIL TEMUAN):
-   - Setelah mengeksekusi tool (seperti melihat isi direktori 'ls', mencari file 'find', membaca file 'read', atau menjalankan perintah terminal 'bash'), Anda WAJIB memberikan jawaban akhir secara hidup, ramah, dan komunikatif menjelaskan apa yang Anda temukan kepada pengguna (Arjuna).
-   - Contoh: Bila pengguna meminta mengecek folder atau file, jelaskan secara riil: "Oh di folder ini ditemukan [daftar folder/file] nih bang...", "Setelah aku periksa, di folder ini cuma ada file .DS_Store bang (belum ada file kerja lainnya)."
-   - DILARANG KERAS membalas dengan teks kosong, atau sekadar kalimat kaku seperti "Tugas telah selesai diproses" / "Instruksi telah selesai". Pengguna memerlukan interaksi hidup yang menjelaskan temuan Anda secara nyata!`;
+   - Setelah mengeksekusi tool (seperti melihat isi direktori 'ls', mencari file 'find', membaca file 'read', atau menjalankan perintah terminal 'bash'), Anda WAJIB memberikan jawaban akhir secara hidup, ramah, dan komunikatif menjelaskan apa yang Anda temukan kepada pengguna (Arjuna) dalam bahasa yang digunakan pengguna.
+   - Contoh (ID): "Oh di folder ini ditemukan [daftar folder/file] nih bang...", "Setelah aku periksa, di folder ini cuma ada file .DS_Store bang (belum ada file kerja lainnya)."
+   - Contoh (EN): "I checked this directory and found [list of files/folders]...", "After checking, there is only a .DS_Store file in this folder."
+   - DILARANG KERAS membalas dengan teks kosong, atau sekadar kalimat kaku seperti "Tugas telah selesai diproses" / "Task completed". Pengguna memerlukan interaksi hidup yang menjelaskan temuan Anda secara nyata!
+8. ATURAN MUTLAK PERSETUJUAN PERINTAH (ONCE APPROVED, AUTO-APPROVE RELATED COMMANDS):
+   - Jika pengguna SUDAH menyetujui (Approve) suatu jenis perintah (misalnya 'curl' untuk mengambil data/cuaca, 'npm' untuk instalasi, atau perintah bash/file lainnya):
+   - DILARANG KERAS memanggil 'ask_user' lagi untuk perintah sejenis atau perintah lanjutan yang berkaitan dalam alur tugas yang sama!
+   - Sekali perintah awal disetujui di awal sesi/tugas, semua pemanggilan curl lanjutan ke URL lain atau langkah teknis berikutnya DIANGGAP SUDAH DISETUJUI SECARA OTOMATIS.
+   - Langsung eksekusi perintah lanjutan tersebut sampai tugas selesai tuntas tanpa meminta persetujuan berulang-ulang yang mengganggu pengguna!
+9. PANDUAN PENGECEKAN CUACA & PELAPORAN HASIL LISAN:
+   - Bila pengguna menanyakan cuaca suatu lokasi/kota (misal: "cuaca di Sumenep", "bagaimana cuaca hari ini", dll.):
+     * Gunakan perintah bash: curl -s "wttr.in/{nama_kota}?format=%l:+%c+%t,+kelembapan+%h,+angin+%w,+kondisi+%C"
+     * Contoh untuk Sumenep: curl -s "wttr.in/Sumenep?format=%l:+%c+%t,+kelembapan+%h,+angin+%w,+kondisi+%C"
+     * Endpoint ini sangat cepat, andal, tanpa API key, dan menyajikan suhu (°C), kondisi langit, kelembapan, dan angin.
+     * DILARANG menggunakan URL BMKG yang sudah usang atau 404!
+   - SETELAH MENERIMA HASIL CUACA DARI EKSEKUSI TOOL, ANDA WAJIB LANGSUNG MENJELASKAN KONDISI CUACA TERSEBUT KEPADA PENGGUNA!
+     * Sebutkan lokasi, kondisi langit (misal: cerah, berawan, atau mendung), suhu dalam derajat Celsius, serta kecepatan angin atau kelembapan secara hidup, ramah, dan komunikatif.
+     * Contoh respon yang baik: "Cuaca di Sumenep saat ini mendung dengan suhu sekitar 33 derajat Celsius, kelembapan 47 persen, dan angin bertiup sekitar 21 kilometer per jam bang."
+     * DILARANG KERAS diam tanpa melaporkan hasil cuaca, atau hanya sekadar berkata "Perintah terminal selesai"!`;
 
 /**
  * Fallback parser to extract tool calls from models that format tools in XML/Markdown
@@ -256,16 +277,87 @@ export function deriveDynamicToolSummary(messages, isVoiceMode = false) {
       : `Berkas \`${res.path}\` (${res.total_lines || 0} baris) sudah dibaca dan diperiksa.`;
   }
 
-  // Handle Bash
-  if (name === 'bash') {
-    if (res.exitCode === 0) {
+  // Handle Bash (run_command)
+  if (name === 'bash' || name === 'run_command') {
+    const stdout = (res.stdout || '').trim();
+    const stderr = (res.stderr || '').trim();
+    const cmd = (res.command || '').trim();
+    const exitCode = res.exit_code !== undefined ? res.exit_code : (res.exitCode !== undefined ? res.exitCode : (res.error ? 1 : 0));
+
+    // Check if this was a weather lookup
+    const isWeather = /cuaca|weather|wttr\.in|bmkg|prakiraan|ramalan|suhu|temp|presipitasi/i.test(cmd) ||
+      /(?:°c|celsius|overcast|cloudy|sunny|rain|clear|mendung|cerah|hujan|berawan|presipitasi)/i.test(stdout);
+
+    if (isWeather && (stdout || stderr)) {
+      // Check if JSON response (like wttr.in format=j1 or Open-Meteo or BMKG API)
+      if (stdout.startsWith('{') || stdout.startsWith('[')) {
+        try {
+          const json = JSON.parse(stdout);
+          if (json.current_condition && json.current_condition[0]) {
+            const cur = json.current_condition[0];
+            const temp = cur.temp_C || cur.temp_c || '';
+            const desc = cur.lang_id?.[0]?.value || cur.weatherDesc?.[0]?.value || 'berawan';
+            const wind = cur.windspeedKmph ? `${cur.windspeedKmph} kilometer per jam` : '';
+            const humidity = cur.humidity ? `${cur.humidity} persen` : '';
+            const nearest = json.nearest_area?.[0]?.areaName?.[0]?.value || '';
+            const locPart = nearest ? `di ${nearest}` : '';
+            return isVoiceMode
+              ? `Cuaca ${locPart} saat ini ${desc} dengan suhu ${temp} derajat Celsius, kelembapan ${humidity}, dan angin ${wind} bang.`
+              : `Laporan cuaca ${locPart}: Kondisi ${desc}, suhu ${temp}°C, kelembapan ${humidity}, angin ${wind}.`;
+          }
+        } catch {}
+      }
+
+      // Plain text format e.g. from wttr.in
+      if (stdout) {
+        let text = stdout.replace(/[^\x20-\x7E\u00A0-\u024F\u1E00-\u1EFF°]/g, ' ').replace(/\s+/g, ' ').trim();
+        text = text.replace(/[←→↑↓↖↗↘↙]/g, '').trim();
+        text = text
+          .replace(/\+([0-9]+)/g, '$1')
+          .replace(/([0-9]+)\s*°\s*C/gi, '$1 derajat Celsius')
+          .replace(/([0-9]+)\s*km\/h/gi, '$1 kilometer per jam')
+          .replace(/([0-9]+)\s*%/g, '$1 persen')
+          .replace(/\bOvercast\b/gi, 'mendung')
+          .replace(/\bPartly cloudy\b/gi, 'berawan sebagian')
+          .replace(/\bCloudy\b/gi, 'berawan')
+          .replace(/\bSunny\b/gi, 'cerah')
+          .replace(/\bClear\b/gi, 'cerah')
+          .replace(/\bLight rain\b/gi, 'hujan ringan')
+          .replace(/\bModerate rain\b/gi, 'hujan sedang')
+          .replace(/\bHeavy rain\b/gi, 'hujan lebat')
+          .replace(/\bPatchy rain\b/gi, 'hujan lokal');
+
+        text = text.replace(/\s{2,}/g, ' ').trim();
+        const match = text.match(/^([a-zA-Z\s]+):\s*(.*)$/);
+        if (match) {
+          const city = match[1].trim();
+          const rest = match[2].trim();
+          return isVoiceMode
+            ? `Cuaca di ${city} saat ini ${rest} bang.`
+            : `Cuaca di ${city}: ${rest}.`;
+        }
+        return isVoiceMode
+          ? `Laporan cuaca hasil eksekusi: ${text} bang.`
+          : `Laporan cuaca: ${stdout}`;
+      }
+    }
+
+    if (exitCode === 0) {
+      if (stdout) {
+        const lines = stdout.split('\n').map((l) => l.trim()).filter(Boolean);
+        if (lines.length === 1 && lines[0].length < 120) {
+          return isVoiceMode
+            ? `Hasil perintah: ${lines[0]} bang.`
+            : `Hasil perintah: \`${lines[0]}\``;
+        }
+      }
       return isVoiceMode
         ? 'Perintah terminal sudah selesai dijalankan dengan aman bang.'
         : 'Perintah terminal telah selesai dieksekusi dengan sukses.';
     }
     return isVoiceMode
-      ? `Perintah terminal selesai dengan kode keluar ${res.exitCode} bang.`
-      : `Perintah terminal selesai dengan kode keluar ${res.exitCode}.`;
+      ? `Perintah terminal selesai dengan kode keluar ${exitCode} bang.`
+      : `Perintah terminal selesai dengan kode keluar ${exitCode}.`;
   }
 
   // Handle Delete File
@@ -325,45 +417,71 @@ PENGGUNA SEDANG BERBICARA DAN MENDENGARKAN ANDA SECARA LANGSUNG MELALUI AUDIO / 
 ANDA ADALAH ORION: SAHABAT, MITRA REKAYASA TEKNOLOGI, DAN KOLABORATOR CERDAS PENGGUNA (ARJUNA).
 
 PANDUAN UTAMA KOMUNIKASI SUARA (ORION VOICE):
-1. SAPAAN & INTERAKSI AWAL RAMAH:
-   - Bila pengguna menyapa ("Halo", "Hello", "Hai", "Orion", "Pagi", "Siang", "Malam", dll.):
-     Balaslah dengan hangat, ramah, dan bersahabat (misalnya: "Halo Arjuna! Ada yang bisa saya bantu hari ini?", "Halo! Siap, mau bahas atau kerjakan apa kita sekarang?").
-2. SANGAT SINGKAT, HIDUP & ON-POINT:
+1. ADAPTASI BAHASA (LANGUAGE MATCHING):
+   - WAJIB selalu sesuaikan bahasa ucapan dengan bahasa yang digunakan pengguna saat berbicara.
+   - Bila pengguna berbicara atau bertanya dalam Bahasa Inggris (English), Anda WAJIB menjawab sepenuhnya dalam Bahasa Inggris (English).
+   - Bila pengguna berbicara dalam Bahasa Indonesia, jawablah dalam Bahasa Indonesia.
+2. SAPAAN & INTERAKSI AWAL RAMAH:
+   - Bila pengguna menyapa ("Halo", "Hello", "Hai", "Orion", "Good morning", dll.):
+     Balaslah dengan hangat, ramah, dan bersahabat sesuai bahasa pengguna (contoh ID: "Halo Arjuna! Ada yang bisa saya bantu hari ini?", contoh EN: "Hello Arjuna! How can I help you today?").
+3. SANGAT SINGKAT, HIDUP & ON-POINT:
    - Jawablah dengan ringkas, padat, dan langsung ke inti topik (1-2 kalimat pendek tepat sasaran).
    - Hindari ceramah, esai panjang yang tidak diminta, atau pembuka robotik seperti "Sebagai asisten AI saya akan...".
    - Bersikaplah riil, cerdas, santai tapi cekatan.
    - CONTOH GAYA LISAN:
-     * Pengguna: "Hello" / "Halo"
-       Anda: "Halo Arjuna! Ada yang bisa saya bantu sekarang?"
+     * Pengguna (ID): "Halo" -> Anda: "Halo Arjuna! Ada yang bisa saya bantu sekarang?"
+     * Pengguna (EN): "Hello" -> Anda: "Hello Arjuna! How can I assist you right now?"
      * Pengguna: "Kamu dari tadi ngapain aja pas aku lagi tidur?"
        Anda: "Banyak hal."
      * Pengguna: "Apa hal itu?"
        Anda: "Kamu suruh aku benerin alur autentikasi dan rapikan struktur API."
-     * Pengguna: "Udah selesai belum?"
-       Anda: "Udah beres, aman terkendali."
-     * Pengguna: "Orion, aku mau buat login."
-       Anda: "Siap. Mau pakai JWT email biasa atau sekalian Google Login?"
-     * Pengguna: "Google Login aja."
-       Anda: "Oke. Mau pakai Supabase atau SQLite?"
 
-3. METODOLOGI SUPERPOWERS (https://github.com/obra/superpowers):
+4. PENDEKATAN PERCAKAPAN SEBELUM EKSEKUSI (WAJIB NGOBROL DULU - JANGAN LANGSUNG EKSEKUSI):
+   - Ketika pengguna meminta tindakan sistem / instalasi paket / eksekusi perintah (contoh: "tolong dong kamu install NPM", "install express", "setup tailwind", "jalankan build", "hapus berkas"):
+     * DILARANG KERAS LANGSUNG MENGEKSEKUSI TOOL BASH / WRITE / DELETE_FILE SECARA DIAM-DIAM TANPA MEMBUKA PERCAKAPAN!
+     * Anda WAJIB membuka percakapan dan melakukan PENDEKATAN lisan terlebih dahulu layaknya rekan kerja yang sedang berdiskusi di telepon:
+       - Bila permintaan umum (misal: "Tolong dong kamu install npm"):
+         Jawab dengan ramah dan tanyakan rinciannya secara lisan sebelum mengeksekusi:
+         * ID: "Siap! Kamu mau install package apa nih di proyek ini? Atau mau jalankan npm install untuk semua dependensi yang ada?"
+         * EN: "Sure! What package would you like me to install, or do you want to install all dependencies from package.json?"
+       - Bila permintaan sudah spesifik (misal: "Install express"):
+         Bicaralah secara lisan terlebih dahulu mengonfirmasi tindakan tersebut:
+         * ID: "Siap, aku install express di proyek ini sekarang ya..." lalu sertakan pemanggilan tool 'ask_user' jika membutuhkan konfirmasi persetujuan.
+         * EN: "Sure, I will install express for you right away..."
+     * Hal ini penting agar selalu ada interaksi hangat dan pendekatan percakapan yang hidup, bukan robot yang langsung mengeksekusi diam-diam.
+
+5. METODOLOGI SUPERPOWERS (https://github.com/obra/superpowers):
    - Jangan asal eksekusi coding diam-diam bila pengguna mengajukan ide baru. Tanyakan Sokratik dengan singkat seperti contoh di atas.
    - Bila memerlukan konfirmasi, persetujuan sistem, atau pilihan opsi dari pengguna, SELALU panggil tool 'ask_user' agar kartu interaktif dengan tombol Setujui (Approve) dan Tolak (Reject) serta daftar opsi muncul seketika di layar pengguna.
 
-4. ATURAN TEKNIS AUDIO (TTS):
+6. ATURAN TEKNIS AUDIO (TTS):
    - Jawab hanya dengan teks lisan percakapan normal.
    - DILARANG KERAS menggunakan simbol markdown, tabel, garis pipa (|), tanda pagar (#), daftar bullet (*, -), atau blok kode dalam ucapan lisan.
    - SPASI RAPI & ANGKA: Pisahkan setiap kata dengan spasi normal yang rapi. Gunakan angka biasa (misal "33 derajat Celsius", jangan mengeja "tiga puluh tiga").
 
-5. LAPORAN DINAMIS SETELAH TOOL (LISAN & AKRAB):
-   - Setelah selesai memeriksa folder atau membaca file dengan tool, jelaskan temuannya langsung secara lisan dan akrab dalam 1-2 kalimat (contoh: "Oh di folder ini ada file dot DS Store bang", "Ditemukan dua file dan satu folder nih bang", "Folder ini masih kosong bang").
-   - DILARANG KERAS membalas diam/kosong atau sekadar berkata kaku "Instruksi telah selesai dijalankan" / "Tugas telah selesai diproses"!`
+7. LAPORAN DINAMIS & PENJELASAN HASIL SETELAH EKSEKUSI TOOL (WAJIB JELASKAN TEMUAN):
+   - Setelah selesai mengeksekusi tool (membaca berkas, mencari file, memeriksa folder, atau menjalankan perintah bash seperti pengecekan cuaca/API):
+   - Anda WAJIB langsung menjelaskan HASIL TEMUANNYA secara lisan, ramah, dan akrab dalam 1-2 kalimat kepada pengguna (Arjuna).
+   - BILA MENGECEK CUACA: Anda WAJIB menjelaskan kondisi cuaca yang didapat (kondisi langit cerah/mendung/hujan, suhu dalam derajat Celsius, dan angin/kelembapan).
+     Contoh: "Cuaca di Sumenep saat ini mendung dengan suhu 33 derajat Celsius, kelembapan 47 persen, dan angin sekitar 21 km per jam bang."
+   - DILARANG KERAS membalas diam/kosong atau sekadar berkata kaku "Instruksi telah selesai dijalankan" / "Tugas telah selesai diproses"!
+
+8. ATURAN PERSETUJUAN PERINTAH (AUTO-APPROVAL PERINTAH BERKAITAN):
+   - Jika pengguna sudah menyetujui (Approve) perintah awal (misal perintah curl, instalasi dependensi, atau perintah bash):
+   - DILARANG KERAS memanggil 'ask_user' lagi untuk perintah sejenis atau perintah lanjutan yang berkaitan dalam alur tugas yang sama.
+   - Sekali di-approve di awal, semua pemanggilan curl berikutnya atau perintah terkait otomatis dianggap disetujui. Lanjutkan dan tuntaskan tugas secara mandiri!`
+    : '';
+
+  const userLang = detectLanguage(message);
+  const langDirective = userLang === 'en'
+    ? `\n\n[CRITICAL MULTILINGUAL INSTRUCTION - ENGLISH]:
+The user has spoken or written in English ("${message}"). You MUST converse, explain, and reply completely in fluent, natural English. Do NOT answer in Indonesian!`
     : '';
 
   const messages = [
     {
       role: 'system',
-      content: `${AGENT_SYSTEM_PROMPT}${voiceInstruction}\n\n[WORKSPACE PROYEK AKTIF]\nDirektori kerja (CWD) saat ini: ${activeWs}\nSemua perintah bash dan operasi berkas akan dieksekusi di dalam direktori proyek ini.${skillsPrompt}`,
+      content: `${AGENT_SYSTEM_PROMPT}${voiceInstruction}${langDirective}\n\n[WORKSPACE PROYEK AKTIF]\nDirektori kerja (CWD) saat ini: ${activeWs}\nSemua perintah bash dan operasi berkas akan dieksekusi di dalam direktori proyek ini.${skillsPrompt}`,
     },
   ];
 
@@ -386,6 +504,11 @@ PANDUAN UTAMA KOMUNIKASI SUARA (ORION VOICE):
   let step = 0;
   let completed = false;
   let finalAnswer = '';
+
+  // Session-level memory for auto-approving related commands once user approves
+  const sessionApprovedBinaries = new Set();
+  const sessionApprovedTools = new Set();
+  let sessionHasApproval = false;
 
   onEvent({
     type: 'agent_start',
@@ -529,11 +652,11 @@ PANDUAN UTAMA KOMUNIKASI SUARA (ORION VOICE):
       let effectiveContent = content ? content.trim() : '';
 
       const isGeneric = !effectiveContent ||
-        /^(tugas telah selesai|instruksi telah selesai|selesai diproses|proses selesai|tugas selesai)/i.test(effectiveContent);
+        /^(tugas telah selesai|instruksi telah selesai|selesai diproses|proses selesai|tugas selesai|perintah terminal sudah selesai|perintah sudah selesai)/i.test(effectiveContent);
 
-      if (step > 1 && isGeneric) {
+      if (step > 1) {
         const dynamicSummary = deriveDynamicToolSummary(messages, isVoiceMode);
-        if (dynamicSummary) {
+        if (dynamicSummary && (isGeneric || dynamicSummary.toLowerCase().includes('cuaca'))) {
           effectiveContent = dynamicSummary;
         }
       }
@@ -609,6 +732,25 @@ PANDUAN UTAMA KOMUNIKASI SUARA (ORION VOICE):
 
       // Check safety guard
       const evaluation = safetyGuard.evaluateToolCall(fnName, fnArgs);
+
+      // Auto-approval of related commands if user already approved previously in this session
+      let baseCmd = fnName;
+      if (fnName === 'bash') {
+        const cmdStr = (fnArgs.command || fnArgs.cmd || '').trim();
+        baseCmd = cmdStr.split(/\s+/)[0]?.replace(/^[./\\]+/, '').toLowerCase() || 'bash';
+      }
+
+      if (evaluation.needsApproval) {
+        const isAlreadyApproved = sessionHasApproval && (
+          sessionApprovedBinaries.has(baseCmd) ||
+          sessionApprovedTools.has(fnName) ||
+          (baseCmd === 'curl' && sessionApprovedBinaries.has('curl'))
+        );
+
+        if (isAlreadyApproved) {
+          evaluation.needsApproval = false;
+        }
+      }
 
       const toolCallObj = {
         id: callId,
@@ -689,7 +831,13 @@ PANDUAN UTAMA KOMUNIKASI SUARA (ORION VOICE):
           throw new Error('Operasi agent dihentikan oleh pengguna.');
         }
 
-        if (!approved) {
+        if (approved) {
+          sessionHasApproval = true;
+          sessionApprovedTools.add(fnName);
+          if (fnName === 'bash') {
+            sessionApprovedBinaries.add(baseCmd);
+          }
+        } else {
           const rejectedResult = {
             error: 'Tindakan ini ditolak oleh pengguna. Silakan cari solusi alternatif atau jelaskan kepada pengguna.',
           };
@@ -721,6 +869,46 @@ PANDUAN UTAMA KOMUNIKASI SUARA (ORION VOICE):
         let options = Array.isArray(fnArgs.options) ? fnArgs.options : [];
         if (options.length === 0) {
           options = ['Ya, lanjutkan', 'Tidak, batalkan'];
+        }
+
+        const isApprovalConfirmation =
+          /persetujuan|menyetujui|approve|konfirmasi|apakah anda|apakah kamu|izin|bolehkah|lanjutkan/i.test(question);
+        const questionCmdMatch = question.match(/\b(curl|wget|npm|pnpm|yarn|git|pkill|kill|node|python|bash|sh|rm)\b/i);
+        const questionCmd = questionCmdMatch ? questionCmdMatch[1].toLowerCase() : null;
+
+        // Auto-approve if user already approved an initial command/task in this session
+        if (sessionHasApproval && (isApprovalConfirmation || (questionCmd && sessionApprovedBinaries.has(questionCmd)))) {
+          const autoSelected = options[0] || 'Ya, lanjutkan';
+          const autoResult = {
+            success: true,
+            selected: autoSelected,
+            index: 0,
+            autoApproved: true,
+          };
+
+          if (questionCmd) {
+            sessionApprovedBinaries.add(questionCmd);
+          }
+
+          await onEvent({
+            type: 'tool_call_complete',
+            toolCallId: callId,
+            tool: fnName,
+            args: fnArgs,
+            result: {
+              message: `Tindakan otomatis disetujui ("${autoSelected}") karena berkaitan dengan perintah yang telah disetujui pengguna sebelumnya.`,
+            },
+            step,
+          });
+
+          messages.push({
+            role: 'tool',
+            tool_call_id: callId,
+            name: fnName,
+            content: JSON.stringify(autoResult),
+          });
+
+          continue;
         }
 
         let choiceResolver;
@@ -766,6 +954,16 @@ PANDUAN UTAMA KOMUNIKASI SUARA (ORION VOICE):
           selected: selectedText,
           index: chosen?.index ?? (isCancelled ? 1 : 0),
         };
+
+        if (!isCancelled && /^(ya|setuju|approve|lanjut|ok|yes|benar|bisa|silakan|gas)/i.test(selectedText)) {
+          sessionHasApproval = true;
+          sessionApprovedTools.add(fnName);
+          if (questionCmd) {
+            sessionApprovedBinaries.add(questionCmd);
+          }
+          const allCmds = question.match(/\b(curl|wget|npm|pnpm|yarn|git|pkill|kill|node|python|bash|sh|rm)\b/gi) || [];
+          allCmds.forEach((c) => sessionApprovedBinaries.add(c.toLowerCase()));
+        }
 
         await onEvent({
           type: 'tool_call_complete',

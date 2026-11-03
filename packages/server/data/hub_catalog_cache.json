@@ -168,7 +168,7 @@
       "community"
     ],
     "popular": true,
-    "downloads": 2942
+    "downloads": 2041
   },
   {
     "id": "anthropics-doc-coauthoring",
@@ -185,7 +185,7 @@
       "security"
     ],
     "popular": true,
-    "downloads": 6936
+    "downloads": 5086
   },
   {
     "id": "anthropics-pptx",
@@ -202,7 +202,7 @@
       "community"
     ],
     "popular": true,
-    "downloads": 2769
+    "downloads": 3083
   },
   {
     "id": "anthropics-xlsx",
@@ -219,7 +219,7 @@
       "community"
     ],
     "popular": true,
-    "downloads": 1416
+    "downloads": 5191
   },
   {
     "id": "anthropics-pdf",
@@ -236,7 +236,7 @@
       "community"
     ],
     "popular": true,
-    "downloads": 5033
+    "downloads": 2104
   },
   {
     "id": "anthropics-algorithmic-art",
@@ -253,7 +253,7 @@
       "quality"
     ],
     "popular": true,
-    "downloads": 3332
+    "downloads": 5678
   },
   {
     "id": "anthropics-canvas-design",
@@ -270,7 +270,7 @@
       "quality"
     ],
     "popular": true,
-    "downloads": 5147
+    "downloads": 1952
   },
   {
     "id": "anthropics-frontend-design",
@@ -287,7 +287,7 @@
       "quality"
     ],
     "popular": true,
-    "downloads": 5358
+    "downloads": 6921
   },
   {
     "id": "anthropics-slack-gif-creator",
@@ -304,7 +304,7 @@
       "community"
     ],
     "popular": true,
-    "downloads": 6554
+    "downloads": 4475
   },
   {
     "id": "anthropics-theme-factory",
@@ -321,7 +321,7 @@
       "quality"
     ],
     "popular": true,
-    "downloads": 8558
+    "downloads": 3123
   },
   {
     "id": "anthropics-web-artifacts-builder",
@@ -338,7 +338,7 @@
       "quality"
     ],
     "popular": true,
-    "downloads": 7928
+    "downloads": 7678
   },
   {
     "id": "anthropics-mcp-builder",
@@ -355,7 +355,7 @@
       "architecture"
     ],
     "popular": true,
-    "downloads": 6955
+    "downloads": 3125
   },
   {
     "id": "anthropics-webapp-testing",
@@ -372,7 +372,7 @@
       "testing"
     ],
     "popular": true,
-    "downloads": 3974
+    "downloads": 8002
   },
   {
     "id": "anthropics-brand-guidelines",
@@ -389,7 +389,7 @@
       "quality"
     ],
     "popular": true,
-    "downloads": 7477
+    "downloads": 2153
   },
   {
     "id": "anthropics-internal-comms",
@@ -406,7 +406,7 @@
       "community"
     ],
     "popular": true,
-    "downloads": 3617
+    "downloads": 3680
   },
   {
     "id": "anthropics-skill-creator",
@@ -423,7 +423,7 @@
       "quality"
     ],
     "popular": true,
-    "downloads": 1532
+    "downloads": 1556
   },
   {
     "id": "anthropics-template",
@@ -440,7 +440,7 @@
       "community"
     ],
     "popular": true,
-    "downloads": 5317
+    "downloads": 9255
   },
   {
     "id": "voltagent-create-voltagent",
@@ -457,7 +457,7 @@
       "quality"
     ],
     "popular": true,
-    "downloads": 8515
+    "downloads": 5538
   },
   {
     "id": "voltagent-voltagent-best-practices",
@@ -474,7 +474,7 @@
       "architecture"
     ],
     "popular": true,
-    "downloads": 3676
+    "downloads": 2538
   },
   {
     "id": "voltagent-voltagent-core-reference",
@@ -491,7 +491,7 @@
       "community"
     ],
     "popular": true,
-    "downloads": 2822
+    "downloads": 4971
   },
   {
     "id": "voltagent-voltagent-docs-bundle",
@@ -508,7 +508,7 @@
       "community"
     ],
     "popular": true,
-    "downloads": 3677
+    "downloads": 3973
   },
   {
     "id": "serpapi-serpapi-web-search",
@@ -525,7 +525,7 @@
       "community"
     ],
     "popular": true,
-    "downloads": 3387
+    "downloads": 4689
   },
   {
     "id": "serpapi-agent-usability-test",
@@ -542,7 +542,7 @@
       "testing"
     ],
     "popular": true,
-    "downloads": 4785
+    "downloads": 6870
   },
   {
     "id": "serpapi-serpapi-search-tools-python",
@@ -559,7 +559,7 @@
       "reasoning"
     ],
     "popular": true,
-    "downloads": 8302
+    "downloads": 1215
   },
   {
     "id": "serpapi-serpapi-cli",
@@ -576,7 +576,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 5910
+    "downloads": 1296
   },
   {
     "id": "crawlbase-crawl-html",
@@ -593,7 +593,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8994
+    "downloads": 4566
   },
   {
     "id": "crawlbase-crawl-markdown",
@@ -610,7 +610,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 5028
+    "downloads": 6331
   },
   {
     "id": "crawlbase-crawl-screenshot",
@@ -627,7 +627,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4211
+    "downloads": 8546
   },
   {
     "id": "crawlbase-storage-get",
@@ -644,7 +644,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4069
+    "downloads": 8287
   },
   {
     "id": "crawlbase-storage-list",
@@ -661,7 +661,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5865
+    "downloads": 4400
   },
   {
     "id": "crawlbase-storage-bulk-get",
@@ -678,7 +678,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5895
+    "downloads": 2824
   },
   {
     "id": "crawlbase-storage-count",
@@ -695,7 +695,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7406
+    "downloads": 6805
   },
   {
     "id": "crawlbase-storage-delete",
@@ -712,7 +712,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3668
+    "downloads": 2923
   },
   {
     "id": "crawlbase-storage-bulk-delete",
@@ -729,7 +729,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2182
+    "downloads": 4952
   },
   {
     "id": "crawlbase-crawlbase-mcp",
@@ -746,7 +746,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4088
+    "downloads": 8175
   },
   {
     "id": "crawlbase-langchain-crawlbase",
@@ -763,7 +763,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 8721
+    "downloads": 1232
   },
   {
     "id": "crawlbase-n8n-nodes-crawlbase",
@@ -780,7 +780,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 8140
+    "downloads": 7316
   },
   {
     "id": "testmu-ai-api-skill",
@@ -797,7 +797,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 7895
+    "downloads": 5106
   },
   {
     "id": "testmu-ai-appium-skill",
@@ -814,7 +814,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8223
+    "downloads": 7784
   },
   {
     "id": "testmu-ai-behat-skill",
@@ -831,7 +831,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 2279
+    "downloads": 6631
   },
   {
     "id": "testmu-ai-behave-skill",
@@ -848,7 +848,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 6580
+    "downloads": 5705
   },
   {
     "id": "testmu-ai-capybara-skill",
@@ -865,7 +865,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 3703
+    "downloads": 6920
   },
   {
     "id": "testmu-ai-cicd-pipeline-skill",
@@ -882,7 +882,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 1509
+    "downloads": 2259
   },
   {
     "id": "testmu-ai-codeception-skill",
@@ -899,7 +899,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 7113
+    "downloads": 6384
   },
   {
     "id": "testmu-ai-cucumber-skill",
@@ -916,7 +916,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 5364
+    "downloads": 7594
   },
   {
     "id": "testmu-ai-cypress-skill",
@@ -933,7 +933,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 4757
+    "downloads": 4939
   },
   {
     "id": "testmu-ai-detox-skill",
@@ -950,7 +950,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 4713
+    "downloads": 1462
   },
   {
     "id": "testmu-ai-espresso-skill",
@@ -967,7 +967,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 7650
+    "downloads": 1676
   },
   {
     "id": "testmu-ai-flutter-testing-skill",
@@ -984,7 +984,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 5990
+    "downloads": 2582
   },
   {
     "id": "testmu-ai-gauge-skill",
@@ -1001,7 +1001,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2442
+    "downloads": 9620
   },
   {
     "id": "testmu-ai-geb-skill",
@@ -1018,7 +1018,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9580
+    "downloads": 4294
   },
   {
     "id": "testmu-ai-hyperexecute-skill",
@@ -1035,7 +1035,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 7756
+    "downloads": 9606
   },
   {
     "id": "testmu-ai-jasmine-skill",
@@ -1052,7 +1052,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 4907
+    "downloads": 2732
   },
   {
     "id": "testmu-ai-jest-skill",
@@ -1069,7 +1069,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 4736
+    "downloads": 8301
   },
   {
     "id": "testmu-ai-junit-5-skill",
@@ -1086,7 +1086,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 9237
+    "downloads": 1871
   },
   {
     "id": "testmu-ai-kanecli-skill",
@@ -1103,7 +1103,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 5418
+    "downloads": 6095
   },
   {
     "id": "testmu-ai-karma-skill",
@@ -1120,7 +1120,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 2903
+    "downloads": 3513
   },
   {
     "id": "testmu-ai-laravel-dusk-skill",
@@ -1137,7 +1137,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 6282
+    "downloads": 2187
   },
   {
     "id": "testmu-ai-lettuce-skill",
@@ -1154,7 +1154,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 7997
+    "downloads": 1427
   },
   {
     "id": "testmu-ai-mocha-skill",
@@ -1171,7 +1171,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 3255
+    "downloads": 6355
   },
   {
     "id": "testmu-ai-mstest-skill",
@@ -1188,7 +1188,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 7991
+    "downloads": 9487
   },
   {
     "id": "testmu-ai-nemojs-skill",
@@ -1205,7 +1205,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 8444
+    "downloads": 5962
   },
   {
     "id": "testmu-ai-nightwatchjs-skill",
@@ -1222,7 +1222,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 3748
+    "downloads": 9199
   },
   {
     "id": "testmu-ai-nunit-skill",
@@ -1239,7 +1239,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 7824
+    "downloads": 7345
   },
   {
     "id": "testmu-ai-phpunit-skill",
@@ -1256,7 +1256,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 6991
+    "downloads": 3027
   },
   {
     "id": "testmu-ai-playwright-skill",
@@ -1273,7 +1273,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 4784
+    "downloads": 3564
   },
   {
     "id": "testmu-ai-protractor-skill",
@@ -1290,7 +1290,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 9685
+    "downloads": 1772
   },
   {
     "id": "testmu-ai-puppeteer-skill",
@@ -1307,7 +1307,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 5675
+    "downloads": 4107
   },
   {
     "id": "testmu-ai-pytest-skill",
@@ -1324,7 +1324,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 9351
+    "downloads": 4085
   },
   {
     "id": "testmu-ai-reqnroll-skill",
@@ -1341,7 +1341,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 2039
+    "downloads": 4652
   },
   {
     "id": "testmu-ai-robot-framework-skill",
@@ -1358,7 +1358,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 5031
+    "downloads": 3722
   },
   {
     "id": "testmu-ai-rspec-skill",
@@ -1375,7 +1375,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 9370
+    "downloads": 3950
   },
   {
     "id": "testmu-ai-selenide-skill",
@@ -1392,7 +1392,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 4619
+    "downloads": 8845
   },
   {
     "id": "testmu-ai-selenium-skill",
@@ -1409,7 +1409,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 5454
+    "downloads": 2192
   },
   {
     "id": "testmu-ai-serenity-bdd-skill",
@@ -1426,7 +1426,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 6794
+    "downloads": 8149
   },
   {
     "id": "testmu-ai-smartui-skill",
@@ -1443,7 +1443,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 6213
+    "downloads": 1521
   },
   {
     "id": "testmu-ai-specflow-skill",
@@ -1460,7 +1460,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 6292
+    "downloads": 7205
   },
   {
     "id": "testmu-ai-test-framework-migration-skill",
@@ -1477,7 +1477,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 7489
+    "downloads": 3507
   },
   {
     "id": "testmu-ai-testcafe-skill",
@@ -1494,7 +1494,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 6702
+    "downloads": 2636
   },
   {
     "id": "testmu-ai-testng-skill",
@@ -1511,7 +1511,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 1653
+    "downloads": 5637
   },
   {
     "id": "testmu-ai-testunit-skill",
@@ -1528,7 +1528,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 7148
+    "downloads": 8996
   },
   {
     "id": "testmu-ai-unittest-skill",
@@ -1545,7 +1545,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 2577
+    "downloads": 2611
   },
   {
     "id": "testmu-ai-vitest-skill",
@@ -1562,7 +1562,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 7974
+    "downloads": 9140
   },
   {
     "id": "testmu-ai-webdriverio-skill",
@@ -1579,7 +1579,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 7015
+    "downloads": 1359
   },
   {
     "id": "testmu-ai-xcuitest-skill",
@@ -1596,7 +1596,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 6691
+    "downloads": 6859
   },
   {
     "id": "testmu-ai-xunit-skill",
@@ -1613,7 +1613,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 4061
+    "downloads": 9657
   },
   {
     "id": "modem-dev-skills",
@@ -1630,7 +1630,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 2040
+    "downloads": 5606
   },
   {
     "id": "zero-zero",
@@ -1647,7 +1647,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 8001
+    "downloads": 4761
   },
   {
     "id": "zero-zero-gemini",
@@ -1664,7 +1664,7 @@
       "reasoning"
     ],
     "popular": false,
-    "downloads": 9367
+    "downloads": 6914
   },
   {
     "id": "angular-angular-developer",
@@ -1681,7 +1681,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 2218
+    "downloads": 4026
   },
   {
     "id": "angular-angular-new-app",
@@ -1698,7 +1698,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3731
+    "downloads": 1543
   },
   {
     "id": "composiohq-composio",
@@ -1715,7 +1715,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 1822
+    "downloads": 4994
   },
   {
     "id": "supabase-postgres-best-practices",
@@ -1732,7 +1732,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 5199
+    "downloads": 9376
   },
   {
     "id": "google-gemini-gemini-api-dev",
@@ -1749,7 +1749,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 6475
+    "downloads": 3020
   },
   {
     "id": "google-gemini-vertex-ai-api-dev",
@@ -1766,7 +1766,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5590
+    "downloads": 2735
   },
   {
     "id": "google-gemini-gemini-live-api-dev",
@@ -1783,7 +1783,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 8810
+    "downloads": 2551
   },
   {
     "id": "google-gemini-gemini-interactions-api",
@@ -1800,7 +1800,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 1291
+    "downloads": 5340
   },
   {
     "id": "stripe-stripe-best-practices",
@@ -1817,7 +1817,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 2420
+    "downloads": 3351
   },
   {
     "id": "stripe-upgrade-stripe",
@@ -1834,7 +1834,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 8283
+    "downloads": 4737
   },
   {
     "id": "trycourier-courier-skills",
@@ -1851,7 +1851,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4779
+    "downloads": 5720
   },
   {
     "id": "callstackincubator-react-native-best-practices",
@@ -1868,7 +1868,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2900
+    "downloads": 8117
   },
   {
     "id": "callstackincubator-github",
@@ -1885,7 +1885,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 5982
+    "downloads": 7964
   },
   {
     "id": "callstackincubator-upgrading-react-native",
@@ -1902,7 +1902,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 6470
+    "downloads": 9314
   },
   {
     "id": "better-auth-best-practices",
@@ -1919,7 +1919,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 3722
+    "downloads": 2823
   },
   {
     "id": "better-auth-explain-error",
@@ -1936,7 +1936,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 9423
+    "downloads": 5735
   },
   {
     "id": "better-auth-providers",
@@ -1953,7 +1953,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 3020
+    "downloads": 1234
   },
   {
     "id": "better-auth-create-auth",
@@ -1970,7 +1970,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 3740
+    "downloads": 5633
   },
   {
     "id": "better-auth-emailandpassword",
@@ -1987,7 +1987,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 4507
+    "downloads": 4686
   },
   {
     "id": "better-auth-organization",
@@ -2004,7 +2004,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 2579
+    "downloads": 5290
   },
   {
     "id": "better-auth-twofactor",
@@ -2021,7 +2021,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 1209
+    "downloads": 3782
   },
   {
     "id": "tinybirdco-tinybird-best-practices",
@@ -2038,7 +2038,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 8845
+    "downloads": 8403
   },
   {
     "id": "tinybirdco-tinybird-cli-guidelines",
@@ -2055,7 +2055,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 3465
+    "downloads": 8554
   },
   {
     "id": "tinybirdco-tinybird-python-sdk-guidelines",
@@ -2072,7 +2072,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 8619
+    "downloads": 2904
   },
   {
     "id": "tinybirdco-tinybird-typescript-sdk-guidelines",
@@ -2089,7 +2089,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 6822
+    "downloads": 3142
   },
   {
     "id": "hashicorp-azure-verified-modules",
@@ -2106,7 +2106,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3713
+    "downloads": 2822
   },
   {
     "id": "hashicorp-new-terraform-provider",
@@ -2123,7 +2123,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9495
+    "downloads": 5270
   },
   {
     "id": "hashicorp-provider-resources",
@@ -2140,7 +2140,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5227
+    "downloads": 6411
   },
   {
     "id": "hashicorp-provider-test-patterns",
@@ -2157,7 +2157,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 2257
+    "downloads": 7718
   },
   {
     "id": "hashicorp-provider-actions",
@@ -2174,7 +2174,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5406
+    "downloads": 9513
   },
   {
     "id": "hashicorp-run-acceptance-tests",
@@ -2191,7 +2191,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 9452
+    "downloads": 7690
   },
   {
     "id": "hashicorp-refactor-module",
@@ -2208,7 +2208,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2063
+    "downloads": 9064
   },
   {
     "id": "hashicorp-terraform-search-import",
@@ -2225,7 +2225,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6434
+    "downloads": 8656
   },
   {
     "id": "hashicorp-terraform-style-guide",
@@ -2242,7 +2242,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 3372
+    "downloads": 1483
   },
   {
     "id": "hashicorp-terraform-stacks",
@@ -2259,7 +2259,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7608
+    "downloads": 8306
   },
   {
     "id": "hashicorp-terraform-test",
@@ -2276,7 +2276,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 2852
+    "downloads": 5582
   },
   {
     "id": "sanity-io-sanity-best-practices",
@@ -2293,7 +2293,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8986
+    "downloads": 4174
   },
   {
     "id": "sanity-io-content-modeling-best-practices",
@@ -2310,7 +2310,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 6713
+    "downloads": 4072
   },
   {
     "id": "sanity-io-seo-aeo-best-practices",
@@ -2327,7 +2327,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2764
+    "downloads": 6036
   },
   {
     "id": "sanity-io-content-experimentation-best-practices",
@@ -2344,7 +2344,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 2402
+    "downloads": 8466
   },
   {
     "id": "firecrawl-firecrawl-build",
@@ -2361,7 +2361,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 5073
+    "downloads": 6460
   },
   {
     "id": "firecrawl-firecrawl-build-interact",
@@ -2378,7 +2378,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 7938
+    "downloads": 6208
   },
   {
     "id": "firecrawl-firecrawl-build-onboarding",
@@ -2395,7 +2395,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7004
+    "downloads": 8403
   },
   {
     "id": "firecrawl-firecrawl-build-scrape",
@@ -2412,7 +2412,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6526
+    "downloads": 4160
   },
   {
     "id": "firecrawl-firecrawl-build-search",
@@ -2429,7 +2429,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3631
+    "downloads": 7760
   },
   {
     "id": "neondatabase-neon-postgres",
@@ -2446,7 +2446,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7969
+    "downloads": 5810
   },
   {
     "id": "neondatabase-claimable-postgres",
@@ -2463,7 +2463,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 3571
+    "downloads": 7909
   },
   {
     "id": "neondatabase-neon-postgres-egress-optimizer",
@@ -2480,7 +2480,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7836
+    "downloads": 2634
   },
   {
     "id": "clickhouse-clickhouse-best-practices",
@@ -2497,7 +2497,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8132
+    "downloads": 2724
   },
   {
     "id": "clickhouse-chdb-datastore",
@@ -2514,7 +2514,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2819
+    "downloads": 7750
   },
   {
     "id": "clickhouse-chdb-sql",
@@ -2531,7 +2531,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 6633
+    "downloads": 1988
   },
   {
     "id": "clickhouse-clickhouse-architecture-advisor",
@@ -2548,7 +2548,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 9362
+    "downloads": 8875
   },
   {
     "id": "clickhouse-clickhousectl-cloud-deploy",
@@ -2565,7 +2565,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 4277
+    "downloads": 8139
   },
   {
     "id": "clickhouse-clickhousectl-local-dev",
@@ -2582,7 +2582,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3813
+    "downloads": 5401
   },
   {
     "id": "remotion-dev-remotion",
@@ -2599,7 +2599,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4927
+    "downloads": 2299
   },
   {
     "id": "replicate-replicate",
@@ -2616,7 +2616,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 3421
+    "downloads": 2201
   },
   {
     "id": "typefully-typefully",
@@ -2633,7 +2633,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 6296
+    "downloads": 1259
   },
   {
     "id": "veniceai-venice-api-overview",
@@ -2650,7 +2650,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 6662
+    "downloads": 6005
   },
   {
     "id": "veniceai-venice-auth",
@@ -2667,7 +2667,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 8145
+    "downloads": 2349
   },
   {
     "id": "veniceai-venice-chat",
@@ -2684,7 +2684,7 @@
       "reasoning"
     ],
     "popular": false,
-    "downloads": 7160
+    "downloads": 1234
   },
   {
     "id": "veniceai-venice-responses",
@@ -2701,7 +2701,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 7645
+    "downloads": 3492
   },
   {
     "id": "veniceai-venice-embeddings",
@@ -2718,7 +2718,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3064
+    "downloads": 1352
   },
   {
     "id": "veniceai-venice-image-generate",
@@ -2735,7 +2735,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7918
+    "downloads": 6451
   },
   {
     "id": "veniceai-venice-image-edit",
@@ -2752,7 +2752,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3940
+    "downloads": 8396
   },
   {
     "id": "veniceai-venice-audio-speech",
@@ -2769,7 +2769,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9370
+    "downloads": 3050
   },
   {
     "id": "veniceai-venice-audio-music",
@@ -2786,7 +2786,7 @@
       "reasoning"
     ],
     "popular": false,
-    "downloads": 8763
+    "downloads": 9462
   },
   {
     "id": "veniceai-venice-audio-transcription",
@@ -2803,7 +2803,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3755
+    "downloads": 1506
   },
   {
     "id": "veniceai-venice-video",
@@ -2820,7 +2820,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4275
+    "downloads": 8006
   },
   {
     "id": "veniceai-venice-models",
@@ -2837,7 +2837,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8191
+    "downloads": 8813
   },
   {
     "id": "veniceai-venice-characters",
@@ -2854,7 +2854,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4761
+    "downloads": 4996
   },
   {
     "id": "veniceai-venice-api-keys",
@@ -2871,7 +2871,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 3207
+    "downloads": 3637
   },
   {
     "id": "veniceai-venice-billing",
@@ -2888,7 +2888,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2940
+    "downloads": 6496
   },
   {
     "id": "veniceai-venice-x402",
@@ -2905,7 +2905,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1453
+    "downloads": 9543
   },
   {
     "id": "veniceai-venice-crypto-rpc",
@@ -2922,7 +2922,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6934
+    "downloads": 6336
   },
   {
     "id": "veniceai-venice-augment",
@@ -2939,7 +2939,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 5294
+    "downloads": 9218
   },
   {
     "id": "veniceai-venice-errors",
@@ -2956,7 +2956,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 8927
+    "downloads": 8668
   },
   {
     "id": "vercel-labs-next-best-practices",
@@ -2973,7 +2973,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3465
+    "downloads": 1272
   },
   {
     "id": "vercel-labs-next-cache-components",
@@ -2990,7 +2990,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8440
+    "downloads": 1718
   },
   {
     "id": "vercel-labs-next-upgrade",
@@ -3007,7 +3007,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7442
+    "downloads": 2142
   },
   {
     "id": "cloudflare-agents-sdk",
@@ -3024,7 +3024,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 6066
+    "downloads": 8556
   },
   {
     "id": "cloudflare-cloudflare",
@@ -3041,7 +3041,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 7952
+    "downloads": 9573
   },
   {
     "id": "cloudflare-cloudflare-email-service",
@@ -3058,7 +3058,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5630
+    "downloads": 7753
   },
   {
     "id": "cloudflare-durable-objects",
@@ -3075,7 +3075,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 4656
+    "downloads": 4766
   },
   {
     "id": "cloudflare-sandbox-sdk",
@@ -3092,7 +3092,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 1476
+    "downloads": 2294
   },
   {
     "id": "cloudflare-web-perf",
@@ -3109,7 +3109,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 7081
+    "downloads": 6467
   },
   {
     "id": "cloudflare-workers-best-practices",
@@ -3126,7 +3126,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 4914
+    "downloads": 3791
   },
   {
     "id": "cloudflare-wrangler",
@@ -3143,7 +3143,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 4080
+    "downloads": 7148
   },
   {
     "id": "cloudflare-security-audit-skill",
@@ -3160,7 +3160,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 9449
+    "downloads": 6300
   },
   {
     "id": "netlify-netlify-functions",
@@ -3177,7 +3177,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 7352
+    "downloads": 3424
   },
   {
     "id": "netlify-netlify-edge-functions",
@@ -3194,7 +3194,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3631
+    "downloads": 9182
   },
   {
     "id": "netlify-netlify-blobs",
@@ -3211,7 +3211,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8475
+    "downloads": 3369
   },
   {
     "id": "netlify-netlify-db",
@@ -3228,7 +3228,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 9540
+    "downloads": 2419
   },
   {
     "id": "netlify-netlify-image-cdn",
@@ -3245,7 +3245,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1953
+    "downloads": 8019
   },
   {
     "id": "netlify-netlify-forms",
@@ -3262,7 +3262,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3220
+    "downloads": 6803
   },
   {
     "id": "netlify-netlify-frameworks",
@@ -3279,7 +3279,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 6202
+    "downloads": 2408
   },
   {
     "id": "netlify-netlify-caching",
@@ -3296,7 +3296,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1801
+    "downloads": 3955
   },
   {
     "id": "netlify-netlify-config",
@@ -3313,7 +3313,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4896
+    "downloads": 6831
   },
   {
     "id": "netlify-netlify-cli-and-deploy",
@@ -3330,7 +3330,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 2392
+    "downloads": 3970
   },
   {
     "id": "netlify-netlify-deploy",
@@ -3347,7 +3347,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 8251
+    "downloads": 9080
   },
   {
     "id": "netlify-netlify-ai-gateway",
@@ -3364,7 +3364,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9360
+    "downloads": 7254
   },
   {
     "id": "google-labs-code-design-md",
@@ -3381,7 +3381,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 9178
+    "downloads": 1890
   },
   {
     "id": "google-labs-code-enhance-prompt",
@@ -3398,7 +3398,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 7726
+    "downloads": 3006
   },
   {
     "id": "google-labs-code-react-components",
@@ -3415,7 +3415,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4689
+    "downloads": 8255
   },
   {
     "id": "google-labs-code-shadcn-ui",
@@ -3432,7 +3432,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 2792
+    "downloads": 5851
   },
   {
     "id": "google-labs-code-stitch-loop",
@@ -3449,7 +3449,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 6500
+    "downloads": 8555
   },
   {
     "id": "googleworkspace-gws-shared",
@@ -3466,7 +3466,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 3515
+    "downloads": 5187
   },
   {
     "id": "googleworkspace-gws-drive",
@@ -3483,7 +3483,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2120
+    "downloads": 4525
   },
   {
     "id": "googleworkspace-gws-sheets",
@@ -3500,7 +3500,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3321
+    "downloads": 8945
   },
   {
     "id": "googleworkspace-gws-gmail",
@@ -3517,7 +3517,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5700
+    "downloads": 8943
   },
   {
     "id": "googleworkspace-gws-calendar",
@@ -3534,7 +3534,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7010
+    "downloads": 8914
   },
   {
     "id": "googleworkspace-gws-admin-reports",
@@ -3551,7 +3551,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 1638
+    "downloads": 2412
   },
   {
     "id": "googleworkspace-gws-docs",
@@ -3568,7 +3568,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9187
+    "downloads": 8945
   },
   {
     "id": "googleworkspace-gws-slides",
@@ -3585,7 +3585,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8028
+    "downloads": 5244
   },
   {
     "id": "googleworkspace-gws-tasks",
@@ -3602,7 +3602,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7532
+    "downloads": 6083
   },
   {
     "id": "googleworkspace-gws-people",
@@ -3619,7 +3619,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8688
+    "downloads": 9234
   },
   {
     "id": "googleworkspace-gws-chat",
@@ -3636,7 +3636,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5600
+    "downloads": 1413
   },
   {
     "id": "googleworkspace-gws-classroom",
@@ -3653,7 +3653,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5225
+    "downloads": 4836
   },
   {
     "id": "googleworkspace-gws-forms",
@@ -3670,7 +3670,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1775
+    "downloads": 1801
   },
   {
     "id": "googleworkspace-gws-keep",
@@ -3687,7 +3687,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9024
+    "downloads": 1548
   },
   {
     "id": "googleworkspace-gws-events",
@@ -3704,7 +3704,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2446
+    "downloads": 4424
   },
   {
     "id": "googleworkspace-gws-modelarmor",
@@ -3721,7 +3721,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7488
+    "downloads": 2801
   },
   {
     "id": "googleworkspace-gws-workflow",
@@ -3738,7 +3738,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6136
+    "downloads": 1832
   },
   {
     "id": "expo-building-native-ui",
@@ -3755,7 +3755,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 1883
+    "downloads": 9639
   },
   {
     "id": "expo-expo-api-routes",
@@ -3772,7 +3772,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 5705
+    "downloads": 1477
   },
   {
     "id": "expo-expo-cicd-workflows",
@@ -3789,7 +3789,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 4172
+    "downloads": 2537
   },
   {
     "id": "expo-expo-deployment",
@@ -3806,7 +3806,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 4217
+    "downloads": 5500
   },
   {
     "id": "expo-expo-dev-client",
@@ -3823,7 +3823,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 5124
+    "downloads": 1550
   },
   {
     "id": "expo-expo-tailwind-setup",
@@ -3840,7 +3840,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 2566
+    "downloads": 7470
   },
   {
     "id": "expo-expo-ui-jetpack-compose",
@@ -3857,7 +3857,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 8039
+    "downloads": 8089
   },
   {
     "id": "expo-expo-ui-swift-ui",
@@ -3874,7 +3874,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 1370
+    "downloads": 8018
   },
   {
     "id": "expo-native-data-fetching",
@@ -3891,7 +3891,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 6766
+    "downloads": 5933
   },
   {
     "id": "expo-upgrading-expo",
@@ -3908,7 +3908,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9168
+    "downloads": 7132
   },
   {
     "id": "expo-use-dom",
@@ -3925,7 +3925,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6068
+    "downloads": 8212
   },
   {
     "id": "huggingface-hf-cli",
@@ -3942,7 +3942,7 @@
       "reasoning"
     ],
     "popular": false,
-    "downloads": 5190
+    "downloads": 4760
   },
   {
     "id": "huggingface-hugging-face-dataset-viewer",
@@ -3959,7 +3959,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 6952
+    "downloads": 3502
   },
   {
     "id": "huggingface-hugging-face-datasets",
@@ -3976,7 +3976,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 2615
+    "downloads": 6158
   },
   {
     "id": "huggingface-hugging-face-evaluation",
@@ -3993,7 +3993,7 @@
       "reasoning"
     ],
     "popular": false,
-    "downloads": 4697
+    "downloads": 2591
   },
   {
     "id": "huggingface-hugging-face-jobs",
@@ -4010,7 +4010,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7307
+    "downloads": 7611
   },
   {
     "id": "huggingface-hugging-face-model-trainer",
@@ -4027,7 +4027,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4190
+    "downloads": 4922
   },
   {
     "id": "huggingface-hugging-face-paper-pages",
@@ -4044,7 +4044,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2604
+    "downloads": 4255
   },
   {
     "id": "huggingface-hugging-face-paper-publisher",
@@ -4061,7 +4061,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8374
+    "downloads": 4263
   },
   {
     "id": "huggingface-hugging-face-tool-builder",
@@ -4078,7 +4078,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 8078
+    "downloads": 1416
   },
   {
     "id": "huggingface-hugging-face-trackio",
@@ -4095,7 +4095,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9660
+    "downloads": 5883
   },
   {
     "id": "huggingface-hugging-face-vision-trainer",
@@ -4112,7 +4112,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2204
+    "downloads": 4868
   },
   {
     "id": "huggingface-huggingface-gradio",
@@ -4129,7 +4129,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 7472
+    "downloads": 7972
   },
   {
     "id": "huggingface-transformers-js",
@@ -4146,7 +4146,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3688
+    "downloads": 1641
   },
   {
     "id": "trailofbits-ask-questions-if-underspecified",
@@ -4163,7 +4163,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 1436
+    "downloads": 4547
   },
   {
     "id": "trailofbits-audit-context-building",
@@ -4180,7 +4180,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 6122
+    "downloads": 8440
   },
   {
     "id": "trailofbits-building-secure-contracts",
@@ -4197,7 +4197,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 6525
+    "downloads": 3735
   },
   {
     "id": "trailofbits-burpsuite-project-parser",
@@ -4214,7 +4214,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 7776
+    "downloads": 2415
   },
   {
     "id": "trailofbits-claude-in-chrome-troubleshooting",
@@ -4231,7 +4231,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6365
+    "downloads": 8826
   },
   {
     "id": "trailofbits-constant-time-analysis",
@@ -4248,7 +4248,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7211
+    "downloads": 4976
   },
   {
     "id": "trailofbits-culture-index",
@@ -4265,7 +4265,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4596
+    "downloads": 2913
   },
   {
     "id": "trailofbits-differential-review",
@@ -4282,7 +4282,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 6776
+    "downloads": 1479
   },
   {
     "id": "trailofbits-dwarf-expert",
@@ -4299,7 +4299,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6738
+    "downloads": 5112
   },
   {
     "id": "trailofbits-entry-point-analyzer",
@@ -4316,7 +4316,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 4144
+    "downloads": 9589
   },
   {
     "id": "trailofbits-firebase-apk-scanner",
@@ -4333,7 +4333,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 2210
+    "downloads": 9065
   },
   {
     "id": "trailofbits-insecure-defaults",
@@ -4350,7 +4350,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3250
+    "downloads": 4247
   },
   {
     "id": "trailofbits-modern-python",
@@ -4367,7 +4367,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 3249
+    "downloads": 2476
   },
   {
     "id": "trailofbits-property-based-testing",
@@ -4384,7 +4384,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 4419
+    "downloads": 2555
   },
   {
     "id": "trailofbits-semgrep-rule-creator",
@@ -4401,7 +4401,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 7947
+    "downloads": 8634
   },
   {
     "id": "trailofbits-semgrep-rule-variant-creator",
@@ -4418,7 +4418,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 8050
+    "downloads": 2118
   },
   {
     "id": "trailofbits-sharp-edges",
@@ -4435,7 +4435,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 9408
+    "downloads": 5748
   },
   {
     "id": "trailofbits-spec-to-code-compliance",
@@ -4452,7 +4452,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 8621
+    "downloads": 7837
   },
   {
     "id": "trailofbits-static-analysis",
@@ -4469,7 +4469,7 @@
       "reasoning"
     ],
     "popular": false,
-    "downloads": 9391
+    "downloads": 5358
   },
   {
     "id": "trailofbits-testing-handbook-skills",
@@ -4486,7 +4486,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 2196
+    "downloads": 7267
   },
   {
     "id": "trailofbits-variant-analysis",
@@ -4503,7 +4503,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5507
+    "downloads": 4456
   },
   {
     "id": "getsentry-sentry-sdk-setup",
@@ -4520,7 +4520,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2291
+    "downloads": 4436
   },
   {
     "id": "getsentry-sentry-workflow",
@@ -4537,7 +4537,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1540
+    "downloads": 3691
   },
   {
     "id": "getsentry-sentry-fix-issues",
@@ -4554,7 +4554,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7001
+    "downloads": 8215
   },
   {
     "id": "getsentry-sentry-code-review",
@@ -4571,7 +4571,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3512
+    "downloads": 1723
   },
   {
     "id": "getsentry-sentry-pr-code-review",
@@ -4588,7 +4588,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2670
+    "downloads": 1726
   },
   {
     "id": "getsentry-sentry-create-alert",
@@ -4605,7 +4605,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6967
+    "downloads": 6266
   },
   {
     "id": "getsentry-sentry-feature-setup",
@@ -4622,7 +4622,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9234
+    "downloads": 6179
   },
   {
     "id": "getsentry-sentry-otel-exporter-setup",
@@ -4639,7 +4639,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6753
+    "downloads": 7258
   },
   {
     "id": "getsentry-sentry-setup-ai-monitoring",
@@ -4656,7 +4656,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2112
+    "downloads": 7283
   },
   {
     "id": "getsentry-sentry-sdk-upgrade",
@@ -4673,7 +4673,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4514
+    "downloads": 1687
   },
   {
     "id": "getsentry-sentry-sdk-skill-creator",
@@ -4690,7 +4690,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7351
+    "downloads": 1348
   },
   {
     "id": "getsentry-sentry-android-sdk",
@@ -4707,7 +4707,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6711
+    "downloads": 7906
   },
   {
     "id": "getsentry-sentry-browser-sdk",
@@ -4724,7 +4724,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4340
+    "downloads": 8189
   },
   {
     "id": "getsentry-sentry-cloudflare-sdk",
@@ -4741,7 +4741,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1781
+    "downloads": 1298
   },
   {
     "id": "getsentry-sentry-cocoa-sdk",
@@ -4758,7 +4758,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5585
+    "downloads": 6679
   },
   {
     "id": "getsentry-sentry-dotnet-sdk",
@@ -4775,7 +4775,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 7014
+    "downloads": 7501
   },
   {
     "id": "getsentry-sentry-elixir-sdk",
@@ -4792,7 +4792,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4788
+    "downloads": 5606
   },
   {
     "id": "getsentry-sentry-flutter-sdk",
@@ -4809,7 +4809,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 2616
+    "downloads": 6797
   },
   {
     "id": "getsentry-sentry-go-sdk",
@@ -4826,7 +4826,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7559
+    "downloads": 4257
   },
   {
     "id": "getsentry-sentry-nestjs-sdk",
@@ -4843,7 +4843,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2540
+    "downloads": 4524
   },
   {
     "id": "getsentry-sentry-nextjs-sdk",
@@ -4860,7 +4860,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9500
+    "downloads": 3216
   },
   {
     "id": "getsentry-sentry-node-sdk",
@@ -4877,7 +4877,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8232
+    "downloads": 8592
   },
   {
     "id": "getsentry-sentry-php-sdk",
@@ -4894,7 +4894,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2811
+    "downloads": 4556
   },
   {
     "id": "getsentry-sentry-python-sdk",
@@ -4911,7 +4911,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 7509
+    "downloads": 8853
   },
   {
     "id": "getsentry-sentry-react-native-sdk",
@@ -4928,7 +4928,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8762
+    "downloads": 9122
   },
   {
     "id": "getsentry-sentry-react-sdk",
@@ -4945,7 +4945,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2574
+    "downloads": 3688
   },
   {
     "id": "getsentry-sentry-ruby-sdk",
@@ -4962,7 +4962,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7824
+    "downloads": 8632
   },
   {
     "id": "getsentry-sentry-svelte-sdk",
@@ -4979,7 +4979,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1736
+    "downloads": 3442
   },
   {
     "id": "microsoft-cloud-solution-architect",
@@ -4996,7 +4996,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 3179
+    "downloads": 9633
   },
   {
     "id": "microsoft-continual-learning",
@@ -5013,7 +5013,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3026
+    "downloads": 6499
   },
   {
     "id": "microsoft-copilot-sdk",
@@ -5030,7 +5030,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 7364
+    "downloads": 5285
   },
   {
     "id": "microsoft-entra-agent-id",
@@ -5047,7 +5047,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 2209
+    "downloads": 8925
   },
   {
     "id": "microsoft-frontend-design-review",
@@ -5064,7 +5064,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 5743
+    "downloads": 5750
   },
   {
     "id": "microsoft-github-issue-creator",
@@ -5081,7 +5081,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 4355
+    "downloads": 6468
   },
   {
     "id": "microsoft-podcast-generation",
@@ -5098,7 +5098,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 7916
+    "downloads": 1497
   },
   {
     "id": "microsoft-azure-ai-document-intelligence-dotnet",
@@ -5115,7 +5115,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4478
+    "downloads": 7822
   },
   {
     "id": "microsoft-azure-ai-openai-dotnet",
@@ -5132,7 +5132,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4590
+    "downloads": 4092
   },
   {
     "id": "microsoft-azure-ai-projects-dotnet",
@@ -5149,7 +5149,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2765
+    "downloads": 8266
   },
   {
     "id": "microsoft-azure-ai-voicelive-dotnet",
@@ -5166,7 +5166,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6677
+    "downloads": 7942
   },
   {
     "id": "microsoft-azure-eventgrid-dotnet",
@@ -5183,7 +5183,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2140
+    "downloads": 6785
   },
   {
     "id": "microsoft-azure-eventhub-dotnet",
@@ -5200,7 +5200,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1324
+    "downloads": 8663
   },
   {
     "id": "microsoft-azure-identity-dotnet",
@@ -5217,7 +5217,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 9318
+    "downloads": 1476
   },
   {
     "id": "microsoft-azure-maps-search-dotnet",
@@ -5234,7 +5234,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8236
+    "downloads": 2821
   },
   {
     "id": "microsoft-azure-mgmt-apicenter-dotnet",
@@ -5251,7 +5251,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 1717
+    "downloads": 8404
   },
   {
     "id": "microsoft-azure-mgmt-apimanagement-dotnet",
@@ -5268,7 +5268,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 4498
+    "downloads": 7259
   },
   {
     "id": "microsoft-azure-mgmt-applicationinsights-dotnet",
@@ -5285,7 +5285,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7696
+    "downloads": 8995
   },
   {
     "id": "microsoft-azure-mgmt-arizeaiobservabilityeval-dotnet",
@@ -5302,7 +5302,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8318
+    "downloads": 7033
   },
   {
     "id": "microsoft-azure-mgmt-botservice-dotnet",
@@ -5319,7 +5319,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9582
+    "downloads": 6750
   },
   {
     "id": "microsoft-azure-mgmt-fabric-dotnet",
@@ -5336,7 +5336,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 3324
+    "downloads": 8963
   },
   {
     "id": "microsoft-azure-mgmt-mongodbatlas-dotnet",
@@ -5353,7 +5353,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3673
+    "downloads": 4644
   },
   {
     "id": "microsoft-azure-mgmt-weightsandbiases-dotnet",
@@ -5370,7 +5370,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 2834
+    "downloads": 7457
   },
   {
     "id": "microsoft-azure-resource-manager-cosmosdb-dotnet",
@@ -5387,7 +5387,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1825
+    "downloads": 8136
   },
   {
     "id": "microsoft-azure-resource-manager-durabletask-dotnet",
@@ -5404,7 +5404,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5832
+    "downloads": 6642
   },
   {
     "id": "microsoft-azure-resource-manager-mysql-dotnet",
@@ -5421,7 +5421,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 6600
+    "downloads": 1849
   },
   {
     "id": "microsoft-azure-resource-manager-playwright-dotnet",
@@ -5438,7 +5438,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 1516
+    "downloads": 7453
   },
   {
     "id": "microsoft-azure-resource-manager-postgresql-dotnet",
@@ -5455,7 +5455,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 4867
+    "downloads": 5483
   },
   {
     "id": "microsoft-azure-resource-manager-redis-dotnet",
@@ -5472,7 +5472,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4707
+    "downloads": 5990
   },
   {
     "id": "microsoft-azure-resource-manager-sql-dotnet",
@@ -5489,7 +5489,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 2388
+    "downloads": 4138
   },
   {
     "id": "microsoft-azure-search-documents-dotnet",
@@ -5506,7 +5506,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7547
+    "downloads": 8688
   },
   {
     "id": "microsoft-azure-security-keyvault-keys-dotnet",
@@ -5523,7 +5523,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2962
+    "downloads": 1439
   },
   {
     "id": "microsoft-azure-servicebus-dotnet",
@@ -5540,7 +5540,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6874
+    "downloads": 6428
   },
   {
     "id": "microsoft-m365-agents-dotnet",
@@ -5557,7 +5557,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8732
+    "downloads": 2713
   },
   {
     "id": "microsoft-microsoft-azure-webjobs-extensions-authentication-events-dotnet",
@@ -5574,7 +5574,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 8895
+    "downloads": 7553
   },
   {
     "id": "microsoft-azure-ai-anomalydetector-java",
@@ -5591,7 +5591,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4401
+    "downloads": 4269
   },
   {
     "id": "microsoft-azure-ai-contentsafety-java",
@@ -5608,7 +5608,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3200
+    "downloads": 1266
   },
   {
     "id": "microsoft-azure-ai-formrecognizer-java",
@@ -5625,7 +5625,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6083
+    "downloads": 2121
   },
   {
     "id": "microsoft-azure-ai-projects-java",
@@ -5642,7 +5642,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4007
+    "downloads": 6203
   },
   {
     "id": "microsoft-azure-ai-vision-imageanalysis-java",
@@ -5659,7 +5659,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6800
+    "downloads": 4630
   },
   {
     "id": "microsoft-azure-ai-voicelive-java",
@@ -5676,7 +5676,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1696
+    "downloads": 8683
   },
   {
     "id": "microsoft-azure-appconfiguration-java",
@@ -5693,7 +5693,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5584
+    "downloads": 2737
   },
   {
     "id": "microsoft-azure-communication-callautomation-java",
@@ -5710,7 +5710,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7921
+    "downloads": 2420
   },
   {
     "id": "microsoft-azure-communication-callingserver-java",
@@ -5727,7 +5727,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7046
+    "downloads": 2583
   },
   {
     "id": "microsoft-azure-communication-chat-java",
@@ -5744,7 +5744,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9564
+    "downloads": 5049
   },
   {
     "id": "microsoft-azure-communication-common-java",
@@ -5761,7 +5761,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1811
+    "downloads": 3237
   },
   {
     "id": "microsoft-azure-communication-sms-java",
@@ -5778,7 +5778,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3069
+    "downloads": 2172
   },
   {
     "id": "microsoft-azure-compute-batch-java",
@@ -5795,7 +5795,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9350
+    "downloads": 3563
   },
   {
     "id": "microsoft-azure-cosmos-java",
@@ -5812,7 +5812,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 6395
+    "downloads": 2228
   },
   {
     "id": "microsoft-azure-data-tables-java",
@@ -5829,7 +5829,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 5136
+    "downloads": 3144
   },
   {
     "id": "microsoft-azure-eventgrid-java",
@@ -5846,7 +5846,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1590
+    "downloads": 6972
   },
   {
     "id": "microsoft-azure-eventhub-java",
@@ -5863,7 +5863,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5273
+    "downloads": 9641
   },
   {
     "id": "microsoft-azure-identity-java",
@@ -5880,7 +5880,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 3980
+    "downloads": 8992
   },
   {
     "id": "microsoft-azure-messaging-webpubsub-java",
@@ -5897,7 +5897,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2857
+    "downloads": 7632
   },
   {
     "id": "microsoft-azure-monitor-ingestion-java",
@@ -5914,7 +5914,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3973
+    "downloads": 8495
   },
   {
     "id": "microsoft-azure-monitor-opentelemetry-exporter-java",
@@ -5931,7 +5931,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8903
+    "downloads": 8629
   },
   {
     "id": "microsoft-azure-monitor-query-java",
@@ -5948,7 +5948,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7861
+    "downloads": 6150
   },
   {
     "id": "microsoft-azure-security-keyvault-keys-java",
@@ -5965,7 +5965,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3058
+    "downloads": 5305
   },
   {
     "id": "microsoft-azure-security-keyvault-secrets-java",
@@ -5982,7 +5982,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5859
+    "downloads": 9497
   },
   {
     "id": "microsoft-azure-storage-blob-java",
@@ -5999,7 +5999,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1790
+    "downloads": 1609
   },
   {
     "id": "microsoft-agent-framework-azure-ai-py",
@@ -6016,7 +6016,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6164
+    "downloads": 8442
   },
   {
     "id": "microsoft-agents-v2-py",
@@ -6033,7 +6033,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6363
+    "downloads": 1455
   },
   {
     "id": "microsoft-azure-ai-contentsafety-py",
@@ -6050,7 +6050,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6193
+    "downloads": 2627
   },
   {
     "id": "microsoft-azure-ai-contentunderstanding-py",
@@ -6067,7 +6067,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6443
+    "downloads": 8419
   },
   {
     "id": "microsoft-azure-ai-ml-py",
@@ -6084,7 +6084,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7209
+    "downloads": 9561
   },
   {
     "id": "microsoft-azure-ai-projects-py",
@@ -6101,7 +6101,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1252
+    "downloads": 8435
   },
   {
     "id": "microsoft-azure-ai-textanalytics-py",
@@ -6118,7 +6118,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2821
+    "downloads": 3135
   },
   {
     "id": "microsoft-azure-ai-transcription-py",
@@ -6135,7 +6135,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5823
+    "downloads": 7483
   },
   {
     "id": "microsoft-azure-ai-translation-document-py",
@@ -6152,7 +6152,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6484
+    "downloads": 6192
   },
   {
     "id": "microsoft-azure-ai-translation-text-py",
@@ -6169,7 +6169,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4105
+    "downloads": 6303
   },
   {
     "id": "microsoft-azure-ai-vision-imageanalysis-py",
@@ -6186,7 +6186,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4158
+    "downloads": 1693
   },
   {
     "id": "microsoft-azure-ai-voicelive-py",
@@ -6203,7 +6203,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8780
+    "downloads": 4037
   },
   {
     "id": "microsoft-azure-appconfiguration-py",
@@ -6220,7 +6220,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3346
+    "downloads": 4445
   },
   {
     "id": "microsoft-azure-containerregistry-py",
@@ -6237,7 +6237,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6254
+    "downloads": 6938
   },
   {
     "id": "microsoft-azure-cosmos-db-py",
@@ -6254,7 +6254,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 1915
+    "downloads": 4617
   },
   {
     "id": "microsoft-azure-cosmos-py",
@@ -6271,7 +6271,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 7084
+    "downloads": 4669
   },
   {
     "id": "microsoft-azure-data-tables-py",
@@ -6288,7 +6288,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 4943
+    "downloads": 7532
   },
   {
     "id": "microsoft-azure-eventgrid-py",
@@ -6305,7 +6305,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8803
+    "downloads": 7729
   },
   {
     "id": "microsoft-azure-eventhub-py",
@@ -6322,7 +6322,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4507
+    "downloads": 8028
   },
   {
     "id": "microsoft-azure-identity-py",
@@ -6339,7 +6339,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 2333
+    "downloads": 6860
   },
   {
     "id": "microsoft-azure-keyvault-py",
@@ -6356,7 +6356,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3411
+    "downloads": 9698
   },
   {
     "id": "microsoft-azure-messaging-webpubsubservice-py",
@@ -6373,7 +6373,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4290
+    "downloads": 8540
   },
   {
     "id": "microsoft-azure-mgmt-apicenter-py",
@@ -6390,7 +6390,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 1357
+    "downloads": 1952
   },
   {
     "id": "microsoft-azure-mgmt-apimanagement-py",
@@ -6407,7 +6407,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 4165
+    "downloads": 2404
   },
   {
     "id": "microsoft-azure-mgmt-botservice-py",
@@ -6424,7 +6424,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4454
+    "downloads": 7825
   },
   {
     "id": "microsoft-azure-mgmt-fabric-py",
@@ -6441,7 +6441,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 8245
+    "downloads": 6779
   },
   {
     "id": "microsoft-azure-monitor-ingestion-py",
@@ -6458,7 +6458,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4673
+    "downloads": 4027
   },
   {
     "id": "microsoft-azure-monitor-opentelemetry-exporter-py",
@@ -6475,7 +6475,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4795
+    "downloads": 7974
   },
   {
     "id": "microsoft-azure-monitor-opentelemetry-py",
@@ -6492,7 +6492,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1992
+    "downloads": 6838
   },
   {
     "id": "microsoft-azure-monitor-query-py",
@@ -6509,7 +6509,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2600
+    "downloads": 4903
   },
   {
     "id": "microsoft-azure-search-documents-py",
@@ -6526,7 +6526,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5354
+    "downloads": 4899
   },
   {
     "id": "microsoft-azure-servicebus-py",
@@ -6543,7 +6543,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5020
+    "downloads": 1315
   },
   {
     "id": "microsoft-azure-speech-to-text-rest-py",
@@ -6560,7 +6560,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3451
+    "downloads": 8722
   },
   {
     "id": "microsoft-azure-storage-blob-py",
@@ -6577,7 +6577,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4478
+    "downloads": 1846
   },
   {
     "id": "microsoft-azure-storage-file-datalake-py",
@@ -6594,7 +6594,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8600
+    "downloads": 1781
   },
   {
     "id": "microsoft-azure-storage-file-share-py",
@@ -6611,7 +6611,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6217
+    "downloads": 8436
   },
   {
     "id": "microsoft-azure-storage-queue-py",
@@ -6628,7 +6628,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 7319
+    "downloads": 4880
   },
   {
     "id": "microsoft-fastapi-router-py",
@@ -6645,7 +6645,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 9655
+    "downloads": 4033
   },
   {
     "id": "microsoft-m365-agents-py",
@@ -6662,7 +6662,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6402
+    "downloads": 2551
   },
   {
     "id": "microsoft-pydantic-models-py",
@@ -6679,7 +6679,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 3385
+    "downloads": 1318
   },
   {
     "id": "microsoft-azure-cosmos-rust",
@@ -6696,7 +6696,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 1975
+    "downloads": 6511
   },
   {
     "id": "microsoft-azure-eventhub-rust",
@@ -6713,7 +6713,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6007
+    "downloads": 8580
   },
   {
     "id": "microsoft-azure-identity-rust",
@@ -6730,7 +6730,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 3523
+    "downloads": 5512
   },
   {
     "id": "microsoft-azure-keyvault-certificates-rust",
@@ -6747,7 +6747,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2867
+    "downloads": 1204
   },
   {
     "id": "microsoft-azure-keyvault-keys-rust",
@@ -6764,7 +6764,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6738
+    "downloads": 3122
   },
   {
     "id": "microsoft-azure-keyvault-secrets-rust",
@@ -6781,7 +6781,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6080
+    "downloads": 5480
   },
   {
     "id": "microsoft-azure-storage-blob-rust",
@@ -6798,7 +6798,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4954
+    "downloads": 1359
   },
   {
     "id": "microsoft-azure-ai-contentsafety-ts",
@@ -6815,7 +6815,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7197
+    "downloads": 2659
   },
   {
     "id": "microsoft-azure-ai-document-intelligence-ts",
@@ -6832,7 +6832,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7986
+    "downloads": 4922
   },
   {
     "id": "microsoft-azure-ai-projects-ts",
@@ -6849,7 +6849,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2841
+    "downloads": 7799
   },
   {
     "id": "microsoft-azure-ai-translation-ts",
@@ -6866,7 +6866,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9276
+    "downloads": 5071
   },
   {
     "id": "microsoft-azure-ai-voicelive-ts",
@@ -6883,7 +6883,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8019
+    "downloads": 3128
   },
   {
     "id": "microsoft-azure-appconfiguration-ts",
@@ -6900,7 +6900,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7972
+    "downloads": 6985
   },
   {
     "id": "microsoft-azure-cosmos-ts",
@@ -6917,7 +6917,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 9274
+    "downloads": 5500
   },
   {
     "id": "microsoft-azure-eventhub-ts",
@@ -6934,7 +6934,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4786
+    "downloads": 5372
   },
   {
     "id": "microsoft-azure-identity-ts",
@@ -6951,7 +6951,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 4597
+    "downloads": 9564
   },
   {
     "id": "microsoft-azure-keyvault-keys-ts",
@@ -6968,7 +6968,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3204
+    "downloads": 2666
   },
   {
     "id": "microsoft-azure-keyvault-secrets-ts",
@@ -6985,7 +6985,7 @@
       "reasoning"
     ],
     "popular": false,
-    "downloads": 6717
+    "downloads": 1901
   },
   {
     "id": "microsoft-azure-microsoft-playwright-testing-ts",
@@ -7002,7 +7002,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 5916
+    "downloads": 1204
   },
   {
     "id": "microsoft-azure-monitor-opentelemetry-ts",
@@ -7019,7 +7019,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 7288
+    "downloads": 1983
   },
   {
     "id": "microsoft-azure-postgres-ts",
@@ -7036,7 +7036,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 4026
+    "downloads": 8915
   },
   {
     "id": "microsoft-azure-search-documents-ts",
@@ -7053,7 +7053,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7522
+    "downloads": 8571
   },
   {
     "id": "microsoft-azure-servicebus-ts",
@@ -7070,7 +7070,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9154
+    "downloads": 8992
   },
   {
     "id": "microsoft-azure-storage-blob-ts",
@@ -7087,7 +7087,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3829
+    "downloads": 7157
   },
   {
     "id": "microsoft-azure-storage-file-share-ts",
@@ -7104,7 +7104,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4887
+    "downloads": 7004
   },
   {
     "id": "microsoft-azure-storage-queue-ts",
@@ -7121,7 +7121,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6689
+    "downloads": 6789
   },
   {
     "id": "microsoft-azure-web-pubsub-ts",
@@ -7138,7 +7138,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2261
+    "downloads": 8765
   },
   {
     "id": "microsoft-frontend-ui-dark-ts",
@@ -7155,7 +7155,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6050
+    "downloads": 7370
   },
   {
     "id": "microsoft-m365-agents-ts",
@@ -7172,7 +7172,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4083
+    "downloads": 6937
   },
   {
     "id": "microsoft-react-flow-node-ts",
@@ -7189,7 +7189,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9521
+    "downloads": 3718
   },
   {
     "id": "microsoft-zustand-store-ts",
@@ -7206,7 +7206,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9618
+    "downloads": 4418
   },
   {
     "id": "fal-ai-community-fal-3d",
@@ -7223,7 +7223,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2533
+    "downloads": 7464
   },
   {
     "id": "fal-ai-community-fal-audio",
@@ -7240,7 +7240,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6092
+    "downloads": 2798
   },
   {
     "id": "fal-ai-community-fal-generate",
@@ -7257,7 +7257,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4142
+    "downloads": 4247
   },
   {
     "id": "fal-ai-community-fal-image-edit",
@@ -7274,7 +7274,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3562
+    "downloads": 2315
   },
   {
     "id": "fal-ai-community-fal-kling-o3",
@@ -7291,7 +7291,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3288
+    "downloads": 2372
   },
   {
     "id": "fal-ai-community-fal-lip-sync",
@@ -7308,7 +7308,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2880
+    "downloads": 3615
   },
   {
     "id": "fal-ai-community-fal-platform",
@@ -7325,7 +7325,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 2482
+    "downloads": 7068
   },
   {
     "id": "fal-ai-community-fal-realtime",
@@ -7342,7 +7342,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5520
+    "downloads": 6551
   },
   {
     "id": "fal-ai-community-fal-restore",
@@ -7359,7 +7359,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5350
+    "downloads": 3422
   },
   {
     "id": "fal-ai-community-fal-train",
@@ -7376,7 +7376,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8989
+    "downloads": 8321
   },
   {
     "id": "fal-ai-community-fal-tryon",
@@ -7393,7 +7393,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8669
+    "downloads": 1482
   },
   {
     "id": "fal-ai-community-fal-upscale",
@@ -7410,7 +7410,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3207
+    "downloads": 5873
   },
   {
     "id": "fal-ai-community-fal-video-edit",
@@ -7427,7 +7427,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1595
+    "downloads": 4854
   },
   {
     "id": "fal-ai-community-fal-vision",
@@ -7444,7 +7444,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4469
+    "downloads": 6027
   },
   {
     "id": "fal-ai-community-fal-workflow",
@@ -7461,7 +7461,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9675
+    "downloads": 4649
   },
   {
     "id": "wordpress-wordpress-router",
@@ -7478,7 +7478,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4431
+    "downloads": 5122
   },
   {
     "id": "wordpress-wp-project-triage",
@@ -7495,7 +7495,7 @@
       "reasoning"
     ],
     "popular": false,
-    "downloads": 9603
+    "downloads": 2952
   },
   {
     "id": "wordpress-wp-block-development",
@@ -7512,7 +7512,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3483
+    "downloads": 8247
   },
   {
     "id": "wordpress-wp-block-themes",
@@ -7529,7 +7529,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9292
+    "downloads": 8085
   },
   {
     "id": "wordpress-wp-plugin-development",
@@ -7546,7 +7546,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 1966
+    "downloads": 7283
   },
   {
     "id": "wordpress-wp-rest-api",
@@ -7563,7 +7563,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 9578
+    "downloads": 1799
   },
   {
     "id": "wordpress-wp-interactivity-api",
@@ -7580,7 +7580,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 9411
+    "downloads": 5593
   },
   {
     "id": "wordpress-wp-abilities-api",
@@ -7597,7 +7597,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 8739
+    "downloads": 8252
   },
   {
     "id": "wordpress-wp-wpcli-and-ops",
@@ -7614,7 +7614,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8970
+    "downloads": 8559
   },
   {
     "id": "wordpress-wp-performance",
@@ -7631,7 +7631,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 2751
+    "downloads": 2642
   },
   {
     "id": "wordpress-wp-phpstan",
@@ -7648,7 +7648,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4471
+    "downloads": 7068
   },
   {
     "id": "wordpress-wp-playground",
@@ -7665,7 +7665,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2720
+    "downloads": 2713
   },
   {
     "id": "wordpress-wpds",
@@ -7682,7 +7682,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 4573
+    "downloads": 6035
   },
   {
     "id": "openai-cloudflare-deploy",
@@ -7699,7 +7699,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 5883
+    "downloads": 8820
   },
   {
     "id": "openai-develop-web-game",
@@ -7716,7 +7716,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 6568
+    "downloads": 2120
   },
   {
     "id": "openai-doc",
@@ -7733,7 +7733,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3289
+    "downloads": 1928
   },
   {
     "id": "openai-gh-address-comments",
@@ -7750,7 +7750,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 2829
+    "downloads": 1749
   },
   {
     "id": "openai-gh-fix-ci",
@@ -7767,7 +7767,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 6766
+    "downloads": 4669
   },
   {
     "id": "openai-imagegen",
@@ -7784,7 +7784,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 9663
+    "downloads": 3193
   },
   {
     "id": "openai-jupyter-notebook",
@@ -7801,7 +7801,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 9034
+    "downloads": 1738
   },
   {
     "id": "openai-linear",
@@ -7818,7 +7818,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4439
+    "downloads": 4171
   },
   {
     "id": "openai-notion-knowledge-capture",
@@ -7835,7 +7835,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4893
+    "downloads": 9681
   },
   {
     "id": "openai-notion-meeting-intelligence",
@@ -7852,7 +7852,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9677
+    "downloads": 2187
   },
   {
     "id": "openai-notion-research-documentation",
@@ -7869,7 +7869,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7950
+    "downloads": 8619
   },
   {
     "id": "openai-notion-spec-to-implementation",
@@ -7886,7 +7886,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3615
+    "downloads": 8967
   },
   {
     "id": "openai-openai-docs",
@@ -7903,7 +7903,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 5711
+    "downloads": 4573
   },
   {
     "id": "openai-playwright",
@@ -7920,7 +7920,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 7776
+    "downloads": 7874
   },
   {
     "id": "openai-render-deploy",
@@ -7937,7 +7937,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 6102
+    "downloads": 4836
   },
   {
     "id": "openai-screenshot",
@@ -7954,7 +7954,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7183
+    "downloads": 8931
   },
   {
     "id": "openai-security-best-practices",
@@ -7971,7 +7971,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 7902
+    "downloads": 7481
   },
   {
     "id": "openai-security-ownership-map",
@@ -7988,7 +7988,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5271
+    "downloads": 2434
   },
   {
     "id": "openai-security-threat-model",
@@ -8005,7 +8005,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 9328
+    "downloads": 4341
   },
   {
     "id": "openai-sentry",
@@ -8022,7 +8022,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6981
+    "downloads": 3884
   },
   {
     "id": "openai-sora",
@@ -8039,7 +8039,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 1393
+    "downloads": 6720
   },
   {
     "id": "openai-speech",
@@ -8056,7 +8056,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 2576
+    "downloads": 4095
   },
   {
     "id": "openai-spreadsheet",
@@ -8073,7 +8073,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6942
+    "downloads": 1415
   },
   {
     "id": "openai-transcribe",
@@ -8090,7 +8090,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2026
+    "downloads": 5034
   },
   {
     "id": "openai-vercel-deploy",
@@ -8107,7 +8107,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 4239
+    "downloads": 7772
   },
   {
     "id": "openai-yeet",
@@ -8124,7 +8124,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 7429
+    "downloads": 3468
   },
   {
     "id": "openai-aspnet-core",
@@ -8141,7 +8141,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 7823
+    "downloads": 5613
   },
   {
     "id": "openai-chatgpt-apps",
@@ -8158,7 +8158,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 3619
+    "downloads": 2575
   },
   {
     "id": "openai-figma",
@@ -8175,7 +8175,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 1431
+    "downloads": 3918
   },
   {
     "id": "openai-figma-code-connect-components",
@@ -8192,7 +8192,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 2986
+    "downloads": 2493
   },
   {
     "id": "openai-figma-create-design-system-rules",
@@ -8209,7 +8209,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 9164
+    "downloads": 6874
   },
   {
     "id": "openai-figma-create-new-file",
@@ -8226,7 +8226,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2217
+    "downloads": 9474
   },
   {
     "id": "openai-figma-generate-design",
@@ -8243,7 +8243,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 5369
+    "downloads": 2162
   },
   {
     "id": "openai-figma-generate-library",
@@ -8260,7 +8260,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 9130
+    "downloads": 7688
   },
   {
     "id": "openai-figma-implement-design",
@@ -8277,7 +8277,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 2049
+    "downloads": 4484
   },
   {
     "id": "openai-figma-use",
@@ -8294,7 +8294,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 3190
+    "downloads": 2256
   },
   {
     "id": "openai-frontend-skill",
@@ -8311,7 +8311,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 4608
+    "downloads": 5589
   },
   {
     "id": "openai-playwright-interactive",
@@ -8328,7 +8328,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 2139
+    "downloads": 1811
   },
   {
     "id": "openai-slides",
@@ -8345,7 +8345,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2748
+    "downloads": 4118
   },
   {
     "id": "openai-winui-app",
@@ -8362,7 +8362,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 9101
+    "downloads": 1586
   },
   {
     "id": "coreyhaines31-ab-testing",
@@ -8379,7 +8379,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 8388
+    "downloads": 8490
   },
   {
     "id": "coreyhaines31-ad-creative",
@@ -8396,7 +8396,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9179
+    "downloads": 4527
   },
   {
     "id": "coreyhaines31-ai-seo",
@@ -8413,7 +8413,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3132
+    "downloads": 2168
   },
   {
     "id": "coreyhaines31-analytics",
@@ -8430,7 +8430,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 1954
+    "downloads": 1986
   },
   {
     "id": "coreyhaines31-churn-prevention",
@@ -8447,7 +8447,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 6532
+    "downloads": 8284
   },
   {
     "id": "coreyhaines31-cold-email",
@@ -8464,7 +8464,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3244
+    "downloads": 1577
   },
   {
     "id": "coreyhaines31-competitors",
@@ -8481,7 +8481,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 3737
+    "downloads": 1609
   },
   {
     "id": "coreyhaines31-content-strategy",
@@ -8498,7 +8498,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 5756
+    "downloads": 7691
   },
   {
     "id": "coreyhaines31-copy-editing",
@@ -8515,7 +8515,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1330
+    "downloads": 6797
   },
   {
     "id": "coreyhaines31-copywriting",
@@ -8532,7 +8532,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9611
+    "downloads": 3747
   },
   {
     "id": "coreyhaines31-emails",
@@ -8549,7 +8549,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 2397
+    "downloads": 2087
   },
   {
     "id": "coreyhaines31-free-tools",
@@ -8566,7 +8566,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 9082
+    "downloads": 6880
   },
   {
     "id": "coreyhaines31-launch",
@@ -8583,7 +8583,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2726
+    "downloads": 6284
   },
   {
     "id": "coreyhaines31-marketing-ideas",
@@ -8600,7 +8600,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4988
+    "downloads": 4430
   },
   {
     "id": "coreyhaines31-marketing-psychology",
@@ -8617,7 +8617,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 5760
+    "downloads": 3173
   },
   {
     "id": "coreyhaines31-onboarding",
@@ -8634,7 +8634,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9124
+    "downloads": 9658
   },
   {
     "id": "coreyhaines31-cro",
@@ -8651,7 +8651,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5597
+    "downloads": 4141
   },
   {
     "id": "coreyhaines31-ads",
@@ -8668,7 +8668,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9407
+    "downloads": 4978
   },
   {
     "id": "coreyhaines31-paywalls",
@@ -8685,7 +8685,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 9255
+    "downloads": 1728
   },
   {
     "id": "coreyhaines31-popups",
@@ -8702,7 +8702,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4368
+    "downloads": 4478
   },
   {
     "id": "coreyhaines31-pricing",
@@ -8719,7 +8719,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 6601
+    "downloads": 8033
   },
   {
     "id": "coreyhaines31-product-marketing",
@@ -8736,7 +8736,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6567
+    "downloads": 7074
   },
   {
     "id": "coreyhaines31-programmatic-seo",
@@ -8753,7 +8753,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 8430
+    "downloads": 7411
   },
   {
     "id": "coreyhaines31-referrals",
@@ -8770,7 +8770,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 5920
+    "downloads": 2027
   },
   {
     "id": "coreyhaines31-revops",
@@ -8787,7 +8787,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5372
+    "downloads": 8262
   },
   {
     "id": "coreyhaines31-sales-enablement",
@@ -8804,7 +8804,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8874
+    "downloads": 6044
   },
   {
     "id": "coreyhaines31-schema",
@@ -8821,7 +8821,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1902
+    "downloads": 6269
   },
   {
     "id": "coreyhaines31-seo-audit",
@@ -8838,7 +8838,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 2919
+    "downloads": 5308
   },
   {
     "id": "coreyhaines31-signup",
@@ -8855,7 +8855,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6538
+    "downloads": 2704
   },
   {
     "id": "coreyhaines31-site-architecture",
@@ -8872,7 +8872,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7005
+    "downloads": 1433
   },
   {
     "id": "coreyhaines31-social",
@@ -8889,7 +8889,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 7943
+    "downloads": 5554
   },
   {
     "id": "realkimbarrett-avatar-extraction",
@@ -8906,7 +8906,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 1759
+    "downloads": 2228
   },
   {
     "id": "realkimbarrett-offer-extraction",
@@ -8923,7 +8923,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9056
+    "downloads": 2779
   },
   {
     "id": "realkimbarrett-schwartz-awareness-mapper",
@@ -8940,7 +8940,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6343
+    "downloads": 5331
   },
   {
     "id": "realkimbarrett-mechanism-builder",
@@ -8957,7 +8957,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4778
+    "downloads": 7750
   },
   {
     "id": "realkimbarrett-headline-matrix",
@@ -8974,7 +8974,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6917
+    "downloads": 1349
   },
   {
     "id": "realkimbarrett-objection-crusher",
@@ -8991,7 +8991,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1382
+    "downloads": 1288
   },
   {
     "id": "realkimbarrett-ad-angle-multiplier",
@@ -9008,7 +9008,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 3250
+    "downloads": 3598
   },
   {
     "id": "realkimbarrett-scroll-stopping-creative",
@@ -9025,7 +9025,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8613
+    "downloads": 5006
   },
   {
     "id": "realkimbarrett-conversion-path-builder",
@@ -9042,7 +9042,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 1357
+    "downloads": 7284
   },
   {
     "id": "realkimbarrett-performance-diagnosis",
@@ -9059,7 +9059,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8615
+    "downloads": 3112
   },
   {
     "id": "realkimbarrett-full-funnel-campaign-orchestrator",
@@ -9076,7 +9076,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 5381
+    "downloads": 2099
   },
   {
     "id": "realkimbarrett-generic-language-killer",
@@ -9093,7 +9093,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 4898
+    "downloads": 5067
   },
   {
     "id": "binance-crypto-market-rank",
@@ -9110,7 +9110,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 6772
+    "downloads": 5027
   },
   {
     "id": "binance-meme-rush",
@@ -9127,7 +9127,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7019
+    "downloads": 9059
   },
   {
     "id": "binance-query-address-info",
@@ -9144,7 +9144,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4818
+    "downloads": 5528
   },
   {
     "id": "binance-query-token-audit",
@@ -9161,7 +9161,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 2752
+    "downloads": 5404
   },
   {
     "id": "binance-query-token-info",
@@ -9178,7 +9178,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 7141
+    "downloads": 8043
   },
   {
     "id": "binance-trading-signal",
@@ -9195,7 +9195,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 3815
+    "downloads": 2526
   },
   {
     "id": "binance-spot",
@@ -9212,7 +9212,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 5985
+    "downloads": 4834
   },
   {
     "id": "apollographql-apollo-client",
@@ -9229,7 +9229,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 7887
+    "downloads": 7422
   },
   {
     "id": "apollographql-apollo-connectors",
@@ -9246,7 +9246,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 8482
+    "downloads": 9114
   },
   {
     "id": "apollographql-apollo-federation",
@@ -9263,7 +9263,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5166
+    "downloads": 2422
   },
   {
     "id": "apollographql-apollo-kotlin",
@@ -9280,7 +9280,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5111
+    "downloads": 5588
   },
   {
     "id": "apollographql-apollo-mcp-server",
@@ -9297,7 +9297,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 7184
+    "downloads": 5548
   },
   {
     "id": "apollographql-apollo-router",
@@ -9314,7 +9314,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2685
+    "downloads": 8256
   },
   {
     "id": "apollographql-apollo-router-plugin-creator",
@@ -9331,7 +9331,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3080
+    "downloads": 4231
   },
   {
     "id": "apollographql-apollo-server",
@@ -9348,7 +9348,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 8942
+    "downloads": 6371
   },
   {
     "id": "apollographql-graphql-operations",
@@ -9365,7 +9365,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6853
+    "downloads": 7594
   },
   {
     "id": "apollographql-graphql-schema",
@@ -9382,7 +9382,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 4593
+    "downloads": 6507
   },
   {
     "id": "apollographql-rover",
@@ -9399,7 +9399,7 @@
       "reasoning"
     ],
     "popular": false,
-    "downloads": 3751
+    "downloads": 2193
   },
   {
     "id": "apollographql-rust-best-practices",
@@ -9416,7 +9416,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 7307
+    "downloads": 7471
   },
   {
     "id": "auth0-auth0-android",
@@ -9433,7 +9433,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 4591
+    "downloads": 8001
   },
   {
     "id": "auth0-auth0-angular",
@@ -9450,7 +9450,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 6588
+    "downloads": 7367
   },
   {
     "id": "auth0-auth0-aspnetcore-api",
@@ -9467,7 +9467,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 3757
+    "downloads": 9537
   },
   {
     "id": "auth0-auth0-express",
@@ -9484,7 +9484,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 2490
+    "downloads": 9279
   },
   {
     "id": "auth0-auth0-fastify",
@@ -9501,7 +9501,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 5726
+    "downloads": 5605
   },
   {
     "id": "auth0-auth0-fastify-api",
@@ -9518,7 +9518,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 8598
+    "downloads": 6108
   },
   {
     "id": "auth0-auth0-mfa",
@@ -9535,7 +9535,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 3377
+    "downloads": 5096
   },
   {
     "id": "auth0-auth0-migration",
@@ -9552,7 +9552,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 2475
+    "downloads": 3402
   },
   {
     "id": "auth0-auth0-nextjs",
@@ -9569,7 +9569,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 8065
+    "downloads": 6382
   },
   {
     "id": "auth0-auth0-nuxt",
@@ -9586,7 +9586,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 8714
+    "downloads": 2828
   },
   {
     "id": "auth0-auth0-quickstart",
@@ -9603,7 +9603,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 7345
+    "downloads": 7413
   },
   {
     "id": "auth0-auth0-react",
@@ -9620,7 +9620,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 7243
+    "downloads": 4727
   },
   {
     "id": "auth0-auth0-react-native",
@@ -9637,7 +9637,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 1998
+    "downloads": 7350
   },
   {
     "id": "auth0-auth0-vue",
@@ -9654,7 +9654,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 1257
+    "downloads": 8874
   },
   {
     "id": "brave-answers",
@@ -9671,7 +9671,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2130
+    "downloads": 6969
   },
   {
     "id": "brave-bx",
@@ -9688,7 +9688,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 1799
+    "downloads": 6800
   },
   {
     "id": "brave-images-search",
@@ -9705,7 +9705,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 4366
+    "downloads": 2142
   },
   {
     "id": "brave-llm-context",
@@ -9722,7 +9722,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9412
+    "downloads": 6396
   },
   {
     "id": "brave-local-descriptions",
@@ -9739,7 +9739,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2119
+    "downloads": 1407
   },
   {
     "id": "brave-local-pois",
@@ -9756,7 +9756,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8139
+    "downloads": 1613
   },
   {
     "id": "brave-news-search",
@@ -9773,7 +9773,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 8004
+    "downloads": 9611
   },
   {
     "id": "brave-spellcheck",
@@ -9790,7 +9790,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5911
+    "downloads": 2643
   },
   {
     "id": "brave-suggest",
@@ -9807,7 +9807,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 1900
+    "downloads": 9583
   },
   {
     "id": "brave-videos-search",
@@ -9824,7 +9824,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 4401
+    "downloads": 6295
   },
   {
     "id": "brave-web-search",
@@ -9841,7 +9841,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 7049
+    "downloads": 7242
   },
   {
     "id": "browserbase-browser",
@@ -9858,7 +9858,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5754
+    "downloads": 5268
   },
   {
     "id": "browserbase-browserbase-cli",
@@ -9875,7 +9875,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6580
+    "downloads": 1702
   },
   {
     "id": "browserbase-cookie-sync",
@@ -9892,7 +9892,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5664
+    "downloads": 7804
   },
   {
     "id": "browserbase-fetch",
@@ -9909,7 +9909,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 5639
+    "downloads": 7433
   },
   {
     "id": "browserbase-functions",
@@ -9926,7 +9926,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 8324
+    "downloads": 7834
   },
   {
     "id": "browserbase-search",
@@ -9943,7 +9943,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 4982
+    "downloads": 7969
   },
   {
     "id": "browserbase-ui-test",
@@ -9960,7 +9960,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 7888
+    "downloads": 8692
   },
   {
     "id": "coderabbitai-autofix",
@@ -9977,7 +9977,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 8370
+    "downloads": 1530
   },
   {
     "id": "coderabbitai-code-review",
@@ -9994,7 +9994,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6725
+    "downloads": 4509
   },
   {
     "id": "coinbase-authenticate-wallet",
@@ -10011,7 +10011,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5075
+    "downloads": 4489
   },
   {
     "id": "coinbase-fund",
@@ -10028,7 +10028,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8041
+    "downloads": 7309
   },
   {
     "id": "coinbase-monetize-service",
@@ -10045,7 +10045,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8724
+    "downloads": 9642
   },
   {
     "id": "coinbase-pay-for-service",
@@ -10062,7 +10062,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 2437
+    "downloads": 3577
   },
   {
     "id": "coinbase-query-onchain-data",
@@ -10079,7 +10079,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5583
+    "downloads": 4403
   },
   {
     "id": "coinbase-search-for-service",
@@ -10096,7 +10096,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8141
+    "downloads": 6269
   },
   {
     "id": "coinbase-send-usdc",
@@ -10113,7 +10113,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2152
+    "downloads": 6005
   },
   {
     "id": "coinbase-trade",
@@ -10130,7 +10130,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 9175
+    "downloads": 5493
   },
   {
     "id": "coinbase-x402",
@@ -10147,7 +10147,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 7061
+    "downloads": 5769
   },
   {
     "id": "datadog-labs-dd-apm",
@@ -10164,7 +10164,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3478
+    "downloads": 2089
   },
   {
     "id": "datadog-labs-dd-docs",
@@ -10181,7 +10181,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3308
+    "downloads": 2893
   },
   {
     "id": "datadog-labs-dd-llmo-eval-bootstrap",
@@ -10198,7 +10198,7 @@
       "reasoning"
     ],
     "popular": false,
-    "downloads": 7686
+    "downloads": 2458
   },
   {
     "id": "datadog-labs-dd-llmo-eval-trace-rca",
@@ -10215,7 +10215,7 @@
       "reasoning"
     ],
     "popular": false,
-    "downloads": 5865
+    "downloads": 3367
   },
   {
     "id": "datadog-labs-dd-llmo-experiment-analyzer",
@@ -10232,7 +10232,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7842
+    "downloads": 9384
   },
   {
     "id": "datadog-labs-dd-logs",
@@ -10249,7 +10249,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7251
+    "downloads": 3752
   },
   {
     "id": "datadog-labs-dd-monitors",
@@ -10266,7 +10266,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5626
+    "downloads": 7811
   },
   {
     "id": "datadog-labs-dd-pup",
@@ -10283,7 +10283,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 1827
+    "downloads": 4919
   },
   {
     "id": "firebase-developing-genkit-dart",
@@ -10300,7 +10300,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 5876
+    "downloads": 3873
   },
   {
     "id": "firebase-developing-genkit-go",
@@ -10317,7 +10317,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 8466
+    "downloads": 8134
   },
   {
     "id": "firebase-developing-genkit-js",
@@ -10334,7 +10334,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 4815
+    "downloads": 1976
   },
   {
     "id": "firebase-firebase-ai-logic-basics",
@@ -10351,7 +10351,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8486
+    "downloads": 8879
   },
   {
     "id": "firebase-firebase-app-hosting-basics",
@@ -10368,7 +10368,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 5361
+    "downloads": 6490
   },
   {
     "id": "firebase-firebase-auth-basics",
@@ -10385,7 +10385,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 9069
+    "downloads": 4869
   },
   {
     "id": "firebase-firebase-basics",
@@ -10402,7 +10402,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 8192
+    "downloads": 3336
   },
   {
     "id": "firebase-firebase-data-connect-basics",
@@ -10419,7 +10419,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 1653
+    "downloads": 6334
   },
   {
     "id": "firebase-firebase-firestore-enterprise-native-mode",
@@ -10436,7 +10436,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4620
+    "downloads": 1893
   },
   {
     "id": "firebase-firebase-firestore-standard",
@@ -10453,7 +10453,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 2394
+    "downloads": 4911
   },
   {
     "id": "firebase-firebase-hosting-basics",
@@ -10470,7 +10470,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 2765
+    "downloads": 4986
   },
   {
     "id": "firebase-firebase-security-rules-auditor",
@@ -10487,7 +10487,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 4938
+    "downloads": 2557
   },
   {
     "id": "flutter-flutter-adding-home-screen-widgets",
@@ -10504,7 +10504,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7585
+    "downloads": 2529
   },
   {
     "id": "flutter-flutter-animating-apps",
@@ -10521,7 +10521,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7298
+    "downloads": 5381
   },
   {
     "id": "flutter-flutter-architecting-apps",
@@ -10538,7 +10538,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 5475
+    "downloads": 5890
   },
   {
     "id": "flutter-flutter-building-forms",
@@ -10555,7 +10555,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 2438
+    "downloads": 8792
   },
   {
     "id": "flutter-flutter-building-layouts",
@@ -10572,7 +10572,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 8568
+    "downloads": 8061
   },
   {
     "id": "flutter-flutter-building-plugins",
@@ -10589,7 +10589,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 4874
+    "downloads": 4139
   },
   {
     "id": "flutter-flutter-caching-data",
@@ -10606,7 +10606,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9515
+    "downloads": 3588
   },
   {
     "id": "flutter-flutter-embedding-native-views",
@@ -10623,7 +10623,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3272
+    "downloads": 7789
   },
   {
     "id": "flutter-flutter-handling-concurrency",
@@ -10640,7 +10640,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 9620
+    "downloads": 2893
   },
   {
     "id": "flutter-flutter-handling-http-and-json",
@@ -10657,7 +10657,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2281
+    "downloads": 4088
   },
   {
     "id": "flutter-flutter-implementing-navigation-and-routing",
@@ -10674,7 +10674,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4985
+    "downloads": 1978
   },
   {
     "id": "flutter-flutter-improving-accessibility",
@@ -10691,7 +10691,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2410
+    "downloads": 7709
   },
   {
     "id": "flutter-flutter-interoperating-with-native-apis",
@@ -10708,7 +10708,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 2466
+    "downloads": 9143
   },
   {
     "id": "flutter-flutter-localizing-apps",
@@ -10725,7 +10725,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9631
+    "downloads": 2335
   },
   {
     "id": "flutter-flutter-managing-state",
@@ -10742,7 +10742,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2644
+    "downloads": 3461
   },
   {
     "id": "flutter-flutter-reducing-app-size",
@@ -10759,7 +10759,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3122
+    "downloads": 8561
   },
   {
     "id": "flutter-flutter-setting-up-on-linux",
@@ -10776,7 +10776,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5555
+    "downloads": 3948
   },
   {
     "id": "flutter-flutter-setting-up-on-macos",
@@ -10793,7 +10793,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3943
+    "downloads": 5363
   },
   {
     "id": "flutter-flutter-setting-up-on-windows",
@@ -10810,7 +10810,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6803
+    "downloads": 9304
   },
   {
     "id": "flutter-flutter-testing-apps",
@@ -10827,7 +10827,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 8934
+    "downloads": 7817
   },
   {
     "id": "flutter-flutter-theming-apps",
@@ -10844,7 +10844,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8378
+    "downloads": 9511
   },
   {
     "id": "flutter-flutter-working-with-databases",
@@ -10861,7 +10861,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 7508
+    "downloads": 7749
   },
   {
     "id": "deanpeters-acquisition-channel-advisor",
@@ -10878,7 +10878,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 7465
+    "downloads": 8267
   },
   {
     "id": "deanpeters-ai-shaped-readiness-advisor",
@@ -10895,7 +10895,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 2737
+    "downloads": 6923
   },
   {
     "id": "deanpeters-altitude-horizon-framework",
@@ -10912,7 +10912,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8177
+    "downloads": 7339
   },
   {
     "id": "deanpeters-business-health-diagnostic",
@@ -10929,7 +10929,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1511
+    "downloads": 9415
   },
   {
     "id": "deanpeters-company-research",
@@ -10946,7 +10946,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8056
+    "downloads": 8724
   },
   {
     "id": "deanpeters-customer-journey-map",
@@ -10963,7 +10963,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6017
+    "downloads": 9627
   },
   {
     "id": "deanpeters-eol-message",
@@ -10980,7 +10980,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9185
+    "downloads": 4568
   },
   {
     "id": "deanpeters-epic-hypothesis",
@@ -10997,7 +10997,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 6499
+    "downloads": 8758
   },
   {
     "id": "deanpeters-finance-metrics-quickref",
@@ -11014,7 +11014,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 6674
+    "downloads": 8070
   },
   {
     "id": "deanpeters-jobs-to-be-done",
@@ -11031,7 +11031,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3237
+    "downloads": 8186
   },
   {
     "id": "deanpeters-pestel-analysis",
@@ -11048,7 +11048,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 5858
+    "downloads": 6273
   },
   {
     "id": "deanpeters-pol-probe",
@@ -11065,7 +11065,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 2152
+    "downloads": 3198
   },
   {
     "id": "deanpeters-positioning-statement",
@@ -11082,7 +11082,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3254
+    "downloads": 3266
   },
   {
     "id": "deanpeters-press-release",
@@ -11099,7 +11099,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5152
+    "downloads": 4635
   },
   {
     "id": "deanpeters-problem-statement",
@@ -11116,7 +11116,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5702
+    "downloads": 4838
   },
   {
     "id": "deanpeters-proto-persona",
@@ -11133,7 +11133,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9547
+    "downloads": 7803
   },
   {
     "id": "deanpeters-recommendation-canvas",
@@ -11150,7 +11150,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3570
+    "downloads": 8228
   },
   {
     "id": "deanpeters-saas-economics-efficiency-metrics",
@@ -11167,7 +11167,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 5518
+    "downloads": 3923
   },
   {
     "id": "deanpeters-saas-revenue-growth-metrics",
@@ -11184,7 +11184,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6078
+    "downloads": 4695
   },
   {
     "id": "deanpeters-storyboard",
@@ -11201,7 +11201,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4827
+    "downloads": 5420
   },
   {
     "id": "deanpeters-user-story",
@@ -11218,7 +11218,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2096
+    "downloads": 3021
   },
   {
     "id": "deanpeters-user-story-mapping",
@@ -11235,7 +11235,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3263
+    "downloads": 1930
   },
   {
     "id": "deanpeters-user-story-splitting",
@@ -11252,7 +11252,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7973
+    "downloads": 6550
   },
   {
     "id": "deanpeters-context-engineering-advisor",
@@ -11269,7 +11269,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 5203
+    "downloads": 1936
   },
   {
     "id": "deanpeters-customer-journey-mapping-workshop",
@@ -11286,7 +11286,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 9617
+    "downloads": 3381
   },
   {
     "id": "deanpeters-director-readiness-advisor",
@@ -11303,7 +11303,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1900
+    "downloads": 8699
   },
   {
     "id": "deanpeters-discovery-interview-prep",
@@ -11320,7 +11320,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 7609
+    "downloads": 6573
   },
   {
     "id": "deanpeters-epic-breakdown-advisor",
@@ -11337,7 +11337,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8888
+    "downloads": 2916
   },
   {
     "id": "deanpeters-feature-investment-advisor",
@@ -11354,7 +11354,7 @@
       "reasoning"
     ],
     "popular": false,
-    "downloads": 7710
+    "downloads": 3783
   },
   {
     "id": "deanpeters-finance-based-pricing-advisor",
@@ -11371,7 +11371,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 1258
+    "downloads": 8757
   },
   {
     "id": "deanpeters-lean-ux-canvas",
@@ -11388,7 +11388,7 @@
       "reasoning"
     ],
     "popular": false,
-    "downloads": 2655
+    "downloads": 9447
   },
   {
     "id": "deanpeters-opportunity-solution-tree",
@@ -11405,7 +11405,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 2940
+    "downloads": 6390
   },
   {
     "id": "deanpeters-pol-probe-advisor",
@@ -11422,7 +11422,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7312
+    "downloads": 4256
   },
   {
     "id": "deanpeters-positioning-workshop",
@@ -11439,7 +11439,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 5861
+    "downloads": 6333
   },
   {
     "id": "deanpeters-prioritization-advisor",
@@ -11456,7 +11456,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5879
+    "downloads": 1991
   },
   {
     "id": "deanpeters-problem-framing-canvas",
@@ -11473,7 +11473,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8767
+    "downloads": 5896
   },
   {
     "id": "deanpeters-tam-sam-som-calculator",
@@ -11490,7 +11490,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 1714
+    "downloads": 2852
   },
   {
     "id": "deanpeters-user-story-mapping-workshop",
@@ -11507,7 +11507,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5588
+    "downloads": 9684
   },
   {
     "id": "deanpeters-vp-cpo-readiness-advisor",
@@ -11524,7 +11524,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5348
+    "downloads": 9119
   },
   {
     "id": "deanpeters-workshop-facilitation",
@@ -11541,7 +11541,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 6659
+    "downloads": 6885
   },
   {
     "id": "deanpeters-discovery-process",
@@ -11558,7 +11558,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7049
+    "downloads": 6492
   },
   {
     "id": "deanpeters-executive-onboarding-playbook",
@@ -11575,7 +11575,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8949
+    "downloads": 8357
   },
   {
     "id": "deanpeters-prd-development",
@@ -11592,7 +11592,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6668
+    "downloads": 2461
   },
   {
     "id": "deanpeters-product-strategy-session",
@@ -11609,7 +11609,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4708
+    "downloads": 4385
   },
   {
     "id": "deanpeters-roadmap-planning",
@@ -11626,7 +11626,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2526
+    "downloads": 8585
   },
   {
     "id": "deanpeters-skill-authoring-workflow",
@@ -11643,7 +11643,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 2862
+    "downloads": 1263
   },
   {
     "id": "phuryn-ab-test-analysis",
@@ -11660,7 +11660,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 1868
+    "downloads": 7833
   },
   {
     "id": "phuryn-cohort-analysis",
@@ -11677,7 +11677,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3208
+    "downloads": 9562
   },
   {
     "id": "phuryn-sql-queries",
@@ -11694,7 +11694,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 6138
+    "downloads": 1714
   },
   {
     "id": "phuryn-brainstorm-okrs",
@@ -11711,7 +11711,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5797
+    "downloads": 5583
   },
   {
     "id": "phuryn-create-prd",
@@ -11728,7 +11728,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1247
+    "downloads": 7146
   },
   {
     "id": "phuryn-dummy-dataset",
@@ -11745,7 +11745,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 4758
+    "downloads": 4755
   },
   {
     "id": "phuryn-job-stories",
@@ -11762,7 +11762,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2719
+    "downloads": 5074
   },
   {
     "id": "phuryn-outcome-roadmap",
@@ -11779,7 +11779,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7492
+    "downloads": 9211
   },
   {
     "id": "phuryn-pre-mortem",
@@ -11796,7 +11796,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6176
+    "downloads": 5606
   },
   {
     "id": "phuryn-prioritization-frameworks",
@@ -11813,7 +11813,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 6780
+    "downloads": 1660
   },
   {
     "id": "phuryn-release-notes",
@@ -11830,7 +11830,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 2472
+    "downloads": 6278
   },
   {
     "id": "phuryn-retro",
@@ -11847,7 +11847,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 4700
+    "downloads": 4521
   },
   {
     "id": "phuryn-sprint-plan",
@@ -11864,7 +11864,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 7936
+    "downloads": 9163
   },
   {
     "id": "phuryn-stakeholder-map",
@@ -11881,7 +11881,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 3368
+    "downloads": 1936
   },
   {
     "id": "phuryn-summarize-meeting",
@@ -11898,7 +11898,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3092
+    "downloads": 8956
   },
   {
     "id": "phuryn-test-scenarios",
@@ -11915,7 +11915,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 5257
+    "downloads": 8681
   },
   {
     "id": "phuryn-user-stories",
@@ -11932,7 +11932,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9595
+    "downloads": 5935
   },
   {
     "id": "phuryn-wwas",
@@ -11949,7 +11949,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3180
+    "downloads": 8101
   },
   {
     "id": "phuryn-beachhead-segment",
@@ -11966,7 +11966,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8036
+    "downloads": 6177
   },
   {
     "id": "phuryn-competitive-battlecard",
@@ -11983,7 +11983,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 8790
+    "downloads": 5888
   },
   {
     "id": "phuryn-growth-loops",
@@ -12000,7 +12000,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2496
+    "downloads": 7281
   },
   {
     "id": "phuryn-gtm-motions",
@@ -12017,7 +12017,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4016
+    "downloads": 1961
   },
   {
     "id": "phuryn-gtm-strategy",
@@ -12034,7 +12034,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2502
+    "downloads": 2193
   },
   {
     "id": "phuryn-ideal-customer-profile",
@@ -12051,7 +12051,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9100
+    "downloads": 7858
   },
   {
     "id": "phuryn-competitor-analysis",
@@ -12068,7 +12068,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4013
+    "downloads": 1862
   },
   {
     "id": "phuryn-market-segments",
@@ -12085,7 +12085,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3743
+    "downloads": 3235
   },
   {
     "id": "phuryn-market-sizing",
@@ -12102,7 +12102,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2549
+    "downloads": 1957
   },
   {
     "id": "phuryn-sentiment-analysis",
@@ -12119,7 +12119,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4865
+    "downloads": 2263
   },
   {
     "id": "phuryn-user-personas",
@@ -12136,7 +12136,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3906
+    "downloads": 4066
   },
   {
     "id": "phuryn-user-segmentation",
@@ -12153,7 +12153,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3250
+    "downloads": 4956
   },
   {
     "id": "phuryn-north-star-metric",
@@ -12170,7 +12170,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1537
+    "downloads": 5467
   },
   {
     "id": "phuryn-positioning-ideas",
@@ -12187,7 +12187,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7543
+    "downloads": 4396
   },
   {
     "id": "phuryn-product-name",
@@ -12204,7 +12204,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2281
+    "downloads": 1409
   },
   {
     "id": "phuryn-value-prop-statements",
@@ -12221,7 +12221,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3675
+    "downloads": 8881
   },
   {
     "id": "phuryn-analyze-feature-requests",
@@ -12238,7 +12238,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7471
+    "downloads": 8372
   },
   {
     "id": "phuryn-brainstorm-experiments-existing",
@@ -12255,7 +12255,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 2282
+    "downloads": 2430
   },
   {
     "id": "phuryn-brainstorm-experiments-new",
@@ -12272,7 +12272,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 2109
+    "downloads": 3406
   },
   {
     "id": "phuryn-brainstorm-ideas-existing",
@@ -12289,7 +12289,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 5078
+    "downloads": 1774
   },
   {
     "id": "phuryn-brainstorm-ideas-new",
@@ -12306,7 +12306,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5069
+    "downloads": 5204
   },
   {
     "id": "phuryn-identify-assumptions-existing",
@@ -12323,7 +12323,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3175
+    "downloads": 6704
   },
   {
     "id": "phuryn-identify-assumptions-new",
@@ -12340,7 +12340,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1725
+    "downloads": 8144
   },
   {
     "id": "phuryn-interview-script",
@@ -12357,7 +12357,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5352
+    "downloads": 3947
   },
   {
     "id": "phuryn-metrics-dashboard",
@@ -12374,7 +12374,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4009
+    "downloads": 9176
   },
   {
     "id": "phuryn-prioritize-assumptions",
@@ -12391,7 +12391,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6143
+    "downloads": 8765
   },
   {
     "id": "phuryn-prioritize-features",
@@ -12408,7 +12408,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4440
+    "downloads": 9183
   },
   {
     "id": "phuryn-summarize-interview",
@@ -12425,7 +12425,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5162
+    "downloads": 9483
   },
   {
     "id": "phuryn-ansoff-matrix",
@@ -12442,7 +12442,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7177
+    "downloads": 4436
   },
   {
     "id": "phuryn-business-model",
@@ -12459,7 +12459,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 8496
+    "downloads": 7587
   },
   {
     "id": "phuryn-lean-canvas",
@@ -12476,7 +12476,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1896
+    "downloads": 7513
   },
   {
     "id": "phuryn-monetization-strategy",
@@ -12493,7 +12493,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1795
+    "downloads": 4891
   },
   {
     "id": "phuryn-pestle-analysis",
@@ -12510,7 +12510,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 8348
+    "downloads": 4832
   },
   {
     "id": "phuryn-porters-five-forces",
@@ -12527,7 +12527,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3256
+    "downloads": 6553
   },
   {
     "id": "phuryn-pricing-strategy",
@@ -12544,7 +12544,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 4604
+    "downloads": 2320
   },
   {
     "id": "phuryn-product-strategy",
@@ -12561,7 +12561,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2257
+    "downloads": 2226
   },
   {
     "id": "phuryn-product-vision",
@@ -12578,7 +12578,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1268
+    "downloads": 9677
   },
   {
     "id": "phuryn-startup-canvas",
@@ -12595,7 +12595,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 7684
+    "downloads": 7836
   },
   {
     "id": "phuryn-swot-analysis",
@@ -12612,7 +12612,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2274
+    "downloads": 2836
   },
   {
     "id": "phuryn-value-proposition",
@@ -12629,7 +12629,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 8041
+    "downloads": 5607
   },
   {
     "id": "phuryn-draft-nda",
@@ -12646,7 +12646,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7207
+    "downloads": 4640
   },
   {
     "id": "phuryn-grammar-check",
@@ -12663,7 +12663,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9644
+    "downloads": 2599
   },
   {
     "id": "phuryn-privacy-policy",
@@ -12680,7 +12680,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 8667
+    "downloads": 7429
   },
   {
     "id": "phuryn-review-resume",
@@ -12697,7 +12697,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3382
+    "downloads": 2057
   },
   {
     "id": "minimax-ai-cli",
@@ -12714,7 +12714,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5803
+    "downloads": 6941
   },
   {
     "id": "minimax-ai-frontend-dev",
@@ -12731,7 +12731,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 5003
+    "downloads": 3978
   },
   {
     "id": "minimax-ai-fullstack-dev",
@@ -12748,7 +12748,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 3118
+    "downloads": 5079
   },
   {
     "id": "minimax-ai-android-native-dev",
@@ -12765,7 +12765,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 7576
+    "downloads": 3918
   },
   {
     "id": "minimax-ai-ios-application-dev",
@@ -12782,7 +12782,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 1612
+    "downloads": 5338
   },
   {
     "id": "minimax-ai-shader-dev",
@@ -12799,7 +12799,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 5973
+    "downloads": 7939
   },
   {
     "id": "minimax-ai-gif-sticker-maker",
@@ -12816,7 +12816,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 9525
+    "downloads": 7003
   },
   {
     "id": "minimax-ai-minimax-pdf",
@@ -12833,7 +12833,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 8091
+    "downloads": 8613
   },
   {
     "id": "minimax-ai-pptx-generator",
@@ -12850,7 +12850,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3059
+    "downloads": 6463
   },
   {
     "id": "minimax-ai-minimax-xlsx",
@@ -12867,7 +12867,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8145
+    "downloads": 9269
   },
   {
     "id": "minimax-ai-minimax-docx",
@@ -12884,7 +12884,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8499
+    "downloads": 3192
   },
   {
     "id": "duckdb-attach-db",
@@ -12901,7 +12901,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 8699
+    "downloads": 5559
   },
   {
     "id": "duckdb-query",
@@ -12918,7 +12918,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 5062
+    "downloads": 8739
   },
   {
     "id": "duckdb-read-file",
@@ -12935,7 +12935,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9657
+    "downloads": 2475
   },
   {
     "id": "duckdb-duckdb-docs",
@@ -12952,7 +12952,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8955
+    "downloads": 8877
   },
   {
     "id": "duckdb-read-memories",
@@ -12969,7 +12969,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5973
+    "downloads": 3249
   },
   {
     "id": "duckdb-install-duckdb",
@@ -12986,7 +12986,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4535
+    "downloads": 3775
   },
   {
     "id": "greensock-gsap-core",
@@ -13003,7 +13003,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 9577
+    "downloads": 8882
   },
   {
     "id": "greensock-gsap-timeline",
@@ -13020,7 +13020,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 6836
+    "downloads": 4050
   },
   {
     "id": "greensock-gsap-scrolltrigger",
@@ -13037,7 +13037,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8166
+    "downloads": 7250
   },
   {
     "id": "greensock-gsap-plugins",
@@ -13054,7 +13054,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2191
+    "downloads": 2869
   },
   {
     "id": "greensock-gsap-utils",
@@ -13071,7 +13071,7 @@
       "reasoning"
     ],
     "popular": false,
-    "downloads": 7913
+    "downloads": 7189
   },
   {
     "id": "greensock-gsap-react",
@@ -13088,7 +13088,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 5530
+    "downloads": 6798
   },
   {
     "id": "greensock-gsap-performance",
@@ -13105,7 +13105,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3102
+    "downloads": 4656
   },
   {
     "id": "greensock-gsap-frameworks",
@@ -13122,7 +13122,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 4635
+    "downloads": 1335
   },
   {
     "id": "garrytan-office-hours",
@@ -13139,7 +13139,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 7075
+    "downloads": 7129
   },
   {
     "id": "garrytan-plan-ceo-review",
@@ -13156,7 +13156,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6853
+    "downloads": 7894
   },
   {
     "id": "garrytan-plan-eng-review",
@@ -13173,7 +13173,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 2873
+    "downloads": 5778
   },
   {
     "id": "garrytan-plan-design-review",
@@ -13190,7 +13190,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 5207
+    "downloads": 1515
   },
   {
     "id": "garrytan-design-consultation",
@@ -13207,7 +13207,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 9463
+    "downloads": 6532
   },
   {
     "id": "garrytan-design-review",
@@ -13224,7 +13224,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 1857
+    "downloads": 4761
   },
   {
     "id": "garrytan-review",
@@ -13241,7 +13241,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 8108
+    "downloads": 6898
   },
   {
     "id": "garrytan-investigate",
@@ -13258,7 +13258,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 4643
+    "downloads": 5150
   },
   {
     "id": "garrytan-qa",
@@ -13275,7 +13275,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 8406
+    "downloads": 6003
   },
   {
     "id": "garrytan-qa-only",
@@ -13292,7 +13292,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2922
+    "downloads": 9159
   },
   {
     "id": "garrytan-cso",
@@ -13309,7 +13309,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 8673
+    "downloads": 9244
   },
   {
     "id": "garrytan-ship",
@@ -13326,7 +13326,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 9624
+    "downloads": 1595
   },
   {
     "id": "garrytan-land-and-deploy",
@@ -13343,7 +13343,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 2282
+    "downloads": 3269
   },
   {
     "id": "garrytan-canary",
@@ -13360,7 +13360,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 5544
+    "downloads": 7431
   },
   {
     "id": "garrytan-benchmark",
@@ -13377,7 +13377,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2534
+    "downloads": 2749
   },
   {
     "id": "garrytan-document-release",
@@ -13394,7 +13394,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6440
+    "downloads": 8326
   },
   {
     "id": "garrytan-browse",
@@ -13411,7 +13411,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8698
+    "downloads": 4565
   },
   {
     "id": "garrytan-setup-browser-cookies",
@@ -13428,7 +13428,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8603
+    "downloads": 9226
   },
   {
     "id": "garrytan-autoplan",
@@ -13445,7 +13445,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 3585
+    "downloads": 1596
   },
   {
     "id": "garrytan-codex",
@@ -13462,7 +13462,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3505
+    "downloads": 8819
   },
   {
     "id": "garrytan-careful",
@@ -13479,7 +13479,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5764
+    "downloads": 3831
   },
   {
     "id": "garrytan-freeze",
@@ -13496,7 +13496,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7655
+    "downloads": 8190
   },
   {
     "id": "garrytan-guard",
@@ -13513,7 +13513,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2136
+    "downloads": 6456
   },
   {
     "id": "garrytan-unfreeze",
@@ -13530,7 +13530,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9547
+    "downloads": 2484
   },
   {
     "id": "garrytan-setup-deploy",
@@ -13547,7 +13547,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 2530
+    "downloads": 2233
   },
   {
     "id": "garrytan-gstack-upgrade",
@@ -13564,7 +13564,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 1576
+    "downloads": 9128
   },
   {
     "id": "makenotion-knowledge-capture",
@@ -13581,7 +13581,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6286
+    "downloads": 2277
   },
   {
     "id": "makenotion-meeting-intelligence",
@@ -13598,7 +13598,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4253
+    "downloads": 6269
   },
   {
     "id": "makenotion-research-documentation",
@@ -13615,7 +13615,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5196
+    "downloads": 2299
   },
   {
     "id": "makenotion-spec-to-implementation",
@@ -13632,7 +13632,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8290
+    "downloads": 2593
   },
   {
     "id": "resend-resend",
@@ -13649,7 +13649,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 7655
+    "downloads": 8412
   },
   {
     "id": "resend-react-email",
@@ -13666,7 +13666,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 6350
+    "downloads": 2576
   },
   {
     "id": "resend-email-best-practices",
@@ -13683,7 +13683,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 7508
+    "downloads": 2055
   },
   {
     "id": "resend-agent-email-inbox",
@@ -13700,7 +13700,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7356
+    "downloads": 2479
   },
   {
     "id": "resend-resend-cli",
@@ -13717,7 +13717,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8997
+    "downloads": 5860
   },
   {
     "id": "addyosmani-web-quality-audit",
@@ -13734,7 +13734,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2645
+    "downloads": 9665
   },
   {
     "id": "addyosmani-performance",
@@ -13751,7 +13751,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 5078
+    "downloads": 1607
   },
   {
     "id": "addyosmani-core-web-vitals",
@@ -13768,7 +13768,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 2975
+    "downloads": 7329
   },
   {
     "id": "addyosmani-accessibility",
@@ -13785,7 +13785,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4414
+    "downloads": 8561
   },
   {
     "id": "addyosmani-seo",
@@ -13802,7 +13802,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8213
+    "downloads": 3827
   },
   {
     "id": "mongodb-mongodb-mcp-setup",
@@ -13819,7 +13819,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 6844
+    "downloads": 3362
   },
   {
     "id": "mongodb-mongodb-connection",
@@ -13836,7 +13836,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6282
+    "downloads": 6996
   },
   {
     "id": "mongodb-mongodb-schema-design",
@@ -13853,7 +13853,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 8390
+    "downloads": 7482
   },
   {
     "id": "mongodb-atlas-stream-processing",
@@ -13870,7 +13870,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 7362
+    "downloads": 8821
   },
   {
     "id": "mongodb-mongodb-natural-language-querying",
@@ -13887,7 +13887,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3237
+    "downloads": 3662
   },
   {
     "id": "mongodb-mongodb-query-optimizer",
@@ -13904,7 +13904,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2526
+    "downloads": 1876
   },
   {
     "id": "mongodb-mongodb-search-and-ai",
@@ -13921,7 +13921,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7453
+    "downloads": 8001
   },
   {
     "id": "redis-redis-core",
@@ -13938,7 +13938,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8164
+    "downloads": 3989
   },
   {
     "id": "google-cloud-agent-platform-skill-registry",
@@ -13955,7 +13955,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3982
+    "downloads": 1882
   },
   {
     "id": "google-cloud-alloydb-basics",
@@ -13972,7 +13972,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 7491
+    "downloads": 7913
   },
   {
     "id": "google-cloud-bigquery-basics",
@@ -13989,7 +13989,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3380
+    "downloads": 5299
   },
   {
     "id": "google-cloud-cloud-run-basics",
@@ -14006,7 +14006,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7215
+    "downloads": 7224
   },
   {
     "id": "google-cloud-cloud-sql-basics",
@@ -14023,7 +14023,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 7948
+    "downloads": 2641
   },
   {
     "id": "google-cloud-firebase-basics",
@@ -14040,7 +14040,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 6411
+    "downloads": 7065
   },
   {
     "id": "google-cloud-gemini-agents-api",
@@ -14057,7 +14057,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7371
+    "downloads": 2696
   },
   {
     "id": "google-cloud-gemini-api",
@@ -14074,7 +14074,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 8799
+    "downloads": 6869
   },
   {
     "id": "google-cloud-gemini-interactions-api",
@@ -14091,7 +14091,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 4659
+    "downloads": 7244
   },
   {
     "id": "google-cloud-gke-basics",
@@ -14108,7 +14108,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6511
+    "downloads": 4180
   },
   {
     "id": "google-cloud-google-cloud-networking-observability",
@@ -14125,7 +14125,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2372
+    "downloads": 3653
   },
   {
     "id": "google-cloud-google-cloud-recipe-auth",
@@ -14142,7 +14142,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 3545
+    "downloads": 4996
   },
   {
     "id": "google-cloud-google-cloud-recipe-onboarding",
@@ -14159,7 +14159,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 3360
+    "downloads": 7015
   },
   {
     "id": "google-cloud-google-cloud-waf-cost-optimization",
@@ -14176,7 +14176,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 3548
+    "downloads": 1927
   },
   {
     "id": "google-cloud-google-cloud-waf-operational-excellence",
@@ -14193,7 +14193,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 7217
+    "downloads": 6764
   },
   {
     "id": "google-cloud-google-cloud-waf-performance-optimization",
@@ -14210,7 +14210,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 6842
+    "downloads": 3282
   },
   {
     "id": "google-cloud-google-cloud-waf-reliability",
@@ -14227,7 +14227,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 9065
+    "downloads": 3383
   },
   {
     "id": "google-cloud-google-cloud-waf-security",
@@ -14244,7 +14244,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 5203
+    "downloads": 1204
   },
   {
     "id": "google-cloud-google-cloud-waf-sustainability",
@@ -14261,7 +14261,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 3351
+    "downloads": 5013
   },
   {
     "id": "redhat-cve-skillpack",
@@ -14278,7 +14278,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9393
+    "downloads": 8038
   },
   {
     "id": "redhat-sre-skillpack",
@@ -14295,7 +14295,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2345
+    "downloads": 6766
   },
   {
     "id": "redhat-openshift-skillpack",
@@ -14312,7 +14312,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7476
+    "downloads": 7639
   },
   {
     "id": "redhat-openshift-virtualization",
@@ -14329,7 +14329,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2370
+    "downloads": 9026
   },
   {
     "id": "cypress-io-cypress-author",
@@ -14346,7 +14346,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 8428
+    "downloads": 4886
   },
   {
     "id": "cypress-io-cypress-explain",
@@ -14363,7 +14363,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 2129
+    "downloads": 8661
   },
   {
     "id": "cypress-io-cypress-docs",
@@ -14380,7 +14380,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 1298
+    "downloads": 1865
   },
   {
     "id": "brianrwagner-ai-marketing-claude-code-skills",
@@ -14397,7 +14397,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 7728
+    "downloads": 6626
   },
   {
     "id": "agricidaniel-claude-seo",
@@ -14414,7 +14414,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6027
+    "downloads": 1882
   },
   {
     "id": "wshuyi-x-article-publisher-skill",
@@ -14431,7 +14431,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 7540
+    "downloads": 8588
   },
   {
     "id": "cosmoblk-email-marketing-bible",
@@ -14448,7 +14448,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 2745
+    "downloads": 6828
   },
   {
     "id": "smixs-creative-director-skill",
@@ -14465,7 +14465,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 5868
+    "downloads": 1641
   },
   {
     "id": "xquik-dev-x-twitter-scraper",
@@ -14482,7 +14482,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8762
+    "downloads": 4804
   },
   {
     "id": "xquik-dev-tweetclaw",
@@ -14499,7 +14499,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2790
+    "downloads": 4450
   },
   {
     "id": "shadowpr0-beautiful_prose",
@@ -14516,7 +14516,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2954
+    "downloads": 8885
   },
   {
     "id": "blader-humanizer",
@@ -14533,7 +14533,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7073
+    "downloads": 9225
   },
   {
     "id": "mohamedabdallah-14-unslop",
@@ -14550,7 +14550,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 3505
+    "downloads": 7644
   },
   {
     "id": "eronred-aso-skills",
@@ -14567,7 +14567,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 3831
+    "downloads": 7015
   },
   {
     "id": "degausai-wonda",
@@ -14584,7 +14584,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6988
+    "downloads": 9436
   },
   {
     "id": "gitroomhq-postiz-agent",
@@ -14601,7 +14601,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 8094
+    "downloads": 6606
   },
   {
     "id": "taisly-agent",
@@ -14618,7 +14618,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3153
+    "downloads": 7248
   },
   {
     "id": "indranilbanerjee-digital-marketing-pro",
@@ -14635,7 +14635,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 8415
+    "downloads": 3261
   },
   {
     "id": "nowork-studio-notfair-plugin",
@@ -14652,7 +14652,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7798
+    "downloads": 5415
   },
   {
     "id": "aaron-he-zhu-aaron-marketing-skills",
@@ -14669,7 +14669,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 7010
+    "downloads": 5859
   },
   {
     "id": "gooseworks-ai-goose-skills",
@@ -14686,7 +14686,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3355
+    "downloads": 5748
   },
   {
     "id": "sergebulaev-linkedin-skills",
@@ -14703,7 +14703,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 2376
+    "downloads": 5818
   },
   {
     "id": "vladimir-human-humanizer-ru",
@@ -14720,7 +14720,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8809
+    "downloads": 9581
   },
   {
     "id": "bomx-distribb-skill",
@@ -14737,7 +14737,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 6436
+    "downloads": 6266
   },
   {
     "id": "citlyze-citlyze-skills",
@@ -14754,7 +14754,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 3552
+    "downloads": 1836
   },
   {
     "id": "aidevgtm-gtm-cofounder",
@@ -14771,7 +14771,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 8557
+    "downloads": 6883
   },
   {
     "id": "mailtrap-mailtrap-skills",
@@ -14788,7 +14788,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 7823
+    "downloads": 3105
   },
   {
     "id": "yanniskiefer-dark-psychology-skills",
@@ -14805,7 +14805,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 3077
+    "downloads": 3594
   },
   {
     "id": "supercmohq-supercmo-skills",
@@ -14822,7 +14822,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1800
+    "downloads": 3288
   },
   {
     "id": "sandbaseai-sandbase-skills-multi-source-search",
@@ -14839,7 +14839,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7692
+    "downloads": 1637
   },
   {
     "id": "nanako0129-sepia",
@@ -14856,7 +14856,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2294
+    "downloads": 2956
   },
   {
     "id": "scrapecreators-social-media-research-skills",
@@ -14873,7 +14873,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 7868
+    "downloads": 5273
   },
   {
     "id": "vanshyadav1408-linkedin-outreach",
@@ -14890,7 +14890,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7579
+    "downloads": 2042
   },
   {
     "id": "socai-io-jev-social",
@@ -14907,7 +14907,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 3980
+    "downloads": 9457
   },
   {
     "id": "explorium-ai-vibe-prospecting",
@@ -14924,7 +14924,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2886
+    "downloads": 5120
   },
   {
     "id": "nagametw-formosa-humanizer",
@@ -14941,7 +14941,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4515
+    "downloads": 1746
   },
   {
     "id": "upload-post-upload-post-skill",
@@ -14958,7 +14958,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 5535
+    "downloads": 1213
   },
   {
     "id": "abubakrchan-product-launch-motion",
@@ -14975,7 +14975,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5604
+    "downloads": 3718
   },
   {
     "id": "yuwen-cool-yuwen-publish-precheck",
@@ -14992,7 +14992,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 4459
+    "downloads": 3166
   },
   {
     "id": "emotixco-claude-skills-founder",
@@ -15009,7 +15009,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6714
+    "downloads": 1815
   },
   {
     "id": "karero-croftweaver",
@@ -15026,7 +15026,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 4202
+    "downloads": 1235
   },
   {
     "id": "harshmaur-apify-reddit-scraper",
@@ -15043,7 +15043,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 9050
+    "downloads": 3157
   },
   {
     "id": "pspdfkit-labs-nutrient-agent-skill",
@@ -15060,7 +15060,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 7938
+    "downloads": 4984
   },
   {
     "id": "notiondevs-notion-skills-for-claude",
@@ -15077,7 +15077,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4087
+    "downloads": 3321
   },
   {
     "id": "op7418-nanobanana-ppt-skills",
@@ -15094,7 +15094,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3771
+    "downloads": 7413
   },
   {
     "id": "zarazhangrui-frontend-slides",
@@ -15111,7 +15111,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7611
+    "downloads": 4255
   },
   {
     "id": "sujunmin-agy-ppt",
@@ -15128,7 +15128,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 8580
+    "downloads": 6665
   },
   {
     "id": "gokapso-integrate-whatsapp",
@@ -15145,7 +15145,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8548
+    "downloads": 1490
   },
   {
     "id": "gokapso-automate-whatsapp",
@@ -15162,7 +15162,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 2373
+    "downloads": 6562
   },
   {
     "id": "gokapso-observe-whatsapp",
@@ -15179,7 +15179,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6708
+    "downloads": 1963
   },
   {
     "id": "pleaseprompto-notebooklm-skill",
@@ -15196,7 +15196,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2345
+    "downloads": 5225
   },
   {
     "id": "obra-superpowers-lab",
@@ -15213,7 +15213,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3434
+    "downloads": 5109
   },
   {
     "id": "obra-brainstorming",
@@ -15230,7 +15230,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6652
+    "downloads": 2212
   },
   {
     "id": "obra-writing-plans",
@@ -15247,7 +15247,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7868
+    "downloads": 5681
   },
   {
     "id": "obra-executing-plans",
@@ -15264,7 +15264,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2786
+    "downloads": 3881
   },
   {
     "id": "obra-dispatching-parallel-agents",
@@ -15281,7 +15281,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8765
+    "downloads": 6554
   },
   {
     "id": "obra-using-superpowers",
@@ -15298,7 +15298,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8700
+    "downloads": 8808
   },
   {
     "id": "op7418-youtube-clipper-skill",
@@ -15315,7 +15315,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5427
+    "downloads": 1670
   },
   {
     "id": "ognjengt-founder-skills",
@@ -15332,7 +15332,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 7543
+    "downloads": 9148
   },
   {
     "id": "everyinc-charlie-cfo-skill",
@@ -15349,7 +15349,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 5967
+    "downloads": 4109
   },
   {
     "id": "openaccountants-openaccountants",
@@ -15366,7 +15366,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7805
+    "downloads": 7168
   },
   {
     "id": "wrsmith108-linear-claude-skill",
@@ -15383,7 +15383,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2529
+    "downloads": 2376
   },
   {
     "id": "hanfang-claude-memory-skill",
@@ -15400,7 +15400,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4678
+    "downloads": 8312
   },
   {
     "id": "xberg-io-xberg",
@@ -15417,7 +15417,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6638
+    "downloads": 2552
   },
   {
     "id": "paramchoudhary-resumeskills",
@@ -15434,7 +15434,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 6839
+    "downloads": 7234
   },
   {
     "id": "bevibing-tutor-skills",
@@ -15451,7 +15451,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 5229
+    "downloads": 2653
   },
   {
     "id": "neolabhq-write-concisely",
@@ -15468,7 +15468,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 7461
+    "downloads": 3723
   },
   {
     "id": "resciencelab-opc-skills",
@@ -15485,7 +15485,7 @@
       "reasoning"
     ],
     "popular": false,
-    "downloads": 7676
+    "downloads": 3144
   },
   {
     "id": "seanzor-claude-speed-reader",
@@ -15502,7 +15502,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7721
+    "downloads": 5460
   },
   {
     "id": "charlie85270-dorothy",
@@ -15536,7 +15536,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5424
+    "downloads": 9198
   },
   {
     "id": "deusyu-translate-book",
@@ -15553,7 +15553,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3301
+    "downloads": 3994
   },
   {
     "id": "mvanhorn-last30days-skill",
@@ -15570,7 +15570,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7048
+    "downloads": 4368
   },
   {
     "id": "career-ops-hq-career-ops",
@@ -15587,7 +15587,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8124
+    "downloads": 3345
   },
   {
     "id": "linked-api-linkedin",
@@ -15604,7 +15604,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3698
+    "downloads": 5784
   },
   {
     "id": "pattern-ai-labs-agentcall",
@@ -15621,7 +15621,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1832
+    "downloads": 9492
   },
   {
     "id": "tjboudreaux-cc-thinking-skills",
@@ -15638,7 +15638,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 3725
+    "downloads": 4341
   },
   {
     "id": "jimmysadek-youtube-fetcher",
@@ -15655,7 +15655,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5106
+    "downloads": 4568
   },
   {
     "id": "zapier-zapier-mcp",
@@ -15672,7 +15672,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 5061
+    "downloads": 2756
   },
   {
     "id": "neeeophytee-finding-unknowns-skills",
@@ -15689,7 +15689,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 3513
+    "downloads": 1232
   },
   {
     "id": "kgraph57-strategy-consulting-visualization",
@@ -15706,7 +15706,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 2066
+    "downloads": 7201
   },
   {
     "id": "vaibhavarora14-job-application-agent",
@@ -15723,7 +15723,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8594
+    "downloads": 7490
   },
   {
     "id": "wgwtest-novel-writing",
@@ -15740,7 +15740,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9580
+    "downloads": 7214
   },
   {
     "id": "cyperx84-claude-skills-mental-models",
@@ -15757,7 +15757,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8418
+    "downloads": 4673
   },
   {
     "id": "manavmishra-zero-slop",
@@ -15774,7 +15774,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9142
+    "downloads": 7494
   },
   {
     "id": "atomic-mail-atomicmail",
@@ -15791,7 +15791,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4297
+    "downloads": 7939
   },
   {
     "id": "forjd-better-writing",
@@ -15808,7 +15808,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 6344
+    "downloads": 8265
   },
   {
     "id": "onewave-ai-claude-skills",
@@ -15825,7 +15825,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3849
+    "downloads": 4907
   },
   {
     "id": "giasip-giasip-research",
@@ -15842,7 +15842,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 8125
+    "downloads": 9258
   },
   {
     "id": "tronghieu-agent-skills",
@@ -15859,7 +15859,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1627
+    "downloads": 6742
   },
   {
     "id": "dmoshehun-prog-learn-from-materials",
@@ -15876,7 +15876,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5746
+    "downloads": 8533
   },
   {
     "id": "chrisryugj-kordoc",
@@ -15893,7 +15893,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7789
+    "downloads": 3546
   },
   {
     "id": "bablobanov-hermes-telegram-checklist",
@@ -15910,7 +15910,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2128
+    "downloads": 6808
   },
   {
     "id": "siril9-presentation-skill",
@@ -15927,7 +15927,41 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4489
+    "downloads": 8536
+  },
+  {
+    "id": "luchasarie-bro",
+    "name": "bro",
+    "author": "luchasarie",
+    "description": "Re-explains the last reply in plain language",
+    "platform": "universal",
+    "category": "Community & Engineering",
+    "version": "1.0.0",
+    "url": "https://github.com/luchasarie/bro-skill",
+    "sourceUrl": "https://raw.githubusercontent.com/luchasarie/bro-skill/SKILL.md",
+    "tags": [
+      "universal",
+      "community"
+    ],
+    "popular": false,
+    "downloads": 3273
+  },
+  {
+    "id": "radres-call-me",
+    "name": "call-me",
+    "author": "radres",
+    "description": "Agent phones your iPhone and returns your spoken answer",
+    "platform": "universal",
+    "category": "Community & Engineering",
+    "version": "1.0.0",
+    "url": "https://github.com/radres/call-me/tree/main/skill",
+    "sourceUrl": "https://raw.githubusercontent.com/radres/call-me/main/skill/SKILL.md",
+    "tags": [
+      "universal",
+      "community"
+    ],
+    "popular": false,
+    "downloads": 1392
   },
   {
     "id": "ysskrishna-ai-agent-skills",
@@ -15944,7 +15978,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9097
+    "downloads": 6091
   },
   {
     "id": "augustusw-audio-tldr",
@@ -15961,7 +15995,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3266
+    "downloads": 7065
   },
   {
     "id": "voygr-tech-placecall",
@@ -15978,7 +16012,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4882
+    "downloads": 1253
   },
   {
     "id": "arifszn-slide-wright",
@@ -15995,7 +16029,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9245
+    "downloads": 7032
   },
   {
     "id": "kklimuk-docx-cli",
@@ -16012,7 +16046,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6350
+    "downloads": 2436
   },
   {
     "id": "vodailocz-kilo-kit-mcp",
@@ -16029,7 +16063,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 1542
+    "downloads": 5274
   },
   {
     "id": "hedralab-eskill",
@@ -16046,7 +16080,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 9281
+    "downloads": 4742
   },
   {
     "id": "robzolkos-skill-rails-upgrade",
@@ -16063,7 +16097,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4107
+    "downloads": 2769
   },
   {
     "id": "antonbabenko-terraform-skill",
@@ -16080,7 +16114,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 5712
+    "downloads": 5790
   },
   {
     "id": "zxkane-aws-skills",
@@ -16097,7 +16131,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 1605
+    "downloads": 5873
   },
   {
     "id": "rootly-ai-labs-rootly-incident-responder",
@@ -16114,7 +16148,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 2473
+    "downloads": 1512
   },
   {
     "id": "conorluddy-ios-simulator-skill",
@@ -16131,7 +16165,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1444
+    "downloads": 1397
   },
   {
     "id": "ramzesenok-ios-accessibility-audit-skill",
@@ -16148,7 +16182,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 4636
+    "downloads": 4298
   },
   {
     "id": "truongduy2611-app-store-preflight-skills",
@@ -16165,7 +16199,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7858
+    "downloads": 1283
   },
   {
     "id": "sanjay3290-postgres",
@@ -16182,7 +16216,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 3619
+    "downloads": 3112
   },
   {
     "id": "sanjay3290-deep-research",
@@ -16199,7 +16233,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8116
+    "downloads": 2583
   },
   {
     "id": "jthack-ffuf-claude-skill",
@@ -16216,7 +16250,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8672
+    "downloads": 2492
   },
   {
     "id": "woniu9524-open-web-bridge",
@@ -16233,7 +16267,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4391
+    "downloads": 3690
   },
   {
     "id": "ibelick-ui-skills",
@@ -16250,7 +16284,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 7130
+    "downloads": 6905
   },
   {
     "id": "muthuishere-hand-drawn-diagrams",
@@ -16267,7 +16301,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6669
+    "downloads": 7659
   },
   {
     "id": "nextlevelbuilder-ui-ux-pro-max-skill",
@@ -16284,7 +16318,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 3787
+    "downloads": 9098
   },
   {
     "id": "ehmo-platform-design-skills",
@@ -16301,7 +16335,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 7563
+    "downloads": 4059
   },
   {
     "id": "kayforkind-reimagine-it",
@@ -16318,7 +16352,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 2114
+    "downloads": 1922
   },
   {
     "id": "scarletkc-vexor",
@@ -16335,7 +16369,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3245
+    "downloads": 9077
   },
   {
     "id": "obra-test-driven-development",
@@ -16352,7 +16386,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 8017
+    "downloads": 5262
   },
   {
     "id": "obra-subagent-driven-development",
@@ -16369,7 +16403,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9465
+    "downloads": 4353
   },
   {
     "id": "obra-systematic-debugging",
@@ -16386,7 +16420,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4819
+    "downloads": 5146
   },
   {
     "id": "obra-finishing-a-development-branch",
@@ -16403,7 +16437,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 2908
+    "downloads": 7148
   },
   {
     "id": "obra-requesting-code-review",
@@ -16420,7 +16454,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2031
+    "downloads": 1482
   },
   {
     "id": "obra-receiving-code-review",
@@ -16437,7 +16471,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6065
+    "downloads": 8440
   },
   {
     "id": "obra-using-git-worktrees",
@@ -16454,7 +16488,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 1414
+    "downloads": 3143
   },
   {
     "id": "obra-verification-before-completion",
@@ -16471,7 +16505,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1973
+    "downloads": 9492
   },
   {
     "id": "obra-writing-skills",
@@ -16488,7 +16522,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6991
+    "downloads": 9093
   },
   {
     "id": "fvadicamo-dev-agent-skills",
@@ -16505,7 +16539,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 8705
+    "downloads": 7993
   },
   {
     "id": "omkamal-pypict-skill",
@@ -16522,7 +16556,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 4302
+    "downloads": 2021
   },
   {
     "id": "alinaqi-maggy",
@@ -16539,7 +16573,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 6990
+    "downloads": 4632
   },
   {
     "id": "zhanghandong-makepad-skills",
@@ -16556,7 +16590,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 3633
+    "downloads": 1385
   },
   {
     "id": "massimodeluisa-recursive-decomposition-skill",
@@ -16573,7 +16607,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8675
+    "downloads": 7152
   },
   {
     "id": "avdlee-swiftui-expert-skill",
@@ -16590,7 +16624,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 4856
+    "downloads": 8819
   },
   {
     "id": "efremidze-swift-patterns-skill",
@@ -16607,7 +16641,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 6542
+    "downloads": 3117
   },
   {
     "id": "rorkai-app-store-connect-cli-skills",
@@ -16624,7 +16658,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 4899
+    "downloads": 6077
   },
   {
     "id": "rameerez-claude-code-startup-skills",
@@ -16641,7 +16675,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 6742
+    "downloads": 8651
   },
   {
     "id": "zscole-model-hierarchy-skill",
@@ -16658,7 +16692,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5902
+    "downloads": 9234
   },
   {
     "id": "cloudai-x-threejs-skills",
@@ -16675,7 +16709,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8738
+    "downloads": 8356
   },
   {
     "id": "leonxlnx-taste-skill",
@@ -16692,7 +16726,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 8574
+    "downloads": 8644
   },
   {
     "id": "neolabhq-reflexion",
@@ -16709,7 +16743,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6964
+    "downloads": 1240
   },
   {
     "id": "neolabhq-sdd",
@@ -16726,7 +16760,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 9098
+    "downloads": 8395
   },
   {
     "id": "neolabhq-ddd",
@@ -16743,7 +16777,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 4318
+    "downloads": 7149
   },
   {
     "id": "neolabhq-sadd",
@@ -16760,7 +16794,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 6867
+    "downloads": 9263
   },
   {
     "id": "neolabhq-kaizen",
@@ -16777,7 +16811,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6100
+    "downloads": 1225
   },
   {
     "id": "uucz-moyu",
@@ -16794,7 +16828,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2862
+    "downloads": 4254
   },
   {
     "id": "mukul975-anthropic-cybersecurity-skills",
@@ -16811,7 +16845,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 7193
+    "downloads": 8664
   },
   {
     "id": "wrsmith108-varlock-claude-skill",
@@ -16828,7 +16862,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 5458
+    "downloads": 3305
   },
   {
     "id": "kevin7qi-codex-collab",
@@ -16845,7 +16879,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4512
+    "downloads": 2169
   },
   {
     "id": "ethos-link-rails-conventions",
@@ -16862,7 +16896,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9470
+    "downloads": 6391
   },
   {
     "id": "lum1104-understand-anything",
@@ -16879,7 +16913,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6327
+    "downloads": 1534
   },
   {
     "id": "hqhq1025-skill-optimizer",
@@ -16896,7 +16930,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4662
+    "downloads": 5658
   },
   {
     "id": "foryourhealth111-pixel-vibe-skills",
@@ -16913,7 +16947,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 8854
+    "downloads": 3566
   },
   {
     "id": "dembrandt-dembrandt-skills",
@@ -16930,7 +16964,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 7420
+    "downloads": 4713
   },
   {
     "id": "ganyuanran-aegis",
@@ -16947,7 +16981,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4892
+    "downloads": 3513
   },
   {
     "id": "baskduf-codex-fable5",
@@ -16964,7 +16998,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5309
+    "downloads": 1311
   },
   {
     "id": "csthink-dashmotion",
@@ -16981,7 +17015,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3154
+    "downloads": 3992
   },
   {
     "id": "plasma-ai-fractal",
@@ -16998,7 +17032,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 7405
+    "downloads": 6151
   },
   {
     "id": "reliefeai-browser-relay",
@@ -17015,7 +17049,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7132
+    "downloads": 4832
   },
   {
     "id": "squirrelscan-squirrelscan",
@@ -17032,7 +17066,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 6653
+    "downloads": 5979
   },
   {
     "id": "simon-he95-markstream-install",
@@ -17049,7 +17083,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 1717
+    "downloads": 1559
   },
   {
     "id": "eduardo-sl-go-agent-skills",
@@ -17066,7 +17100,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 8771
+    "downloads": 7228
   },
   {
     "id": "drogers0-github-image-upload",
@@ -17083,7 +17117,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 5362
+    "downloads": 5197
   },
   {
     "id": "browser-act-browser-act",
@@ -17100,7 +17134,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 6340
+    "downloads": 1978
   },
   {
     "id": "agiwhitelist-auteur",
@@ -17117,7 +17151,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 6716
+    "downloads": 8212
   },
   {
     "id": "jasoncolapietro-suede-creator-skills",
@@ -17134,7 +17168,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 4395
+    "downloads": 7625
   },
   {
     "id": "superdesigndev-superdesign-skill",
@@ -17151,7 +17185,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 5097
+    "downloads": 8872
   },
   {
     "id": "ryan-yang125-motion-lexicon",
@@ -17168,7 +17202,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 1783
+    "downloads": 4972
   },
   {
     "id": "maksim-burtsev-simple-man",
@@ -17185,7 +17219,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5597
+    "downloads": 8004
   },
   {
     "id": "aeonfun-aeon",
@@ -17202,7 +17236,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 1549
+    "downloads": 9249
   },
   {
     "id": "khazp-vibe-coding-prompt-template",
@@ -17219,7 +17253,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 2449
+    "downloads": 3900
   },
   {
     "id": "lindblomstefan-skills-library",
@@ -17236,7 +17270,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 7082
+    "downloads": 9261
   },
   {
     "id": "rainmanjam-poka-yoke",
@@ -17253,7 +17287,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 8761
+    "downloads": 7382
   },
   {
     "id": "scarletkc-agents",
@@ -17270,7 +17304,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3638
+    "downloads": 3991
   },
   {
     "id": "dannwaneri-spec-writer",
@@ -17287,7 +17321,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5986
+    "downloads": 2181
   },
   {
     "id": "continuum-ai-corp-orca-replay",
@@ -17304,7 +17338,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5927
+    "downloads": 7248
   },
   {
     "id": "tt-a1i-archify",
@@ -17321,7 +17355,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 7437
+    "downloads": 7792
   },
   {
     "id": "d1vai-d1v",
@@ -17338,7 +17372,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 9664
+    "downloads": 3404
   },
   {
     "id": "saleh-alhaddad-itqan-engineering",
@@ -17355,7 +17389,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 7539
+    "downloads": 2739
   },
   {
     "id": "hermes-labs-ai-lintlang",
@@ -17372,7 +17406,7 @@
       "reasoning"
     ],
     "popular": false,
-    "downloads": 1998
+    "downloads": 7160
   },
   {
     "id": "fishzjp-qa-skills",
@@ -17389,7 +17423,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2322
+    "downloads": 2004
   },
   {
     "id": "uipath-check-skill",
@@ -17406,7 +17440,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 9344
+    "downloads": 9223
   },
   {
     "id": "lukstei-slop-grader",
@@ -17423,7 +17457,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 3882
+    "downloads": 5403
   },
   {
     "id": "unbrowse-ai-unbrowse",
@@ -17440,7 +17474,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 9352
+    "downloads": 8625
   },
   {
     "id": "fujibee-agmsg",
@@ -17457,7 +17491,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1704
+    "downloads": 6120
   },
   {
     "id": "exadel-inc-agentic-readiness-assessment",
@@ -17474,7 +17508,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3167
+    "downloads": 8148
   },
   {
     "id": "hasuwini77-3d-logo",
@@ -17491,7 +17525,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9208
+    "downloads": 5344
   },
   {
     "id": "ollygarden-opentelemetry-agent-skills",
@@ -17508,7 +17542,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8711
+    "downloads": 5115
   },
   {
     "id": "szarkans-multi",
@@ -17525,7 +17559,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3566
+    "downloads": 6376
   },
   {
     "id": "gongdear-cline-pilot",
@@ -17542,7 +17576,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4686
+    "downloads": 6150
   },
   {
     "id": "hermes-labs-ai-little-canary",
@@ -17559,7 +17593,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 4009
+    "downloads": 9247
   },
   {
     "id": "allxsmith-bestax",
@@ -17576,7 +17610,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 7038
+    "downloads": 9433
   },
   {
     "id": "marvkr-better-design",
@@ -17593,7 +17627,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 4224
+    "downloads": 3146
   },
   {
     "id": "uipath-task",
@@ -17610,7 +17644,7 @@
       "reasoning"
     ],
     "popular": false,
-    "downloads": 6511
+    "downloads": 6252
   },
   {
     "id": "half144-cutaway",
@@ -17627,7 +17661,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2840
+    "downloads": 1348
   },
   {
     "id": "kulchankas-paranoid",
@@ -17644,7 +17678,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 6490
+    "downloads": 5046
   },
   {
     "id": "gal-a-qikly",
@@ -17661,7 +17695,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 3277
+    "downloads": 8880
   },
   {
     "id": "supercorp-ai-supercov",
@@ -17678,7 +17712,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 8931
+    "downloads": 5843
   },
   {
     "id": "edonadei-evaluate-skill",
@@ -17695,7 +17729,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6968
+    "downloads": 5113
   },
   {
     "id": "tushaarmehtaa-tushar-skills",
@@ -17712,7 +17746,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 9069
+    "downloads": 4445
   },
   {
     "id": "oil-oil-oil-ui",
@@ -17729,7 +17763,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 7359
+    "downloads": 2411
   },
   {
     "id": "skymanbp-cc-tree",
@@ -17746,7 +17780,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 6371
+    "downloads": 6344
   },
   {
     "id": "moxno-privacyscrubber-guard",
@@ -17763,7 +17797,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5350
+    "downloads": 5722
   },
   {
     "id": "rlaope-oh-my-hermes",
@@ -17780,7 +17814,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8448
+    "downloads": 4510
   },
   {
     "id": "fullselfbrowsing-fsb",
@@ -17797,7 +17831,7 @@
       "reasoning"
     ],
     "popular": false,
-    "downloads": 4171
+    "downloads": 3657
   },
   {
     "id": "first-fluke-oh-my-agent",
@@ -17814,7 +17848,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1748
+    "downloads": 4690
   },
   {
     "id": "aurite-ai-agent-verifier",
@@ -17831,7 +17865,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 7987
+    "downloads": 1578
   },
   {
     "id": "finom-vovk",
@@ -17848,7 +17882,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 2686
+    "downloads": 5382
   },
   {
     "id": "muratcankoylan-context-fundamentals",
@@ -17865,7 +17899,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5541
+    "downloads": 8515
   },
   {
     "id": "muratcankoylan-context-degradation",
@@ -17882,7 +17916,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8620
+    "downloads": 4493
   },
   {
     "id": "muratcankoylan-context-compression",
@@ -17899,7 +17933,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 6335
+    "downloads": 3215
   },
   {
     "id": "muratcankoylan-context-optimization",
@@ -17916,7 +17950,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6215
+    "downloads": 3393
   },
   {
     "id": "muratcankoylan-multi-agent-patterns",
@@ -17933,7 +17967,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 7814
+    "downloads": 6027
   },
   {
     "id": "muratcankoylan-memory-systems",
@@ -17950,7 +17984,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 3225
+    "downloads": 8030
   },
   {
     "id": "muratcankoylan-tool-design",
@@ -17967,7 +18001,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 1600
+    "downloads": 8691
   },
   {
     "id": "muratcankoylan-evaluation",
@@ -17984,7 +18018,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 6259
+    "downloads": 1711
   },
   {
     "id": "k-kolomeitsev-data-structure-protocol",
@@ -18001,7 +18035,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1483
+    "downloads": 1286
   },
   {
     "id": "awrshift-claude-memory-kit",
@@ -18018,7 +18052,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7849
+    "downloads": 2655
   },
   {
     "id": "neolabhq-prompt-engineering",
@@ -18035,7 +18069,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 8040
+    "downloads": 4607
   },
   {
     "id": "sametbrr-llm-wiki-manager",
@@ -18052,7 +18086,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7489
+    "downloads": 6681
   },
   {
     "id": "dankofly-perfectify",
@@ -18069,7 +18103,7 @@
       "reasoning"
     ],
     "popular": false,
-    "downloads": 3465
+    "downloads": 8525
   },
   {
     "id": "panniantong-agent-reach",
@@ -18086,7 +18120,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5535
+    "downloads": 4841
   },
   {
     "id": "zilliztech-mfs",
@@ -18103,7 +18137,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 6701
+    "downloads": 1227
   },
   {
     "id": "ohad6k-emulo",
@@ -18120,7 +18154,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7575
+    "downloads": 4536
   },
   {
     "id": "tubo2333-obsidian-knowledge-brain",
@@ -18137,7 +18171,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1478
+    "downloads": 7027
   },
   {
     "id": "stjbrown-agent-knowledge",
@@ -18154,7 +18188,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 7912
+    "downloads": 7602
   },
   {
     "id": "khendzel-skills-janitor",
@@ -18171,7 +18205,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 5311
+    "downloads": 5903
   },
   {
     "id": "oliver-zehentleitner-keep-the-why",
@@ -18188,7 +18222,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 5990
+    "downloads": 7713
   },
   {
     "id": "chrono-meta-context-doctor",
@@ -18205,7 +18239,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1531
+    "downloads": 8475
   },
   {
     "id": "thousandflowers-skillreaper",
@@ -18222,7 +18256,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4079
+    "downloads": 5778
   },
   {
     "id": "orziz-odai",
@@ -18239,7 +18273,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3750
+    "downloads": 3948
   },
   {
     "id": "thedotmack-claude-mem",
@@ -18256,7 +18290,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4881
+    "downloads": 9528
   },
   {
     "id": "vshulcz-deja-history",
@@ -18273,7 +18307,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7082
+    "downloads": 2550
   },
   {
     "id": "ruslanlap-cavemenko",
@@ -18290,7 +18324,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3526
+    "downloads": 9280
   },
   {
     "id": "amirkiarafiei-subagent-cli-skills",
@@ -18307,7 +18341,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2008
+    "downloads": 3329
   },
   {
     "id": "rebelytics-task-observer",
@@ -18324,7 +18358,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2757
+    "downloads": 3691
   },
   {
     "id": "archcore-ai-archcore",
@@ -18341,7 +18375,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9376
+    "downloads": 5002
   },
   {
     "id": "qiuner-birdview",
@@ -18358,7 +18392,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 9564
+    "downloads": 1361
   },
   {
     "id": "jaypokale-chisle",
@@ -18375,7 +18409,7 @@
       "reasoning"
     ],
     "popular": false,
-    "downloads": 9539
+    "downloads": 8525
   },
   {
     "id": "zekainie-universal-examprep-skill",
@@ -18392,7 +18426,7 @@
       "testing"
     ],
     "popular": false,
-    "downloads": 2878
+    "downloads": 7913
   },
   {
     "id": "shouldnotappearcalm-a-share-skill",
@@ -18409,7 +18443,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 9532
+    "downloads": 4493
   },
   {
     "id": "honeydew-ai-honeydew-ai-coding-agents-plugins",
@@ -18426,7 +18460,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3998
+    "downloads": 5357
   },
   {
     "id": "raintree-technology-hig-doctor",
@@ -18443,7 +18477,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 8882
+    "downloads": 1319
   },
   {
     "id": "k-dense-ai-scientific-agent-skills",
@@ -18460,7 +18494,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 4596
+    "downloads": 1938
   },
   {
     "id": "notmyself-claude-win11-speckit-update-skill",
@@ -18477,7 +18511,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1273
+    "downloads": 5194
   },
   {
     "id": "sanjay3290-imagen",
@@ -18494,7 +18528,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 5811
+    "downloads": 6047
   },
   {
     "id": "shadowpr0-security-bluebook-builder",
@@ -18511,7 +18545,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 3845
+    "downloads": 8312
   },
   {
     "id": "huifer-wellally-health",
@@ -18528,7 +18562,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 6406
+    "downloads": 8006
   },
   {
     "id": "frmoretto-clarity-gate",
@@ -18545,7 +18579,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5229
+    "downloads": 3440
   },
   {
     "id": "wanshuiyin-auto-claude-code-research-in-sleep",
@@ -18562,7 +18596,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 3310
+    "downloads": 8135
   },
   {
     "id": "orchestra-research-ai-research-skills",
@@ -18579,7 +18613,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3513
+    "downloads": 9114
   },
   {
     "id": "komal-skynet-claude-skill-homeassistant",
@@ -18596,7 +18630,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6091
+    "downloads": 7953
   },
   {
     "id": "more-io-apple-bridges",
@@ -18613,7 +18647,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2204
+    "downloads": 1219
   },
   {
     "id": "hanhuark-mechanical-engineering-research-skill",
@@ -18630,7 +18664,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 7001
+    "downloads": 3988
   },
   {
     "id": "prompt-security-clawsec",
@@ -18647,7 +18681,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 7741
+    "downloads": 7800
   },
   {
     "id": "behisecc-vibesec",
@@ -18664,7 +18698,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 3760
+    "downloads": 9557
   },
   {
     "id": "lawve-ai-awesome-legal-skills",
@@ -18681,7 +18715,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8611
+    "downloads": 7649
   },
   {
     "id": "peas-genealogy-research",
@@ -18698,7 +18732,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8354
+    "downloads": 8171
   },
   {
     "id": "vmware-skills-vmware-aiops",
@@ -18715,7 +18749,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7688
+    "downloads": 5099
   },
   {
     "id": "ericyoung-183-alpha-insights",
@@ -18732,7 +18766,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6961
+    "downloads": 8378
   },
   {
     "id": "takechanman1228-claude-ecom",
@@ -18749,7 +18783,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4875
+    "downloads": 4721
   },
   {
     "id": "talkstream-ru-text",
@@ -18766,7 +18800,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7098
+    "downloads": 6191
   },
   {
     "id": "helius-labs-helius-skills",
@@ -18783,7 +18817,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 3334
+    "downloads": 8615
   },
   {
     "id": "meodai-skill-color-expert",
@@ -18800,7 +18834,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 9097
+    "downloads": 3975
   },
   {
     "id": "aklofas-kicad-happy",
@@ -18817,7 +18851,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 5356
+    "downloads": 3946
   },
   {
     "id": "bitwize-music-studio-claude-ai-music-skills",
@@ -18834,7 +18868,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6946
+    "downloads": 3191
   },
   {
     "id": "alisa0808-vibe-creating-skill",
@@ -18851,7 +18885,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9690
+    "downloads": 5110
   },
   {
     "id": "huangchihhungleo-claude-real-video",
@@ -18868,7 +18902,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9326
+    "downloads": 5355
   },
   {
     "id": "optim-agent-optim-agent",
@@ -18885,7 +18919,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 6828
+    "downloads": 5089
   },
   {
     "id": "orkas-ai-video-router",
@@ -18902,7 +18936,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 9309
+    "downloads": 3395
   },
   {
     "id": "perso-ai-perso-dubbing",
@@ -18919,7 +18953,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2200
+    "downloads": 3940
   },
   {
     "id": "garethmanning-regenerative-project-design-orchestrator",
@@ -18936,7 +18970,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4333
+    "downloads": 4656
   },
   {
     "id": "garethmanning-learning-target-authoring-guide",
@@ -18953,7 +18987,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 2148
+    "downloads": 6993
   },
   {
     "id": "garethmanning-assessment-validity-checker",
@@ -18970,7 +19004,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 9209
+    "downloads": 3913
   },
   {
     "id": "garethmanning-progressive-hint-ladder",
@@ -18987,7 +19021,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2404
+    "downloads": 2088
   },
   {
     "id": "garethmanning-competency-unpacker",
@@ -19004,7 +19038,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 8014
+    "downloads": 4368
   },
   {
     "id": "zeropointrepo-youtube-skills",
@@ -19021,7 +19055,7 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 3373
+    "downloads": 2461
   },
   {
     "id": "morluto-rea",
@@ -19038,7 +19072,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7236
+    "downloads": 8513
   },
   {
     "id": "apitube-news-api-skills",
@@ -19055,7 +19089,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1483
+    "downloads": 9063
   },
   {
     "id": "zincio-universal-checkout",
@@ -19072,7 +19106,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 5674
+    "downloads": 2024
   },
   {
     "id": "swaylq-humanize-chinese",
@@ -19089,7 +19123,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2980
+    "downloads": 6566
   },
   {
     "id": "renezander030-capcut-edit",
@@ -19106,7 +19140,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4087
+    "downloads": 3542
   },
   {
     "id": "martindelophy-edit-timeline-studio",
@@ -19123,7 +19157,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3113
+    "downloads": 6652
   },
   {
     "id": "tencent-aig-agent-redteam",
@@ -19140,7 +19174,7 @@
       "security"
     ],
     "popular": false,
-    "downloads": 7726
+    "downloads": 8923
   },
   {
     "id": "ilyautov-small-business-ru",
@@ -19157,7 +19191,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 8282
+    "downloads": 8485
   },
   {
     "id": "eatmoreduck-boss-zhipin-scraper",
@@ -19174,7 +19208,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4042
+    "downloads": 8089
   },
   {
     "id": "acedatacloud-fish-audio",
@@ -19191,7 +19225,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 5484
+    "downloads": 8701
   },
   {
     "id": "yang0-handraw-style",
@@ -19208,7 +19242,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7345
+    "downloads": 5848
   },
   {
     "id": "optimnow-cloud-finops-skills",
@@ -19225,7 +19259,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3670
+    "downloads": 5923
   },
   {
     "id": "elithril-blender-kiln",
@@ -19242,7 +19276,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 8967
+    "downloads": 2349
   },
   {
     "id": "wiltodelta-remove-ai-watermarks",
@@ -19259,7 +19293,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3342
+    "downloads": 4069
   },
   {
     "id": "hyperb1iss-unifly",
@@ -19276,7 +19310,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 6140
+    "downloads": 7376
   },
   {
     "id": "metamask-metamask-agent-wallet",
@@ -19293,7 +19327,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 7957
+    "downloads": 4949
   },
   {
     "id": "assafkip-claudemy",
@@ -19310,7 +19344,7 @@
       "devops"
     ],
     "popular": false,
-    "downloads": 6804
+    "downloads": 7870
   },
   {
     "id": "nexscope-ai-ecommerce-skills",
@@ -19327,7 +19361,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 7512
+    "downloads": 3455
   },
   {
     "id": "czlonkowski-n8n-code-javascript",
@@ -19344,7 +19378,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 2381
+    "downloads": 9164
   },
   {
     "id": "czlonkowski-n8n-code-python",
@@ -19361,7 +19395,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 4519
+    "downloads": 1444
   },
   {
     "id": "czlonkowski-n8n-expression-syntax",
@@ -19378,7 +19412,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 6222
+    "downloads": 3293
   },
   {
     "id": "czlonkowski-n8n-mcp-tools-expert",
@@ -19395,7 +19429,7 @@
       "quality"
     ],
     "popular": false,
-    "downloads": 8748
+    "downloads": 5187
   },
   {
     "id": "czlonkowski-n8n-node-configuration",
@@ -19412,7 +19446,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 3345
+    "downloads": 6360
   },
   {
     "id": "czlonkowski-n8n-validation-expert",
@@ -19429,7 +19463,7 @@
       "community"
     ],
     "popular": false,
-    "downloads": 1319
+    "downloads": 2848
   },
   {
     "id": "czlonkowski-n8n-workflow-patterns",
@@ -19446,6 +19480,6 @@
       "architecture"
     ],
     "popular": false,
-    "downloads": 4252
+    "downloads": 9613
   }
 ]

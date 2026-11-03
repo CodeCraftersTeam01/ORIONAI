@@ -17,6 +17,7 @@ import {
   formatRelativeTime,
 } from '../../server/src/services/sessionService.js';
 import { getSkillCommands } from '../../server/src/services/skillService.js';
+import { getCombos, getComboById, saveCombo } from '../../server/src/services/comboService.js';
 
 function copyToClipboard(text) {
   try {
@@ -711,6 +712,45 @@ export function getAvailableModels(syncedConfig) {
     }
   });
 
+  // Append configured Model Combos & Routers (Fallback, Round Robin, Fusion)
+  try {
+    const combos = getCombos();
+    combos.forEach((c) => {
+      const strategy = c.strategy || 'fallback';
+      const strategyLabel =
+        strategy === 'fallback'
+          ? 'Fallback'
+          : strategy === 'round_robin'
+          ? 'Round Robin'
+          : 'Fusion';
+      const count = Array.isArray(c.models) ? c.models.length : 0;
+      const desc = `Router [${strategyLabel}] : ${count} model panel`;
+      const id = `combo::${c.id}`;
+
+      if (!modelList.some((existing) => existing.id === id || existing.id === c.id)) {
+        modelList.push({
+          id,
+          name: c.name,
+          desc,
+          isCombo: true,
+          strategy,
+          strategyLabel,
+          models: c.models,
+          judge: c.judge,
+          provider: {
+            id: 'combo',
+            name: 'Model Combo & Router',
+            baseUrl: '',
+            requiresApiKey: false,
+          },
+          supportsReasoning: false,
+        });
+      }
+    });
+  } catch {
+    // ignore read error
+  }
+
   return modelList;
 }
 
@@ -803,9 +843,11 @@ export function printHeader(modelId, tier, hasKey = false, activeSessionTitle = 
 
 const COMMAND_ITEMS = [
   { label: 'agent', detail: 'Toggle mode AI Agent otonom (tool call & terminal)', action: 'agent' },
+  { label: 'combos', detail: 'Pilih & kelola Model Combo & Router (Fallback, Round Robin, Fusion)', action: 'combos' },
+  { label: 'combo', detail: 'Alias /combos untuk router kombinasi model', action: 'combos' },
   { label: 'reload', detail: 'Muat ulang konfigurasi, provider & environment (/reload)', action: 'reload' },
   { label: 'settings', detail: 'Buka menu pengaturan & preferensi aktif', action: 'settings' },
-  { label: 'model', detail: '<provider/model> — Pilih & beralih model AI (Ctrl+L)', action: 'model' },
+  { label: 'model', detail: '<provider/model> : Pilih & beralih model AI (Ctrl+L)', action: 'model' },
   { label: 'thinking', detail: 'Atur tingkat penalaran (low/medium/high, Shift+Tab)', action: 'thinking' },
   { label: 'tier', detail: 'Alias /thinking untuk tingkat penalaran', action: 'tier' },
   { label: 'session', detail: 'Kelola & alihkan sesi obrolan (tersinkron dengan View)', action: 'session' },
@@ -942,16 +984,24 @@ function readInteractivePrompt({ syncedConfig, currentModel, reasoningTier, user
       const leftCwd = '~';
       const availableModels = getAvailableModels(syncedConfig);
       const matchedModel = availableModels.find((m) => m.id === currentModel);
-      const rawProvName = matchedModel?.provider?.name || matchedModel?.provider?.id || 'orion';
-      const provName = rawProvName.replace(/::.*/, '').replace(/\s*\(Official\)/, '');
-      const displayModel = currentModel.replace(/^orion::/, '');
+      const isCombo = Boolean(matchedModel?.isCombo || currentModel.startsWith('combo::'));
+      const provName = isCombo
+        ? 'Combo'
+        : (matchedModel?.provider?.name || matchedModel?.provider?.id || 'orion').replace(/::.*/, '').replace(/\s*\(Official\)/, '');
+      const displayModel = isCombo
+        ? (matchedModel?.name || currentModel.replace(/^combo::/, ''))
+        : currentModel.replace(/^orion::/, '');
       const maxRightLen = Math.max(10, width - leftCwd.length - 4);
-      let cleanRight = `(${provName}) ${displayModel} • ${reasoningTier}`;
+      let cleanRight = isCombo
+        ? `(Combo) ${displayModel} • ${matchedModel?.strategyLabel || 'Router'}`
+        : `(${provName}) ${displayModel} • ${reasoningTier}`;
       if (cleanRight.length > maxRightLen) {
         cleanRight = cleanRight.slice(0, maxRightLen - 1) + '…';
       }
       const gap1 = Math.max(2, width - leftCwd.length - cleanRight.length);
-      const rightModel = `\x1b[38;5;244m(${provName})\x1b[0m \x1b[1m\x1b[37m${displayModel}\x1b[0m \x1b[90m•\x1b[0m \x1b[36m${reasoningTier}\x1b[0m`;
+      const rightModel = isCombo
+        ? `\x1b[38;5;244m(Combo)\x1b[0m \x1b[1m\x1b[37m${displayModel}\x1b[0m \x1b[90m•\x1b[0m \x1b[37m${matchedModel?.strategyLabel || 'Router'}\x1b[0m`
+        : `\x1b[38;5;244m(${provName})\x1b[0m \x1b[1m\x1b[37m${displayModel}\x1b[0m \x1b[90m•\x1b[0m \x1b[36m${reasoningTier}\x1b[0m`;
       out += `\x1b[90m${leftCwd}${' '.repeat(gap1)}${rightModel}\x1b[0m\x1b[K\n`;
       linesBelow++;
 
@@ -1247,83 +1297,116 @@ function renderSingleUserBox(userMessage) {
 }
 
 // Fix glued Indonesian spellings and spacing
+// Fix glued Indonesian spellings, markdown structures, and spacing
 function cleanIndonesianSpelling(text) {
   if (!text || typeof text !== 'string') return text || '';
 
-  // 1. Protect inline code `...`
-  const codePlaceholders = [];
-  let res = text.replace(/`([^`\n]+)`/g, (match) => {
-    codePlaceholders.push(match);
-    return `__INLINE_CODE_${codePlaceholders.length - 1}__`;
+  // 1. Protect code blocks ```...``` and inline code `...`
+  const codeBlocks = [];
+  let res = text.replace(/```[\s\S]*?```/g, (m) => {
+    codeBlocks.push(m);
+    return `__CODE_BLOCK_${codeBlocks.length - 1}__`;
   });
 
-  // 2. Fix glued uppercase words / abbreviations (e.g. "YAuntukmelanjutkan" -> "YA untuk melanjutkan")
-  res = res.replace(/([A-Z]{2,})(untuk|dan|atau|jika|bila|pada|ke|di)/g, '$1 $2');
-  res = res.replace(/\b(untuk|dan|atau|jika|bila)(melanjutkan|membatalkan|menghapus|membuat|mengedit|menulis|membaca|menjalankan)\b/gi, '$1 $2');
+  const inlineCodes = [];
+  res = res.replace(/`[^`\n]+`/g, (m) => {
+    inlineCodes.push(m);
+    return `__INLINE_CODE_${inlineCodes.length - 1}__`;
+  });
 
-  // 3. Lowercase directly followed by Uppercase (e.g. "membantuAnda" -> "membantu Anda")
-  res = res.replace(/([a-z\u00C0-\u017F])([A-Z])/g, '$1 $2');
+  // Protect known proper tech brand names that have internal capitals or hyphens
+  const brands = [
+    'macOS', 'mac OS', 'iOS', 'iPadOS', 'watchOS', 'tvOS',
+    'AnyDesk', 'TeamViewer', 'RustDesk', 'Chrome Remote Desktop',
+    'Screen Sharing', 'Remote Login', 'Virtual Network Computing',
+    'non-Mac', 'in-app', 'Node.js', 'GitHub', 'GitLab', 'OpenAI'
+  ];
+  const brandPlaceholders = [];
+  for (const b of brands) {
+    const esc = b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    res = res.replace(new RegExp('\\b' + esc + '\\b', 'g'), (m) => {
+      brandPlaceholders.push(m);
+      return `__BRAND_${brandPlaceholders.length - 1}__`;
+    });
+  }
 
-  // 4. Glued Indonesian modal/verbs/adverbs (e.g. "akanmenghapus", "yakiningin", "tidakdapat")
-  const modalPattern = '\\b(siap|dapat|bisa|akan|telah|sudah|sedang|ingin|harus|perlu|boleh|tidak|belum|bukan|jangan|yakin)';
-  const verbPattern = '(membantu|menjawab|menjelaskan|menganalisis|merancang|menyelesaikan|memberikan|menemukan|melakukan|bekerja|bantu|pakai|gunakan|bicara|dengar|membuat|menghapus|hapus|buat|baca|edit|tulis|buka|tutup|jalankan|ingin|dapat|bisa|ada|kembali)';
-  res = res.replace(new RegExp(modalPattern + verbPattern + '\\b', 'gi'), '$1 $2');
+  // 2. Structural Markdown: horizontal rules (:--- or ---)
+  res = res.replace(/:\s*---+/g, ':\n\n---\n\n');
+  res = res.replace(/([^\n])---+/g, '$1\n\n---\n\n');
+  res = res.replace(/---+([^\n\s])/g, '---\n\n$1');
 
-  // 5. Glued relative pronoun "yang", prepositions "dengan", "untuk", etc.
-  res = res.replace(/\byang([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'yang $1');
-  res = res.replace(/\bdengan([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'dengan $1');
-  res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,})dengan\b/gi, '$1 dengan');
-  res = res.replace(/\buntuk([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'untuk $1');
-  res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,})untuk\b/gi, '$1 untuk');
-  res = res.replace(/\badalah([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'adalah $1');
-  res = res.replace(/\bsecara([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'secara $1');
+  // 3. Structural Markdown: numbered headers glued to punctuation, HR, or previous words
+  res = res.replace(/(?<=[.!?:\n])\s*(\*{0,2}\d+\.\s+[A-Za-z])/g, '\n\n$1');
+  res = res.replace(/(?<![\n*])(\*\*\d+\.[^\n*]+\*\*)/g, '\n\n$1');
 
-  // 6. Prepositions squished with nouns
-  const prepPattern = '\\b(dari|ke|pada|untuk|dengan|tanpa|dalam|hingga|sampai|serta|sebagai)';
-  const nounPattern = '(penjelasan|perencanaan|kebutuhan|analisis|pemecahan|pertanyaan|pembuatan|pengembangan|pembelajaran|penggunaan|pelaksanaan|pekerjaan|bantuan|solusi|informasi|tugas|layanan|proses|topik|aspek|bidang|cara|aturan|keselamatan|anda|kamu|kita|saya|mereka|siapa|apa|semua|file|folder|berkas)';
-  res = res.replace(new RegExp(prepPattern + nounPattern + '\\b', 'gi'), '$1 $2');
+  // 4. Structural Markdown: bullet lists stuck to words or missing space
+  res = res.replace(/(^|\n)\s*-\s*(\*{2}|[A-Za-z0-9])/g, '$1- $2');
+  res = res.replace(/(?<=[.!?:\n*])\s*-\s*(\*{2}|[A-Za-z0-9])/g, '\n- $1');
 
-  // 7. Punctuation spacing - DO NOT break file extensions!
-  res = res.replace(/([?!,;])([a-zA-Z0-9\u00C0-\u017F])/g, '$1 $2');
-  res = res.replace(/(?<!https?|ftp|file|ws|wss):([a-zA-Z0-9\u00C0-\u017F])/g, ': $1');
+  // 5. Spacing around markdown bold **text**
+  res = res.replace(/(\*\*)\s*(atau|dan|dengan|untuk|jika|bila)\s*(\*\*)/gi, '$1 $2 $3');
+  res = res.replace(/\b(buka|pilih|klik|lihat|ketik|jalankan|pada|di|ke|dari|untuk|dengan|seperti|yaitu)\s*\*\*([A-Za-z0-9])/gi, '$1 **$2');
+  res = res.replace(/([A-Za-z0-9])\*\*(bawaan|saja|lagi|ini|itu|bisa|dapat|yang|dan|atau|di|ke|dari|pada|dll|tersebut|yaitu|adalah)\b/gi, '$1** $2');
 
-  // Space around parentheses: e.g. "Store(berisi" -> "Store (berisi", ")Tidak" -> ") Tidak"
+  // 6. Emojis after bold
+  res = res.replace(/(\*\*)\s*([\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}])/gu, '$1 $2 ');
+
+  // 7. Arrows spacing
+  res = res.replace(/\s*([→]|->)\s*/g, ' $1 ');
+
+  // 8. Slashes between words (not URLs): e.g. "remotedesktop/ kontroljarakjauh", "/Screen"
+  res = res.replace(/([a-zA-Z0-9\u00C0-\u017F])\s*\/\s*([a-zA-Z0-9\u00C0-\u017F])/g, '$1 / $2');
+  res = res.replace(/\s*\/\s*([A-Za-z])/g, ' / $1');
+
+  // 9. Parentheses spacing
   res = res.replace(/([a-zA-Z0-9\u00C0-\u017F])\(/g, '$1 (');
   res = res.replace(/\)([a-zA-Z0-9\u00C0-\u017F])/g, ') $1');
 
-  // Colons and hyphens list formatting: e.g. "yaitu: -.DS_Store" -> "yaitu: - .DS_Store"
-  res = res.replace(/:\s*-\s*([a-zA-Z0-9.])/g, ': - $1');
-  res = res.replace(/(^|\s)-([a-zA-Z0-9.])/g, '$1- $2');
-
-  // Only space dot after word if followed by CAPITAL letter (new sentence)
-  res = res.replace(/(?<=[a-zA-Z0-9\u00C0-\u017F])\.([A-Z\u00C0-\u017F])/g, '. $1');
-
-  // Heal accidentally spaced file extensions (e.g. "test. txt" -> "test.txt")
+  // 10. Punctuation spacing (keep file extensions safe)
+  res = res.replace(/([?!,;])([a-zA-Z0-9\u00C0-\u017F])/g, '$1 $2');
+  res = res.replace(/(?<!https?|ftp|file|vnc|ssh|ws|wss):([a-zA-Z0-9\u00C0-\u017F])/g, ': $1');
+  res = res.replace(/(?<=[a-zA-Z0-9\u00C0-\u017F\)])\.([A-Z\u00C0-\u017F])/g, '. $1');
   res = res.replace(/\.\s+(txt|html|css|js|jsx|ts|tsx|json|md|py|sh|png|jpg|jpeg|gif|svg|zip|tar|gz)\b/gi, '.$1');
 
-  // 7b. Clitic pronominal "-nya" glued with next word (e.g. "menyapanyalagi" -> "menyapanya lagi")
-  res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,}nya)(lagi|dan|atau|di|ke|dari|pada|yang|ini|itu|bisa|dapat|sudah|telah|akan|juga|saja|tidak|belum|adalah|karena|untuk|dengan|tersebut|pun)\b/gi, '$1 $2');
+  // 11. Uppercase acronyms followed by Indonesian preposition / word
+  res = res.replace(/([A-Z]{2,})(di|ke|dari|pada|untuk|dan|atau|jika|bila|yang|ini|itu|bisa|ada|adalah)\b/g, '$1 $2');
+  res = res.replace(/([A-Z]{2,})([A-Z][a-z]+)/g, '$1 $2');
 
-  // 7c. Squished demonstratives and adverbs (e.g. "inihanyaada" -> "ini hanya ada")
-  res = res.replace(/\b(ini|itu)(hanya|ada|adalah|berisi|terdiri|merupakan|bisa|dapat|satu|dua|tiga|file|folder|berkas|proyek|hasil|saja|juga|tidak|belum)/gi, '$1 $2');
-  res = res.replace(/\b(hanya)(ada|satu|dua|tiga|berisi|file|folder|berkas|item|terdapat|ditemukan)/gi, '$1 $2');
-  res = res.replace(/\b(ada)(satu|dua|tiga|empat|lima|file|folder|berkas|item|beberapa)/gi, '$1 $2');
-  res = res.replace(/\b(satu|dua|tiga|empat|lima)(file|folder|berkas|item|buah|biji)/gi, '$1 $2');
+  // 12. CamelCase word separation (e.g. "namaMac" -> "nama Mac", "RemoteLogin" -> "Remote Login")
+  res = res.replace(/([a-z\u00C0-\u017F])([A-Z])/g, '$1 $2');
 
-  // 7d. Suffix prepositions glued with nouns (e.g. "folderdari" -> "folder dari")
-  res = res.replace(/\b(folder|file|berkas|tampilan|isi|data|sistem|dokumen|bagian|hasil|catatan|kode|versi|pilihan|pengaturan|keluar|berasal|terdiri|mulai)dari\b/gi, '$1 dari');
-  res = res.replace(/\b(folder|file|berkas|tampilan|isi|data|sistem|dokumen|bagian|hasil|catatan|kode|versi|pilihan|pengaturan)di\b/gi, '$1 di');
-  res = res.replace(/\b(folder|file|berkas|tampilan|isi|data|sistem|dokumen|bagian|hasil|catatan|kode|versi|pilihan|pengaturan)ke\b/gi, '$1 ke');
-  res = res.replace(/\b(folder|file|berkas|tampilan|isi|data|sistem|dokumen|bagian|hasil|catatan|kode|versi|pilihan|pengaturan)pada\b/gi, '$1 pada');
-
-  // 7e. System/tech compound nouns (e.g. "sistemmac" -> "sistem mac")
-  res = res.replace(/\b(sistem|os|perangkat|aplikasi|platform)(mac|macos|windows|linux|ios|android)\b/gi, '$1 $2');
-
-  // 7f. Restore damaged system filenames: e.g. ".DSStore" -> ".DS_Store"
-  res = res.replace(/\.DSStore\b/g, '.DS_Store');
-
-  // 8. Specific known squished phrases
+  // 13. Common squished technical & Indonesian vocabulary
   const SQUISHED_MAP = [
+    [/\bbisabanget\b/gi, 'bisa banget'],
+    [/\bbisajuga\b/gi, 'bisa juga'],
+    [/\bremotedesktop\b/gi, 'remote desktop'],
+    [/\bkontroljarakjauh\b/gi, 'kontrol jarak jauh'],
+    [/\bsudahterpasangaplikasi\b/gi, 'sudah terpasang aplikasi'],
+    [/\bcukupketik\b/gi, 'cukup ketik'],
+    [/\balamatIP\b/gi, 'alamat IP'],
+    [/\batauhostname\b/gi, 'atau hostname'],
+    [/\btargetdi\b/gi, 'target di'],
+    [/\bingindihubungkan\b/gi, 'ingin dihubungkan'],
+    [/\bmendukungstandar\b/gi, 'mendukung standar'],
+    [/\bstandarVNC\b/gi, 'standar VNC'],
+    [/\bHPAndroid\b/gi, 'HP Android'],
+    [/\bCocokuntuk\b/gi, 'Cocok untuk'],
+    [/\bcocokuntuk\b/gi, 'cocok untuk'],
+    [/\bdariperangkat\b/gi, 'dari perangkat'],
+    [/\bterminallain\b/gi, 'terminal lain'],
+    [/\bTipssingkat\b/gi, 'Tips singkat'],
+    [/\btipssingkat\b/gi, 'tips singkat'],
+    [/\bSharingbawaan\b/gi, 'Sharing bawaan'],
+    [/\bsharingbawaan\b/gi, 'sharing bawaan'],
+    [/\b(sharing|layanan|aplikasi|perangkat|koneksi|jaringan|folder|file|fitur)bawaan\b/gi, '$1 bawaan'],
+    [/\b(simple|mudah|cepat|praktis|aman|bagus|lengkap|gratis|fleksibel|stabil)dan\b/gi, '$1 dan'],
+    [/\bsimpledan\b/gi, 'simple dan'],
+    [/\byanggratis\b/gi, 'yang gratis'],
+    [/\buntukpersonal\b/gi, 'untuk personal'],
+    [/\bChromeRemote\b/gi, 'Chrome Remote'],
+    [/\bRemoteDesktop\b/gi, 'Remote Desktop'],
+    [/\bScreenSharing\b/gi, 'Screen Sharing'],
+    [/\bRemoteLogin\b/gi, 'Remote Login'],
     [/\bSenangbertemudengan\b/gi, 'Senang bertemu dengan'],
     [/\bbertemudengan\b/gi, 'bertemu dengan'],
     [/\bSenangbertemu\b/gi, 'Senang bertemu'],
@@ -1340,18 +1423,62 @@ function cleanIndonesianSpelling(text) {
     [/\btidakdapat\b/gi, 'tidak dapat'],
     [/\byakiningin\b/gi, 'yakin ingin'],
     [/\bakanmenghapus\b/gi, 'akan menghapus'],
+    [/\b\.DSStore\b/g, '.DS_Store'],
   ];
 
   for (const [re, repl] of SQUISHED_MAP) {
     res = res.replace(re, repl);
   }
 
-  // Restore placeholders
-  codePlaceholders.forEach((code, idx) => {
+  // 14. Glued Indonesian modal/verbs/adverbs
+  const modalPattern = '\\b(siap|dapat|bisa|akan|telah|sudah|sedang|ingin|harus|perlu|boleh|tidak|belum|bukan|jangan|yakin)';
+  const verbPattern = '(membantu|menjawab|menjelaskan|menganalisis|merancang|menyelesaikan|memberikan|menemukan|melakukan|bekerja|bantu|pakai|gunakan|bicara|dengar|membuat|menghapus|hapus|buat|baca|edit|tulis|buka|tutup|jalankan|ingin|dapat|bisa|ada|kembali)';
+  res = res.replace(new RegExp(modalPattern + verbPattern + '\\b', 'gi'), '$1 $2');
+
+  res = res.replace(/\byang([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'yang $1');
+  res = res.replace(/\bdengan([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'dengan $1');
+  res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,})dengan\b/gi, '$1 dengan');
+  res = res.replace(/\buntuk([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'untuk $1');
+  res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,})untuk\b/gi, '$1 untuk');
+  res = res.replace(/\badalah([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'adalah $1');
+  res = res.replace(/\bsecara([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'secara $1');
+
+  const prepPattern = '\\b(dari|ke|pada|untuk|dengan|tanpa|dalam|hingga|sampai|serta|sebagai)';
+  const nounPattern = '(penjelasan|perencanaan|kebutuhan|analisis|pemecahan|pertanyaan|pembuatan|pengembangan|pembelajaran|penggunaan|pelaksanaan|pekerjaan|bantuan|solusi|informasi|tugas|layanan|proses|topik|aspek|bidang|cara|aturan|keselamatan|anda|kamu|kita|saya|mereka|siapa|apa|semua|file|folder|berkas)';
+  res = res.replace(new RegExp(prepPattern + nounPattern + '\\b', 'gi'), '$1 $2');
+
+  res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,}nya)(lagi|dan|atau|di|ke|dari|pada|yang|ini|itu|bisa|dapat|sudah|telah|akan|juga|saja|tidak|belum|adalah|karena|untuk|dengan|tersebut|pun)\b/gi, '$1 $2');
+  res = res.replace(/\b(ini|itu)(hanya|ada|adalah|berisi|terdiri|merupakan|bisa|dapat|satu|dua|tiga|file|folder|berkas|proyek|hasil|saja|juga|tidak|belum)/gi, '$1 $2');
+  res = res.replace(/\b(hanya)(ada|satu|dua|tiga|berisi|file|folder|berkas|item|terdapat|ditemukan)/gi, '$1 $2');
+  res = res.replace(/\b(ada)(satu|dua|tiga|empat|lima|file|folder|berkas|item|beberapa)/gi, '$1 $2');
+  res = res.replace(/\b(satu|dua|tiga|empat|lima)(file|folder|berkas|item|buah|biji)/gi, '$1 $2');
+
+  res = res.replace(/\b(folder|file|berkas|tampilan|isi|data|sistem|dokumen|bagian|hasil|catatan|kode|versi|pilihan|pengaturan|keluar|berasal|terdiri|mulai)dari\b/gi, '$1 dari');
+  res = res.replace(/\b(folder|file|berkas|tampilan|isi|data|sistem|dokumen|bagian|hasil|catatan|kode|versi|pilihan|pengaturan)di\b/gi, '$1 di');
+  res = res.replace(/\b(folder|file|berkas|tampilan|isi|data|sistem|dokumen|bagian|hasil|catatan|kode|versi|pilihan|pengaturan)ke\b/gi, '$1 ke');
+  res = res.replace(/\b(folder|file|berkas|tampilan|isi|data|sistem|dokumen|bagian|hasil|catatan|kode|versi|pilihan|pengaturan)pada\b/gi, '$1 pada');
+  res = res.replace(/\b(sistem|os|perangkat|aplikasi|platform)(mac|macos|windows|linux|ios|android)\b/gi, '$1 $2');
+
+  // Restore brands
+  brandPlaceholders.forEach((b, idx) => {
+    res = res.replace(`__BRAND_${idx}__`, b);
+  });
+
+  // Restore inline codes
+  inlineCodes.forEach((code, idx) => {
     res = res.replace(`__INLINE_CODE_${idx}__`, code);
   });
 
-  return res;
+  // Restore code blocks
+  codeBlocks.forEach((b, idx) => {
+    res = res.replace(`__CODE_BLOCK_${idx}__`, b);
+  });
+
+  // Clean excessive multiple spaces & lines
+  res = res.replace(/[ \t]{2,}/g, ' ');
+  res = res.replace(/\n{3,}/g, '\n\n');
+
+  return res.trim();
 }
 
 // Render single assistant message block
@@ -1519,16 +1646,16 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
     if (inputResult.type === 'open_model_menu') {
       const models = getAvailableModels(freshConfig);
       const modelItems = models.map((m) => ({
-        label: m.id,
-        detail: m.name !== m.id ? `${m.name} — ${m.desc}` : m.desc,
+        label: m.isCombo ? `[Combo] ${m.name}` : m.id,
+        detail: m.name !== m.id ? `${m.name} : ${m.desc}` : m.desc,
         id: m.id,
         name: m.name,
-        badge: m.id === currentModel ? 'Aktif' : '',
+        badge: m.id === currentModel ? 'Aktif' : (m.isCombo ? m.strategyLabel : ''),
       }));
       const activeIdx = Math.max(0, modelItems.findIndex((m) => m.id === currentModel));
 
       const picked = await selectModelInteractive({
-        title: '✦ Pilih Model AI Aktif:',
+        title: '✦ Pilih Model AI atau Combo Router Aktif:',
         items: modelItems,
         initialIndex: activeIdx,
       });
@@ -1680,113 +1807,6 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
       let streamWordBuffer = '';
       let lastChar = '';
 
-      function cleanIndonesianSpelling(text) {
-        if (!text || typeof text !== 'string') return text || '';
-
-        // 1. Protect inline code `...`
-        const codePlaceholders = [];
-        let res = text.replace(/`([^`\n]+)`/g, (match) => {
-          codePlaceholders.push(match);
-          return `__INLINE_CODE_${codePlaceholders.length - 1}__`;
-        });
-
-        // 2. Fix glued uppercase words / abbreviations (e.g. "YAuntukmelanjutkan" -> "YA untuk melanjutkan")
-        res = res.replace(/([A-Z]{2,})(untuk|dan|atau|jika|bila|pada|ke|di)/g, '$1 $2');
-        res = res.replace(/\b(untuk|dan|atau|jika|bila)(melanjutkan|membatalkan|menghapus|membuat|mengedit|menulis|membaca|menjalankan)\b/gi, '$1 $2');
-
-        // 3. Lowercase directly followed by Uppercase (e.g. "membantuAnda" -> "membantu Anda")
-        res = res.replace(/([a-z\u00C0-\u017F])([A-Z])/g, '$1 $2');
-
-        // 4. Glued Indonesian modal/verbs/adverbs (e.g. "akanmenghapus", "yakiningin", "tidakdapat")
-        const modalPattern = '\\b(siap|dapat|bisa|akan|telah|sudah|sedang|ingin|harus|perlu|boleh|tidak|belum|bukan|jangan|yakin)';
-        const verbPattern = '(membantu|menjawab|menjelaskan|menganalisis|merancang|menyelesaikan|memberikan|menemukan|melakukan|bekerja|bantu|pakai|gunakan|bicara|dengar|membuat|menghapus|hapus|buat|baca|edit|tulis|buka|tutup|jalankan|ingin|dapat|bisa|ada|kembali)';
-        res = res.replace(new RegExp(modalPattern + verbPattern + '\\b', 'gi'), '$1 $2');
-
-        // 5. Glued relative pronoun "yang", prepositions "dengan", "untuk", etc.
-        res = res.replace(/\byang([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'yang $1');
-        res = res.replace(/\bdengan([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'dengan $1');
-        res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,})dengan\b/gi, '$1 dengan');
-        res = res.replace(/\buntuk([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'untuk $1');
-        res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,})untuk\b/gi, '$1 untuk');
-        res = res.replace(/\badalah([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'adalah $1');
-        res = res.replace(/\bsecara([a-zA-Z\u00C0-\u017F]{3,})\b/gi, 'secara $1');
-
-        // 6. Prepositions squished with nouns
-        const prepPattern = '\\b(dari|ke|pada|untuk|dengan|tanpa|dalam|hingga|sampai|serta|sebagai)';
-        const nounPattern = '(penjelasan|perencanaan|kebutuhan|analisis|pemecahan|pertanyaan|pembuatan|pengembangan|pembelajaran|penggunaan|pelaksanaan|pekerjaan|bantuan|solusi|informasi|tugas|layanan|proses|topik|aspek|bidang|cara|aturan|keselamatan|anda|kamu|kita|saya|mereka|siapa|apa|semua|file|folder|berkas)';
-        res = res.replace(new RegExp(prepPattern + nounPattern + '\\b', 'gi'), '$1 $2');
-
-        // 7. Punctuation spacing - DO NOT break file extensions!
-        res = res.replace(/([?!,;])([a-zA-Z0-9\u00C0-\u017F])/g, '$1 $2');
-        res = res.replace(/(?<!https?|ftp|file|ws|wss):([a-zA-Z0-9\u00C0-\u017F])/g, ': $1');
-
-        // Space around parentheses: e.g. "Store(berisi" -> "Store (berisi", ")Tidak" -> ") Tidak"
-        res = res.replace(/([a-zA-Z0-9\u00C0-\u017F])\(/g, '$1 (');
-        res = res.replace(/\)([a-zA-Z0-9\u00C0-\u017F])/g, ') $1');
-
-        // Colons and hyphens list formatting: e.g. "yaitu: -.DS_Store" -> "yaitu: - .DS_Store"
-        res = res.replace(/:\s*-\s*([a-zA-Z0-9.])/g, ': - $1');
-        res = res.replace(/(^|\s)-([a-zA-Z0-9.])/g, '$1- $2');
-
-        // Only space dot after word if followed by CAPITAL letter (new sentence)
-        res = res.replace(/(?<=[a-zA-Z0-9\u00C0-\u017F])\.([A-Z\u00C0-\u017F])/g, '. $1');
-
-        // Heal accidentally spaced file extensions (e.g. "test. txt" -> "test.txt")
-        res = res.replace(/\.\s+(txt|html|css|js|jsx|ts|tsx|json|md|py|sh|png|jpg|jpeg|gif|svg|zip|tar|gz)\b/gi, '.$1');
-
-        // 7b. Clitic pronominal "-nya" glued with next word (e.g. "menyapanyalagi" -> "menyapanya lagi")
-        res = res.replace(/\b([a-zA-Z\u00C0-\u017F]{3,}nya)(lagi|dan|atau|di|ke|dari|pada|yang|ini|itu|bisa|dapat|sudah|telah|akan|juga|saja|tidak|belum|adalah|karena|untuk|dengan|tersebut|pun)\b/gi, '$1 $2');
-
-        // 7c. Squished demonstratives and adverbs (e.g. "inihanyaada" -> "ini hanya ada")
-        res = res.replace(/\b(ini|itu)(hanya|ada|adalah|berisi|terdiri|merupakan|bisa|dapat|satu|dua|tiga|file|folder|berkas|proyek|hasil|saja|juga|tidak|belum)/gi, '$1 $2');
-        res = res.replace(/\b(hanya)(ada|satu|dua|tiga|berisi|file|folder|berkas|item|terdapat|ditemukan)/gi, '$1 $2');
-        res = res.replace(/\b(ada)(satu|dua|tiga|empat|lima|file|folder|berkas|item|beberapa)/gi, '$1 $2');
-        res = res.replace(/\b(satu|dua|tiga|empat|lima)(file|folder|berkas|item|buah|biji)/gi, '$1 $2');
-
-        // 7d. Suffix prepositions glued with nouns (e.g. "folderdari" -> "folder dari")
-        res = res.replace(/\b(folder|file|berkas|tampilan|isi|data|sistem|dokumen|bagian|hasil|catatan|kode|versi|pilihan|pengaturan|keluar|berasal|terdiri|mulai)dari\b/gi, '$1 dari');
-        res = res.replace(/\b(folder|file|berkas|tampilan|isi|data|sistem|dokumen|bagian|hasil|catatan|kode|versi|pilihan|pengaturan)di\b/gi, '$1 di');
-        res = res.replace(/\b(folder|file|berkas|tampilan|isi|data|sistem|dokumen|bagian|hasil|catatan|kode|versi|pilihan|pengaturan)ke\b/gi, '$1 ke');
-        res = res.replace(/\b(folder|file|berkas|tampilan|isi|data|sistem|dokumen|bagian|hasil|catatan|kode|versi|pilihan|pengaturan)pada\b/gi, '$1 pada');
-
-        // 7e. System/tech compound nouns (e.g. "sistemmac" -> "sistem mac")
-        res = res.replace(/\b(sistem|os|perangkat|aplikasi|platform)(mac|macos|windows|linux|ios|android)\b/gi, '$1 $2');
-
-        // 7f. Restore damaged system filenames: e.g. ".DSStore" -> ".DS_Store"
-        res = res.replace(/\.DSStore\b/g, '.DS_Store');
-
-        // 8. Specific known squished phrases
-        const SQUISHED_MAP = [
-          [/\bSenangbertemudengan\b/gi, 'Senang bertemu dengan'],
-          [/\bbertemudengan\b/gi, 'bertemu dengan'],
-          [/\bSenangbertemu\b/gi, 'Senang bertemu'],
-          [/\bsiapmembantu\b/gi, 'siap membantu'],
-          [/\bterimakasih\b/gi, 'terima kasih'],
-          [/\basistenkecerdasan\b/gi, 'asisten kecerdasan'],
-          [/\bkecerdasanbuatan\b/gi, 'kecerdasan buatan'],
-          [/\bbuatanyang\b/gi, 'buatan yang'],
-          [/\byangsiap\b/gi, 'yang siap'],
-          [/\badalahasisten\b/gi, 'adalah asisten'],
-          [/\bBerderti\b/gi, 'Berdasarkan'],
-          [/\bBerdasaraturan\b/gi, 'Berdasarkan aturan'],
-          [/\baturankeselamatan\b/gi, 'aturan keselamatan'],
-          [/\btidakdapat\b/gi, 'tidak dapat'],
-          [/\byakiningin\b/gi, 'yakin ingin'],
-          [/\bakanmenghapus\b/gi, 'akan menghapus'],
-        ];
-
-        for (const [re, repl] of SQUISHED_MAP) {
-          res = res.replace(re, repl);
-        }
-
-        // Restore placeholders
-        codePlaceholders.forEach((code, idx) => {
-          res = res.replace(`__INLINE_CODE_${idx}__`, code);
-        });
-
-        return res;
-      }
-
       function formatStreamChunk(rawChunk) {
         let chunk = pendingSurrogate + rawChunk;
         pendingSurrogate = '';
@@ -1816,7 +1836,7 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
                 const lang = chunk.slice(i + 3, newlineIdx).trim() || 'code';
                 if (!inCodeBlock) {
                   inCodeBlock = true;
-                  out += `\n\x1b[38;5;240m╭── \x1b[38;5;75m${lang}\x1b[38;5;240m ────────────────────────\x1b[0m\n`;
+                  out += `\n\x1b[38;5;240m╭── \x1b[1m\x1b[37m${lang}\x1b[0m\x1b[38;5;240m ────────────────────────\x1b[0m\n`;
                 } else {
                   inCodeBlock = false;
                   out += `\x1b[38;5;240m╰────────────────────────────────────\x1b[0m\n`;
@@ -1837,13 +1857,13 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
               }
               if (j < chunk.length && chunk[j] === ' ') {
                 if (hashCount === 1) {
-                  out += '\x1b[1m\x1b[38;5;81m━━ ';
+                  out += '\x1b[1m\x1b[37m━━ ';
                   headingLevel = 1;
                 } else if (hashCount === 2) {
-                  out += '\x1b[1m\x1b[38;5;75m✦ ';
+                  out += '\x1b[1m\x1b[37m✦ ';
                   headingLevel = 2;
                 } else {
-                  out += '\x1b[1m\x1b[38;5;141m● ';
+                  out += '\x1b[1m\x1b[37m● ';
                   headingLevel = 3;
                 }
                 i = j + 1;
@@ -1854,7 +1874,7 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
 
             // Bullet points (- or *)
             if ((ch === '-' || ch === '*') && chunk[i + 1] === ' ') {
-              out += '  \x1b[38;5;75m•\x1b[0m ';
+              out += '  \x1b[1m\x1b[37m•\x1b[0m ';
               i += 2;
               isAtLineStart = false;
               continue;
@@ -2181,6 +2201,7 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
             });
           });
 
+          assistantReply = cleanIndonesianSpelling(assistantReply);
           history.push({ role: 'assistant', content: assistantReply });
           try {
             const { session: sessAfterAsst } = appendMessageToSession(currentSession.id, {
@@ -2293,6 +2314,7 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
             });
           });
 
+          assistantReply = cleanIndonesianSpelling(assistantReply);
           history.push({ role: 'assistant', content: assistantReply });
           try {
             const { session: sessAfterAsst } = appendMessageToSession(currentSession.id, {
@@ -2326,11 +2348,198 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
     }
   }
 
+  // Interactive Combos & Router Manager for Terminal Chat
+  async function handleCombosMenuInteractive(arg) {
+    const combos = getCombos();
+
+    if (arg) {
+      const cleanArg = arg.toLowerCase().trim();
+
+      if (cleanArg === 'info' || cleanArg === 'guide' || cleanArg === 'help') {
+        console.log(`\n${c.bold}${c.brightCyan}✦ Panduan 3 Strategi Routing Model Combo (Tersinkron dengan Web):${c.reset}\n`);
+        console.log(`  ${c.bold}${c.green}1. Fallback${c.reset}`);
+        console.log(`     ${c.white}Fungsi:${c.reset} Menggunakan satu penyedia utama, dan hanya beralih ke penyedia cadangan jika terjadi error atau batas kuota habis.`);
+        console.log(`     ${c.dim}Kapan Digunakan:${c.reset} Saat Anda memiliki penyedia favorit, tetapi ingin cadangan otomatis jika sewaktu-waktu layanan terganggu.\n`);
+        console.log(`  ${c.bold}${c.green}2. Round Robin${c.reset}`);
+        console.log(`     ${c.white}Fungsi:${c.reset} Membagi beban kerja secara bergiliran (Penyedia A, lalu B, lalu C, lalu kembali ke A).`);
+        console.log(`     ${c.dim}Kapan Digunakan:${c.reset} Saat Anda memiliki beberapa penyedia dengan kapasitas setara dan ingin meratakan penggunaan kuota atau biaya.\n`);
+        console.log(`  ${c.bold}${c.green}3. Fusion${c.reset}`);
+        console.log(`     ${c.white}Fungsi:${c.reset} Mengirimkan satu permintaan ke beberapa model sekaligus dan menggabungkan atau membandingkan hasilnya.`);
+        console.log(`     ${c.dim}Kapan Digunakan:${c.reset} Saat Anda membutuhkan tingkat akurasi tinggi dan ingin melihat perspektif dari beberapa AI berbeda secara bersamaan.\n`);
+        return false;
+      }
+
+      if (cleanArg === 'list') {
+        console.log(`\n${c.bold}${c.white}✦ Daftar Model Combo & Router Tersedia:${c.reset}`);
+        combos.forEach((combo) => {
+          const isCur = currentModel === `combo::${combo.id}` || currentModel === combo.id;
+          const strat = combo.strategy === 'fallback' ? 'Fallback' : combo.strategy === 'round_robin' ? 'Round Robin' : 'Fusion';
+          const status = isCur ? ` ${c.bold}${c.green}[AKTIF]${c.reset}` : '';
+          console.log(`  ${isCur ? c.green + '●' : c.gray + '○'} ${c.bold}${combo.name}${c.reset} ${c.bold}${c.white}[${strat}]${c.reset} (${combo.models?.length || 0} model panel)${status}`);
+          console.log(`     ${c.dim}Panel:${c.reset} ${(combo.models || []).join(' → ')}`);
+        });
+        console.log(`\n${c.gray}Gunakan: ${c.white}/combo <nama_combo>${c.gray} untuk beralih.${c.reset}\n`);
+        return false;
+      }
+
+      if (cleanArg.startsWith('add ') || cleanArg.startsWith('create ') || cleanArg === 'add' || cleanArg === 'create') {
+        const subParts = cleanArg.replace(/^(add|create)\s*/, '').trim().split(/\s+/);
+        let customName = subParts[0] || `COMBO_${Date.now().toString().slice(-4)}`;
+        let customStrategy = subParts[1] ? subParts[1].toLowerCase() : 'fallback';
+        if (!['fallback', 'round_robin', 'fusion'].includes(customStrategy)) {
+          customStrategy = 'fallback';
+        }
+        let customModels = subParts[2]
+          ? subParts[2].split(',').map((s) => s.trim()).filter(Boolean)
+          : ['orion::orion', 'agnes-2.5-flash'];
+
+        const saved = saveCombo({
+          name: customName,
+          strategy: customStrategy,
+          models: customModels,
+          judge: customModels[0] || 'orion::orion',
+          description: `Custom combo dibuat via terminal CLI (${customStrategy}).`,
+        });
+
+        currentModel = `combo::${saved.id}`;
+        saveSyncedConfig({ selectedModel: currentModel });
+        console.log(`\n${c.green}✓ Combo kustom '${c.bold}${saved.name}${c.reset}${c.green}' berhasil dibuat & diaktifkan!${c.reset}`);
+        console.log(`  ${c.gray}Strategi:${c.reset} ${saved.strategy.toUpperCase()}`);
+        console.log(`  ${c.gray}Model Panel:${c.reset} ${saved.models.join(' → ')}\n`);
+        return false;
+      }
+
+      const match = combos.find(
+        (cb) =>
+          cb.id.toLowerCase() === cleanArg ||
+          cb.name.toLowerCase() === cleanArg ||
+          `combo::${cb.id}`.toLowerCase() === cleanArg
+      );
+
+      if (match) {
+        currentModel = `combo::${match.id}`;
+        saveSyncedConfig({ selectedModel: currentModel });
+        const strat = match.strategy === 'fallback' ? 'Fallback' : match.strategy === 'round_robin' ? 'Round Robin' : 'Fusion';
+        console.log(`\n${c.green}✓ Model AI dialihkan ke Combo: ${c.bold}${match.name}${c.reset} ${c.bold}${c.white}[${strat}]${c.reset}`);
+        console.log(`  ${c.gray}Panel Model:${c.reset} ${(match.models || []).join(', ')}`);
+        if (match.strategy === 'fusion') {
+          console.log(`  ${c.gray}Juri Sintesis:${c.reset} ${match.judge || match.models[0] || 'orion'}\n`);
+        } else {
+          console.log('');
+        }
+        return false;
+      }
+
+      console.log(`\n${c.yellow}⚠️  Combo '${arg}' tidak ditemukan.${c.reset} Ketik ${c.yellow}/combos${c.reset} untuk melihat daftar atau ${c.yellow}/combo add <nama>${c.reset} untuk membuat combo kustom.\n`);
+      return false;
+    }
+
+    // Interactive selector if no arg passed
+    const comboItems = combos.map((cb) => {
+      const isCur = currentModel === `combo::${cb.id}` || currentModel === cb.id;
+      const strat = cb.strategy === 'fallback' ? 'Fallback' : cb.strategy === 'round_robin' ? 'Round Robin' : 'Fusion';
+      const panelShort = (cb.models || []).map((m) => m.replace(/.*::/, '')).join(' → ');
+      return {
+        label: cb.name,
+        detail: `[${strat}] : ${cb.models?.length || 0} model (${panelShort})`,
+        badge: isCur ? 'Aktif' : strat,
+        value: cb.id,
+        combo: cb,
+      };
+    });
+
+    const menuItems = [
+      ...comboItems,
+      { label: '➕ Buat Combo Kustom Baru', detail: 'Tambah router combo kustom langsung dari terminal', value: '__create__' },
+      { label: '📖 Panduan 3 Strategi Combo', detail: 'Fallback, Round Robin, dan Fusion', value: '__guide__' },
+      { label: '🔄 Muat Ulang Daftar Combo', detail: 'Sinkronisasi ulang dari ~/.orion/combos.json', value: '__reload__' },
+    ];
+
+    const picked = await selectOptionInteractive({
+      title: '✦ Pilih Model Combo & Router Aktif (Tersinkron dengan Web):',
+      items: menuItems,
+    });
+
+    if (!picked) {
+      return false;
+    }
+
+    if (picked.value === '__guide__') {
+      return handleCombosMenuInteractive('info');
+    }
+
+    if (picked.value === '__create__') {
+      const stratPick = await selectOptionInteractive({
+        title: '✦ Pilih Strategi Router untuk Combo Baru:',
+        items: [
+          { label: 'Fallback (Urutan Failover)', detail: 'Penyedia utama + cadangan otomatis jika error/habis', value: 'fallback' },
+          { label: 'Round Robin (Bagi Beban)', detail: 'Beban kerja dibagi bergantian merata ke model panel', value: 'round_robin' },
+          { label: 'Fusion (Panel + Juri)', detail: 'Kirim serentak ke panel dan disatukan hasilnya', value: 'fusion' },
+        ],
+      });
+      if (!stratPick) return false;
+
+      const templatePick = await selectOptionInteractive({
+        title: '✦ Pilih Kombinasi Model Panel Awal:',
+        items: [
+          { label: '⚡ Orion + Agnes Flash', detail: 'Failover cepat kuota hemat', models: ['orion::orion', 'agnes-2.5-flash'] },
+          { label: '⚖️ Orion + Agnes + Nemotron Ultra', detail: '3 model multi-provider seimbang', models: ['orion::orion', 'agnes-2.5-flash', 'nvidia/nemotron-3-ultra-550b-a55b:free'] },
+          { label: '🔮 Agnes Flash + Nemotron Ultra', detail: 'Kombinasi model open provider', models: ['agnes-2.5-flash', 'nvidia/nemotron-3-ultra-550b-a55b:free'] },
+        ],
+      });
+      if (!templatePick) return false;
+
+      const newName = `CUSTOM_${stratPick.value.toUpperCase()}_${Date.now().toString().slice(-4)}`;
+      const saved = saveCombo({
+        name: newName,
+        strategy: stratPick.value,
+        models: templatePick.models,
+        judge: templatePick.models[0] || 'orion::orion',
+        description: `Custom combo ${stratPick.value} dibuat dari terminal CLI.`,
+      });
+
+      currentModel = `combo::${saved.id}`;
+      saveSyncedConfig({ selectedModel: currentModel });
+      console.log(`\n${c.green}✓ Combo kustom '${c.bold}${saved.name}${c.reset}${c.green}' berhasil dibuat & diaktifkan!${c.reset}`);
+      console.log(`  ${c.gray}Strategi:${c.reset} ${saved.strategy.toUpperCase()}`);
+      console.log(`  ${c.gray}Model Panel:${c.reset} ${saved.models.join(' → ')}`);
+      console.log(`  ${c.gray}Identifier:${c.reset} combo::${saved.id}\n`);
+      return false;
+    }
+
+    if (picked.value === '__reload__') {
+      const reloaded = getCombos();
+      console.log(`\n${c.green}✓ Konfigurasi Combos dimuat ulang (${reloaded.length} combo terdeteksi).${c.reset}\n`);
+      return false;
+    }
+
+    const selectedCombo = picked.combo || combos.find((cb) => cb.id === picked.value);
+    if (selectedCombo) {
+      currentModel = `combo::${selectedCombo.id}`;
+      saveSyncedConfig({ selectedModel: currentModel });
+      const strat = selectedCombo.strategy === 'fallback' ? 'Fallback' : selectedCombo.strategy === 'round_robin' ? 'Round Robin' : 'Fusion';
+      console.log(`\n${c.green}✓ Model AI dialihkan ke Combo: ${c.bold}${selectedCombo.name}${c.reset} ${c.magenta}[${strat}]${c.reset}`);
+      console.log(`  ${c.gray}Panel Model:${c.reset} ${(selectedCombo.models || []).join(', ')}`);
+      if (selectedCombo.strategy === 'fusion') {
+        console.log(`  ${c.gray}Juri Sintesis:${c.reset} ${selectedCombo.judge || selectedCombo.models[0] || 'orion'}\n`);
+      } else {
+        console.log('');
+      }
+    }
+
+    return false;
+  }
+
   // Helper function to handle commands
   async function handleExecuteCommand(cmd) {
     const parts = cmd.split(/\s+/);
     const action = parts[0].toLowerCase();
     const arg = parts.slice(1).join(' ').trim();
+
+    if (action === '/combo' || action === '/combos') {
+      await handleCombosMenuInteractive(arg);
+      return false;
+    }
 
     if (action === '/exit' || action === '/quit' || action === '/q') {
       console.log(`\n${c.brightCyan}✦ Terima kasih telah menggunakan Orion Agent. Sampai jumpa!${c.reset}\n`);
@@ -2611,20 +2820,49 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
     }
 
     if (action === '/model' || action.startsWith('/mod')) {
+      const freshConfig = loadSyncedConfig();
+      const availableModels = getAvailableModels(freshConfig);
+
       if (arg) {
-        const freshConfig = loadSyncedConfig();
-        const availableModels = getAvailableModels(freshConfig);
+        const cleanArg = arg.toLowerCase().trim();
         const targetModel = availableModels.find(
-          (m) => m.id.toLowerCase() === arg.toLowerCase() || m.name.toLowerCase() === arg.toLowerCase()
+          (m) =>
+            m.id.toLowerCase() === cleanArg ||
+            m.name.toLowerCase() === cleanArg ||
+            m.id.toLowerCase() === `combo::${cleanArg}`
         );
         if (targetModel) {
           currentModel = targetModel.id;
           saveSyncedConfig({ selectedModel: currentModel });
+          const tag = targetModel.isCombo ? ` ${c.magenta}[Combo: ${targetModel.strategyLabel}]${c.reset}` : '';
           console.log(
-            `\n${c.green}✓ Model AI dialihkan ke: ${c.bold}${targetModel.name || targetModel.id}${c.reset} ${c.dim}(${targetModel.id})${c.reset}\n`
+            `\n${c.green}✓ Model AI dialihkan ke: ${c.bold}${targetModel.name || targetModel.id}${c.reset}${tag} ${c.dim}(${targetModel.id})${c.reset}\n`
           );
         } else {
-          console.log(`\n${c.yellow}⚠️  Model '${arg}' tidak ditemukan.${c.reset} Ketik ${c.yellow}/model${c.reset} untuk memilih dari daftar.\n`);
+          console.log(`\n${c.yellow}⚠️  Model '${arg}' tidak ditemukan.${c.reset} Ketik ${c.yellow}/model${c.reset} atau ${c.yellow}/combos${c.reset} untuk memilih dari daftar.\n`);
+        }
+      } else {
+        const modelItems = availableModels.map((m) => ({
+          label: m.isCombo ? `[Combo] ${m.name}` : m.id,
+          detail: m.name !== m.id ? `${m.name} : ${m.desc}` : m.desc,
+          id: m.id,
+          name: m.name,
+          badge: m.id === currentModel ? 'Aktif' : (m.isCombo ? m.strategyLabel : ''),
+        }));
+        const activeIdx = Math.max(0, modelItems.findIndex((m) => m.id === currentModel));
+
+        const picked = await selectModelInteractive({
+          title: '✦ Pilih Model AI atau Combo Router Aktif:',
+          items: modelItems,
+          initialIndex: activeIdx,
+        });
+
+        if (picked) {
+          currentModel = picked.id;
+          saveSyncedConfig({ selectedModel: currentModel });
+          console.log(
+            `\n${c.green}✓ Model AI dialihkan ke: ${c.bold}${picked.name || picked.id}${c.reset} ${c.dim}(${picked.id})${c.reset}\n`
+          );
         }
       }
       return false;
@@ -2683,6 +2921,7 @@ export async function startTerminalChat({ sessionId = null, forceNew = false, op
     if (action === '/help' || action === '/h' || action === '/?') {
       console.log(`\n${c.bold}${c.brightCyan}✦ Panduan Perintah Orion Terminal Chat (Pi Style):${c.reset}`);
       console.log(`  ${c.yellow}/agent${c.reset} [on/off]           Aktifkan/nonaktifkan mode AI Agent otonom (tool calls)`);
+      console.log(`  ${c.yellow}/combos, /combo${c.reset} [nama]       Pilih & kelola Model Combo & Router (Fallback, Round Robin, Fusion)`);
       console.log(`  ${c.yellow}/model${c.reset} [nama]            Pilih model AI interaktif (atau gunakan Ctrl+L)`);
       console.log(`  ${c.yellow}/thinking, /tier${c.reset} [level]  Atur penalaran (low/medium/high, atau Shift+Tab)`);
       console.log(`  ${c.yellow}!perintah${c.reset}                Jalankan perintah shell terminal (hasil masuk konteks)`);

@@ -1,9 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   RotateCw,
   Star,
   Settings,
   ChevronDown,
+  ChevronUp,
   Check,
   Sparkles,
   Zap,
@@ -21,6 +23,10 @@ import {
   Edit3,
   GitFork,
   Search,
+  LayoutList,
+  Grid,
+  Image,
+  Terminal,
 } from 'lucide-react';
 import { REASONING_TIERS, isReasoningSupported } from '../utils/modelConfig';
 
@@ -57,6 +63,8 @@ export default function ModelsView({
   reasoningTier = 'medium',
   onSelectReasoningTier,
   customProviders = [],
+  combos: externalCombos = [],
+  onCombosUpdated,
   sessions = [],
   onNavigate,
   onOpenProviders,
@@ -70,12 +78,13 @@ export default function ModelsView({
   const [isChangeModelModalOpen, setIsChangeModelModalOpen] = useState(false);
 
   // Combos State
-  const [combos, setCombos] = useState([]);
+  const [combos, setCombos] = useState(externalCombos);
   const [isLoadingCombos, setIsLoadingCombos] = useState(false);
   const [isComboModalOpen, setIsComboModalOpen] = useState(false);
   const [editingCombo, setEditingCombo] = useState(null);
   const [selectedComboIds, setSelectedComboIds] = useState([]);
   const [comboModelSearch, setComboModelSearch] = useState('');
+  const [customModelInput, setCustomModelInput] = useState('');
   const [isSavingCombo, setIsSavingCombo] = useState(false);
   const [comboForm, setComboForm] = useState({
     id: '',
@@ -86,6 +95,12 @@ export default function ModelsView({
     description: '',
   });
 
+  // OpenCode Console Table & Catalog State
+  const [viewMode, setViewMode] = useState('table'); // 'table' | 'grid'
+  const [catalogSearch, setCatalogSearch] = useState('');
+  const [filterFreeOnly, setFilterFreeOnly] = useState(false);
+  const [filterNewOnly, setFilterNewOnly] = useState(false);
+
   const fetchCombos = async () => {
     setIsLoadingCombos(true);
     try {
@@ -93,6 +108,7 @@ export default function ModelsView({
       const data = await res.json();
       if (data.success && Array.isArray(data.combos)) {
         setCombos(data.combos);
+        onCombosUpdated?.();
       }
     } catch (err) {
       console.warn('Failed to fetch combos:', err);
@@ -102,8 +118,12 @@ export default function ModelsView({
   };
 
   useEffect(() => {
-    fetchCombos();
-  }, []);
+    if (Array.isArray(externalCombos) && externalCombos.length > 0) {
+      setCombos(externalCombos);
+    } else {
+      fetchCombos();
+    }
+  }, [externalCombos]);
 
   // Auxiliary tasks assignment state (persisted to localStorage)
   const [auxAssignments, setAuxAssignments] = useState(() => {
@@ -260,6 +280,25 @@ export default function ModelsView({
     return list;
   }, [customProviders]);
 
+  // Filtered models for OpenCode catalog table & grid
+  const displayModelsList = useMemo(() => {
+    return modelsList.filter((m) => {
+      if (filterFreeOnly && !m.isOfficial && m.badge !== 'local') return false;
+      if (filterNewOnly && m.baseDaysAgo > 10) return false;
+      if (catalogSearch.trim()) {
+        const q = catalogSearch.toLowerCase().trim();
+        const name = (m.name || '').toLowerCase();
+        const disp = (m.displayName || '').toLowerCase();
+        const id = (m.modelId || m.id || '').toLowerCase();
+        const prov = (m.providerName || '').toLowerCase();
+        if (!name.includes(q) && !disp.includes(q) && !id.includes(q) && !prov.includes(q)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [modelsList, filterFreeOnly, filterNewOnly, catalogSearch]);
+
   // Session count per model
   const modelStats = useMemo(() => {
     const counts = {};
@@ -364,6 +403,7 @@ export default function ModelsView({
       judge: modelsList[0]?.id || 'orion::orion',
       description: '',
     });
+    setCustomModelInput('');
     setComboModelSearch('');
     setIsComboModalOpen(true);
   };
@@ -378,8 +418,27 @@ export default function ModelsView({
       judge: combo.judge || combo.models?.[0] || 'orion::orion',
       description: combo.description || '',
     });
+    setCustomModelInput('');
     setComboModelSearch('');
     setIsComboModalOpen(true);
+  };
+
+  const handleDuplicateCombo = (combo) => {
+    setEditingCombo(null);
+    setComboForm({
+      id: '',
+      name: `${combo.name}_CUSTOM`,
+      strategy: combo.strategy || 'fallback',
+      models: Array.isArray(combo.models) ? [...combo.models] : [],
+      judge: combo.judge || combo.models?.[0] || 'orion::orion',
+      description: combo.description ? `${combo.description} (Kustom)` : 'Kombinasi model kustom.',
+    });
+    setCustomModelInput('');
+    setComboModelSearch('');
+    setIsComboModalOpen(true);
+    if (showToast) {
+      showToast(`Menduplikasi konfigurasi "${combo.name}" untuk kustomisasi baru.`);
+    }
   };
 
   const handleToggleSelectCombo = (id) => {
@@ -431,6 +490,7 @@ export default function ModelsView({
         setCombos((prev) =>
           prev.map((c) => (c.id === combo.id ? { ...c, strategy: newStrategy } : c))
         );
+        onCombosUpdated?.();
         if (showToast) {
           showToast(`Strategi combo ${combo.name} diubah ke ${newStrategy}`);
         }
@@ -461,6 +521,7 @@ export default function ModelsView({
       const data = await res.json();
       if (data.success) {
         await fetchCombos();
+        onCombosUpdated?.();
         setIsComboModalOpen(false);
         if (showToast) {
           showToast(editingCombo ? `Combo "${data.combo.name}" berhasil diperbarui.` : `Combo "${data.combo.name}" berhasil dibuat!`);
@@ -485,6 +546,7 @@ export default function ModelsView({
       if (data.success) {
         setCombos((prev) => prev.filter((c) => c.id !== id));
         setSelectedComboIds((prev) => prev.filter((item) => item !== id));
+        onCombosUpdated?.();
         if (selectedModel === `combo::${id}` || selectedModel === id) {
           onSelectModel?.('orion::orion');
         }
@@ -534,6 +596,81 @@ export default function ModelsView({
         judge: newJudge,
       };
     });
+  };
+
+  const handleAddCustomModel = (e) => {
+    if (e) e.preventDefault();
+    const trimmed = customModelInput.trim();
+    if (!trimmed) return;
+    if (comboForm.models.includes(trimmed)) {
+      if (showToast) showToast(`Model "${trimmed}" sudah ada di dalam panel combo.`);
+      return;
+    }
+    setComboForm((prev) => ({
+      ...prev,
+      models: [...prev.models, trimmed],
+      judge: prev.judge || trimmed,
+    }));
+    setCustomModelInput('');
+    if (showToast) showToast(`Model kustom "${trimmed}" ditambahkan ke panel combo.`);
+  };
+
+  const handleRemoveModelFromCombo = (modelId) => {
+    setComboForm((prev) => {
+      const nextModels = prev.models.filter((m) => m !== modelId);
+      const nextJudge = prev.judge === modelId ? nextModels[0] || 'orion::orion' : prev.judge;
+      return {
+        ...prev,
+        models: nextModels,
+        judge: nextJudge,
+      };
+    });
+  };
+
+  const handleMoveModel = (index, direction) => {
+    setComboForm((prev) => {
+      const models = [...prev.models];
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= models.length) return prev;
+      const temp = models[index];
+      models[index] = models[targetIndex];
+      models[targetIndex] = temp;
+      return { ...prev, models };
+    });
+  };
+
+  const handleApplyPreset = (presetKey) => {
+    if (presetKey === 'fast_fallback') {
+      setComboForm((prev) => ({
+        ...prev,
+        name: prev.name || 'FAST_FALLBACK_CUSTOM',
+        strategy: 'fallback',
+        models: ['orion::orion', 'agnes-2.5-flash'],
+        judge: 'orion::orion',
+        description: 'Failover cepat: Orion utama, cadangan otomatis ke Agnes jika kuota habis atau error.',
+      }));
+      if (showToast) showToast('Preset Fallback Cepat diterapkan ke formulir.');
+    } else if (presetKey === 'load_balancer') {
+      setComboForm((prev) => ({
+        ...prev,
+        name: prev.name || 'BALANCED_ROUTER_CUSTOM',
+        strategy: 'round_robin',
+        models: ['orion::orion', 'agnes-2.5-flash', 'nvidia/nemotron-3-ultra-550b-a55b:free'],
+        judge: 'orion::orion',
+        description: 'Round robin membagi rata beban request bergantian antar model.',
+      }));
+      if (showToast) showToast('Preset Load Balancer diterapkan ke formulir.');
+    } else if (presetKey === 'multi_fusion') {
+      setComboForm((prev) => ({
+        ...prev,
+        name: prev.name || 'TRIO_FUSION_CUSTOM',
+        strategy: 'fusion',
+        models: ['orion::orion', 'agnes-2.5-flash', 'nvidia/nemotron-3-ultra-550b-a55b:free'],
+        judge: 'orion::orion',
+        description: 'Kirim prompt serentak ke 3 model dan disatukan analisanya oleh model juri.',
+      }));
+      if (showToast) showToast('Preset Multi-AI Fusion diterapkan ke formulir.');
+    }
   };
 
   const modelsUsedCount = Math.max(1, modelsList.filter((m) => (modelStats[m.id] || 0) > 0).length);
@@ -731,47 +868,73 @@ export default function ModelsView({
           </div>
         </div>
 
-        {/* ================= COMBOS SECTION (9Router Proxy Style) ================= */}
+        {/* ================= COMBOS SECTION ================= */}
         <div className="models-combos-section" id="models-combos-section">
           <div className="combos-section-header">
             <div className="combos-header-left">
               <div className="combos-title-wrap">
-                <GitFork size={20} className="combos-main-icon" />
-                <h2 className="combos-title">Combos</h2>
+                <GitFork size={18} className="combos-main-icon" />
+                <h2 className="combos-title">Model Combo & Router</h2>
               </div>
-              <p className="combos-subtitle">Model combos with fallback & router</p>
+              <p className="combos-subtitle">
+                Kombinasi multi-model dengan sistem failover otomatis dan load balancing pintar.
+              </p>
             </div>
 
             <button
               type="button"
-              className="combos-create-btn"
+              className="models-btn-primary"
               onClick={handleOpenCreateCombo}
             >
-              <Plus size={15} />
-              <span>Create Combo</span>
+              + BUAT COMBO
             </button>
           </div>
 
-          {/* Guidelines Explainer */}
-          <div className="combos-explainer-box">
-            <p className="combos-explainer-intro">
-              Group models under one name, then pick a strategy per combo:
-            </p>
-            <div className="combos-strategies-guide">
-              <div className="combos-strategy-item">
-                <span className="strategy-strong">Fallback</span>
-                <span className="strategy-sep">—</span>
-                <span className="strategy-desc">tries models in order (next on failure)</span>
+          {/* Guidelines Explainer Surface Card (Identical to Top Surface Cards) */}
+          <div className="models-surface-card combos-explainer-surface">
+            <div className="models-surface-header">
+              <div className="surface-header-title-wrap">
+                <Sliders size={14} className="surface-title-icon" />
+                <span className="surface-title-text">PANDUAN STRATEGI ROUTING</span>
               </div>
-              <div className="combos-strategy-item">
-                <span className="strategy-strong">Round Robin</span>
-                <span className="strategy-sep">—</span>
-                <span className="strategy-desc">rotates models across requests to spread load</span>
+              <span className="surface-pill-tag">3 mode failover & balancing</span>
+            </div>
+
+            <div className="models-settings-rows">
+              <div className="models-setting-row">
+                <div className="setting-row-meta">
+                  <div className="setting-row-label">
+                    <span className="spec-badge">FALLBACK</span>
+                    <span>Failover Berurutan</span>
+                  </div>
+                  <div className="setting-row-spec">
+                    <span className="spec-name">Menggunakan satu model utama, lalu beralih otomatis ke cadangan bila batas kuota atau error terjadi.</span>
+                  </div>
+                </div>
               </div>
-              <div className="combos-strategy-item">
-                <span className="strategy-strong">Fusion</span>
-                <span className="strategy-sep">—</span>
-                <span className="strategy-desc">queries all models in parallel, then a judge synthesizes one answer. Best quality, but costs the most: every request bills all panel models + the judge (N+1 calls)</span>
+
+              <div className="models-setting-row">
+                <div className="setting-row-meta">
+                  <div className="setting-row-label">
+                    <span className="spec-badge">ROUND ROBIN</span>
+                    <span>Distribusi Beban</span>
+                  </div>
+                  <div className="setting-row-spec">
+                    <span className="spec-name">Membagi giliran permintaan secara seimbang antar model panel (Model A, B, C secara rotasi bergantian).</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="models-setting-row">
+                <div className="setting-row-meta">
+                  <div className="setting-row-label">
+                    <span className="spec-badge">FUSION</span>
+                    <span>Multi-Panel + Juri Sintesis</span>
+                  </div>
+                  <div className="setting-row-spec">
+                    <span className="spec-name">Mengeksekusi semua model panel secara paralel dan menyatukan hasilnya melalui model juri sintesis.</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -785,7 +948,7 @@ export default function ModelsView({
                 onChange={handleToggleSelectAllCombos}
                 className="combos-checkbox"
               />
-              <span>Select all ({combos.length})</span>
+              <span>Pilih semua ({combos.length})</span>
             </label>
 
             {selectedComboIds.length > 0 && (
@@ -793,17 +956,17 @@ export default function ModelsView({
                 <span className="combos-selected-count">{selectedComboIds.length} dipilih</span>
                 <button
                   type="button"
-                  className="combos-bulk-delete-btn"
+                  className="models-btn-ghost btn-delete-ghost"
                   onClick={handleBulkDeleteCombos}
                 >
-                  <Trash2 size={13} />
-                  <span>Hapus</span>
+                  <Trash2 size={12} />
+                  <span>HAPUS TERPILIH</span>
                 </button>
               </div>
             )}
           </div>
 
-          {/* Combos List Cards */}
+          {/* Combos List Cards (Identical Surface Card Style) */}
           <div className="combos-cards-list">
             {combos.map((combo) => {
               const isSelected = selectedComboIds.includes(combo.id);
@@ -812,7 +975,7 @@ export default function ModelsView({
               return (
                 <div
                   key={combo.id}
-                  className={`combo-item-card ${isCurrentMain ? 'is-active-combo' : ''}`}
+                  className={`models-surface-card combo-item-card ${isCurrentMain ? 'is-active-combo' : ''}`}
                 >
                   <div className="combo-card-main-row">
                     <div className="combo-card-left">
@@ -823,34 +986,33 @@ export default function ModelsView({
                         className="combos-checkbox"
                       />
                       <div className="combo-card-icon-box">
-                        <Layers size={18} className="combo-card-icon" />
+                        <GitFork size={15} />
                       </div>
 
                       <div className="combo-card-info">
                         <div className="combo-name-row">
                           <span className="combo-name">{combo.name}</span>
-                          {isCurrentMain && (
-                            <span className="combo-active-pill">
-                              <Check size={11} />
-                              ACTIVE MODEL
-                            </span>
+                          {isCurrentMain ? (
+                            <span className="spec-badge combo-active-badge">MODEL AKTIF</span>
+                          ) : (
+                            <span className="combo-strategy-tag">{combo.strategy.toUpperCase()}</span>
                           )}
                         </div>
 
                         {/* Model tags row */}
                         <div className="combo-models-chips-wrap">
-                          {(combo.models || []).slice(0, 4).map((mId) => {
+                          {(combo.models || []).slice(0, 5).map((mId, idx) => {
                             const cleanName = mId.includes('::') ? mId.split('::')[1] : mId;
                             return (
                               <span key={mId} className="combo-model-chip" title={mId}>
-                                <Zap size={11} className="combo-chip-icon" />
+                                <span className="combo-order-dot">#{idx + 1}</span>
                                 <span>{cleanName}</span>
                               </span>
                             );
                           })}
-                          {(combo.models || []).length > 4 && (
-                            <span className="combo-model-chip combo-more-chip" title={(combo.models || []).slice(4).join(', ')}>
-                              +{(combo.models || []).length - 4} more
+                          {(combo.models || []).length > 5 && (
+                            <span className="combo-model-chip combo-more-chip" title={(combo.models || []).slice(5).join(', ')}>
+                              +{(combo.models || []).length - 5} lainnya
                             </span>
                           )}
                         </div>
@@ -858,7 +1020,7 @@ export default function ModelsView({
                         {/* Judge indicator if Fusion */}
                         {combo.strategy === 'fusion' && (
                           <div className="combo-judge-row">
-                            <span className="combo-judge-label">Judge</span>
+                            <span className="combo-judge-label">Juri Sintesis:</span>
                             <span className="combo-judge-chip" title={combo.judge || 'Default'}>
                               <Bot size={11} className="judge-chip-icon" />
                               <span>{combo.judge ? (combo.judge.includes('::') ? combo.judge.split('::')[1] : combo.judge) : 'orion'}</span>
@@ -876,53 +1038,58 @@ export default function ModelsView({
                           onChange={(e) => handleQuickChangeStrategy(combo, e.target.value)}
                           className="combo-strategy-select"
                         >
-                          <option value="fallback">Fallback — try in order</option>
-                          <option value="round_robin">Round Robin — spread load</option>
-                          <option value="fusion">Fusion — panel + judge</option>
+                          <option value="fallback">Fallback (Failover)</option>
+                          <option value="round_robin">Round Robin (Bagi Beban)</option>
+                          <option value="fusion">Fusion (Multi-Juri)</option>
                         </select>
                         <ChevronDown size={13} className="combo-select-arrow" />
                       </div>
 
-                      {/* Action Buttons */}
+                      {/* Action Buttons using models-btn standard */}
                       <div className="combo-card-actions">
                         <button
                           type="button"
-                          className={`combo-action-btn ${isCurrentMain ? 'is-active-btn' : ''}`}
+                          className={isCurrentMain ? 'models-btn-primary' : 'models-btn-ghost'}
                           onClick={() => handleSelectComboAsMain(combo)}
-                          title={isCurrentMain ? 'Model ini sedang aktif' : 'Jadikan Model Utama'}
+                          title={isCurrentMain ? 'Model ini sedang digunakan' : 'Gunakan model combo ini'}
                         >
-                          <CheckCircle2 size={14} />
-                          <span>{isCurrentMain ? 'Active' : 'Use'}</span>
+                          {isCurrentMain ? 'AKTIF' : 'GUNAKAN'}
                         </button>
 
                         <button
                           type="button"
-                          className="combo-action-btn"
+                          className="models-btn-ghost"
                           onClick={() => handleCopyCombo(combo)}
                           title="Salin identifier model"
                         >
-                          <Copy size={14} />
-                          <span>Copy</span>
+                          SALIN
                         </button>
 
                         <button
                           type="button"
-                          className="combo-action-btn"
-                          onClick={() => handleOpenEditCombo(combo)}
-                          title="Edit combo ini"
+                          className="models-btn-ghost"
+                          onClick={() => handleDuplicateCombo(combo)}
+                          title="Duplikasi konfigurasi combo ini sebagai custom combo baru"
                         >
-                          <Edit3 size={14} />
-                          <span>Edit</span>
+                          DUPLIKASI
                         </button>
 
                         <button
                           type="button"
-                          className="combo-action-btn btn-delete"
+                          className="models-btn-ghost"
+                          onClick={() => handleOpenEditCombo(combo)}
+                          title="Ubah konfigurasi combo"
+                        >
+                          UBAH
+                        </button>
+
+                        <button
+                          type="button"
+                          className="models-btn-ghost btn-delete-ghost"
                           onClick={() => handleDeleteCombo(combo.id, combo.name)}
                           title="Hapus combo ini"
                         >
-                          <Trash2 size={14} />
-                          <span>Delete</span>
+                          HAPUS
                         </button>
                       </div>
                     </div>
@@ -947,155 +1114,400 @@ export default function ModelsView({
           </div>
         </div>
 
-        {/* ================= SECTION HEADER ================= */}
-        <div className="models-section-bar">
-          <span className="models-section-title">Daftar Model Tersedia ({modelsList.length})</span>
-          <span className="models-section-hint">{filteredSessions.length} total sesi obrolan aktif</span>
-        </div>
+        {/* ================= OPENCODE MODELS CATALOG & DRAWER SECTION (Image 4) ================= */}
+        <div className="opencode-catalog-section">
+          <div className="catalog-top-row">
+            <div className="catalog-header-text">
+              <h2 className="catalog-title">Models</h2>
+              <p className="catalog-subtitle">
+                Only enabled models will be available to members. Prices per 1M tokens.
+              </p>
+            </div>
 
-        {/* ================= BOTTOM MODELS GRID ================= */}
-        <div className="models-cards-grid">
-          {modelsList.map((model, index) => {
-            const isCurrentMain =
-              selectedModel === model.id ||
-              selectedModel === model.modelId ||
-              (selectedModel.includes('::') && selectedModel.split('::')[1] === model.modelId);
+            <div className="catalog-toolbar">
+              <div className="catalog-search-wrap">
+                <Search size={13} className="catalog-search-icon" />
+                <input
+                  type="text"
+                  placeholder="Search"
+                  value={catalogSearch}
+                  onChange={(e) => setCatalogSearch(e.target.value)}
+                  className="catalog-search-input"
+                />
+                {catalogSearch && (
+                  <button
+                    type="button"
+                    className="catalog-clear-btn"
+                    onClick={() => setCatalogSearch('')}
+                    title="Bersihkan filter"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
 
-            const sessionCount = modelStats[model.id] || 0;
-            const isDropdownOpen = activeDropdownModelId === model.id;
-            const isAllAuxAssigned = AUXILIARY_TASKS_LIST.every((t) => auxAssignments[t.id] === model.id);
-            const assignedCountForModel = AUXILIARY_TASKS_LIST.filter(
-              (t) => auxAssignments[t.id] === model.id
-            ).length;
+              <div className="catalog-view-toggle">
+                <button
+                  type="button"
+                  className={`view-toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
+                  onClick={() => setViewMode('table')}
+                  title="Tampilan Tabel (OpenCode)"
+                >
+                  <LayoutList size={13} />
+                </button>
+                <button
+                  type="button"
+                  className={`view-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                  onClick={() => setViewMode('grid')}
+                  title="Tampilan Kartu"
+                >
+                  <Grid size={13} />
+                </button>
+              </div>
+            </div>
+          </div>
 
-            return (
-              <div
-                key={model.id}
-                className={`models-tile-card ${isCurrentMain ? 'is-active-card' : ''} ${isDropdownOpen ? 'has-dropdown-open' : ''}`}
-                style={isDropdownOpen ? { zIndex: 100 } : undefined}
-              >
-                {/* Card Top: Number, Model Name & Session Count */}
-                <div className="tile-top-row">
-                  <div className="tile-title-group">
-                    <span className="tile-index-chip">#{index + 1}</span>
-                    <div className="tile-icon-avatar">{getModelIcon(model)}</div>
-                    <h3 className="tile-name" title={model.displayName || model.name}>
-                      {model.name}
-                    </h3>
-                  </div>
+          <div className="opencode-catalog-layout">
+            {/* Main Content: Table or Grid */}
+            <div className="catalog-main-content">
+              {viewMode === 'table' ? (
+                <div className="opencode-table-wrapper">
+                  <table className="opencode-model-table">
+                    <thead>
+                      <tr>
+                        <th className="th-name">Model</th>
+                        <th className="th-features">Features</th>
+                        <th className="th-price">Input</th>
+                        <th className="th-price">Output</th>
+                        <th className="th-price">Cache Read</th>
+                        <th className="th-price">Cache Write</th>
+                        <th className="th-action">Enabled</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {displayModelsList.map((model) => {
+                        const isCurrentMain =
+                          selectedModel === model.id ||
+                          selectedModel === model.modelId ||
+                          (selectedModel.includes('::') && selectedModel.split('::')[1] === model.modelId);
+                        const isDropdownOpen = activeDropdownModelId === model.id;
+                        const isAllAuxAssigned = AUXILIARY_TASKS_LIST.every((t) => auxAssignments[t.id] === model.id);
+                        const assignedCountForModel = AUXILIARY_TASKS_LIST.filter(
+                          (t) => auxAssignments[t.id] === model.id
+                        ).length;
+                        const isFree = model.isOfficial || model.badge === 'local';
 
-                  <div className="tile-session-box">
-                    <span className="tile-session-count">{sessionCount}</span>
-                    <span className="tile-session-label">sessions</span>
-                  </div>
+                        return (
+                          <tr
+                            key={model.id}
+                            className={`opencode-table-row ${isCurrentMain ? 'is-active-row' : ''}`}
+                          >
+                            <td className="td-name">
+                              <div className="model-name-cell">
+                                <div className="model-title-line">
+                                  <span className="model-display-name">{model.name}</span>
+                                  {isFree && <span className="cell-pill-free">Free</span>}
+                                  {isCurrentMain && <span className="cell-pill-active">Active</span>}
+                                </div>
+                                <span className="model-slug-line">{model.modelId || model.id}</span>
+                              </div>
+                            </td>
+
+                            <td className="td-features">
+                              <div className="feature-icon-badges">
+                                <span className="feat-badge" title="Omni Prompting"><Sparkles size={11} /></span>
+                                <span className="feat-badge" title="Code & Terminal Execution"><Terminal size={11} /></span>
+                                <span className="feat-badge" title="Vision & Diagrams"><Image size={11} /></span>
+                              </div>
+                            </td>
+
+                            <td className="td-price mono-cell">{isFree ? '$0.00' : '$1.00'}</td>
+                            <td className="td-price mono-cell">{isFree ? '$0.00' : '$5.00'}</td>
+                            <td className="td-price mono-cell">{isFree ? '$0.00' : '$0.10'}</td>
+                            <td className="td-price mono-cell">{isFree ? '$0.00' : '$1.25'}</td>
+
+                            <td className="td-action">
+                              <div className="table-actions-cluster">
+                                <button
+                                  type="button"
+                                  className={`opencode-toggle-switch ${isCurrentMain ? 'is-on' : ''}`}
+                                  onClick={() => handleSetMainModel(model.id)}
+                                  title={isCurrentMain ? 'Model Utama Aktif' : 'Pilih sebagai Model Utama'}
+                                  aria-label="Toggle model aktif"
+                                >
+                                  <span className="toggle-handle" />
+                                </button>
+
+                                <div className="model-action-menu-wrap">
+                                  <button
+                                    type="button"
+                                    className={`tile-btn-use-as compact-use-as ${isDropdownOpen ? 'is-active' : ''}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveDropdownModelId(isDropdownOpen ? null : model.id);
+                                    }}
+                                    title="Tugaskan sebagai Auxiliary Task"
+                                  >
+                                    <ChevronDown size={11} />
+                                  </button>
+
+                                  {isDropdownOpen && (
+                                    <div className="models-popover-menu" onClick={(e) => e.stopPropagation()}>
+                                      <button
+                                        type="button"
+                                        className={`models-popover-item ${isCurrentMain ? 'is-selected' : ''}`}
+                                        onClick={() => handleSetMainModel(model.id)}
+                                      >
+                                        <div className="popover-item-left">
+                                          <span className="popover-star-glyph">☆</span>
+                                          <span className="popover-item-title">MAIN MODEL</span>
+                                        </div>
+                                        {isCurrentMain && <Check size={13} className="popover-check" />}
+                                      </button>
+
+                                      <div className="popover-section-label">
+                                        AUXILIARY TASK
+                                      </div>
+
+                                      <button
+                                        type="button"
+                                        className={`models-popover-item ${isAllAuxAssigned ? 'is-selected' : ''}`}
+                                        onClick={() => handleAssignAllAux(model.id)}
+                                      >
+                                        <div className="popover-item-left">
+                                          <span className="popover-item-title">ALL AUXILIARY TASKS</span>
+                                        </div>
+                                        {isAllAuxAssigned && <Check size={13} className="popover-check" />}
+                                      </button>
+
+                                      {AUXILIARY_TASKS_LIST.map((task) => {
+                                        const isAssigned = auxAssignments[task.id] === model.id;
+                                        return (
+                                          <button
+                                            key={task.id}
+                                            type="button"
+                                            className={`models-popover-item ${isAssigned ? 'is-selected' : ''}`}
+                                            onClick={() => handleAssignAuxTask(task.id, model.id)}
+                                            title={task.desc}
+                                          >
+                                            <div className="popover-item-left">
+                                              <span className="popover-item-title">{task.name}</span>
+                                            </div>
+                                            {isAssigned && <Check size={13} className="popover-check" />}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
+              ) : (
+                /* Grid View */
+                <div className="models-cards-grid">
+                  {displayModelsList.map((model, index) => {
+                    const isCurrentMain =
+                      selectedModel === model.id ||
+                      selectedModel === model.modelId ||
+                      (selectedModel.includes('::') && selectedModel.split('::')[1] === model.modelId);
 
-                {/* Card Middle: Badge Tag & Dropdown Action */}
-                <div className="tile-mid-row">
-                  <div className="tile-badge-wrap">
-                    <span
-                      className={`tile-badge-pill ${model.isOfficial ? 'is-official' : ''}`}
-                      title={model.endpoint}
-                    >
-                      {model.isOfficial ? 'Official' : model.badge || 'custom'}
-                    </span>
-                  </div>
+                    const sessionCount = modelStats[model.id] || 0;
+                    const isDropdownOpen = activeDropdownModelId === model.id;
+                    const isAllAuxAssigned = AUXILIARY_TASKS_LIST.every((t) => auxAssignments[t.id] === model.id);
+                    const assignedCountForModel = AUXILIARY_TASKS_LIST.filter(
+                      (t) => auxAssignments[t.id] === model.id
+                    ).length;
 
-                  <div className="model-action-menu-wrap">
-                    <button
-                      type="button"
-                      className={`tile-btn-use-as ${isDropdownOpen ? 'is-active' : ''}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveDropdownModelId(isDropdownOpen ? null : model.id);
-                      }}
-                      aria-haspopup="true"
-                      aria-expanded={isDropdownOpen}
-                    >
-                      <span>USE AS</span>
-                      <ChevronDown size={11} className="use-as-chevron" />
-                    </button>
-
-                    {isDropdownOpen && (
-                      <div className="models-popover-menu" onClick={(e) => e.stopPropagation()}>
-                        {/* 1. Main Model Option */}
-                        <button
-                          type="button"
-                          className={`models-popover-item ${isCurrentMain ? 'is-selected' : ''}`}
-                          onClick={() => handleSetMainModel(model.id)}
-                        >
-                          <div className="popover-item-left">
-                            <span className="popover-star-glyph">☆</span>
-                            <span className="popover-item-title">MAIN MODEL</span>
+                    return (
+                      <div
+                        key={model.id}
+                        className={`models-tile-card ${isCurrentMain ? 'is-active-card' : ''} ${isDropdownOpen ? 'has-dropdown-open' : ''}`}
+                        style={isDropdownOpen ? { zIndex: 100 } : undefined}
+                      >
+                        <div className="tile-top-row">
+                          <div className="tile-title-group">
+                            <span className="tile-index-chip">#{index + 1}</span>
+                            <div className="tile-icon-avatar">{getModelIcon(model)}</div>
+                            <h3 className="tile-name" title={model.displayName || model.name}>
+                              {model.name}
+                            </h3>
                           </div>
-                          {isCurrentMain && <Check size={13} className="popover-check" />}
-                        </button>
 
-                        {/* 2. Section Header: AUXILIARY TASK */}
-                        <div className="popover-section-label">
-                          AUXILIARY TASK
+                          <div className="tile-session-box">
+                            <span className="tile-session-count">{sessionCount}</span>
+                            <span className="tile-session-label">sessions</span>
+                          </div>
                         </div>
 
-                        {/* 3. All Auxiliary Tasks Option */}
-                        <button
-                          type="button"
-                          className={`models-popover-item ${isAllAuxAssigned ? 'is-selected' : ''}`}
-                          onClick={() => handleAssignAllAux(model.id)}
-                        >
-                          <div className="popover-item-left">
-                            <span className="popover-item-title">ALL AUXILIARY TASKS</span>
-                          </div>
-                          {isAllAuxAssigned && <Check size={13} className="popover-check" />}
-                        </button>
-
-                        {/* 4. 12 Auxiliary Tasks */}
-                        {AUXILIARY_TASKS_LIST.map((task) => {
-                          const isAssigned = auxAssignments[task.id] === model.id;
-                          return (
-                            <button
-                              key={task.id}
-                              type="button"
-                              className={`models-popover-item ${isAssigned ? 'is-selected' : ''}`}
-                              onClick={() => handleAssignAuxTask(task.id, model.id)}
-                              title={task.desc}
+                        <div className="tile-mid-row">
+                          <div className="tile-badge-wrap">
+                            <span
+                              className={`tile-badge-pill ${model.isOfficial ? 'is-official' : ''}`}
+                              title={model.endpoint}
                             >
-                              <div className="popover-item-left">
-                                <span className="popover-item-title">{task.name}</span>
-                              </div>
-                              {isAssigned && <Check size={13} className="popover-check" />}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                              {model.isOfficial ? 'Official' : model.badge || 'custom'}
+                            </span>
+                          </div>
 
-                {/* Card Bottom: Relative Timestamp */}
-                <div className="tile-bottom-row">
-                  {isCurrentMain ? (
-                    <span className="active-dot-pill">
-                      <span className="pulse-dot" />
-                      <span>Active now</span>
-                    </span>
-                  ) : assignedCountForModel > 0 ? (
-                    <span className="tile-time-ago" title={`${assignedCountForModel} auxiliary task assigned`}>
-                      {`${assignedCountForModel} task${assignedCountForModel > 1 ? 's' : ''}`}
-                    </span>
-                  ) : (
-                    <span className="tile-time-ago">
-                      {`${model.baseDaysAgo}d ago`}
-                    </span>
-                  )}
+                          <div className="model-action-menu-wrap">
+                            <button
+                              type="button"
+                              className={`tile-btn-use-as ${isDropdownOpen ? 'is-active' : ''}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveDropdownModelId(isDropdownOpen ? null : model.id);
+                              }}
+                              aria-haspopup="true"
+                              aria-expanded={isDropdownOpen}
+                            >
+                              <span>USE AS</span>
+                              <ChevronDown size={11} className="use-as-chevron" />
+                            </button>
+
+                            {isDropdownOpen && (
+                              <div className="models-popover-menu" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  className={`models-popover-item ${isCurrentMain ? 'is-selected' : ''}`}
+                                  onClick={() => handleSetMainModel(model.id)}
+                                >
+                                  <div className="popover-item-left">
+                                    <span className="popover-star-glyph">☆</span>
+                                    <span className="popover-item-title">MAIN MODEL</span>
+                                  </div>
+                                  {isCurrentMain && <Check size={13} className="popover-check" />}
+                                </button>
+
+                                <div className="popover-section-label">
+                                  AUXILIARY TASK
+                                </div>
+
+                                <button
+                                  type="button"
+                                  className={`models-popover-item ${isAllAuxAssigned ? 'is-selected' : ''}`}
+                                  onClick={() => handleAssignAllAux(model.id)}
+                                >
+                                  <div className="popover-item-left">
+                                    <span className="popover-item-title">ALL AUXILIARY TASKS</span>
+                                  </div>
+                                  {isAllAuxAssigned && <Check size={13} className="popover-check" />}
+                                </button>
+
+                                {AUXILIARY_TASKS_LIST.map((task) => {
+                                  const isAssigned = auxAssignments[task.id] === model.id;
+                                  return (
+                                    <button
+                                      key={task.id}
+                                      type="button"
+                                      className={`models-popover-item ${isAssigned ? 'is-selected' : ''}`}
+                                      onClick={() => handleAssignAuxTask(task.id, model.id)}
+                                      title={task.desc}
+                                    >
+                                      <div className="popover-item-left">
+                                        <span className="popover-item-title">{task.name}</span>
+                                      </div>
+                                      {isAssigned && <Check size={13} className="popover-check" />}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="tile-bottom-row">
+                          {isCurrentMain ? (
+                            <span className="active-dot-pill">
+                              <span className="pulse-dot" />
+                              <span>Active now</span>
+                            </span>
+                          ) : assignedCountForModel > 0 ? (
+                            <span className="tile-time-ago" title={`${assignedCountForModel} auxiliary task assigned`}>
+                              {`${assignedCountForModel} task${assignedCountForModel > 1 ? 's' : ''}`}
+                            </span>
+                          ) : (
+                            <span className="tile-time-ago">
+                              {`${model.baseDaysAgo}d ago`}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Right Side Drawer / Summary Card (Screenshot 4) */}
+            <aside className="opencode-drawer-panel">
+              <div className="drawer-header-row">
+                <div className="drawer-title-group">
+                  <span className="drawer-app-title">Orion Console</span>
+                  <span className="drawer-subtitle">Default Gateway</span>
                 </div>
               </div>
-            );
-          })}
+
+              <div className="drawer-toggle-list">
+                <div className="drawer-toggle-row">
+                  <span className="toggle-label">Free models</span>
+                  <button
+                    type="button"
+                    className={`opencode-toggle-switch ${filterFreeOnly ? 'is-on' : ''}`}
+                    onClick={() => setFilterFreeOnly(!filterFreeOnly)}
+                    aria-label="Filter free models"
+                  >
+                    <span className="toggle-handle" />
+                  </button>
+                </div>
+
+                <div className="drawer-toggle-row">
+                  <span className="toggle-label">New models</span>
+                  <button
+                    type="button"
+                    className={`opencode-toggle-switch ${filterNewOnly ? 'is-on' : ''}`}
+                    onClick={() => setFilterNewOnly(!filterNewOnly)}
+                    aria-label="Filter new models"
+                  >
+                    <span className="toggle-handle" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="drawer-meta-section">
+                <div className="drawer-meta-row">
+                  <span className="meta-key">Total Models</span>
+                  <span className="meta-val mono-val">{modelsList.length}</span>
+                </div>
+                <div className="drawer-meta-row">
+                  <span className="meta-key">Active Sessions</span>
+                  <span className="meta-val mono-val">{filteredSessions.length}</span>
+                </div>
+                <div className="drawer-meta-row">
+                  <span className="meta-key">Last updated</span>
+                  <span className="meta-val">Today</span>
+                </div>
+                <div className="drawer-meta-row">
+                  <span className="meta-key">Main Model</span>
+                  <span className="meta-val highlight-val">{currentMainModel.displayName || currentMainModel.name}</span>
+                </div>
+                <div className="drawer-meta-row">
+                  <span className="meta-key">Reasoning Tier</span>
+                  <span className="meta-val mono-val">{reasoningTier.toUpperCase()}</span>
+                </div>
+              </div>
+            </aside>
+          </div>
         </div>
       </div>
 
       {/* ================= MODAL: CHANGE MAIN MODEL ================= */}
-      {isChangeModelModalOpen && (
+      {isChangeModelModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="modal-backdrop" onClick={() => setIsChangeModelModalOpen(false)}>
           <div
             className="modal-dialog modal-content"
@@ -1122,6 +1534,59 @@ export default function ModelsView({
               </p>
 
               <div className="model-picker-list">
+                {combos.length > 0 && (
+                  <>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', padding: '0.2rem 0.1rem' }}>
+                      Model Combo & Router
+                    </div>
+                    {combos.map((combo) => {
+                      const comboId = `combo::${combo.id}`;
+                      const isSelected = selectedModel === comboId || selectedModel === combo.id;
+                      const stratLabel = combo.strategy === 'fallback' ? 'Fallback' : combo.strategy === 'round_robin' ? 'Round Robin' : 'Fusion';
+                      return (
+                        <div
+                          key={combo.id}
+                          className={`model-picker-card ${isSelected ? 'is-active' : ''}`}
+                          onClick={() => handleSetMainModel(comboId)}
+                        >
+                          <div className="model-picker-info">
+                            <div className="model-picker-avatar">
+                              <Layers size={16} />
+                            </div>
+                            <div className="model-picker-meta">
+                              <div className="model-picker-name-row">
+                                <span className="model-picker-name">
+                                  {combo.name}
+                                </span>
+                                <span className="tile-badge-pill" style={{ borderColor: 'rgba(255, 255, 255, 0.25)', color: 'var(--text-primary)' }}>
+                                  {stratLabel}
+                                </span>
+                              </div>
+                              <span className="model-picker-sub">
+                                Router : {combo.models?.length || 0} model panel
+                              </span>
+                            </div>
+                          </div>
+
+                          {isSelected ? (
+                            <div className="model-picker-badge-active">
+                              <Check size={13} />
+                              <span>Utama</span>
+                            </div>
+                          ) : (
+                            <button type="button" className="model-picker-select-btn">
+                              Pilih
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                    <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', padding: '0.5rem 0.1rem 0.2rem' }}>
+                      Model Provider Standar
+                    </div>
+                  </>
+                )}
+
                 {modelsList.map((m) => {
                   const isSelected = selectedModel === m.id || selectedModel === m.modelId;
                   return (
@@ -1165,11 +1630,12 @@ export default function ModelsView({
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ================= MODAL: AUXILIARY TASKS ================= */}
-      {isAuxModalOpen && (
+      {isAuxModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="modal-backdrop" onClick={() => setIsAuxModalOpen(false)}>
           <div
             className="modal-dialog modal-content"
@@ -1207,7 +1673,7 @@ export default function ModelsView({
                             {task.name}
                           </span>
                           {assignedModel ? (
-                            <span className="tile-badge-pill" style={{ color: '#3b82f6', borderColor: 'rgba(59, 130, 246, 0.4)' }}>
+                            <span className="tile-badge-pill" style={{ color: 'var(--text-primary)', borderColor: 'rgba(255, 255, 255, 0.25)' }}>
                               {assignedModel.displayName || assignedModel.name}
                             </span>
                           ) : (
@@ -1247,11 +1713,12 @@ export default function ModelsView({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ================= MODAL: MIXTURE OF AGENTS & REASONING ================= */}
-      {isMoaModalOpen && (
+      {isMoaModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="modal-backdrop" onClick={() => setIsMoaModalOpen(false)}>
           <div
             className="modal-dialog modal-content"
@@ -1289,8 +1756,8 @@ export default function ModelsView({
                         alignItems: 'flex-start',
                         padding: '0.85rem',
                         cursor: 'pointer',
-                        borderColor: isSelected ? '#3b82f6' : undefined,
-                        background: isSelected ? 'rgba(59, 130, 246, 0.05)' : undefined,
+                        borderColor: isSelected ? 'var(--text-primary)' : undefined,
+                        background: isSelected ? 'rgba(255, 255, 255, 0.08)' : undefined,
                       }}
                       onClick={() => onSelectReasoningTier?.(tier.id)}
                     >
@@ -1298,7 +1765,7 @@ export default function ModelsView({
                         <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                           {tier.name}
                         </span>
-                        {isSelected && <Check size={14} style={{ color: '#3b82f6' }} />}
+                        {isSelected && <Check size={14} style={{ color: 'var(--text-primary)' }} />}
                       </div>
                       <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                         {tier.desc}
@@ -1320,41 +1787,46 @@ export default function ModelsView({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ================= MODAL: CREATE / EDIT COMBO ================= */}
-      {isComboModalOpen && (
+      {isComboModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="modal-backdrop" onClick={() => setIsComboModalOpen(false)}>
           <div
             className="modal-dialog modal-content combo-modal-dialog"
             style={{ maxWidth: '640px', width: '100%', maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="modal-header">
-              <div className="modal-header-left" style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                <GitFork size={18} style={{ color: 'var(--text-primary)' }} />
-                <h3 className="modal-title">
-                  {editingCombo ? `Edit Combo: ${editingCombo.name}` : 'Create New Combo'}
-                </h3>
+            <div className="models-surface-header" style={{ padding: '1rem 1.25rem' }}>
+              <div className="surface-header-title-wrap">
+                <GitFork size={14} className="surface-title-icon" />
+                <span className="surface-title-text">
+                  {editingCombo ? `EDIT COMBO: ${editingCombo.name}` : 'CREATE NEW COMBO'}
+                </span>
               </div>
               <button
                 type="button"
                 className="modal-close-btn"
                 onClick={() => setIsComboModalOpen(false)}
+                aria-label="Tutup"
               >
-                <X size={16} />
+                <X size={15} />
               </button>
             </div>
 
-            <form onSubmit={handleSaveCombo} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-              <div className="modal-body custom-scrollbar" style={{ overflowY: 'auto', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                {/* Field 1: Name */}
+            <form onSubmit={handleSaveCombo} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+              <div className="modal-body custom-scrollbar" style={{ overflowY: 'auto', flex: 1, minHeight: 0, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                {/* Field 1: Name & Presets */}
                 <div className="combo-form-field">
-                  <label className="combo-form-label">
-                    <span>NAMA COMBO</span>
-                    <span className="combo-form-required">*</span>
-                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                    <label className="combo-form-label" style={{ margin: 0 }}>
+                      <span>NAMA COMBO</span>
+                      <span className="combo-form-required">*</span>
+                    </label>
+                    <span className="combo-form-help">Pilih preset cepat:</span>
+                  </div>
                   <input
                     type="text"
                     required
@@ -1363,9 +1835,33 @@ export default function ModelsView({
                     placeholder="e.g. ORION_FALLBACK_ROUTER"
                     className="combo-form-input"
                   />
-                  <span className="combo-form-help">
-                    Nama unik combo model (otomatis kapital & tanpa spasi).
-                  </span>
+                  {/* Quick Preset Buttons (Anti-Slop: clean mono badges, no emojis) */}
+                  <div className="combo-presets-row">
+                    <button
+                      type="button"
+                      className="combo-preset-chip"
+                      onClick={() => handleApplyPreset('fast_fallback')}
+                      title="Setel preset Fallback Cepat (Orion + Agnes)"
+                    >
+                      Preset Fallback
+                    </button>
+                    <button
+                      type="button"
+                      className="combo-preset-chip"
+                      onClick={() => handleApplyPreset('load_balancer')}
+                      title="Setel preset Round Robin (3 Provider Balancer)"
+                    >
+                      Preset Round Robin
+                    </button>
+                    <button
+                      type="button"
+                      className="combo-preset-chip"
+                      onClick={() => handleApplyPreset('multi_fusion')}
+                      title="Setel preset Fusion Panel (3 Model + Juri)"
+                    >
+                      Preset Fusion
+                    </button>
+                  </div>
                 </div>
 
                 {/* Field 2: Strategy */}
@@ -1376,17 +1872,20 @@ export default function ModelsView({
                       {
                         id: 'fallback',
                         title: 'Fallback',
-                        desc: 'Tries models sequentially in order upon failure or timeout',
+                        desc: 'Menggunakan satu penyedia utama, dan hanya beralih ke cadangan jika terjadi error atau kuota habis.',
+                        hint: 'Ideal bila punya penyedia favorit namun ingin failover otomatis.',
                       },
                       {
                         id: 'round_robin',
                         title: 'Round Robin',
-                        desc: 'Rotates requests evenly across models to spread load',
+                        desc: 'Membagi beban kerja bergiliran (Penyedia A -> B -> C -> A berulang).',
+                        hint: 'Meratakan penggunaan kuota dan biaya antar penyedia setara.',
                       },
                       {
                         id: 'fusion',
                         title: 'Fusion',
-                        desc: 'Queries all models in parallel, then a judge synthesizes one unified answer',
+                        desc: 'Mengirimkan permintaan ke beberapa model sekaligus dan menyatukan hasilnya lewat juri.',
+                        hint: 'Akurasi maksimal dan perspektif multi-AI secara bersamaan.',
                       },
                     ].map((s) => {
                       const isSelected = comboForm.strategy === s.id;
@@ -1401,17 +1900,18 @@ export default function ModelsView({
                             {isSelected && <Check size={14} className="strategy-check" />}
                           </div>
                           <span className="strategy-card-desc">{s.desc}</span>
+                          <span className="strategy-card-hint">{s.hint}</span>
                         </div>
                       );
                     })}
                   </div>
                 </div>
 
-                {/* Field 3: Multi-select Models */}
+                {/* Field 3: Multi-select Models & Custom Model Input */}
                 <div className="combo-form-field">
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
                     <label className="combo-form-label" style={{ margin: 0 }}>
-                      MODEL PANEL ({comboForm.models.length} DIPILIH)
+                      MODEL PANEL ({comboForm.models.length} TERPILIH)
                       <span className="combo-form-required">*</span>
                     </label>
                     <div style={{ display: 'flex', gap: '0.4rem' }}>
@@ -1420,26 +1920,131 @@ export default function ModelsView({
                         className="combo-mini-btn"
                         onClick={() => setComboForm({ ...comboForm, models: modelsList.map((m) => m.id) })}
                       >
-                        Pilih Semua
+                        Pilih Semua Bawaan
                       </button>
                       <button
                         type="button"
                         className="combo-mini-btn"
                         onClick={() => setComboForm({ ...comboForm, models: [] })}
                       >
-                        Hapus Semua
+                        Kosongkan
                       </button>
                     </div>
                   </div>
 
-                  {/* Search box for models */}
+                  {/* A. Custom Model Input Field */}
+                  <div className="combo-custom-add-box">
+                    <input
+                      type="text"
+                      value={customModelInput}
+                      onChange={(e) => setCustomModelInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddCustomModel();
+                        }
+                      }}
+                      placeholder="Ketik model kustom (misal: openai/gpt-4o, claude-3-5-sonnet, ollama/llama3)..."
+                      className="combo-custom-input"
+                    />
+                    <button
+                      type="button"
+                      className="models-btn-primary"
+                      onClick={handleAddCustomModel}
+                      disabled={!customModelInput.trim()}
+                      title="Tambahkan model kustom ini ke panel combo"
+                    >
+                      + TAMBAH KUSTOM
+                    </button>
+                  </div>
+
+                  {/* B. Ordered Execution List (Active Panel) */}
+                  {comboForm.models.length > 0 ? (
+                    <div className="combo-selected-panel-list">
+                      <div className="combo-selected-panel-header">
+                        <span>Urutan Eksekusi Model ({comboForm.strategy.toUpperCase()})</span>
+                        <span className="combo-selected-panel-hint">Atur urutan prioritas dengan panah</span>
+                      </div>
+                      {comboForm.models.map((modelId, idx) => {
+                        const found = modelsList.find((m) => m.id === modelId || m.modelId === modelId);
+                        const isCustom = !found;
+                        const roleLabel =
+                          comboForm.strategy === 'fallback'
+                            ? idx === 0
+                              ? 'Model Utama'
+                              : `Cadangan #${idx}`
+                            : comboForm.strategy === 'round_robin'
+                            ? `Giliran #${idx + 1}`
+                            : `Panelist #${idx + 1}`;
+
+                        return (
+                          <div key={`${modelId}-${idx}`} className="combo-selected-item">
+                            <div className="combo-selected-left">
+                              <span className="combo-priority-badge">#{idx + 1}</span>
+                              <div className="combo-selected-info">
+                                <div className="combo-selected-name-row">
+                                  <span className="combo-selected-name">
+                                    {found?.displayName || found?.name || modelId}
+                                  </span>
+                                  <span className={`combo-origin-tag ${isCustom ? 'is-custom' : 'is-builtin'}`}>
+                                    {isCustom ? 'Kustom' : 'Bawaan'}
+                                  </span>
+                                </div>
+                                <span className="combo-selected-role">
+                                  {roleLabel} • <code className="combo-code-id">{modelId}</code>
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="combo-selected-actions">
+                              <button
+                                type="button"
+                                className="combo-order-btn"
+                                disabled={idx === 0}
+                                onClick={() => handleMoveModel(idx, -1)}
+                                title="Naikkan prioritas (geser ke atas)"
+                              >
+                                <ChevronUp size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                className="combo-order-btn"
+                                disabled={idx === comboForm.models.length - 1}
+                                onClick={() => handleMoveModel(idx, 1)}
+                                title="Turunkan prioritas (geser ke bawah)"
+                              >
+                                <ChevronDown size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                className="combo-remove-btn"
+                                onClick={() => handleRemoveModelFromCombo(modelId)}
+                                title="Hapus model dari combo"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="combo-empty-models-notice">
+                      Belum ada model dipilih. Tambahkan model kustom di atas atau centang model bawaan di bawah.
+                    </div>
+                  )}
+
+                  {/* C. Built-in Models Checklist with Search */}
+                  <div className="combo-builtin-section-header">
+                    <span className="combo-form-label" style={{ margin: 0 }}>MODEL BAWAAN TERSEDIA</span>
+                  </div>
                   <div className="combo-model-search-box">
                     <Search size={14} className="search-icon" />
                     <input
                       type="text"
                       value={comboModelSearch}
                       onChange={(e) => setComboModelSearch(e.target.value)}
-                      placeholder="Cari model dalam daftar..."
+                      placeholder="Cari dalam model bawaan..."
                       className="combo-search-input"
                     />
                   </div>
@@ -1476,7 +2081,7 @@ export default function ModelsView({
                                 {model.displayName || model.name}
                               </span>
                               <span className="combo-model-item-provider">
-                                {model.providerId || model.endpoint || 'Provider'}
+                                {model.providerId || model.endpoint || 'Provider'} • {model.id}
                               </span>
                             </div>
 
@@ -1493,21 +2098,35 @@ export default function ModelsView({
 
                 {/* Field 4: Judge Model (Only if Fusion) */}
                 {comboForm.strategy === 'fusion' && (
-                  <div className="combo-form-field animate-fade-in">
+                  <div className="combo-form-field">
                     <label className="combo-form-label">MODEL JURI (SYNTHESIS JUDGE)</label>
                     <select
                       value={comboForm.judge || comboForm.models[0] || 'orion::orion'}
                       onChange={(e) => setComboForm({ ...comboForm, judge: e.target.value })}
                       className="combo-form-select"
                     >
-                      {modelsList.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.displayName || m.name} ({m.providerId || 'Official'})
-                        </option>
-                      ))}
+                      <optgroup label="Model dari Panel Terpilih">
+                        {comboForm.models.map((mId) => {
+                          const found = modelsList.find((m) => m.id === mId || m.modelId === mId);
+                          return (
+                            <option key={mId} value={mId}>
+                              {found?.displayName || found?.name || mId}
+                            </option>
+                          );
+                        })}
+                      </optgroup>
+                      <optgroup label="Model Bawaan Lainnya">
+                        {modelsList
+                          .filter((m) => !comboForm.models.includes(m.id))
+                          .map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.displayName || m.name} ({m.providerId || 'Official'})
+                            </option>
+                          ))}
+                      </optgroup>
                     </select>
                     <span className="combo-form-help">
-                      Model ini bertindak sebagai juri yang mengevaluasi draf dari semua model panel dan menyusun jawaban akhir terbaik.
+                      Model juri mengevaluasi jawaban dari semua panelis dan menyusun sintesis jawaban final terbaik.
                     </span>
                   </div>
                 )}
@@ -1525,26 +2144,26 @@ export default function ModelsView({
                 </div>
               </div>
 
-              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.65rem', padding: '0.85rem 1.25rem', borderTop: '1px solid var(--border-color)' }}>
+              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.65rem', padding: '0.85rem 1.25rem', borderTop: '1px solid var(--border-subtle)' }}>
                 <button
                   type="button"
                   className="models-btn-ghost"
                   onClick={() => setIsComboModalOpen(false)}
                 >
-                  Batal
+                  BATAL
                 </button>
                 <button
                   type="submit"
                   disabled={isSavingCombo || !comboForm.name.trim() || comboForm.models.length === 0}
-                  className="btn-primary-action"
-                  style={{ padding: '0.5rem 1.25rem', borderRadius: '8px', fontSize: '0.82rem' }}
+                  className="models-btn-primary"
                 >
-                  {isSavingCombo ? 'Menyimpan...' : editingCombo ? 'Simpan Perubahan' : 'Buat Combo'}
+                  {isSavingCombo ? 'MENYIMPAN...' : editingCombo ? 'SIMPAN PERUBAHAN' : 'BUAT COMBO'}
                 </button>
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
