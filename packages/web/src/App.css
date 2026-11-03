@@ -13655,3 +13655,292 @@ svg[aria-roledescription="error"] {
   transform: translateX(14px);
   background-color: var(--bg-app, #000000);
 }
+
+/* ==========================================================================
+   HERMES AGENT MCP SPECIFICATION STYLES
+   Minimalist dark teal/charcoal aesthetic with cream accents and monospace metadata
+   ========================================================================== */
+
+.hermes-header-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: #f1ebd8;
+  color: #18181b;
+  font-weight: 700;
+  font-size: 0.74rem;
+  letter-spacing: 0.06em;
+  padding: 0.44rem 1.1rem;
+  border-radius: 4px;
+  border: none;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.hermes-header-btn:hover {
+  background: #ffffff;
+  color: #000000;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+}
+
+.hermes-section {
+  margin-bottom: 2.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.hermes-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+
+.hermes-section-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.hermes-section-title {
+  font-size: 0.98rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hermes-section-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.hermes-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 1.15rem 1.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.hermes-card:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.hermes-row-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.hermes-item-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.hermes-title-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.hermes-item-name {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.hermes-badge-transport {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.12rem 0.45rem;
+  border-radius: 3px;
+  background: rgba(52, 211, 153, 0.08);
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  color: #34d399;
+  letter-spacing: 0.02em;
+}
+
+.hermes-badge-auth {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.68rem;
+  font-weight: 500;
+  padding: 0.12rem 0.45rem;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.hermes-badge-source {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  transition: color 0.15s ease;
+}
+
+.hermes-badge-source:hover {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
+
+.hermes-item-desc {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.hermes-endpoint-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.75rem;
+  background: #ded7c4;
+  color: #1c1917;
+  padding: 0.2rem 0.6rem;
+  border-radius: 3px;
+  font-weight: 600;
+  word-break: break-all;
+  max-width: fit-content;
+  margin: 0.15rem 0;
+}
+
+.hermes-notes-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.76rem;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: color 0.15s ease;
+  width: fit-content;
+}
+
+.hermes-notes-toggle:hover {
+  color: #ffffff;
+}
+
+.hermes-notes-content {
+  margin-top: 0.4rem;
+  padding: 0.65rem 0.9rem;
+  background: rgba(0, 0, 0, 0.4);
+  border-left: 2px solid #34d399;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.78);
+  line-height: 1.45;
+  border-radius: 0 4px 4px 0;
+  font-family: var(--font-sans);
+}
+
+.hermes-install-btn {
+  background: #f1ebd8;
+  color: #18181b;
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  padding: 0.42rem 1.15rem;
+  border-radius: 4px;
+  border: none;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.hermes-install-btn:hover:not(:disabled) {
+  background: #ffffff;
+  color: #000000;
+  transform: translateY(-1px);
+}
+
+.hermes-install-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.hermes-installed-badge {
+  background: rgba(52, 211, 153, 0.1);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  font-weight: 600;
+  font-size: 0.72rem;
+  padding: 0.38rem 0.85rem;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.hermes-actions-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.hermes-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0.35rem 0.65rem;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.hermes-action-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.hermes-action-btn.danger:hover {
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.hermes-action-btn.active-power {
+  color: #34d399;
+}
+
+.hermes-action-btn.inactive-power {
+  color: rgba(255, 255, 255, 0.45);
+}

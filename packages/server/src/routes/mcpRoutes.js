@@ -16,7 +16,37 @@ router.get('/', async (req, res, next) => {
 // GET /api/mcp/catalog - Dapatkan katalog template MCP siap pasang
 router.get('/catalog', (req, res) => {
   const catalog = mcpService.getCatalog();
-  res.json({ success: true, catalog });
+  res.json({ success: true, catalog, total: catalog.length });
+});
+
+// POST /api/mcp/catalog/:id/install - Install MCP server dari katalog (Hermes 1-click install)
+router.post('/catalog/:id/install', async (req, res, next) => {
+  try {
+    const installed = await mcpService.installFromCatalog(req.params.id, req.body);
+    res.status(201).json({ success: true, server: installed });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/mcp/:id/toggle - Toggle aktif / non-aktif MCP server
+router.post('/:id/toggle', async (req, res, next) => {
+  try {
+    const updated = await mcpService.toggleServer(req.params.id);
+    res.json({ success: true, server: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/mcp/:id/authenticate - Simpan kredensial otentikasi MCP server
+router.post('/:id/authenticate', async (req, res, next) => {
+  try {
+    const updated = await mcpService.authenticateServer(req.params.id, req.body);
+    res.json({ success: true, server: updated });
+  } catch (err) {
+    next(err);
+  }
 });
 
 // GET /api/mcp/:id - Dapatkan satu server MCP

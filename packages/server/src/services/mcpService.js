@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { MCP_CATALOG } from './mcpCatalog.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -790,51 +791,96 @@ class McpService {
   }
 
   /**
-   * Curated catalog of MCP servers ready to install in one click
+   * Curated catalog of MCP servers ready to install in one click (Hermes format)
    */
   getCatalog() {
-    return [
-      {
-        id: 'postgres',
-        name: 'PostgreSQL Database MCP',
-        category: 'Database',
-        description: 'Koneksi ke PostgreSQL untuk query analitik, schema inspection, dan explain plan.',
-        command: 'npx -y @modelcontextprotocol/server-postgres postgresql://localhost/mydb',
-        transport: 'stdio',
-      },
-      {
-        id: 'slack',
-        name: 'Slack Workspace MCP',
-        category: 'Communication',
-        description: 'Kirim pesan, baca channel publik, dan integrasi notifikasi bot ke Slack.',
-        command: 'npx -y @modelcontextprotocol/server-slack',
-        transport: 'stdio',
-      },
-      {
-        id: 'sentry',
-        name: 'Sentry Error Monitoring MCP',
-        category: 'Monitoring',
-        description: 'Ambil stacktrace, riwayat error issue, dan log breadcrumb aplikasi via Sentry API.',
-        command: 'uvx mcp-server-sentry',
-        transport: 'stdio',
-      },
-      {
-        id: 'redis',
-        name: 'Redis Cache & Pub/Sub MCP',
-        category: 'Database',
-        description: 'Inspeksi key cache, status Redis cluster, dan operasi key-value.',
-        command: 'npx -y @modelcontextprotocol/server-redis redis://localhost:6379',
-        transport: 'stdio',
-      },
-      {
-        id: 'aws-s3',
-        name: 'AWS S3 Cloud Storage MCP',
-        category: 'Cloud & Storage',
-        description: 'Kelola bucket, upload berkas aset, dan generate pre-signed URL AWS S3.',
-        command: 'npx -y @modelcontextprotocol/server-s3',
-        transport: 'stdio',
-      },
-    ];
+    return MCP_CATALOG;
+  }
+
+  /**
+   * Install a server from the curated catalog (1-click install)
+   */
+  async installFromCatalog(catalogId, customConfig = {}) {
+    const item = MCP_CATALOG.find((c) => c.id === catalogId);
+    if (!item) {
+      throw new Error(`MCP Server dengan ID '${catalogId}' tidak ditemukan di katalog.`);
+    }
+
+    const servers = this.#readServers();
+    const existing = servers.find((s) => s.id === item.id);
+    if (existing) {
+      return existing;
+    }
+
+    const newServer = {
+      id: item.id,
+      name: item.name,
+      category: item.category,
+      description: item.description,
+      transport: item.transport,
+      endpoint: item.endpoint || null,
+      command: item.command ? item.command.split(' ')[0] : 'npx',
+      args: item.command ? item.command.split(' ').slice(1) : [],
+      env: {},
+      auth: item.auth || 'none',
+      authenticated: item.auth === 'none',
+      setupNotes: item.setupNotes || null,
+      sourceUrl: item.sourceUrl || null,
+      enabled: false,
+      status: 'disabled',
+      latencyMs: 0,
+      lastChecked: null,
+      isBuiltin: false,
+      userManuallyEnabled: false,
+      version: '1.0.0',
+      tools: item.tools || [],
+      ...customConfig,
+    };
+
+    servers.push(newServer);
+    this.#writeServers(servers);
+    return newServer;
+  }
+
+  /**
+   * Toggle enable / disable MCP server
+   */
+  async toggleServer(id) {
+    const servers = this.#readServers();
+    const target = servers.find((s) => s.id === id);
+    if (!target) {
+      throw new Error(`MCP Server dengan ID '${id}' tidak ditemukan.`);
+    }
+
+    target.enabled = !target.enabled;
+    target.status = target.enabled ? 'connected' : 'disabled';
+    target.userManuallyEnabled = target.enabled;
+    target.lastChecked = new Date().toISOString();
+
+    this.#writeServers(servers);
+    return target;
+  }
+
+  /**
+   * Authenticate / save credentials for server
+   */
+  async authenticateServer(id, credentials = {}) {
+    const servers = this.#readServers();
+    const target = servers.find((s) => s.id === id);
+    if (!target) {
+      throw new Error(`MCP Server dengan ID '${id}' tidak ditemukan.`);
+    }
+
+    target.authCredentials = {
+      ...(target.authCredentials || {}),
+      ...credentials,
+      authenticatedAt: new Date().toISOString(),
+    };
+    target.authenticated = true;
+    target.lastChecked = new Date().toISOString();
+
+    this.#writeServers(servers);
+    return target;
   }
 }
 
