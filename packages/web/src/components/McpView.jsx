@@ -348,7 +348,8 @@ export default function McpView({ onClose, showToast }) {
   };
 
   return (
-    <div className="minimal-view-container">
+    <div className="minimal-view-wrapper">
+      <div className="minimal-view-container">
       {/* ================= HEADER ================= */}
       <div className="minimal-header">
         <div className="minimal-title-group">
@@ -948,6 +949,7 @@ export default function McpView({ onClose, showToast }) {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

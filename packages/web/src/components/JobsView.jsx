@@ -243,7 +243,8 @@ export default function JobsView({ onClose, showToast }) {
   };
 
   return (
-    <div className="minimal-view-container">
+    <div className="minimal-view-wrapper">
+      <div className="minimal-view-container">
       {/* ================= HEADER ================= */}
       <div className="minimal-header">
         <div className="minimal-title-group">
@@ -775,6 +776,7 @@ export default function JobsView({ onClose, showToast }) {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
