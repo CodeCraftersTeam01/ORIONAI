@@ -1,24 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Server,
   Search,
   Plus,
   RotateCw,
   X,
-  CheckCircle2,
-  AlertCircle,
   ExternalLink,
   Power,
   Zap,
   Key,
   Trash2,
-  ChevronDown,
-  ChevronRight,
+  Check,
   Eye,
   EyeOff,
-  Check,
-  Layers,
-  Wand2,
 } from 'lucide-react';
 
 export default function McpView({ onClose, showToast }) {
@@ -26,11 +19,10 @@ export default function McpView({ onClose, showToast }) {
   const [catalog, setCatalog] = useState([]);
   const [loading, setLoading] = useState(true);
   const [catalogLoading, setCatalogLoading] = useState(true);
-  const [showBuiltin, setShowBuiltin] = useState(false); // Default: disembunyikan
+  const [showBuiltin, setShowBuiltin] = useState(false); // Default: hidden
 
-  // Catalog search & filter
+  // Catalog search (clean single-line input, no messy wrapped pills)
   const [searchCatalogQuery, setSearchCatalogQuery] = useState('');
-  const [selectedCatalogCategory, setSelectedCatalogCategory] = useState('all');
 
   // Expanded setup notes per catalog item
   const [expandedNotes, setExpandedNotes] = useState({});
@@ -104,38 +96,25 @@ export default function McpView({ onClose, showToast }) {
     return servers.filter((s) => s.isBuiltin);
   }, [servers]);
 
-  // Set of installed server IDs (both user-installed and builtins)
+  // Set of installed server IDs
   const installedIds = useMemo(() => {
     return new Set(servers.map((s) => s.id.toLowerCase()));
   }, [servers]);
 
-  // Catalog filtered list
+  // Filtered Catalog
   const filteredCatalog = useMemo(() => {
+    const q = searchCatalogQuery.toLowerCase().trim();
+    if (!q) return catalog;
     return catalog.filter((item) => {
-      const q = searchCatalogQuery.toLowerCase().trim();
-      const matchesSearch =
-        !q ||
+      return (
         item.name.toLowerCase().includes(q) ||
         (item.description && item.description.toLowerCase().includes(q)) ||
         (item.endpoint && item.endpoint.toLowerCase().includes(q)) ||
-        (item.command && item.command.toLowerCase().includes(q));
-
-      const matchesCat =
-        selectedCatalogCategory === 'all' ||
-        item.category.toLowerCase() === selectedCatalogCategory.toLowerCase();
-
-      return matchesSearch && matchesCat;
+        (item.command && item.command.toLowerCase().includes(q)) ||
+        (item.category && item.category.toLowerCase().includes(q))
+      );
     });
-  }, [catalog, searchCatalogQuery, selectedCatalogCategory]);
-
-  // Unique categories in catalog
-  const catalogCategories = useMemo(() => {
-    const set = new Set(['all']);
-    catalog.forEach((item) => {
-      if (item.category) set.add(item.category);
-    });
-    return Array.from(set);
-  }, [catalog]);
+  }, [catalog, searchCatalogQuery]);
 
   // 1-Click Install from Catalog
   const handleInstallCatalog = async (item) => {
@@ -166,7 +145,7 @@ export default function McpView({ onClose, showToast }) {
           prev.map((s) => (s.id === serverId ? data.server : s))
         );
         showToast?.(
-          `Server '${data.server.name}' ${data.server.enabled ? 'diaktifkan' : 'dinonaktifkan'}.`
+          `Server '${data.server.name || data.server.id}' ${data.server.enabled ? 'diaktifkan' : 'dinonaktifkan'}.`
         );
       } else {
         showToast?.('Gagal mengubah status: ' + (data.message || 'Error'));
@@ -208,12 +187,12 @@ export default function McpView({ onClose, showToast }) {
 
   // Delete Server (Non-builtin)
   const handleDelete = async (serverId, serverName) => {
-    if (!window.confirm(`Hapus MCP server '${serverName}' dari instalasi Anda?`)) return;
+    if (!window.confirm(`Hapus MCP server '${serverName || serverId}' dari instalasi Anda?`)) return;
     try {
       const res = await fetch(`/api/mcp/${serverId}`, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
-        showToast?.(`Server '${serverName}' berhasil dihapus.`);
+        showToast?.(`Server '${serverName || serverId}' berhasil dihapus.`);
         setServers((prev) => prev.filter((s) => s.id !== serverId));
       } else {
         showToast?.('Gagal menghapus: ' + (data.message || 'Error'));
@@ -244,7 +223,7 @@ export default function McpView({ onClose, showToast }) {
         setServers((prev) =>
           prev.map((s) => (s.id === authTargetServer.id ? data.server : s))
         );
-        showToast?.(`Otentikasi untuk '${authTargetServer.name}' berhasil disimpan.`);
+        showToast?.(`Otentikasi untuk '${authTargetServer.name || authTargetServer.id}' berhasil disimpan.`);
         setShowAuthModal(false);
       } else {
         showToast?.('Gagal menyimpan otentikasi: ' + (data.message || 'Error'));
@@ -280,7 +259,7 @@ export default function McpView({ onClose, showToast }) {
       });
       const data = await res.json();
       if (data.success) {
-        showToast?.(`Server '${data.server.name}' berhasil ditambahkan.`);
+        showToast?.(`Server '${data.server.name || data.server.id}' berhasil ditambahkan.`);
         setShowAddModal(false);
         setAddForm({
           id: '',
@@ -309,26 +288,18 @@ export default function McpView({ onClose, showToast }) {
 
   return (
     <div className="minimal-view-wrapper">
-      <div className="minimal-view-container">
-        {/* ================= HERMES STYLE TOP HEADER ================= */}
-        <div className="minimal-header">
-          <div className="minimal-title-group">
-            <div className="minimal-title-row">
-              <Server size={20} style={{ color: 'var(--text-primary)' }} />
-              <h1 className="minimal-title" style={{ fontFamily: 'var(--font-mono)' }}>
-                MCP
-              </h1>
-            </div>
-          </div>
+      <div className="minimal-view-container" style={{ maxWidth: '1060px' }}>
+        {/* ================= HERMES TOP HEADER ================= */}
+        <div className="hermes-header-top">
+          <h1 className="hermes-title">MCP</h1>
 
-          <div className="minimal-header-actions">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
             <button
               type="button"
               className="hermes-header-btn"
               onClick={() => setShowAddModal(true)}
             >
-              <Plus size={13} strokeWidth={2.5} />
-              <span>ADD SERVER</span>
+              ADD SERVER
             </button>
 
             {onClose && (
@@ -347,12 +318,10 @@ export default function McpView({ onClose, showToast }) {
         {/* ================= SECTION 1: YOUR MCP SERVERS ================= */}
         <div className="hermes-section">
           <div className="hermes-section-header">
-            <div className="hermes-section-title-wrap">
-              <h2 className="hermes-section-title">
-                <span style={{ fontSize: '1.05rem', opacity: 0.85 }}>⚯</span>
-                <span>Your MCP servers ({userInstalledServers.length + (showBuiltin ? builtinServers.length : 0)})</span>
-              </h2>
-            </div>
+            <h2 className="hermes-section-title">
+              <span style={{ fontSize: '1.1rem', opacity: 0.9 }}>⚯</span>
+              <span>Your MCP servers ({userInstalledServers.length + (showBuiltin ? builtinServers.length : 0)})</span>
+            </h2>
 
             {builtinServers.length > 0 && (
               <button
@@ -369,7 +338,7 @@ export default function McpView({ onClose, showToast }) {
           </div>
 
           {loading ? (
-            <div className="minimal-card" style={{ padding: '1.75rem', textAlign: 'center' }}>
+            <div className="hermes-card" style={{ padding: '1.75rem', textAlign: 'center' }}>
               <RotateCw size={18} className="spin" style={{ color: 'var(--text-muted)', margin: '0 auto 0.4rem' }} />
               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Memuat MCP servers terpasang...</span>
             </div>
@@ -384,7 +353,7 @@ export default function McpView({ onClose, showToast }) {
               }}
             >
               <p style={{ margin: '0 0 0.75rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                Belum ada MCP server yang diinstal. Pilih salah satu dari katalog di bawah atau tambahkan server kustom.
+                Belum ada MCP server yang diinstal. Pilih salah satu dari katalog di bawah atau klik ADD SERVER.
               </p>
               <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
                 <button
@@ -392,8 +361,7 @@ export default function McpView({ onClose, showToast }) {
                   className="hermes-header-btn"
                   onClick={() => setShowAddModal(true)}
                 >
-                  <Plus size={12} />
-                  <span>ADD SERVER</span>
+                  ADD SERVER
                 </button>
                 <button
                   type="button"
@@ -408,7 +376,7 @@ export default function McpView({ onClose, showToast }) {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {/* Display User Installed Servers */}
+              {/* User Installed Servers */}
               {userInstalledServers.map((server) => {
                 const transport = server.transport || 'http';
                 const authType = server.auth || (server.authCredentials ? 'api-key' : 'none');
@@ -422,7 +390,7 @@ export default function McpView({ onClose, showToast }) {
                     <div className="hermes-row-top">
                       <div className="hermes-item-left">
                         <div className="hermes-title-bar">
-                          <span className="hermes-item-name">{server.name || server.id}</span>
+                          <span className="hermes-item-name">{server.id}</span>
                           <span className="hermes-badge-transport">{transport}</span>
                           <span className="hermes-badge-auth">auth: {authType}</span>
                           {server.authenticated && (
@@ -446,7 +414,7 @@ export default function McpView({ onClose, showToast }) {
                           )}
                         </div>
 
-                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.65)' }}>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.76rem', color: 'rgba(255, 255, 255, 0.55)', marginTop: '0.2rem' }}>
                           {endpointText}
                         </div>
                       </div>
@@ -498,7 +466,7 @@ export default function McpView({ onClose, showToast }) {
                 );
               })}
 
-              {/* Display Built-in Servers (if showBuiltin is true) */}
+              {/* Built-in Servers (if showBuiltin is true) */}
               {showBuiltin &&
                 builtinServers.map((server) => {
                   const transport = server.transport || 'stdio';
@@ -516,7 +484,7 @@ export default function McpView({ onClose, showToast }) {
                       <div className="hermes-row-top">
                         <div className="hermes-item-left">
                           <div className="hermes-title-bar">
-                            <span className="hermes-item-name">{server.name || server.id}</span>
+                            <span className="hermes-item-name">{server.id}</span>
                             <span className="hermes-badge-transport">{transport}</span>
                             <span className="hermes-badge-auth">builtin: core</span>
                             {pingData && (
@@ -532,7 +500,7 @@ export default function McpView({ onClose, showToast }) {
                             )}
                           </div>
 
-                          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.65)' }}>
+                          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.76rem', color: 'rgba(255, 255, 255, 0.55)', marginTop: '0.2rem' }}>
                             {endpointText}
                           </div>
                         </div>
@@ -567,11 +535,11 @@ export default function McpView({ onClose, showToast }) {
         </div>
 
         {/* ================= SECTION 2: CATALOG (65) ================= */}
-        <div className="hermes-section" style={{ marginTop: '1.5rem' }}>
+        <div className="hermes-section" style={{ marginTop: '1.75rem' }}>
           <div className="hermes-section-header">
             <div>
               <h2 className="hermes-section-title">
-                <span style={{ fontSize: '1.05rem', opacity: 0.85 }}>⎔</span>
+                <span style={{ fontSize: '1.1rem', opacity: 0.9 }}>⎔</span>
                 <span>Catalog ({catalog.length})</span>
               </h2>
               <p className="hermes-section-subtitle">
@@ -580,14 +548,14 @@ export default function McpView({ onClose, showToast }) {
             </div>
           </div>
 
-          {/* Minimal Catalog Search & Filter */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', marginBottom: '0.85rem' }}>
-            <div className="minimal-search-box" style={{ maxWidth: '480px' }}>
-              <Search size={14} className="minimal-search-icon" />
+          {/* Slim Search Input (No category pills cluttering) */}
+          <div style={{ maxWidth: '420px', margin: '0.5rem 0 0.85rem' }}>
+            <div className="minimal-search-box">
+              <Search size={13} className="minimal-search-icon" />
               <input
                 type="text"
                 className="minimal-search-input"
-                placeholder="Cari server di katalog atau keyword..."
+                placeholder="Cari server di katalog (contoh: figma, git, slack)..."
                 value={searchCatalogQuery}
                 onChange={(e) => setSearchCatalogQuery(e.target.value)}
               />
@@ -597,29 +565,15 @@ export default function McpView({ onClose, showToast }) {
                   className="minimal-search-clear"
                   onClick={() => setSearchCatalogQuery('')}
                 >
-                  <X size={13} />
+                  <X size={12} />
                 </button>
               )}
-            </div>
-
-            {/* Category Pills */}
-            <div className="minimal-filter-pills" style={{ overflowX: 'auto', paddingBottom: '0.2rem' }}>
-              {catalogCategories.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  className={`minimal-pill ${selectedCatalogCategory === cat ? 'active' : ''}`}
-                  onClick={() => setSelectedCatalogCategory(cat)}
-                >
-                  {cat === 'all' ? `Semua (${catalog.length})` : cat}
-                </button>
-              ))}
             </div>
           </div>
 
           {/* Catalog List */}
           {catalogLoading ? (
-            <div className="minimal-card" style={{ padding: '2rem', textAlign: 'center' }}>
+            <div className="hermes-card" style={{ padding: '2rem', textAlign: 'center' }}>
               <RotateCw size={18} className="spin" style={{ color: 'var(--text-muted)', margin: '0 auto 0.4rem' }} />
               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Memuat template katalog...</span>
             </div>
@@ -660,11 +614,9 @@ export default function McpView({ onClose, showToast }) {
 
                         <p className="hermes-item-desc">{item.description}</p>
 
-                        <div>
-                          <div className="hermes-endpoint-box">
-                            <span>Endpoint:</span>
-                            <span>{endpointDisplay}</span>
-                          </div>
+                        <div className="hermes-endpoint-line">
+                          <span>Endpoint:</span>
+                          <span className="hermes-endpoint-code">{endpointDisplay}</span>
                         </div>
 
                         <div>
@@ -685,7 +637,7 @@ export default function McpView({ onClose, showToast }) {
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'flex-start', paddingTop: '0.15rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', flexShrink: 0, paddingTop: '0.1rem' }}>
                         {isInstalled ? (
                           <div className="hermes-installed-badge">
                             <Check size={12} strokeWidth={2.5} />
@@ -849,7 +801,7 @@ export default function McpView({ onClose, showToast }) {
             <div className="minimal-modal-panel" onClick={(e) => e.stopPropagation()}>
               <div className="minimal-modal-header">
                 <h3 className="minimal-modal-title">
-                  Authenticate: {authTargetServer.name}
+                  Authenticate: {authTargetServer.name || authTargetServer.id}
                 </h3>
                 <button
                   type="button"

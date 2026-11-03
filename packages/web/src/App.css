@@ -13661,17 +13661,36 @@ svg[aria-roledescription="error"] {
    Minimalist dark teal/charcoal aesthetic with cream accents and monospace metadata
    ========================================================================== */
 
+.hermes-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 1.25rem;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hermes-title {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+  margin: 0;
+  text-transform: uppercase;
+}
+
 .hermes-header-btn {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  background: #f1ebd8;
-  color: #18181b;
+  background: #f0ebd8;
+  color: #141414;
   font-weight: 700;
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   letter-spacing: 0.06em;
-  padding: 0.44rem 1.1rem;
-  border-radius: 4px;
+  padding: 0.42rem 1.15rem;
+  border-radius: 3px;
   border: none;
   text-transform: uppercase;
   cursor: pointer;
@@ -13707,7 +13726,7 @@ svg[aria-roledescription="error"] {
 }
 
 .hermes-section-title {
-  font-size: 0.98rem;
+  font-size: 0.95rem;
   font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--text-primary);
@@ -13720,18 +13739,18 @@ svg[aria-roledescription="error"] {
 .hermes-section-subtitle {
   font-size: 0.8rem;
   color: var(--text-secondary);
-  margin: 0;
+  margin: 0.2rem 0 0;
   line-height: 1.4;
 }
 
 .hermes-card {
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 6px;
-  padding: 1.15rem 1.35rem;
+  border-radius: 4px;
+  padding: 1.15rem 1.4rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.4rem;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 
@@ -13744,13 +13763,13 @@ svg[aria-roledescription="error"] {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
 .hermes-item-left {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.35rem;
   flex: 1;
   min-width: 0;
 }
@@ -13758,7 +13777,7 @@ svg[aria-roledescription="error"] {
 .hermes-title-bar {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.55rem;
   flex-wrap: wrap;
 }
 
@@ -13766,7 +13785,7 @@ svg[aria-roledescription="error"] {
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 0.95rem;
   font-weight: 700;
-  color: var(--text-primary);
+  color: #ffffff;
   letter-spacing: -0.01em;
 }
 
@@ -13774,9 +13793,9 @@ svg[aria-roledescription="error"] {
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 0.68rem;
   font-weight: 600;
-  padding: 0.12rem 0.45rem;
+  padding: 0.1rem 0.45rem;
   border-radius: 3px;
-  background: rgba(52, 211, 153, 0.08);
+  background: rgba(52, 211, 153, 0.06);
   border: 1px solid rgba(52, 211, 153, 0.35);
   color: #34d399;
   letter-spacing: 0.02em;
@@ -13786,11 +13805,11 @@ svg[aria-roledescription="error"] {
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 0.68rem;
   font-weight: 500;
-  padding: 0.12rem 0.45rem;
+  padding: 0.1rem 0.45rem;
   border-radius: 3px;
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.72);
+  color: rgba(255, 255, 255, 0.68);
 }
 
 .hermes-badge-source {
@@ -13801,6 +13820,7 @@ svg[aria-roledescription="error"] {
   display: inline-flex;
   align-items: center;
   gap: 0.2rem;
+  margin-left: 0.3rem;
   transition: color 0.15s ease;
 }
 
@@ -13811,32 +13831,38 @@ svg[aria-roledescription="error"] {
 
 .hermes-item-desc {
   font-size: 0.82rem;
-  color: var(--text-secondary);
-  margin: 0;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0.15rem 0 0.2rem;
   line-height: 1.4;
 }
 
-.hermes-endpoint-box {
+.hermes-endpoint-line {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.76rem;
+  color: rgba(255, 255, 255, 0.6);
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  font-size: 0.75rem;
-  background: #ded7c4;
-  color: #1c1917;
-  padding: 0.2rem 0.6rem;
-  border-radius: 3px;
-  font-weight: 600;
-  word-break: break-all;
-  max-width: fit-content;
+  gap: 0.4rem;
   margin: 0.15rem 0;
+  flex-wrap: wrap;
+}
+
+.hermes-endpoint-code {
+  background: #ded7c4;
+  color: #18181b;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 0.12rem 0.55rem;
+  border-radius: 2px;
+  word-break: break-all;
 }
 
 .hermes-notes-toggle {
   background: none;
   border: none;
   padding: 0;
-  color: rgba(255, 255, 255, 0.65);
+  color: rgba(255, 255, 255, 0.6);
   font-size: 0.76rem;
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   cursor: pointer;
@@ -13845,6 +13871,7 @@ svg[aria-roledescription="error"] {
   gap: 0.35rem;
   transition: color 0.15s ease;
   width: fit-content;
+  margin-top: 0.25rem;
 }
 
 .hermes-notes-toggle:hover {
@@ -13854,23 +13881,23 @@ svg[aria-roledescription="error"] {
 .hermes-notes-content {
   margin-top: 0.4rem;
   padding: 0.65rem 0.9rem;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.45);
   border-left: 2px solid #34d399;
   font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.78);
+  color: rgba(255, 255, 255, 0.8);
   line-height: 1.45;
   border-radius: 0 4px 4px 0;
   font-family: var(--font-sans);
 }
 
 .hermes-install-btn {
-  background: #f1ebd8;
-  color: #18181b;
+  background: #f0ebd8;
+  color: #141414;
   font-weight: 700;
   font-size: 0.72rem;
   letter-spacing: 0.06em;
   padding: 0.42rem 1.15rem;
-  border-radius: 4px;
+  border-radius: 3px;
   border: none;
   text-transform: uppercase;
   cursor: pointer;
@@ -13891,17 +13918,18 @@ svg[aria-roledescription="error"] {
 }
 
 .hermes-installed-badge {
-  background: rgba(52, 211, 153, 0.1);
+  background: rgba(52, 211, 153, 0.08);
   color: #34d399;
-  border: 1px solid rgba(52, 211, 153, 0.3);
+  border: 1px solid rgba(52, 211, 153, 0.35);
   font-weight: 600;
   font-size: 0.72rem;
   padding: 0.38rem 0.85rem;
-  border-radius: 4px;
+  border-radius: 3px;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
   text-transform: uppercase;
 }
 
