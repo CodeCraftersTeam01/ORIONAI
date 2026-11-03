@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import {
   Menu,
   Download,
@@ -66,28 +66,54 @@ function GithubIcon({ size = 15, className = '' }) {
 import Sidebar from './components/Sidebar';
 import ChatInput from './components/ChatInput';
 import FormattedMessage from './components/FormattedMessage';
-import SettingsModal from './components/SettingsModal';
-import ManageProvidersModal from './components/ManageProvidersModal';
-import ProjectDirectoryModal from './components/ProjectDirectoryModal';
-import CommandPaletteModal from './components/CommandPaletteModal';
-import LogsView from './components/LogsView';
-import ModelsView from './components/ModelsView';
-import SkillsView from './components/SkillsView';
-import McpView from './components/McpView';
-import JobsView from './components/JobsView';
-import CronJobsView from './components/CronJobsView';
-import UpdateCheckView from './components/UpdateCheckView';
+
+// Dynamic code-splitting: Lazy-load heavy views and modals for peak frontend performance & instant initial render
+const SettingsModal = lazy(() => import('./components/SettingsModal'));
+const ManageProvidersModal = lazy(() => import('./components/ManageProvidersModal'));
+const ProjectDirectoryModal = lazy(() => import('./components/ProjectDirectoryModal'));
+const CommandPaletteModal = lazy(() => import('./components/CommandPaletteModal'));
+const LogsView = lazy(() => import('./components/LogsView'));
+const ModelsView = lazy(() => import('./components/ModelsView'));
+const SkillsView = lazy(() => import('./components/SkillsView'));
+const McpView = lazy(() => import('./components/McpView'));
+const JobsView = lazy(() => import('./components/JobsView'));
+const CronJobsView = lazy(() => import('./components/CronJobsView'));
+const UpdateCheckView = lazy(() => import('./components/UpdateCheckView'));
+const VoiceCallingOverlay = lazy(() => import('./components/VoiceCallingOverlay'));
+
 import UpdateNotificationToast from './components/UpdateNotificationToast';
 import ThinkingIndicator from './components/ThinkingIndicator';
 import ToolCallBlock from './components/ToolCallBlock';
 import { soundEffects } from './utils/soundEffects';
 import { formatFileSize } from './utils/fileHelpers';
 import { isReasoningSupported } from './utils/modelConfig';
-import VoiceCallingOverlay from './components/VoiceCallingOverlay';
 import { playCosmicHumSound, playCosmicEndCallSound } from './utils/audioEffects';
 import { cleanIndonesianText, formatVoiceForSpeechAndDisplay } from './utils/textCleaner';
 import { detectLanguage } from './utils/languageDetector';
 import './App.css';
+
+/**
+ * Minimalist Loading Fallback Skeleton (design-taste-frontend app screen craft)
+ * Provides serene wireframe with zero layout shift during async view loading
+ */
+function ViewLoadingFallback() {
+  return (
+    <div className="minimal-view-wrapper" aria-busy="true" aria-label="Memuat tampilan...">
+      <div className="minimal-view-container" style={{ maxWidth: '1060px', opacity: 0.7 }}>
+        <div className="minimal-loading-shimmer-header">
+          <div className="minimal-shimmer-bar" style={{ width: '130px', height: '22px' }} />
+          <div className="minimal-shimmer-bar" style={{ width: '88px', height: '28px' }} />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+          <div className="minimal-shimmer-bar" style={{ width: '220px', height: '14px', marginBottom: '0.35rem' }} />
+          <div className="minimal-shimmer-card" />
+          <div className="minimal-shimmer-card" />
+          <div className="minimal-shimmer-card" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function formatUserFacingError(errMessage) {
   if (!errMessage) {
@@ -3153,8 +3179,9 @@ PANDUAN KOMUNIKASI LISAN (VOICE CALL):
           </header>
         )}
 
-        {/* Dynamic Page Views: Providers, Settings, or Chat/Dashboard */}
-        {currentView === 'providers' ? (
+        {/* Dynamic Page Views: Code-Split & Lazy Loaded for Peak Performance */}
+        <Suspense fallback={<ViewLoadingFallback />}>
+          {currentView === 'providers' ? (
           <ManageProvidersModal
             isOpen={true}
             isPage={true}
@@ -3629,15 +3656,18 @@ PANDUAN KOMUNIKASI LISAN (VOICE CALL):
         />
           </>
         )}
+        </Suspense>
       </main>
 
-      {/* Project Directory Picker Modal */}
-      <ProjectDirectoryModal
-        isOpen={isProjectModalOpen}
-        onClose={() => setIsProjectModalOpen(false)}
-        onSelectProject={handleSelectProject}
-        currentProjectPath={activeProjectPath}
-      />
+      {/* Project Directory Picker Modal (Lazy Loaded) */}
+      <Suspense fallback={null}>
+        <ProjectDirectoryModal
+          isOpen={isProjectModalOpen}
+          onClose={() => setIsProjectModalOpen(false)}
+          onSelectProject={handleSelectProject}
+          currentProjectPath={activeProjectPath}
+        />
+      </Suspense>
 
       {/* Image Lightbox Modal */}
       {previewImage && (
@@ -3699,30 +3729,32 @@ PANDUAN KOMUNIKASI LISAN (VOICE CALL):
         />
       )}
 
-      {/* Global Command & Quick Search Palette Modal (Cmd+K) */}
-      <CommandPaletteModal
-        isOpen={isSearchPaletteOpen}
-        onClose={() => setIsSearchPaletteOpen(false)}
-        sessions={sessions}
-        activeSessionId={activeSessionId}
-        onSelectSession={(sessId) => {
-          setActiveSessionId(sessId);
-          setCurrentView('chat');
-        }}
-        onNewSession={() => {
-          handleNewSession();
-          setCurrentView('chat');
-        }}
-        customProviders={customProviders}
-        selectedModel={selectedModel}
-        onSelectModel={(modId) => {
-          handleModelChange(modId);
-          setCurrentView('chat');
-        }}
-        soundEnabled={soundEnabled}
-        onToggleSound={() => setSoundEnabled((prev) => !prev)}
-        onNavigate={(view) => setCurrentView(view)}
-      />
+      {/* Global Command & Quick Search Palette Modal (Cmd+K) (Lazy Loaded) */}
+      <Suspense fallback={null}>
+        <CommandPaletteModal
+          isOpen={isSearchPaletteOpen}
+          onClose={() => setIsSearchPaletteOpen(false)}
+          sessions={sessions}
+          activeSessionId={activeSessionId}
+          onSelectSession={(sessId) => {
+            setActiveSessionId(sessId);
+            setCurrentView('chat');
+          }}
+          onNewSession={() => {
+            handleNewSession();
+            setCurrentView('chat');
+          }}
+          customProviders={customProviders}
+          selectedModel={selectedModel}
+          onSelectModel={(modId) => {
+            handleModelChange(modId);
+            setCurrentView('chat');
+          }}
+          soundEnabled={soundEnabled}
+          onToggleSound={() => setSoundEnabled((prev) => !prev)}
+          onNavigate={(view) => setCurrentView(view)}
+        />
+      </Suspense>
     </div>
   );
 }
