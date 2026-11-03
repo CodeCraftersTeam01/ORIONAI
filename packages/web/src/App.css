@@ -13684,13 +13684,13 @@ svg[aria-roledescription="error"] {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  background: #f0ebd8;
-  color: #141414;
+  background: #ffffff;
+  color: #000000;
   font-weight: 700;
   font-size: 0.72rem;
   letter-spacing: 0.06em;
   padding: 0.42rem 1.15rem;
-  border-radius: 3px;
+  border-radius: 4px;
   border: none;
   text-transform: uppercase;
   cursor: pointer;
@@ -13699,7 +13699,7 @@ svg[aria-roledescription="error"] {
 }
 
 .hermes-header-btn:hover {
-  background: #ffffff;
+  background: #e4e4e7;
   color: #000000;
   transform: translateY(-1px);
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
@@ -13891,13 +13891,13 @@ svg[aria-roledescription="error"] {
 }
 
 .hermes-install-btn {
-  background: #f0ebd8;
-  color: #141414;
+  background: #ffffff;
+  color: #000000;
   font-weight: 700;
   font-size: 0.72rem;
   letter-spacing: 0.06em;
   padding: 0.42rem 1.15rem;
-  border-radius: 3px;
+  border-radius: 4px;
   border: none;
   text-transform: uppercase;
   cursor: pointer;
@@ -13907,7 +13907,7 @@ svg[aria-roledescription="error"] {
 }
 
 .hermes-install-btn:hover:not(:disabled) {
-  background: #ffffff;
+  background: #e4e4e7;
   color: #000000;
   transform: translateY(-1px);
 }
