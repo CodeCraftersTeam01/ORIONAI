@@ -26,7 +26,7 @@ import {
   Copy,
   Sliders,
   Trash2,
-  ExternalLink,
+  Info,
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
@@ -63,7 +63,6 @@ export default function McpView({ onClose, showToast }) {
     transport: 'stdio',
     command: 'npx',
     args: '',
-    envKeys: '',
   });
 
   // Load MCP servers
@@ -120,6 +119,13 @@ export default function McpView({ onClose, showToast }) {
     return Array.from(set);
   }, [servers]);
 
+  const activeCount = useMemo(() => servers.filter((s) => s.enabled).length, [servers]);
+  const disabledCount = useMemo(() => servers.filter((s) => !s.enabled).length, [servers]);
+  const totalTools = useMemo(
+    () => servers.reduce((acc, s) => acc + (s.enabled && s.tools ? s.tools.length : 0), 0),
+    [servers]
+  );
+
   // Toggle server enabled
   const handleToggle = async (serverId, currentState) => {
     const nextState = !currentState;
@@ -132,7 +138,9 @@ export default function McpView({ onClose, showToast }) {
       const data = await res.json();
       if (data.success) {
         setServers((prev) =>
-          prev.map((s) => (s.id === serverId ? { ...s, enabled: nextState, status: nextState ? 'connected' : 'disabled' } : s))
+          prev.map((s) =>
+            s.id === serverId ? { ...s, enabled: nextState, status: nextState ? 'connected' : 'disabled' } : s
+          )
         );
         showToast?.(`MCP Server '${serverId}' ${nextState ? 'diaktifkan' : 'dinonaktifkan'}.`);
       } else {
@@ -191,7 +199,7 @@ export default function McpView({ onClose, showToast }) {
           };
         });
         setPingResults(mapped);
-        showToast?.(`Berhasil menguji ${data.results.length} server MCP.`);
+        showToast?.(`Berhasil memverifikasi ${data.results.length} server MCP.`);
         await loadServers();
       }
     } catch (err) {
@@ -251,7 +259,6 @@ export default function McpView({ onClose, showToast }) {
           transport: 'stdio',
           command: 'npx',
           args: '',
-          envKeys: '',
         });
         await loadServers();
       } else {
@@ -267,7 +274,6 @@ export default function McpView({ onClose, showToast }) {
     setActiveToolContext({ server, tool });
     setToolExecResult(null);
 
-    // Build sample args from parameters
     const sample = {};
     if (tool.parameters) {
       Object.keys(tool.parameters).forEach((paramKey) => {
@@ -324,18 +330,18 @@ export default function McpView({ onClose, showToast }) {
     }
   };
 
-  const getServerIcon = (id, category) => {
-    if (id === 'filesystem') return <Folder size={20} className="mcp-icon-blue" />;
-    if (id === 'fetch') return <Globe size={20} className="mcp-icon-emerald" />;
-    if (id === 'git') return <GitBranch size={20} className="mcp-icon-amber" />;
-    if (id === 'memory') return <Brain size={20} className="mcp-icon-purple" />;
-    if (id === 'github') return <GitPullRequest size={20} className="mcp-icon-white" />;
-    if (id === 'sqlite') return <Database size={20} className="mcp-icon-cyan" />;
-    if (id === 'brave-search') return <Compass size={20} className="mcp-icon-orange" />;
-    if (id === 'terminal-shell') return <Terminal size={20} className="mcp-icon-green" />;
-    if (id === 'docker') return <Box size={20} className="mcp-icon-sky" />;
-    if (id === 'puppeteer') return <Eye size={20} className="mcp-icon-pink" />;
-    return <Server size={20} className="mcp-icon-indigo" />;
+  const getServerIcon = (id) => {
+    if (id === 'filesystem') return <Folder size={16} />;
+    if (id === 'fetch') return <Globe size={16} />;
+    if (id === 'git') return <GitBranch size={16} />;
+    if (id === 'memory') return <Brain size={16} />;
+    if (id === 'github') return <GitPullRequest size={16} />;
+    if (id === 'sqlite') return <Database size={16} />;
+    if (id === 'brave-search') return <Compass size={16} />;
+    if (id === 'terminal-shell') return <Terminal size={16} />;
+    if (id === 'docker') return <Box size={16} />;
+    if (id === 'puppeteer') return <Eye size={16} />;
+    return <Server size={16} />;
   };
 
   const toggleToolsAccordion = (serverId) => {
@@ -346,340 +352,513 @@ export default function McpView({ onClose, showToast }) {
   };
 
   return (
-    <div className="page-view-container">
-      <div className="models-page-content is-page-mode">
-        {/* ================= PAGE HEADER ================= */}
-        <div className="page-view-header">
-          <div className="page-view-header-left">
-            <div className="header-title-row">
-              <Server size={22} className="header-title-icon" style={{ color: 'var(--brand-accent, #6366f1)' }} />
-              <h1 className="page-view-title">MCP Server Hub</h1>
-              <span className="mcp-spec-pill">MCP v1.2 Protocol</span>
-            </div>
-            <p className="page-view-subtitle">
-              Model Context Protocol menghubungkan Orion AI ke sumber data lokal, terminal, repositori Git, SQLite, dan API eksternal secara terstandarisasi JSON-RPC.
+    <div className="models-view-wrapper animate-page-enter">
+      <div className="models-view-inner">
+        {/* ================= HEADER BAR ================= */}
+        <div className="models-main-header">
+          <div className="models-title-block">
+            <h1 className="models-heading">MCP Server Hub</h1>
+            <p className="models-subheading">
+              Katalog dan konfigurasi Model Context Protocol (MCP) untuk menghubungkan LLM ke filesystem, database, Git, dan tools eksternal
             </p>
           </div>
 
-          <div className="page-view-header-right skills-header-actions">
+          <div className="models-header-actions">
             <button
               type="button"
-              className="skills-header-btn"
-              onClick={() => setShowAddModal(true)}
-              title="Tambah MCP Server kustom"
-            >
-              <Plus size={14} />
-              <span>Tambah Server</span>
-            </button>
-
-            <button
-              type="button"
-              className="skills-header-btn"
+              className="models-btn-ghost"
               onClick={handleTestAll}
               disabled={isTestingAll}
               title="Ping & verifikasi koneksi seluruh server MCP"
             >
-              <RotateCw size={13} className={isTestingAll ? 'animate-spin' : ''} />
-              <span>{isTestingAll ? 'Memverifikasi...' : 'Test Semua Server'}</span>
+              <RotateCw size={12} className={isTestingAll ? 'is-spinning' : ''} />
+              <span>{isTestingAll ? 'MEMVERIFIKASI...' : 'TEST SEMUA'}</span>
+            </button>
+
+            <button
+              type="button"
+              className="models-btn-primary"
+              onClick={() => setShowAddModal(true)}
+              title="Tambah MCP Server kustom"
+            >
+              + TAMBAH SERVER
             </button>
 
             {onClose && (
               <button
                 type="button"
-                className="skills-header-close-btn"
+                className="models-refresh-btn"
                 onClick={onClose}
                 aria-label="Tutup halaman"
                 title="Tutup halaman"
               >
-                <X size={16} />
+                <X size={14} />
               </button>
             )}
           </div>
         </div>
 
-        {/* ================= STATS CARDS ================= */}
-        {stats && (
-          <div className="mcp-stats-grid">
-            <div className="mcp-stat-card">
-              <div className="mcp-stat-icon-wrap stat-icon-blue">
-                <Server size={18} />
+        {/* ================= TOP TWO SURFACE CARDS (HERMES / MODELS SYMMETRICAL HERO) ================= */}
+        <div className="models-hero-grid">
+          {/* Card 1: PROTOCOL & RUNTIME SETTINGS */}
+          <div className="models-surface-card models-settings-hero">
+            <div className="models-surface-header">
+              <div className="surface-header-title-wrap">
+                <Sliders size={14} className="surface-title-icon" />
+                <span className="surface-title-text">MCP PROTOCOL & RUNTIME</span>
               </div>
-              <div className="mcp-stat-info">
-                <div className="mcp-stat-number">{stats.totalServers}</div>
-                <div className="mcp-stat-label">Total MCP Servers</div>
-              </div>
+              <span className="surface-pill-tag">JSON-RPC 2.0 v1.2</span>
             </div>
 
-            <div className="mcp-stat-card">
-              <div className="mcp-stat-icon-wrap stat-icon-emerald">
-                <CheckCircle2 size={18} />
-              </div>
-              <div className="mcp-stat-info">
-                <div className="mcp-stat-number">{stats.connectedServers}</div>
-                <div className="mcp-stat-label">Terhubung & Siap</div>
-              </div>
-            </div>
+            <div className="models-settings-rows">
+              {/* Row 1: Protocol Transport */}
+              <div className="models-setting-row">
+                <div className="setting-row-meta">
+                  <div className="setting-row-label">
+                    <Terminal size={13} className="setting-icon-star" />
+                    <span>TRANSPORT ENGINE</span>
+                  </div>
+                  <div className="setting-row-spec">
+                    <span className="spec-badge">STDIO & SSE</span>
+                    <span className="spec-dot">·</span>
+                    <span className="spec-name">Subprocess pipes & EventStreams</span>
+                  </div>
+                </div>
 
-            <div className="mcp-stat-card">
-              <div className="mcp-stat-icon-wrap stat-icon-purple">
-                <Layers size={18} />
+                <button
+                  type="button"
+                  className="models-btn-ghost"
+                  onClick={() => showToast?.('Protokol MCP v1.2 berjalan pada standard I/O dan Server-Sent Events.')}
+                >
+                  INFO
+                </button>
               </div>
-              <div className="mcp-stat-info">
-                <div className="mcp-stat-number">{stats.totalToolsAvailable}</div>
-                <div className="mcp-stat-label">Total Tools Aktif</div>
-              </div>
-            </div>
 
-            <div className="mcp-stat-card">
-              <div className="mcp-stat-icon-wrap stat-icon-amber">
-                <Activity size={18} />
+              {/* Row 2: Active Registry */}
+              <div className="models-setting-row">
+                <div className="setting-row-meta">
+                  <div className="setting-row-label">
+                    <Server size={13} className="setting-icon-cog" />
+                    <span>REGISTERED SERVERS</span>
+                  </div>
+                  <div className="setting-row-spec">
+                    <span className="spec-count">{servers.length} servers</span>
+                    <span className="spec-dot">·</span>
+                    <span className="spec-mode">
+                      {activeCount} aktif, {disabledCount} nonaktif
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="models-btn-ghost"
+                  onClick={handleTestAll}
+                  disabled={isTestingAll}
+                >
+                  PING ALL
+                </button>
               </div>
-              <div className="mcp-stat-info">
-                <div className="mcp-stat-number">100% OK</div>
-                <div className="mcp-stat-label">Kesehatan Protokol</div>
+
+              {/* Row 3: Active Tool Registry */}
+              <div className="models-setting-row">
+                <div className="setting-row-meta">
+                  <div className="setting-row-label">
+                    <Layers size={13} className="setting-icon-moa" />
+                    <span>TOOL REGISTRY</span>
+                  </div>
+                  <div className="setting-row-spec">
+                    <span className="spec-count">{totalTools} tools active</span>
+                    <span className="spec-dot">·</span>
+                    <span className="spec-mode">Injected to Agent loop</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="models-btn-ghost"
+                  onClick={() => {
+                    const el = document.getElementById('mcp-servers-list-section');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                >
+                  EXPLORE
+                </button>
               </div>
             </div>
           </div>
-        )}
 
-        {/* ================= SEARCH & FILTER BAR ================= */}
-        <div className="skills-nav-bar">
-          <div className="skills-tab-group">
-            <button
-              type="button"
-              className={`skills-tab-btn ${statusFilter === 'all' ? 'active' : ''}`}
-              onClick={() => setStatusFilter('all')}
-            >
-              Semua ({servers.length})
-            </button>
-            <button
-              type="button"
-              className={`skills-tab-btn ${statusFilter === 'active' ? 'active' : ''}`}
-              onClick={() => setStatusFilter('active')}
-            >
-              Aktif ({servers.filter((s) => s.enabled).length})
-            </button>
-            <button
-              type="button"
-              className={`skills-tab-btn ${statusFilter === 'disabled' ? 'active' : ''}`}
-              onClick={() => setStatusFilter('disabled')}
-            >
-              Nonaktif ({servers.filter((s) => !s.enabled).length})
-            </button>
+          {/* Card 2: METRICS & SUMMARY HERO (Symmetrical to Models Analytics) */}
+          <div className="models-surface-card models-analytics-hero">
+            <div className="analytics-metrics-list">
+              <div className="analytics-metric-item">
+                <span className="metric-number">{activeCount}</span>
+                <span className="metric-dotted-leader" />
+                <span className="metric-label">SERVERS CONNECTED</span>
+              </div>
+
+              <div className="analytics-metric-item">
+                <span className="metric-number">{totalTools}</span>
+                <span className="metric-dotted-leader" />
+                <span className="metric-label">TOOLS REGISTERED</span>
+              </div>
+            </div>
+
+            <div className="analytics-note-box">
+              <Info size={13} className="analytics-note-icon" />
+              <p className="analytics-note-text">
+                Model Context Protocol (MCP) memungkinkan LLM mengakses berkas lokal, git, SQLite, dan endpoint web secara terproteksi. Seluruh tool yang diaktifkan di bawah otomatis tersedia di prompt reasoning Orion Agent.
+              </p>
+            </div>
           </div>
+        </div>
 
-          <div className="skills-search-box">
-            <Search size={14} className="skills-search-icon" />
-            <input
-              type="text"
-              placeholder="Cari server MCP atau nama tool (contoh: git, read_file)..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="skills-search-input"
-            />
-            {searchQuery && (
+        {/* ================= MCP SERVERS SECTION ================= */}
+        <div className="models-combos-section" id="mcp-servers-list-section">
+          <div className="combos-section-header">
+            <div className="combos-header-left">
+              <div className="combos-title-wrap">
+                <Server size={18} className="combos-main-icon" />
+                <h2 className="combos-title">Daftar Server Terpasang</h2>
+              </div>
+              <p className="combos-subtitle">
+                Server Model Context Protocol aktif dengan konfigurasi transport dan perkakas eksekusi.
+              </p>
+            </div>
+
+            {/* Filter Pills */}
+            <div className="models-filter-pills">
               <button
                 type="button"
-                className="skills-search-clear"
-                onClick={() => setSearchQuery('')}
+                className={`models-pill-btn ${statusFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setStatusFilter('all')}
               >
-                <X size={12} />
+                Semua ({servers.length})
               </button>
-            )}
+              <button
+                type="button"
+                className={`models-pill-btn ${statusFilter === 'active' ? 'active' : ''}`}
+                onClick={() => setStatusFilter('active')}
+              >
+                Aktif ({activeCount})
+              </button>
+              <button
+                type="button"
+                className={`models-pill-btn ${statusFilter === 'disabled' ? 'active' : ''}`}
+                onClick={() => setStatusFilter('disabled')}
+              >
+                Nonaktif ({disabledCount})
+              </button>
+            </div>
           </div>
-        </div>
 
-        {/* ================= CATEGORY FILTER CHIPS ================= */}
-        <div className="mcp-category-chips">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              className={`mcp-chip ${selectedCategory === cat ? 'active' : ''}`}
-              onClick={() => setSelectedCategory(cat)}
-            >
-              {cat === 'all' ? 'Semua Kategori' : cat}
-            </button>
-          ))}
-        </div>
+          {/* Search Bar & Categories */}
+          <div className="models-surface-card" style={{ padding: '0.85rem 1.15rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
+                <Search
+                  size={14}
+                  style={{
+                    position: 'absolute',
+                    left: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: 'var(--text-muted)',
+                  }}
+                />
+                <input
+                  type="text"
+                  placeholder="Cari server MCP atau nama tool (contoh: git, read_file, brave)..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{
+                    width: '100%',
+                    background: 'var(--bg-surface)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: '8px',
+                    padding: '0.45rem 0.75rem 0.45rem 2rem',
+                    color: 'var(--text-primary)',
+                    fontSize: '0.82rem',
+                    fontFamily: 'var(--font-sans)',
+                    boxSizing: 'border-box',
+                    outline: 'none',
+                  }}
+                />
+              </div>
 
-        {/* ================= MCP SERVERS GRID ================= */}
-        {loading ? (
-          <div className="skills-loading-state">
-            <RotateCw size={24} className="animate-spin text-muted" />
-            <p>Memuat konfigurasi Model Context Protocol...</p>
+              {/* Category Pills */}
+              <div className="models-filter-pills" style={{ flexWrap: 'wrap' }}>
+                {categories.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    className={`models-pill-btn ${selectedCategory === cat ? 'active' : ''}`}
+                    onClick={() => setSelectedCategory(cat)}
+                  >
+                    {cat === 'all' ? 'Semua Kategori' : cat}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
-        ) : filteredServers.length === 0 ? (
-          <div className="skills-empty-state">
-            <Server size={36} className="text-muted" />
-            <h3>Tidak ada MCP Server yang cocok</h3>
-            <p>Ubah kata kunci pencarian atau reset filter kategori.</p>
-          </div>
-        ) : (
-          <div className="mcp-servers-grid">
-            {filteredServers.map((server) => {
-              const pingInfo = pingResults[server.id];
-              const isPinging = testingId === server.id;
-              const isToolsExpanded = Boolean(expandedServerTools[server.id]);
 
-              return (
-                <div
-                  key={server.id}
-                  className={`mcp-server-card ${server.enabled ? 'is-enabled' : 'is-disabled'}`}
-                >
-                  {/* Card Header */}
-                  <div className="mcp-card-header">
-                    <div className="mcp-card-left">
-                      <div className="mcp-server-icon-badge">
-                        {getServerIcon(server.id, server.category)}
-                      </div>
-                      <div className="mcp-server-name-block">
-                        <div className="mcp-server-title-row">
-                          <h3 className="mcp-server-title">{server.name}</h3>
-                          {server.isBuiltin ? (
-                            <span className="mcp-badge-builtin">Built-in</span>
-                          ) : (
-                            <span className="mcp-badge-custom">Custom</span>
-                          )}
+          {/* Servers Cards List (Identical to Combos Cards List) */}
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
+              <RotateCw size={24} className="is-spinning" style={{ margin: '0 auto 0.75rem' }} />
+              <p>Memuat konfigurasi Model Context Protocol...</p>
+            </div>
+          ) : filteredServers.length === 0 ? (
+            <div className="models-surface-card" style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+              <Server size={32} style={{ color: 'var(--text-muted)', margin: '0 auto 0.75rem' }} />
+              <h3 style={{ margin: '0 0 0.35rem', color: 'var(--text-primary)', fontSize: '1rem' }}>
+                Tidak ada server MCP yang cocok
+              </h3>
+              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                Ubah kata kunci pencarian atau reset filter status/kategori.
+              </p>
+            </div>
+          ) : (
+            <div className="combos-cards-list">
+              {filteredServers.map((server) => {
+                const pingInfo = pingResults[server.id];
+                const isPinging = testingId === server.id;
+                const isToolsExpanded = Boolean(expandedServerTools[server.id]);
+
+                return (
+                  <div
+                    key={server.id}
+                    className={`models-surface-card combo-item-card ${server.enabled ? 'is-active-combo' : ''}`}
+                  >
+                    {/* Top Main Row */}
+                    <div className="combo-card-main-row">
+                      <div className="combo-card-left">
+                        <div className="combo-card-icon-box">
+                          {getServerIcon(server.id)}
                         </div>
-                        <span className="mcp-server-category">{server.category}</span>
+
+                        <div className="combo-card-info">
+                          <div className="combo-name-row">
+                            <span className="combo-name">{server.name}</span>
+                            <span className="spec-badge">
+                              {server.isBuiltin ? 'BUILT-IN' : 'CUSTOM'}
+                            </span>
+                            <span className="combo-strategy-tag">{server.category}</span>
+                            <span className="spec-badge font-mono">
+                              {server.transport.toUpperCase()}
+                            </span>
+
+                            {server.enabled ? (
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '0.35rem',
+                                  fontSize: '0.72rem',
+                                  color: 'var(--accent-emerald, #10b981)',
+                                  fontWeight: 600,
+                                  fontFamily: 'var(--font-mono)',
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    width: '6px',
+                                    height: '6px',
+                                    borderRadius: '50%',
+                                    background: 'currentColor',
+                                  }}
+                                />
+                                {pingInfo ? `${pingInfo.latency}ms OK` : `${server.latencyMs || 15}ms OK`}
+                              </span>
+                            ) : (
+                              <span
+                                style={{
+                                  fontSize: '0.72rem',
+                                  color: 'var(--text-muted)',
+                                  fontFamily: 'var(--font-mono)',
+                                }}
+                              >
+                                OFFLINE
+                              </span>
+                            )}
+                          </div>
+
+                          <p
+                            style={{
+                              margin: 0,
+                              color: 'var(--text-secondary)',
+                              fontSize: '0.82rem',
+                              lineHeight: 1.45,
+                            }}
+                          >
+                            {server.description}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Right Actions */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          className="models-btn-ghost"
+                          onClick={() => handlePing(server.id)}
+                          disabled={isPinging || !server.enabled}
+                          title="Uji latensi koneksi server MCP ini"
+                        >
+                          <Activity size={12} className={isPinging ? 'is-spinning' : ''} />
+                          <span>{isPinging ? 'PING...' : 'TEST PING'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          className="models-btn-ghost"
+                          onClick={() => toggleToolsAccordion(server.id)}
+                          title="Buka daftar perkakas server ini"
+                        >
+                          <Layers size={12} />
+                          <span>TOOLS ({server.tools?.length || 0})</span>
+                          {isToolsExpanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                        </button>
+
+                        <button
+                          type="button"
+                          className={server.enabled ? 'models-btn-primary' : 'models-btn-ghost'}
+                          onClick={() => handleToggle(server.id, server.enabled)}
+                          style={{ minWidth: '78px', textAlign: 'center' }}
+                        >
+                          {server.enabled ? 'AKTIF' : 'NONAKTIF'}
+                        </button>
+
+                        {!server.isBuiltin && (
+                          <button
+                            type="button"
+                            className="provider-btn-icon is-danger"
+                            onClick={() => handleDeleteServer(server.id, server.name)}
+                            title="Hapus server kustom ini"
+                            style={{
+                              background: 'transparent',
+                              border: '1px solid var(--border-subtle)',
+                              color: 'var(--text-muted)',
+                              padding: '0.42rem 0.55rem',
+                              borderRadius: '7px',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
                       </div>
                     </div>
 
-                    <div className="mcp-card-right">
-                      {/* Active Toggle Switch */}
-                      <label
-                        className="mcp-switch-label"
-                        title={server.enabled ? 'Nonaktifkan server' : 'Aktifkan server'}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={server.enabled}
-                          onChange={() => handleToggle(server.id, server.enabled)}
-                          className="mcp-switch-input"
-                        />
-                        <span className="mcp-switch-slider" />
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Description */}
-                  <p className="mcp-card-desc">{server.description}</p>
-
-                  {/* Transport & Command Pill */}
-                  <div className="mcp-meta-row">
-                    <div className="mcp-transport-tag">
-                      <Terminal size={11} />
-                      <span>{server.transport}</span>
-                    </div>
-                    <code className="mcp-command-code">
-                      {server.command} {Array.isArray(server.args) ? server.args.join(' ') : server.args}
-                    </code>
-                  </div>
-
-                  {/* Connection / Ping Banner */}
-                  <div className="mcp-status-banner">
-                    <div className="mcp-status-indicator">
-                      <span
-                        className={`status-pulse-dot ${server.enabled ? 'is-online' : 'is-offline'}`}
-                      />
-                      <span className="status-text">
-                        {server.enabled ? 'Connected' : 'Disabled'}
-                      </span>
-                    </div>
-
-                    {pingInfo ? (
-                      <span className="mcp-ping-result">
-                        {pingInfo.latency}ms • {pingInfo.timestamp}
-                      </span>
-                    ) : server.latencyMs ? (
-                      <span className="mcp-ping-result">{server.latencyMs}ms</span>
-                    ) : null}
-                  </div>
-
-                  {/* Tools Accordion Toggle */}
-                  <div className="mcp-tools-section">
-                    <button
-                      type="button"
-                      className="mcp-tools-toggle-btn"
-                      onClick={() => toggleToolsAccordion(server.id)}
+                    {/* Command bar */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        marginTop: '0.5rem',
+                        padding: '0.45rem 0.75rem',
+                        background: 'var(--bg-surface)',
+                        borderRadius: '6px',
+                        border: '1px solid var(--border-subtle)',
+                        fontSize: '0.74rem',
+                        fontFamily: 'var(--font-mono)',
+                        color: 'var(--text-muted)',
+                        overflow: 'hidden',
+                      }}
                     >
-                      <div className="tools-toggle-left">
-                        <Layers size={13} />
-                        <span>{server.tools?.length || 0} Tools Tersedia</span>
-                      </div>
-                      {isToolsExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                    </button>
+                      <Terminal size={12} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
+                      <span style={{ color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {server.command} {Array.isArray(server.args) ? server.args.join(' ') : server.args}
+                      </span>
+                    </div>
 
-                    {/* Expandable Tools List */}
+                    {/* Expandable Tools Accordion */}
                     {isToolsExpanded && (
-                      <div className="mcp-tools-drawer animate-fade-in">
+                      <div
+                        style={{
+                          marginTop: '0.75rem',
+                          paddingTop: '0.75rem',
+                          borderTop: '1px solid var(--border-subtle)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.45rem',
+                        }}
+                      >
+                        <div style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                          TOOLS DISEDIAKAN OLEH {server.name.toUpperCase()}:
+                        </div>
+
                         {server.tools && server.tools.length > 0 ? (
                           server.tools.map((tool) => (
-                            <div key={tool.name} className="mcp-tool-item">
-                              <div className="mcp-tool-item-header">
-                                <span className="mcp-tool-name">{tool.name}</span>
-                                <button
-                                  type="button"
-                                  className="btn-try-tool"
-                                  onClick={() => handleOpenToolTester(server, tool)}
-                                  title="Jalankan & uji tool ini sekarang"
-                                >
-                                  <Play size={10} />
-                                  <span>Coba Tool</span>
-                                </button>
+                            <div
+                              key={tool.name}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: '1rem',
+                                padding: '0.55rem 0.75rem',
+                                background: 'var(--bg-surface)',
+                                border: '1px solid var(--border-subtle)',
+                                borderRadius: '6px',
+                              }}
+                            >
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', minWidth: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <code
+                                    style={{
+                                      fontFamily: 'var(--font-mono)',
+                                      fontSize: '0.78rem',
+                                      fontWeight: 700,
+                                      color: 'var(--text-primary)',
+                                    }}
+                                  >
+                                    {tool.name}
+                                  </code>
+                                </div>
+                                <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
+                                  {tool.description}
+                                </span>
                               </div>
-                              <p className="mcp-tool-desc">{tool.description}</p>
+
+                              <button
+                                type="button"
+                                className="models-btn-ghost"
+                                onClick={() => handleOpenToolTester(server, tool)}
+                                style={{ padding: '0.3rem 0.7rem', fontSize: '0.68rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                              >
+                                <Play size={10} />
+                                <span>COBA TOOL</span>
+                              </button>
                             </div>
                           ))
                         ) : (
-                          <div className="mcp-tools-empty">Tidak ada tool yang didefinisikan.</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                            Tidak ada tool yang didefinisikan.
+                          </div>
                         )}
                       </div>
                     )}
                   </div>
-
-                  {/* Card Actions Footer */}
-                  <div className="mcp-card-actions">
-                    <button
-                      type="button"
-                      className="mcp-action-btn ping-btn"
-                      onClick={() => handlePing(server.id)}
-                      disabled={isPinging || !server.enabled}
-                      title="Uji latensi koneksi server MCP ini"
-                    >
-                      <Activity size={12} className={isPinging ? 'animate-spin' : ''} />
-                      <span>{isPinging ? 'Menguji...' : 'Test Ping'}</span>
-                    </button>
-
-                    {!server.isBuiltin && (
-                      <button
-                        type="button"
-                        className="mcp-action-btn delete-btn"
-                        onClick={() => handleDeleteServer(server.id, server.name)}
-                        title="Hapus server kustom ini"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         {/* ================= ADD SERVER MODAL ================= */}
         {showAddModal && (
           <div className="modal-backdrop" onClick={() => setShowAddModal(false)}>
             <div
-              className="modal-dialog mcp-modal-dialog"
+              className="modal-dialog modal-content"
               onClick={(e) => e.stopPropagation()}
+              style={{ maxWidth: '580px' }}
             >
               <div className="modal-header">
-                <div className="modal-header-left">
-                  <Server size={18} style={{ color: 'var(--brand-accent, #6366f1)' }} />
-                  <h2 className="modal-title">Daftarkan MCP Server Baru</h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Server size={16} />
+                  <h3 className="modal-title">Daftarkan MCP Server Baru</h3>
                 </div>
                 <button
                   type="button"
@@ -691,17 +870,19 @@ export default function McpView({ onClose, showToast }) {
               </div>
 
               <form onSubmit={handleCreateServer}>
-                <div className="modal-body">
-                  <p className="url-modal-desc">
+                <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                  <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                     Tambahkan server Model Context Protocol lokal (stdio) atau remote SSE untuk memperluas kapabilitas agen.
                   </p>
 
-                  {/* Presets Quick Picker */}
-                  <div className="mcp-presets-bar">
-                    <span className="presets-label">Preset 1-Klik:</span>
+                  {/* Presets Bar */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                      Preset:
+                    </span>
                     <button
                       type="button"
-                      className="preset-chip"
+                      className="models-pill-btn"
                       onClick={() =>
                         setNewServerForm({
                           name: 'PostgreSQL Database MCP',
@@ -710,7 +891,6 @@ export default function McpView({ onClose, showToast }) {
                           transport: 'stdio',
                           command: 'npx',
                           args: '-y @modelcontextprotocol/server-postgres postgresql://localhost/mydb',
-                          envKeys: '',
                         })
                       }
                     >
@@ -718,16 +898,15 @@ export default function McpView({ onClose, showToast }) {
                     </button>
                     <button
                       type="button"
-                      className="preset-chip"
+                      className="models-pill-btn"
                       onClick={() =>
                         setNewServerForm({
                           name: 'Slack Workspace MCP',
-                          category: 'Communication',
+                          category: 'Development',
                           description: 'Kirim pesan dan baca feed channel Slack langsung dari AI.',
                           transport: 'stdio',
                           command: 'npx',
                           args: '-y @modelcontextprotocol/server-slack',
-                          envKeys: '',
                         })
                       }
                     >
@@ -735,7 +914,7 @@ export default function McpView({ onClose, showToast }) {
                     </button>
                     <button
                       type="button"
-                      className="preset-chip"
+                      className="models-pill-btn"
                       onClick={() =>
                         setNewServerForm({
                           name: 'Redis Cache MCP',
@@ -744,7 +923,6 @@ export default function McpView({ onClose, showToast }) {
                           transport: 'stdio',
                           command: 'npx',
                           args: '-y @modelcontextprotocol/server-redis redis://localhost:6379',
-                          envKeys: '',
                         })
                       }
                     >
@@ -752,29 +930,31 @@ export default function McpView({ onClose, showToast }) {
                     </button>
                   </div>
 
-                  <div className="form-group-grid">
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                     <div className="form-field">
-                      <label className="form-label">Nama Server</label>
+                      <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                        NAMA SERVER
+                      </label>
                       <input
                         type="text"
                         className="form-input"
-                        placeholder="Contoh: Sentry Error Tracker"
+                        placeholder="Contoh: Sentry Tracker"
                         value={newServerForm.name}
-                        onChange={(e) =>
-                          setNewServerForm({ ...newServerForm, name: e.target.value })
-                        }
+                        onChange={(e) => setNewServerForm({ ...newServerForm, name: e.target.value })}
                         required
+                        style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
                       />
                     </div>
 
                     <div className="form-field">
-                      <label className="form-label">Kategori</label>
+                      <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                        KATEGORI
+                      </label>
                       <select
                         className="form-select"
                         value={newServerForm.category}
-                        onChange={(e) =>
-                          setNewServerForm({ ...newServerForm, category: e.target.value })
-                        }
+                        onChange={(e) => setNewServerForm({ ...newServerForm, category: e.target.value })}
+                        style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
                       >
                         <option value="Development">Development</option>
                         <option value="Database">Database</option>
@@ -782,34 +962,34 @@ export default function McpView({ onClose, showToast }) {
                         <option value="Web & Research">Web & Research</option>
                         <option value="AI & Knowledge Graph">AI & Knowledge Graph</option>
                         <option value="System & Execution">System & Execution</option>
-                        <option value="Communication">Communication</option>
-                        <option value="Custom">Custom</option>
                       </select>
                     </div>
                   </div>
 
                   <div className="form-field">
-                    <label className="form-label">Deskripsi</label>
+                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                      DESKRIPSI
+                    </label>
                     <input
                       type="text"
                       className="form-input"
                       placeholder="Penjelasan fungsi MCP server ini untuk model..."
                       value={newServerForm.description}
-                      onChange={(e) =>
-                        setNewServerForm({ ...newServerForm, description: e.target.value })
-                      }
+                      onChange={(e) => setNewServerForm({ ...newServerForm, description: e.target.value })}
+                      style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
                     />
                   </div>
 
-                  <div className="form-group-grid">
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                     <div className="form-field">
-                      <label className="form-label">Transport</label>
+                      <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                        TRANSPORT
+                      </label>
                       <select
                         className="form-select"
                         value={newServerForm.transport}
-                        onChange={(e) =>
-                          setNewServerForm({ ...newServerForm, transport: e.target.value })
-                        }
+                        onChange={(e) => setNewServerForm({ ...newServerForm, transport: e.target.value })}
+                        style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
                       >
                         <option value="stdio">stdio (Standard I/O)</option>
                         <option value="sse">sse (Server-Sent Events)</option>
@@ -817,44 +997,46 @@ export default function McpView({ onClose, showToast }) {
                     </div>
 
                     <div className="form-field">
-                      <label className="form-label">Command Eksekusi</label>
+                      <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                        COMMAND EKSEKUSI
+                      </label>
                       <input
                         type="text"
                         className="form-input"
-                        placeholder="npx / uvx / node / python"
+                        placeholder="npx / uvx / node"
                         value={newServerForm.command}
-                        onChange={(e) =>
-                          setNewServerForm({ ...newServerForm, command: e.target.value })
-                        }
+                        onChange={(e) => setNewServerForm({ ...newServerForm, command: e.target.value })}
                         required
+                        style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
                       />
                     </div>
                   </div>
 
                   <div className="form-field">
-                    <label className="form-label">Argumen (Args dipisahkan spasi)</label>
+                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                      ARGUMEN (DIPISAH SPASI)
+                    </label>
                     <input
                       type="text"
                       className="form-input font-mono"
                       placeholder="-y @modelcontextprotocol/server-package --param value"
                       value={newServerForm.args}
-                      onChange={(e) =>
-                        setNewServerForm({ ...newServerForm, args: e.target.value })
-                      }
+                      onChange={(e) => setNewServerForm({ ...newServerForm, args: e.target.value })}
+                      style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
                     />
                   </div>
                 </div>
 
-                <div className="modal-footer">
+                <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', padding: '0.85rem 1.25rem' }}>
                   <button
                     type="button"
-                    className="models-btn-secondary"
+                    className="models-btn-ghost"
                     onClick={() => setShowAddModal(false)}
                   >
-                    Batal
+                    BATAL
                   </button>
                   <button type="submit" className="models-btn-primary">
-                    <Plus size={14} /> Daftarkan Server
+                    SIMPAN SERVER
                   </button>
                 </div>
               </form>
@@ -866,17 +1048,18 @@ export default function McpView({ onClose, showToast }) {
         {showToolModal && activeToolContext && (
           <div className="modal-backdrop" onClick={() => setShowToolModal(false)}>
             <div
-              className="modal-dialog tool-tester-modal"
+              className="modal-dialog modal-content"
               onClick={(e) => e.stopPropagation()}
+              style={{ maxWidth: '600px' }}
             >
               <div className="modal-header">
-                <div className="modal-header-left">
-                  <Play size={16} className="text-emerald" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Play size={16} />
                   <div>
-                    <h2 className="modal-title">
+                    <h3 className="modal-title">
                       Uji Tool: <code>{activeToolContext.tool.name}</code>
-                    </h2>
-                    <span className="modal-subtitle-text">
+                    </h3>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                       Server: {activeToolContext.server.name} ({activeToolContext.server.transport})
                     </span>
                   </div>
@@ -890,41 +1073,70 @@ export default function McpView({ onClose, showToast }) {
                 </button>
               </div>
 
-              <div className="modal-body">
-                <p className="tool-desc-callout">{activeToolContext.tool.description}</p>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                <p style={{ margin: 0, padding: '0.65rem 0.85rem', background: 'var(--bg-surface)', borderRadius: '6px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  {activeToolContext.tool.description}
+                </p>
 
                 <div className="form-field">
-                  <label className="form-label">Parameter Input (JSON):</label>
+                  <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                    PARAMETER INPUT (JSON)
+                  </label>
                   <textarea
-                    rows={5}
+                    rows={4}
                     className="form-textarea font-mono"
                     value={toolArgsInput}
                     onChange={(e) => setToolArgsInput(e.target.value)}
+                    style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)', fontSize: '0.78rem' }}
                   />
                 </div>
 
                 {toolExecResult && (
-                  <div className="tool-result-box animate-fade-in">
-                    <div className="result-header">
-                      <span className="result-badge success">
-                        <Check size={11} /> Eksekusi Sukses (
-                        {toolExecResult.durationMs || 18}ms)
-                      </span>
+                  <div
+                    style={{
+                      background: 'var(--bg-surface)',
+                      border: '1px solid var(--border-subtle)',
+                      borderRadius: '6px',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <div
+                      style={{
+                        padding: '0.45rem 0.75rem',
+                        borderBottom: '1px solid var(--border-subtle)',
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        fontFamily: 'var(--font-mono)',
+                        color: 'var(--accent-emerald, #10b981)',
+                      }}
+                    >
+                      OUTPUT HASIL EKSEKUSI ({toolExecResult.durationMs || 18}ms)
                     </div>
-                    <pre className="result-content-pre">
+                    <pre
+                      style={{
+                        margin: 0,
+                        padding: '0.75rem',
+                        maxHeight: '180px',
+                        overflowY: 'auto',
+                        fontSize: '0.75rem',
+                        fontFamily: 'var(--font-mono)',
+                        color: 'var(--text-primary)',
+                        lineHeight: 1.45,
+                      }}
+                    >
                       {JSON.stringify(toolExecResult.result || toolExecResult, null, 2)}
                     </pre>
                   </div>
                 )}
               </div>
 
-              <div className="modal-footer">
+              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', padding: '0.85rem 1.25rem' }}>
                 <button
                   type="button"
-                  className="models-btn-secondary"
+                  className="models-btn-ghost"
                   onClick={() => setShowToolModal(false)}
                 >
-                  Tutup
+                  TUTUP
                 </button>
                 <button
                   type="button"
@@ -932,8 +1144,7 @@ export default function McpView({ onClose, showToast }) {
                   onClick={handleExecuteTool}
                   disabled={executingTool}
                 >
-                  <Play size={13} className={executingTool ? 'animate-spin' : ''} />
-                  {executingTool ? 'Mengeksekusi...' : 'Jalankan Tool Sekarang'}
+                  {executingTool ? 'MENGEKSEKUSI...' : 'JALANKAN TOOL'}
                 </button>
               </div>
             </div>

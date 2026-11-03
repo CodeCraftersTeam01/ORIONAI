@@ -23,6 +23,7 @@ import {
   ChevronRight,
   Zap,
   ArrowRight,
+  Info,
 } from 'lucide-react';
 
 const CRON_PRESETS = [
@@ -118,6 +119,13 @@ export default function CronJobsView({ onClose, showToast }) {
     });
   }, [cronJobs, searchQuery, statusFilter]);
 
+  const activeCount = useMemo(() => cronJobs.filter((j) => j.enabled).length, [cronJobs]);
+  const pausedCount = useMemo(() => cronJobs.filter((j) => !j.enabled).length, [cronJobs]);
+  const totalExecutions = useMemo(
+    () => cronJobs.reduce((sum, j) => sum + (j.totalRuns || 0), 0),
+    [cronJobs]
+  );
+
   // Toggle active/pause
   const handleToggle = async (jobId, jobName, currentState) => {
     try {
@@ -144,7 +152,6 @@ export default function CronJobsView({ onClose, showToast }) {
       if (data.success) {
         showToast?.(`AI Cron '${jobName}' berhasil dieksekusi! Laporan siap.`);
         await loadCronJobs();
-        // If history modal is open for this job, refresh it
         if (activeHistoryJob && activeHistoryJob.id === jobId) {
           setActiveHistoryJob(data.job);
         }
@@ -211,298 +218,434 @@ export default function CronJobsView({ onClose, showToast }) {
   };
 
   return (
-    <div className="page-view-container">
-      <div className="models-page-content is-page-mode">
-        {/* ================= HEADER ================= */}
-        <div className="page-view-header">
-          <div className="page-view-header-left">
-            <div className="header-title-row">
-              <Clock size={22} className="header-title-icon" style={{ color: 'var(--brand-accent, #6366f1)' }} />
-              <h1 className="page-view-title">AI Cron Job Scheduler</h1>
-              <span className="mcp-spec-pill">Automated Agent Runner</span>
-            </div>
-            <p className="page-view-subtitle">
-              Jadwalkan eksekusi berkala untuk Agen AI (standup pagi, pemantauan error, auto sync git, dan digest keamanan) dengan format ekspresi Cron fleksibel.
+    <div className="models-view-wrapper animate-page-enter">
+      <div className="models-view-inner">
+        {/* ================= HEADER BAR ================= */}
+        <div className="models-main-header">
+          <div className="models-title-block">
+            <h1 className="models-heading">Cron Job AI</h1>
+            <p className="models-subheading">
+              Jadwalkan eksekusi berkala otomatis untuk model AI (standup pagi, deteksi anomali log, dan sinkronisasi repositori)
             </p>
           </div>
 
-          <div className="page-view-header-right skills-header-actions">
+          <div className="models-header-actions">
             <button
               type="button"
-              className="skills-header-btn"
+              className="models-btn-primary"
               onClick={() => setShowCreateModal(true)}
               title="Jadwalkan AI Cron Job baru"
             >
-              <Plus size={14} />
-              <span>Jadwalkan AI Cron</span>
+              + JADWALKAN AI CRON
             </button>
 
             <button
               type="button"
-              className="skills-header-btn"
+              className={`models-refresh-btn ${loading ? 'is-spinning' : ''}`}
               onClick={loadCronJobs}
-              disabled={loading}
               title="Segarkan data jadwal"
+              aria-label="Refresh"
             >
-              <RotateCw size={13} className={loading ? 'animate-spin' : ''} />
-              <span>{loading ? 'Memuat...' : 'Refresh'}</span>
+              <RotateCw size={14} />
             </button>
 
             {onClose && (
               <button
                 type="button"
-                className="skills-header-close-btn"
+                className="models-refresh-btn"
                 onClick={onClose}
                 aria-label="Tutup halaman"
                 title="Tutup halaman"
               >
-                <X size={16} />
+                <X size={14} />
               </button>
             )}
           </div>
         </div>
 
-        {/* ================= STATS SUMMARY ================= */}
-        {stats && (
-          <div className="mcp-stats-grid">
-            <div className="mcp-stat-card">
-              <div className="mcp-stat-icon-wrap stat-icon-blue">
-                <Clock size={18} />
+        {/* ================= TOP TWO SURFACE CARDS (HERMES / MODELS SYMMETRICAL HERO) ================= */}
+        <div className="models-hero-grid">
+          {/* Card 1: SCHEDULER ENGINE */}
+          <div className="models-surface-card models-settings-hero">
+            <div className="models-surface-header">
+              <div className="surface-header-title-wrap">
+                <Sliders size={14} className="surface-title-icon" />
+                <span className="surface-title-text">CRON SCHEDULER ENGINE</span>
               </div>
-              <div className="mcp-stat-info">
-                <div className="mcp-stat-number">{stats.total}</div>
-                <div className="mcp-stat-label">Total AI Cron Jobs</div>
-              </div>
+              <span className="surface-pill-tag">POSIX 5-Field Cron</span>
             </div>
 
-            <div className="mcp-stat-card">
-              <div className="mcp-stat-icon-wrap stat-icon-emerald">
-                <CheckCircle2 size={18} />
-              </div>
-              <div className="mcp-stat-info">
-                <div className="mcp-stat-number">{stats.active}</div>
-                <div className="mcp-stat-label">Aktif Terjadwal</div>
-              </div>
-            </div>
-
-            <div className="mcp-stat-card">
-              <div className="mcp-stat-icon-wrap stat-icon-amber">
-                <Pause size={18} />
-              </div>
-              <div className="mcp-stat-info">
-                <div className="mcp-stat-number">{stats.paused}</div>
-                <div className="mcp-stat-label">Sedang Dijeda</div>
-              </div>
-            </div>
-
-            <div className="mcp-stat-card">
-              <div className="mcp-stat-icon-wrap stat-icon-purple">
-                <Activity size={18} />
-              </div>
-              <div className="mcp-stat-info">
-                <div className="mcp-stat-number">{stats.totalExecutions}</div>
-                <div className="mcp-stat-label">Total Eksekusi AI</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ================= NAV FILTER BAR ================= */}
-        <div className="skills-nav-bar">
-          <div className="skills-tab-group">
-            <button
-              type="button"
-              className={`skills-tab-btn ${statusFilter === 'all' ? 'active' : ''}`}
-              onClick={() => setStatusFilter('all')}
-            >
-              Semua ({cronJobs.length})
-            </button>
-            <button
-              type="button"
-              className={`skills-tab-btn ${statusFilter === 'active' ? 'active' : ''}`}
-              onClick={() => setStatusFilter('active')}
-            >
-              Aktif ({cronJobs.filter((j) => j.enabled).length})
-            </button>
-            <button
-              type="button"
-              className={`skills-tab-btn ${statusFilter === 'paused' ? 'active' : ''}`}
-              onClick={() => setStatusFilter('paused')}
-            >
-              Dijeda ({cronJobs.filter((j) => !j.enabled).length})
-            </button>
-          </div>
-
-          <div className="skills-search-box">
-            <Search size={14} className="skills-search-icon" />
-            <input
-              type="text"
-              placeholder="Cari cron job, instruksi, atau ekspresi (* * * * *)..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="skills-search-input"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                className="skills-search-clear"
-                onClick={() => setSearchQuery('')}
-              >
-                <X size={12} />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* ================= CRON JOBS LIST ================= */}
-        {loading ? (
-          <div className="skills-loading-state">
-            <RotateCw size={24} className="animate-spin text-muted" />
-            <p>Memuat engine jadwal cron AI...</p>
-          </div>
-        ) : filteredJobs.length === 0 ? (
-          <div className="skills-empty-state">
-            <Clock size={36} className="text-muted" />
-            <h3>Tidak ada AI Cron Job yang ditemukan</h3>
-            <p>Klik 'Jadwalkan AI Cron' untuk membuat automasi berkala pertama Anda.</p>
-          </div>
-        ) : (
-          <div className="cron-jobs-grid">
-            {filteredJobs.map((job) => {
-              const isExecuting = executingId === job.id;
-              const hasHistory = job.history && job.history.length > 0;
-
-              return (
-                <div
-                  key={job.id}
-                  className={`cron-card-box ${job.enabled ? 'is-active' : 'is-paused'}`}
-                >
-                  {/* Top Bar */}
-                  <div className="cron-card-top">
-                    <div className="cron-meta-left">
-                      <div className="cron-icon-badge">
-                        <Clock size={16} />
-                      </div>
-                      <div>
-                        <div className="cron-title-row">
-                          <h3 className="cron-title-text">{job.name}</h3>
-                        </div>
-                        <span className="cron-human-desc">{job.humanSchedule}</span>
-                      </div>
-                    </div>
-
-                    <div className="cron-toggle-wrap">
-                      <label
-                        className="mcp-switch-label"
-                        title={job.enabled ? 'Jeda cron job' : 'Aktifkan cron job'}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={job.enabled}
-                          onChange={() => handleToggle(job.id, job.name, job.enabled)}
-                          className="mcp-switch-input"
-                        />
-                        <span className="mcp-switch-slider" />
-                      </label>
-                    </div>
+            <div className="models-settings-rows">
+              {/* Row 1: Scheduler Ticker */}
+              <div className="models-setting-row">
+                <div className="setting-row-meta">
+                  <div className="setting-row-label">
+                    <Clock size={13} className="setting-icon-star" />
+                    <span>HEARTBEAT TICKER</span>
                   </div>
-
-                  {/* Cron Expression & Model Pill */}
-                  <div className="cron-badges-row">
-                    <div className="cron-pill-expr" title="Ekspresi Cron Standar">
-                      <code>{job.expression}</code>
-                    </div>
-                    <div className="cron-pill-model">
-                      <Bot size={11} />
-                      <span>{job.model}</span>
-                    </div>
-                    <div className="cron-pill-runs">
-                      <Activity size={11} />
-                      <span>{job.totalRuns || 0} kali dijalankan</span>
-                    </div>
-                  </div>
-
-                  {/* AI Prompt / Instruction */}
-                  <div className="cron-prompt-box">
-                    <div className="prompt-label">Instruksi AI:</div>
-                    <p className="prompt-text">{job.prompt}</p>
-                  </div>
-
-                  {/* Allowed Tools */}
-                  {job.allowedTools && job.allowedTools.length > 0 && (
-                    <div className="cron-tools-row">
-                      <span className="tools-caption">Tools:</span>
-                      {job.allowedTools.map((t) => (
-                        <span key={t} className="tool-tag">
-                          {t}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Timing Meta */}
-                  <div className="cron-timing-meta">
-                    <div className="timing-item">
-                      <span className="timing-label">Jadwal Berikutnya:</span>
-                      <span className="timing-value">
-                        {job.enabled ? new Date(job.nextRun).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB' : 'Dijeda'}
-                      </span>
-                    </div>
-                    <div className="timing-item">
-                      <span className="timing-label">Terakhir:</span>
-                      <span className="timing-value">{job.lastDuration || '-'}</span>
-                    </div>
-                  </div>
-
-                  {/* Card Actions */}
-                  <div className="cron-card-actions">
-                    <button
-                      type="button"
-                      className="cron-btn-run"
-                      onClick={() => handleRunNow(job.id, job.name)}
-                      disabled={isExecuting}
-                      title="Jalankan instruksi AI ini sekarang"
-                    >
-                      <Play size={12} className={isExecuting ? 'animate-spin' : ''} />
-                      <span>{isExecuting ? 'Mengeksekusi...' : 'Trigger Now'}</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      className="cron-btn-history"
-                      onClick={() => setActiveHistoryJob(job)}
-                      title="Lihat hasil output dan riwayat eksekusi AI"
-                    >
-                      <FileText size={12} />
-                      <span>Laporan AI ({job.history?.length || 0})</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      className="cron-btn-delete"
-                      onClick={() => handleDelete(job.id, job.name)}
-                      title="Hapus cron job ini"
-                    >
-                      <Trash2 size={12} />
-                    </button>
+                  <div className="setting-row-spec">
+                    <span className="spec-badge">RUNNING</span>
+                    <span className="spec-dot">·</span>
+                    <span className="spec-name">Interval 60s asynchronous scheduler</span>
                   </div>
                 </div>
-              );
-            })}
+
+                <button
+                  type="button"
+                  className="models-btn-ghost"
+                  onClick={() => showToast?.('Engine scheduler memeriksa antrean eksekusi tiap 60 detik.')}
+                >
+                  INFO
+                </button>
+              </div>
+
+              {/* Row 2: Prompt Dispatch */}
+              <div className="models-setting-row">
+                <div className="setting-row-meta">
+                  <div className="setting-row-label">
+                    <Bot size={13} className="setting-icon-cog" />
+                    <span>AGENT DISPATCH</span>
+                  </div>
+                  <div className="setting-row-spec">
+                    <span className="spec-count">Autonomous</span>
+                    <span className="spec-dot">·</span>
+                    <span className="spec-mode">Multi-model prompt runner</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="models-btn-ghost"
+                  onClick={() => showToast?.('Model AI mengeksekusi instruksi prompt dan menghasilkan laporan otomatis.')}
+                >
+                  DISPATCH
+                </button>
+              </div>
+
+              {/* Row 3: History & Archive */}
+              <div className="models-setting-row">
+                <div className="setting-row-meta">
+                  <div className="setting-row-label">
+                    <FileText size={13} className="setting-icon-moa" />
+                    <span>OUTPUT ARCHIVE</span>
+                  </div>
+                  <div className="setting-row-spec">
+                    <span className="spec-count">{totalExecutions} total runs</span>
+                    <span className="spec-dot">·</span>
+                    <span className="spec-mode">Stored in data/cron_jobs.json</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="models-btn-ghost"
+                  onClick={() => {
+                    const el = document.getElementById('cron-jobs-list-section');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                >
+                  EXPLORE
+                </button>
+              </div>
+            </div>
           </div>
-        )}
+
+          {/* Card 2: METRICS & SUMMARY HERO */}
+          <div className="models-surface-card models-analytics-hero">
+            <div className="analytics-metrics-list">
+              <div className="analytics-metric-item">
+                <span className="metric-number">{activeCount}</span>
+                <span className="metric-dotted-leader" />
+                <span className="metric-label">SCHEDULED JOBS ACTIVE</span>
+              </div>
+
+              <div className="analytics-metric-item">
+                <span className="metric-number">{totalExecutions}</span>
+                <span className="metric-dotted-leader" />
+                <span className="metric-label">TOTAL AI EXECUTIONS</span>
+              </div>
+            </div>
+
+            <div className="analytics-note-box">
+              <Info size={13} className="analytics-note-icon" />
+              <p className="analytics-note-text">
+                Scheduler mengeksekusi instruksi AI secara otonom pada interval waktu cron yang telah ditentukan. Setiap output dianalisis dan disimpan ke dalam arsip laporan hasil eksekusi.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* ================= CRON JOBS SECTION ================= */}
+        <div className="models-combos-section" id="cron-jobs-list-section">
+          <div className="combos-section-header">
+            <div className="combos-header-left">
+              <div className="combos-title-wrap">
+                <Clock size={18} className="combos-main-icon" />
+                <h2 className="combos-title">Daftar Jadwal Cron AI</h2>
+              </div>
+              <p className="combos-subtitle">
+                Jadwal cron aktif yang terhubung ke model AI dengan ringkasan instruksi dan jadwal berikutnya.
+              </p>
+            </div>
+
+            {/* Filter Pills */}
+            <div className="models-filter-pills">
+              <button
+                type="button"
+                className={`models-pill-btn ${statusFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setStatusFilter('all')}
+              >
+                Semua ({cronJobs.length})
+              </button>
+              <button
+                type="button"
+                className={`models-pill-btn ${statusFilter === 'active' ? 'active' : ''}`}
+                onClick={() => setStatusFilter('active')}
+              >
+                Aktif ({activeCount})
+              </button>
+              <button
+                type="button"
+                className={`models-pill-btn ${statusFilter === 'paused' ? 'active' : ''}`}
+                onClick={() => setStatusFilter('paused')}
+              >
+                Dijeda ({pausedCount})
+              </button>
+            </div>
+          </div>
+
+          {/* Search Bar */}
+          <div className="models-surface-card" style={{ padding: '0.85rem 1.15rem' }}>
+            <div style={{ position: 'relative' }}>
+              <Search
+                size={14}
+                style={{
+                  position: 'absolute',
+                  left: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: 'var(--text-muted)',
+                }}
+              />
+              <input
+                type="text"
+                placeholder="Cari jadwal cron, instruksi, atau ekspresi (* * * * *)..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  width: '100%',
+                  background: 'var(--bg-surface)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: '8px',
+                  padding: '0.45rem 0.75rem 0.45rem 2rem',
+                  color: 'var(--text-primary)',
+                  fontSize: '0.82rem',
+                  fontFamily: 'var(--font-sans)',
+                  boxSizing: 'border-box',
+                  outline: 'none',
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Cron Cards List (Identical to Combos Cards List) */}
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
+              <RotateCw size={24} className="is-spinning" style={{ margin: '0 auto 0.75rem' }} />
+              <p>Memuat engine jadwal cron AI...</p>
+            </div>
+          ) : filteredJobs.length === 0 ? (
+            <div className="models-surface-card" style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+              <Clock size={32} style={{ color: 'var(--text-muted)', margin: '0 auto 0.75rem' }} />
+              <h3 style={{ margin: '0 0 0.35rem', color: 'var(--text-primary)', fontSize: '1rem' }}>
+                Tidak ada AI Cron Job yang cocok
+              </h3>
+              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                Klik '+ JADWALKAN AI CRON' untuk membuat automasi berkala pertama Anda.
+              </p>
+            </div>
+          ) : (
+            <div className="combos-cards-list">
+              {filteredJobs.map((job) => {
+                const isExecuting = executingId === job.id;
+
+                return (
+                  <div
+                    key={job.id}
+                    className={`models-surface-card combo-item-card ${job.enabled ? 'is-active-combo' : ''}`}
+                  >
+                    {/* Top Main Row */}
+                    <div className="combo-card-main-row">
+                      <div className="combo-card-left">
+                        <div className="combo-card-icon-box">
+                          <Clock size={16} />
+                        </div>
+
+                        <div className="combo-card-info">
+                          <div className="combo-name-row">
+                            <span className="combo-name">{job.name}</span>
+                            <span className="spec-badge font-mono">{job.expression}</span>
+                            <span className="combo-strategy-tag font-mono">{job.model}</span>
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.35rem',
+                                fontSize: '0.72rem',
+                                color: job.enabled
+                                  ? 'var(--accent-emerald, #10b981)'
+                                  : 'var(--text-muted)',
+                                fontWeight: 600,
+                                fontFamily: 'var(--font-mono)',
+                              }}
+                            >
+                              <span
+                                style={{
+                                  width: '6px',
+                                  height: '6px',
+                                  borderRadius: '50%',
+                                  background: 'currentColor',
+                                }}
+                              />
+                              {job.enabled ? 'AKTIF TERJADWAL' : 'DIJEDA'}
+                            </span>
+                          </div>
+
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                            {job.humanSchedule}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right Actions */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          className="models-btn-primary"
+                          onClick={() => handleRunNow(job.id, job.name)}
+                          disabled={isExecuting}
+                          title="Jalankan instruksi AI ini sekarang"
+                        >
+                          <Play size={11} className={isExecuting ? 'is-spinning' : ''} />
+                          <span>{isExecuting ? 'MENGEKSEKUSI...' : 'TRIGGER NOW'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          className="models-btn-ghost"
+                          onClick={() => setActiveHistoryJob(job)}
+                          title="Lihat hasil output dan riwayat eksekusi AI"
+                        >
+                          <FileText size={12} />
+                          <span>LAPORAN ({job.history?.length || 0})</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          className={job.enabled ? 'models-btn-ghost' : 'models-btn-primary'}
+                          onClick={() => handleToggle(job.id, job.name, job.enabled)}
+                          style={{ minWidth: '78px', textAlign: 'center' }}
+                        >
+                          {job.enabled ? 'JEDA' : 'AKTIFKAN'}
+                        </button>
+
+                        <button
+                          type="button"
+                          className="provider-btn-icon is-danger"
+                          onClick={() => handleDelete(job.id, job.name)}
+                          title="Hapus cron job ini"
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid var(--border-subtle)',
+                            color: 'var(--text-muted)',
+                            padding: '0.42rem 0.55rem',
+                            borderRadius: '7px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* AI Prompt Box */}
+                    <div
+                      style={{
+                        marginTop: '0.65rem',
+                        padding: '0.65rem 0.85rem',
+                        background: 'var(--bg-surface)',
+                        borderRadius: '6px',
+                        border: '1px solid var(--border-subtle)',
+                        fontSize: '0.78rem',
+                        color: 'var(--text-primary)',
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', display: 'block', marginBottom: '0.2rem' }}>
+                        INSTRUKSI AI:
+                      </span>
+                      {job.prompt}
+                    </div>
+
+                    {/* Allowed Tools & Timing Meta */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '1rem',
+                        marginTop: '0.55rem',
+                        fontSize: '0.72rem',
+                        color: 'var(--text-muted)',
+                        fontFamily: 'var(--font-mono)',
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                        <span>Tools:</span>
+                        {(job.allowedTools || []).map((t) => (
+                          <span key={t} className="spec-badge">
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <span>
+                          Berikutnya:{' '}
+                          <strong style={{ color: 'var(--text-primary)' }}>
+                            {job.enabled
+                              ? new Date(job.nextRun).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB'
+                              : 'Dijeda'}
+                          </strong>
+                        </span>
+                        <span>
+                          Terakhir: <strong style={{ color: 'var(--text-primary)' }}>{job.lastDuration || '-'}</strong>
+                        </span>
+                        <span>
+                          Total: <strong style={{ color: 'var(--text-primary)' }}>{job.totalRuns || 0} run</strong>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         {/* ================= CREATE CRON MODAL ================= */}
         {showCreateModal && (
           <div className="modal-backdrop" onClick={() => setShowCreateModal(false)}>
             <div
-              className="modal-dialog cron-modal-dialog"
+              className="modal-dialog modal-content"
               onClick={(e) => e.stopPropagation()}
+              style={{ maxWidth: '620px' }}
             >
               <div className="modal-header">
-                <div className="modal-header-left">
-                  <Clock size={18} style={{ color: 'var(--brand-accent, #6366f1)' }} />
-                  <h2 className="modal-title">Jadwalkan AI Cron Job Baru</h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Clock size={16} />
+                  <h3 className="modal-title">Jadwalkan AI Cron Job Baru</h3>
                 </div>
                 <button
                   type="button"
@@ -514,31 +657,33 @@ export default function CronJobsView({ onClose, showToast }) {
               </div>
 
               <form onSubmit={handleCreateSubmit}>
-                <div className="modal-body">
-                  <p className="url-modal-desc">
+                <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                  <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                     Atur jadwal berkala otomatis untuk model AI Orion. Agen akan mengeksekusi instruksi Anda dan menyimpan riwayat output laporan.
                   </p>
 
-                  {/* Presets 1-Click */}
-                  <div className="cron-presets-group">
-                    <span className="presets-label">Pilih Jadwal Cepat:</span>
-                    <div className="cron-presets-list">
-                      {CRON_PRESETS.map((p) => (
-                        <button
-                          key={p.expr}
-                          type="button"
-                          className={`preset-chip ${formState.expression === p.expr ? 'is-selected' : ''}`}
-                          onClick={() => setFormState({ ...formState, expression: p.expr })}
-                          title={p.desc}
-                        >
-                          {p.label}
-                        </button>
-                      ))}
-                    </div>
+                  {/* Presets List */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                      Preset:
+                    </span>
+                    {CRON_PRESETS.map((p) => (
+                      <button
+                        key={p.expr}
+                        type="button"
+                        className={`models-pill-btn ${formState.expression === p.expr ? 'active' : ''}`}
+                        onClick={() => setFormState({ ...formState, expression: p.expr })}
+                        title={p.desc}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
                   </div>
 
                   <div className="form-field">
-                    <label className="form-label">Nama Cron Job</label>
+                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                      NAMA CRON JOB
+                    </label>
                     <input
                       type="text"
                       className="form-input"
@@ -546,12 +691,15 @@ export default function CronJobsView({ onClose, showToast }) {
                       value={formState.name}
                       onChange={(e) => setFormState({ ...formState, name: e.target.value })}
                       required
+                      style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
                     />
                   </div>
 
-                  <div className="form-group-grid">
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                     <div className="form-field">
-                      <label className="form-label">Ekspresi Cron (5 Bagian)</label>
+                      <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                        EKSPRESI CRON (5 BAGIAN)
+                      </label>
                       <input
                         type="text"
                         className="form-input font-mono"
@@ -559,18 +707,22 @@ export default function CronJobsView({ onClose, showToast }) {
                         value={formState.expression}
                         onChange={(e) => setFormState({ ...formState, expression: e.target.value })}
                         required
+                        style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
                       />
-                      <span className="cron-human-helper">
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                         <Calendar size={11} /> {humanCronDesc}
                       </span>
                     </div>
 
                     <div className="form-field">
-                      <label className="form-label">Model Agen AI</label>
+                      <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                        MODEL AGEN AI
+                      </label>
                       <select
                         className="form-select"
                         value={formState.model}
                         onChange={(e) => setFormState({ ...formState, model: e.target.value })}
+                        style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
                       >
                         <option value="orion">Orion Autonomous (Recommended)</option>
                         <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
@@ -581,7 +733,9 @@ export default function CronJobsView({ onClose, showToast }) {
                   </div>
 
                   <div className="form-field">
-                    <label className="form-label">Instruksi / Prompt untuk Agen AI</label>
+                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                      INSTRUKSI / PROMPT UNTUK AGEN AI
+                    </label>
                     <textarea
                       rows={4}
                       className="form-textarea"
@@ -589,20 +743,21 @@ export default function CronJobsView({ onClose, showToast }) {
                       value={formState.prompt}
                       onChange={(e) => setFormState({ ...formState, prompt: e.target.value })}
                       required
+                      style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
                     />
                   </div>
                 </div>
 
-                <div className="modal-footer">
+                <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', padding: '0.85rem 1.25rem' }}>
                   <button
                     type="button"
-                    className="models-btn-secondary"
+                    className="models-btn-ghost"
                     onClick={() => setShowCreateModal(false)}
                   >
-                    Batal
+                    BATAL
                   </button>
                   <button type="submit" className="models-btn-primary">
-                    <Plus size={14} /> Simpan & Aktifkan Jadwal
+                    SIMPAN & AKTIFKAN
                   </button>
                 </div>
               </form>
@@ -614,15 +769,16 @@ export default function CronJobsView({ onClose, showToast }) {
         {activeHistoryJob && (
           <div className="modal-backdrop" onClick={() => setActiveHistoryJob(null)}>
             <div
-              className="modal-dialog cron-history-modal"
+              className="modal-dialog modal-content"
               onClick={(e) => e.stopPropagation()}
+              style={{ maxWidth: '720px' }}
             >
               <div className="modal-header">
-                <div className="modal-header-left">
-                  <FileText size={18} style={{ color: 'var(--brand-accent, #6366f1)' }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <FileText size={16} />
                   <div>
-                    <h2 className="modal-title">Laporan Eksekusi AI: {activeHistoryJob.name}</h2>
-                    <span className="modal-subtitle-text">
+                    <h3 className="modal-title">Laporan Eksekusi: {activeHistoryJob.name}</h3>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                       Jadwal: {activeHistoryJob.humanSchedule} • Model: {activeHistoryJob.model}
                     </span>
                   </div>
@@ -636,60 +792,90 @@ export default function CronJobsView({ onClose, showToast }) {
                 </button>
               </div>
 
-              <div className="modal-body cron-history-body">
+              <div className="modal-body" style={{ maxHeight: '460px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {activeHistoryJob.history && activeHistoryJob.history.length > 0 ? (
-                  <div className="history-reports-list">
-                    {activeHistoryJob.history.map((record) => (
-                      <div key={record.id} className="history-report-card">
-                        <div className="report-card-header">
-                          <div className="report-meta-left">
-                            <span className="report-time">
-                              {new Date(record.executedAt).toLocaleString('id-ID')}
-                            </span>
-                            <span className="report-badge success">
-                              <CheckCircle2 size={11} /> Sukses ({record.duration})
-                            </span>
-                            <span className="report-badge-model">{record.model}</span>
-                          </div>
-                          <button
-                            type="button"
-                            className="btn-copy-report"
-                            onClick={() => copyText(record.output)}
-                            title="Salin isi laporan"
-                          >
-                            {copiedText ? <Check size={12} /> : <Copy size={12} />}
-                            <span>{copiedText ? 'Tersalin' : 'Salin'}</span>
-                          </button>
+                  activeHistoryJob.history.map((record) => (
+                    <div
+                      key={record.id}
+                      style={{
+                        background: 'var(--bg-surface)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '8px',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '0.55rem 0.85rem',
+                          borderBottom: '1px solid var(--border-subtle)',
+                          fontSize: '0.74rem',
+                          fontFamily: 'var(--font-mono)',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ color: 'var(--text-muted)' }}>
+                            {new Date(record.executedAt).toLocaleString('id-ID')}
+                          </span>
+                          <span style={{ color: 'var(--accent-emerald, #10b981)', fontWeight: 700 }}>
+                            SUKSES ({record.duration})
+                          </span>
+                          <span className="spec-badge">{record.model}</span>
                         </div>
-
-                        <div className="report-content-body">
-                          <pre className="report-markdown-pre">{record.output}</pre>
-                        </div>
+                        <button
+                          type="button"
+                          className="models-btn-ghost"
+                          onClick={() => copyText(record.output)}
+                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.68rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                        >
+                          {copiedText ? <Check size={11} /> : <Copy size={11} />}
+                          <span>{copiedText ? 'TERSALIN' : 'SALIN'}</span>
+                        </button>
                       </div>
-                    ))}
-                  </div>
+
+                      <div style={{ padding: '0.85rem 1rem' }}>
+                        <pre
+                          style={{
+                            margin: 0,
+                            fontFamily: 'var(--font-sans)',
+                            fontSize: '0.82rem',
+                            color: 'var(--text-primary)',
+                            lineHeight: 1.6,
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-word',
+                          }}
+                        >
+                          {record.output}
+                        </pre>
+                      </div>
+                    </div>
+                  ))
                 ) : (
-                  <div className="history-empty-state">
-                    <Clock size={32} className="text-muted" />
-                    <p>Belum ada rekaman eksekusi untuk jadwal ini. Klik 'Trigger Now' untuk menjalankan sekarang.</p>
+                  <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-muted)' }}>
+                    <Clock size={28} style={{ margin: '0 auto 0.5rem', opacity: 0.5 }} />
+                    <p style={{ margin: 0, fontSize: '0.82rem' }}>
+                      Belum ada rekaman eksekusi untuk jadwal ini. Klik 'Trigger Now' untuk menjalankan sekarang.
+                    </p>
                   </div>
                 )}
               </div>
 
-              <div className="modal-footer">
+              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', padding: '0.85rem 1.25rem' }}>
                 <button
                   type="button"
-                  className="models-btn-secondary"
+                  className="models-btn-ghost"
                   onClick={() => setActiveHistoryJob(null)}
                 >
-                  Tutup
+                  TUTUP
                 </button>
                 <button
                   type="button"
                   className="models-btn-primary"
                   onClick={() => handleRunNow(activeHistoryJob.id, activeHistoryJob.name)}
                 >
-                  <Play size={13} /> Trigger Run Sekarang
+                  TRIGGER RUN SEKARANG
                 </button>
               </div>
             </div>
@@ -699,4 +885,3 @@ export default function CronJobsView({ onClose, showToast }) {
     </div>
   );
 }
-
