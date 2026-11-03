@@ -19,6 +19,8 @@ import {
   Activity,
   Layers,
   FileText,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 const CRON_PRESETS = [
@@ -37,6 +39,7 @@ export default function CronJobsView({ onClose, showToast }) {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'active' | 'paused'
+  const [showBuiltin, setShowBuiltin] = useState(false); // Sembunyikan default cron secara default
 
   // Execution states
   const [executingId, setExecutingId] = useState(null);
@@ -94,9 +97,17 @@ export default function CronJobsView({ onClose, showToast }) {
     return () => clearTimeout(timer);
   }, [formState.expression]);
 
-  // Filtered list
+  const thirdPartyCron = useMemo(() => cronJobs.filter((c) => !c.isBuiltin), [cronJobs]);
+  const builtinCron = useMemo(() => cronJobs.filter((c) => c.isBuiltin), [cronJobs]);
+
+  // Filtered list (default builtin cron disembunyikan kecuali showBuiltin aktif)
   const filteredJobs = useMemo(() => {
     return cronJobs.filter((job) => {
+      // Sembunyikan cron default jika showBuiltin false
+      if (!showBuiltin && job.isBuiltin) {
+        return false;
+      }
+
       const q = searchQuery.toLowerCase().trim();
       const matchesSearch =
         !q ||
@@ -112,13 +123,13 @@ export default function CronJobsView({ onClose, showToast }) {
 
       return matchesSearch && matchesStatus;
     });
-  }, [cronJobs, searchQuery, statusFilter]);
+  }, [cronJobs, showBuiltin, searchQuery, statusFilter]);
 
-  const activeCount = useMemo(() => cronJobs.filter((j) => j.enabled).length, [cronJobs]);
-  const pausedCount = useMemo(() => cronJobs.filter((j) => !j.enabled).length, [cronJobs]);
+  const activeCount = useMemo(() => filteredJobs.filter((j) => j.enabled).length, [filteredJobs]);
+  const pausedCount = useMemo(() => filteredJobs.filter((j) => !j.enabled).length, [filteredJobs]);
   const totalExecutions = useMemo(
-    () => cronJobs.reduce((sum, j) => sum + (j.totalRuns || 0), 0),
-    [cronJobs]
+    () => filteredJobs.reduce((sum, j) => sum + (j.totalRuns || 0), 0),
+    [filteredJobs]
   );
 
   // Toggle active/pause
@@ -213,7 +224,8 @@ export default function CronJobsView({ onClose, showToast }) {
   };
 
   return (
-    <div className="minimal-view-container">
+    <div className="minimal-view-wrapper">
+      <div className="minimal-view-container">
       {/* ================= HEADER ================= */}
       <div className="minimal-header">
         <div className="minimal-title-group">
@@ -266,35 +278,44 @@ export default function CronJobsView({ onClose, showToast }) {
         <div className="minimal-metric-items">
           <div className="minimal-metric-item">
             <span className="minimal-status-dot pulse" />
-            <span>Scheduler:</span>
-            <span className="minimal-metric-value">Active (60s tick)</span>
+            <span>Pihak Ketiga:</span>
+            <span className="minimal-metric-value">{thirdPartyCron.length} jadwal</span>
           </div>
 
           <div className="minimal-metric-divider" />
 
           <div className="minimal-metric-item">
-            <span>Active:</span>
-            <span className="minimal-metric-value">{activeCount} schedules</span>
+            <span>Aktif:</span>
+            <span className="minimal-metric-value">{activeCount}</span>
           </div>
 
           <div className="minimal-metric-divider" />
 
           <div className="minimal-metric-item">
-            <span>Paused:</span>
+            <span>Dijeda:</span>
             <span className="minimal-metric-value">{pausedCount}</span>
           </div>
 
           <div className="minimal-metric-divider" />
 
           <div className="minimal-metric-item">
-            <span>Total Runs:</span>
-            <span className="minimal-metric-value">{totalExecutions} runs</span>
+            <span>Bawaan Default:</span>
+            <span className="minimal-metric-value" style={{ color: 'var(--text-muted)' }}>
+              {builtinCron.length} ({showBuiltin ? 'Tampil' : 'Disembunyikan'})
+            </span>
           </div>
         </div>
 
-        <div className="minimal-metric-item" style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-          Timezone: Asia/Jakarta (WIB)
-        </div>
+        <button
+          type="button"
+          className="minimal-btn-ghost"
+          onClick={() => setShowBuiltin((prev) => !prev)}
+          style={{ fontSize: '0.74rem', padding: '0.28rem 0.65rem' }}
+          title={showBuiltin ? 'Sembunyikan jadwal cron bawaan sistem' : 'Tampilkan jadwal cron bawaan sistem'}
+        >
+          {showBuiltin ? <EyeOff size={12} /> : <Eye size={12} />}
+          <span>{showBuiltin ? 'Sembunyikan Default' : `Tampilkan Default (${builtinCron.length})`}</span>
+        </button>
       </div>
 
       {/* ================= MINIMAL TOOLBAR ================= */}
@@ -316,7 +337,7 @@ export default function CronJobsView({ onClose, showToast }) {
             className={`minimal-tab-btn ${statusFilter === 'all' ? 'active' : ''}`}
             onClick={() => setStatusFilter('all')}
           >
-            Semua ({cronJobs.length})
+            Semua ({filteredJobs.length})
           </button>
           <button
             type="button"
@@ -345,11 +366,35 @@ export default function CronJobsView({ onClose, showToast }) {
         <div className="minimal-card" style={{ textAlign: 'center', padding: '2.5rem 1rem' }}>
           <Clock size={28} style={{ color: 'var(--text-muted)', margin: '0 auto 0.5rem' }} />
           <h3 style={{ margin: '0 0 0.25rem', color: 'var(--text-primary)', fontSize: '0.92rem' }}>
-            Tidak ada jadwal cron yang cocok
+            {!showBuiltin
+              ? 'Jadwal Cron Default Bawaan Sedang Disembunyikan'
+              : 'Tidak ada jadwal cron yang cocok'}
           </h3>
-          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-            Sesuaikan filter atau buat jadwal baru untuk menjalankan prompt berkala.
+          <p style={{ margin: '0 0 1rem', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+            {!showBuiltin
+              ? 'Jadwal cron default bawaan disembunyikan. Anda dapat menambahkan jadwal pihak ketiga baru atau menampilkan jadwal bawaan sistem.'
+              : 'Sesuaikan filter atau buat jadwal baru untuk menjalankan prompt berkala.'}
           </p>
+          {!showBuiltin && (
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
+              <button
+                type="button"
+                className="minimal-btn-primary"
+                onClick={() => setShowCreateModal(true)}
+              >
+                <Plus size={12} />
+                <span>Tambah Jadwal Pihak Ketiga</span>
+              </button>
+              <button
+                type="button"
+                className="minimal-btn-ghost"
+                onClick={() => setShowBuiltin(true)}
+              >
+                <Eye size={12} />
+                <span>Tampilkan Jadwal Default ({builtinCron.length})</span>
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="minimal-list-wrap">
@@ -645,6 +690,7 @@ export default function CronJobsView({ onClose, showToast }) {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

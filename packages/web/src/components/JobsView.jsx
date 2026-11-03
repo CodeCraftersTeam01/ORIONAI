@@ -23,6 +23,8 @@ import {
   Check,
   Activity,
   Calendar,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 export default function JobsView({ onClose, showToast }) {
@@ -32,6 +34,7 @@ export default function JobsView({ onClose, showToast }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'running' | 'queued' | 'completed'
+  const [showBuiltin, setShowBuiltin] = useState(false); // Sembunyikan default jobs secara default
 
   // Running actions
   const [actionLoadingId, setActionLoadingId] = useState(null);
@@ -87,9 +90,17 @@ export default function JobsView({ onClose, showToast }) {
     return () => clearInterval(interval);
   }, []);
 
-  // Filtered jobs
+  const thirdPartyJobs = useMemo(() => jobs.filter((j) => !j.isBuiltin), [jobs]);
+  const builtinJobs = useMemo(() => jobs.filter((j) => j.isBuiltin), [jobs]);
+
+  // Filtered jobs (default builtin jobs disembunyikan kecuali showBuiltin aktif)
   const filteredJobs = useMemo(() => {
     return jobs.filter((j) => {
+      // Sembunyikan job bawaan sistem jika showBuiltin false
+      if (!showBuiltin && j.isBuiltin) {
+        return false;
+      }
+
       const q = searchQuery.toLowerCase().trim();
       const matchesSearch =
         !q ||
@@ -108,7 +119,7 @@ export default function JobsView({ onClose, showToast }) {
 
       return matchesSearch && matchesCat && matchesStatus;
     });
-  }, [jobs, searchQuery, selectedCategory, statusFilter]);
+  }, [jobs, showBuiltin, searchQuery, selectedCategory, statusFilter]);
 
   // Categories
   const categories = useMemo(() => {
@@ -119,9 +130,9 @@ export default function JobsView({ onClose, showToast }) {
     return Array.from(set);
   }, [jobs]);
 
-  const runningCount = useMemo(() => jobs.filter((j) => j.status === 'running').length, [jobs]);
-  const queuedCount = useMemo(() => jobs.filter((j) => j.status === 'queued').length, [jobs]);
-  const completedCount = useMemo(() => jobs.filter((j) => j.status === 'completed').length, [jobs]);
+  const runningCount = useMemo(() => filteredJobs.filter((j) => j.status === 'running').length, [filteredJobs]);
+  const queuedCount = useMemo(() => filteredJobs.filter((j) => j.status === 'queued').length, [filteredJobs]);
+  const completedCount = useMemo(() => filteredJobs.filter((j) => j.status === 'completed').length, [filteredJobs]);
 
   // Trigger Run Job
   const handleRunJob = async (jobId, jobTitle) => {
@@ -243,7 +254,8 @@ export default function JobsView({ onClose, showToast }) {
   };
 
   return (
-    <div className="minimal-view-container">
+    <div className="minimal-view-wrapper">
+      <div className="minimal-view-container">
       {/* ================= HEADER ================= */}
       <div className="minimal-header">
         <div className="minimal-title-group">
@@ -297,42 +309,44 @@ export default function JobsView({ onClose, showToast }) {
         <div className="minimal-metric-items">
           <div className="minimal-metric-item">
             <span className="minimal-status-dot pulse" />
-            <span>Worker:</span>
-            <span className="minimal-metric-value">Active</span>
+            <span>Pihak Ketiga:</span>
+            <span className="minimal-metric-value">{thirdPartyJobs.length} tasks</span>
           </div>
 
           <div className="minimal-metric-divider" />
 
           <div className="minimal-metric-item">
-            <span>Running:</span>
+            <span>Berjalan:</span>
             <span className="minimal-metric-value">{runningCount}</span>
           </div>
 
           <div className="minimal-metric-divider" />
 
           <div className="minimal-metric-item">
-            <span>Completed:</span>
+            <span>Selesai:</span>
             <span className="minimal-metric-value">{completedCount}</span>
           </div>
 
           <div className="minimal-metric-divider" />
 
           <div className="minimal-metric-item">
-            <span>Queued:</span>
-            <span className="minimal-metric-value">{queuedCount}</span>
-          </div>
-
-          <div className="minimal-metric-divider" />
-
-          <div className="minimal-metric-item">
-            <span>Total:</span>
-            <span className="minimal-metric-value">{jobs.length} tasks</span>
+            <span>Bawaan Default:</span>
+            <span className="minimal-metric-value" style={{ color: 'var(--text-muted)' }}>
+              {builtinJobs.length} ({showBuiltin ? 'Tampil' : 'Disembunyikan'})
+            </span>
           </div>
         </div>
 
-        <div className="minimal-metric-item" style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-          AST Engine & Subprocess Workers
-        </div>
+        <button
+          type="button"
+          className="minimal-btn-ghost"
+          onClick={() => setShowBuiltin((prev) => !prev)}
+          style={{ fontSize: '0.74rem', padding: '0.28rem 0.65rem' }}
+          title={showBuiltin ? 'Sembunyikan job bawaan sistem' : 'Tampilkan job bawaan sistem'}
+        >
+          {showBuiltin ? <EyeOff size={12} /> : <Eye size={12} />}
+          <span>{showBuiltin ? 'Sembunyikan Default' : `Tampilkan Default (${builtinJobs.length})`}</span>
+        </button>
       </div>
 
       {/* ================= MINIMAL TOOLBAR ================= */}
@@ -356,7 +370,7 @@ export default function JobsView({ onClose, showToast }) {
               className={`minimal-tab-btn ${statusFilter === 'all' ? 'active' : ''}`}
               onClick={() => setStatusFilter('all')}
             >
-              Semua ({jobs.length})
+              Semua ({filteredJobs.length})
             </button>
             <button
               type="button"
@@ -407,11 +421,35 @@ export default function JobsView({ onClose, showToast }) {
         <div className="minimal-card" style={{ textAlign: 'center', padding: '2.5rem 1rem' }}>
           <Workflow size={28} style={{ color: 'var(--text-muted)', margin: '0 auto 0.5rem' }} />
           <h3 style={{ margin: '0 0 0.25rem', color: 'var(--text-primary)', fontSize: '0.92rem' }}>
-            Tidak ada background job yang cocok
+            {!showBuiltin
+              ? 'Job Default Bawaan Sedang Disembunyikan'
+              : 'Tidak ada background job yang cocok'}
           </h3>
-          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-            Sesuaikan filter atau buat job baru untuk memulai otomatisasi.
+          <p style={{ margin: '0 0 1rem', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+            {!showBuiltin
+              ? 'Job default bawaan disembunyikan. Anda dapat menambahkan job pihak ketiga baru atau menampilkan job bawaan sistem.'
+              : 'Sesuaikan filter atau buat job baru untuk memulai otomatisasi.'}
           </p>
+          {!showBuiltin && (
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
+              <button
+                type="button"
+                className="minimal-btn-primary"
+                onClick={() => setShowCreateModal(true)}
+              >
+                <Plus size={12} />
+                <span>Tambah Job Pihak Ketiga</span>
+              </button>
+              <button
+                type="button"
+                className="minimal-btn-ghost"
+                onClick={() => setShowBuiltin(true)}
+              >
+                <Eye size={12} />
+                <span>Tampilkan Job Default ({builtinJobs.length})</span>
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="minimal-list-wrap">
@@ -775,6 +813,7 @@ export default function JobsView({ onClose, showToast }) {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
