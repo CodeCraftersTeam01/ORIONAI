@@ -386,6 +386,110 @@ const DEFAULT_MCP_SERVERS = [
   },
 ];
 
+// Pre-configured third-party & external MCP Servers (default: disabled / non-aktif)
+const THIRD_PARTY_MCP_SERVERS = [
+  {
+    id: 'postgres',
+    name: 'PostgreSQL Database MCP',
+    category: 'Database',
+    description: 'Koneksi ke PostgreSQL untuk query schema, inspeksi tabel, dan analisis data.',
+    transport: 'stdio',
+    command: 'npx',
+    args: ['-y', '@modelcontextprotocol/server-postgres', 'postgresql://localhost/mydb'],
+    env: {},
+    enabled: false,
+    status: 'disabled',
+    latencyMs: 0,
+    lastChecked: null,
+    isBuiltin: false,
+    version: '1.0.2',
+    tools: [
+      {
+        name: 'query_database',
+        description: 'Mengeksekusi query SQL read-only pada database PostgreSQL.',
+        parameters: { query: { type: 'string', description: 'Query SQL SELECT' } },
+      },
+      {
+        name: 'list_tables',
+        description: 'Melihat seluruh skema tabel pada database.',
+        parameters: {},
+      },
+    ],
+  },
+  {
+    id: 'slack',
+    name: 'Slack Workspace MCP',
+    category: 'Development',
+    description: 'Kirim notifikasi, baca obrolan channel, dan respon pesan Slack.',
+    transport: 'stdio',
+    command: 'npx',
+    args: ['-y', '@modelcontextprotocol/server-slack'],
+    env: {},
+    enabled: false,
+    status: 'disabled',
+    latencyMs: 0,
+    lastChecked: null,
+    isBuiltin: false,
+    version: '1.1.0',
+    tools: [
+      {
+        name: 'send_message',
+        description: 'Mengirim pesan ke channel Slack.',
+        parameters: {
+          channel: { type: 'string', description: 'ID atau nama channel Slack' },
+          text: { type: 'string', description: 'Isi pesan teks' },
+        },
+      },
+    ],
+  },
+  {
+    id: 'redis',
+    name: 'Redis Cache MCP',
+    category: 'Database',
+    description: 'Inspeksi key-value Redis, TTL key, dan monitoring performa cache realtime.',
+    transport: 'stdio',
+    command: 'npx',
+    args: ['-y', '@modelcontextprotocol/server-redis', 'redis://localhost:6379'],
+    env: {},
+    enabled: false,
+    status: 'disabled',
+    latencyMs: 0,
+    lastChecked: null,
+    isBuiltin: false,
+    version: '1.0.0',
+    tools: [
+      {
+        name: 'get_key',
+        description: 'Mengambil nilai key dari database Redis.',
+        parameters: { key: { type: 'string', description: 'Nama key' } },
+      },
+    ],
+  },
+  {
+    id: 'sentry',
+    name: 'Sentry Error Tracker MCP',
+    category: 'Development',
+    description: 'Monitoring crash stack trace, error logs, dan pelaporan isu runtime Sentry.',
+    transport: 'stdio',
+    command: 'npx',
+    args: ['-y', '@modelcontextprotocol/server-sentry'],
+    env: {},
+    enabled: false,
+    status: 'disabled',
+    latencyMs: 0,
+    lastChecked: null,
+    isBuiltin: false,
+    version: '1.0.5',
+    tools: [
+      {
+        name: 'list_issues',
+        description: 'Melihat daftar isu error terbaru di project Sentry.',
+        parameters: { project: { type: 'string', description: 'Nama project Sentry' } },
+      },
+    ],
+  },
+];
+
 class McpService {
   constructor() {
     this.#ensureDataDir();
@@ -400,7 +504,31 @@ class McpService {
 
   #initStorage() {
     if (!fs.existsSync(MCP_FILE)) {
-      this.#writeServers(DEFAULT_MCP_SERVERS);
+      this.#writeServers([...DEFAULT_MCP_SERVERS, ...THIRD_PARTY_MCP_SERVERS]);
+    } else {
+      const current = this.#readServers();
+      const existingIds = new Set(current.map((s) => s.id));
+      let updated = false;
+
+      THIRD_PARTY_MCP_SERVERS.forEach((tp) => {
+        if (!existingIds.has(tp.id)) {
+          current.push(tp);
+          updated = true;
+        }
+      });
+
+      // Pastikan server pihak ketiga / non-builtin TIDAK otomatis aktif
+      current.forEach((s) => {
+        if (!s.isBuiltin && s.enabled === true && !s.userManuallyEnabled) {
+          s.enabled = false;
+          s.status = 'disabled';
+          updated = true;
+        }
+      });
+
+      if (updated) {
+        this.#writeServers(current);
+      }
     }
   }
 
@@ -478,11 +606,12 @@ class McpService {
       command: data.command || 'npx',
       args: Array.isArray(data.args) ? data.args : (data.args ? data.args.split(' ').filter(Boolean) : []),
       env: data.env || {},
-      enabled: true,
-      status: 'connected',
-      latencyMs: Math.floor(Math.random() * 20) + 10,
-      lastChecked: new Date().toISOString(),
+      enabled: false,
+      status: 'disabled',
+      latencyMs: 0,
+      lastChecked: null,
       isBuiltin: false,
+      userManuallyEnabled: false,
       version: data.version || '1.0.0',
       tools: Array.isArray(data.tools) && data.tools.length > 0 ? data.tools : [
         {
@@ -511,6 +640,7 @@ class McpService {
     servers[idx] = {
       ...servers[idx],
       ...updates,
+      userManuallyEnabled: updates.enabled !== undefined ? updates.enabled : servers[idx].userManuallyEnabled,
       lastChecked: new Date().toISOString(),
     };
 

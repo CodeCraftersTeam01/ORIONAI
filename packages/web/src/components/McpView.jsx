@@ -21,6 +21,7 @@ import {
   Compass,
   Box,
   Eye,
+  EyeOff,
   Activity,
   Check,
   Copy,
@@ -35,6 +36,7 @@ export default function McpView({ onClose, showToast }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'active' | 'disabled'
+  const [showBuiltin, setShowBuiltin] = useState(false); // Sembunyikan default MCP secara default
 
   // Testing states
   const [testingId, setTestingId] = useState(null);
@@ -52,7 +54,7 @@ export default function McpView({ onClose, showToast }) {
   const [executingTool, setExecutingTool] = useState(false);
   const [toolExecResult, setToolExecResult] = useState(null);
 
-  // New server form
+  // New server form (pihak ketiga defaultnya tidak di-set enable)
   const [newServerForm, setNewServerForm] = useState({
     name: '',
     category: 'Development',
@@ -84,9 +86,17 @@ export default function McpView({ onClose, showToast }) {
     loadServers();
   }, []);
 
-  // Filtered servers
+  const thirdPartyServers = useMemo(() => servers.filter((s) => !s.isBuiltin), [servers]);
+  const builtinServers = useMemo(() => servers.filter((s) => s.isBuiltin), [servers]);
+
+  // Filtered servers (default built-in MCPs disembunyikan kecuali showBuiltin aktif)
   const filteredServers = useMemo(() => {
     return servers.filter((s) => {
+      // Sembunyikan MCP bawaan sistem jika showBuiltin false
+      if (!showBuiltin && s.isBuiltin) {
+        return false;
+      }
+
       const q = searchQuery.toLowerCase().trim();
       const matchesSearch =
         !q ||
@@ -104,7 +114,7 @@ export default function McpView({ onClose, showToast }) {
 
       return matchesSearch && matchesCat && matchesStatus;
     });
-  }, [servers, searchQuery, selectedCategory, statusFilter]);
+  }, [servers, showBuiltin, searchQuery, selectedCategory, statusFilter]);
 
   // Unique categories
   const categories = useMemo(() => {
@@ -115,11 +125,11 @@ export default function McpView({ onClose, showToast }) {
     return Array.from(set);
   }, [servers]);
 
-  const activeCount = useMemo(() => servers.filter((s) => s.enabled).length, [servers]);
-  const disabledCount = useMemo(() => servers.filter((s) => !s.enabled).length, [servers]);
+  const activeCount = useMemo(() => filteredServers.filter((s) => s.enabled).length, [filteredServers]);
+  const disabledCount = useMemo(() => filteredServers.filter((s) => !s.enabled).length, [filteredServers]);
   const totalTools = useMemo(
-    () => servers.reduce((acc, s) => acc + (s.enabled && s.tools ? s.tools.length : 0), 0),
-    [servers]
+    () => filteredServers.reduce((acc, s) => acc + (s.enabled && s.tools ? s.tools.length : 0), 0),
+    [filteredServers]
   );
 
   // Toggle server enabled
@@ -246,7 +256,7 @@ export default function McpView({ onClose, showToast }) {
       });
       const data = await res.json();
       if (data.success) {
-        showToast?.(`MCP Server '${newServerForm.name}' berhasil didaftarkan!`);
+        showToast?.(`MCP Server '${newServerForm.name}' didaftarkan (status: Nonaktif).`);
         setShowAddModal(false);
         setNewServerForm({
           name: '',
@@ -403,35 +413,44 @@ export default function McpView({ onClose, showToast }) {
         <div className="minimal-metric-items">
           <div className="minimal-metric-item">
             <span className="minimal-status-dot pulse" />
-            <span>Engine:</span>
-            <span className="minimal-metric-value">Active</span>
+            <span>Pihak Ketiga:</span>
+            <span className="minimal-metric-value">{thirdPartyServers.length} server</span>
           </div>
 
           <div className="minimal-metric-divider" />
 
           <div className="minimal-metric-item">
-            <span>Servers:</span>
-            <span className="minimal-metric-value">{activeCount} / {servers.length} connected</span>
+            <span>Status:</span>
+            <span className="minimal-metric-value">{activeCount} aktif, {disabledCount} nonaktif</span>
           </div>
 
           <div className="minimal-metric-divider" />
 
           <div className="minimal-metric-item">
-            <span>Tools:</span>
-            <span className="minimal-metric-value">{totalTools} registered</span>
+            <span>Tools Aktif:</span>
+            <span className="minimal-metric-value">{totalTools} tools</span>
           </div>
 
           <div className="minimal-metric-divider" />
 
           <div className="minimal-metric-item">
-            <span>Transport:</span>
-            <span className="minimal-metric-value">STDIO & SSE</span>
+            <span>Bawaan Default:</span>
+            <span className="minimal-metric-value" style={{ color: 'var(--text-muted)' }}>
+              {builtinServers.length} ({showBuiltin ? 'Tampil' : 'Disembunyikan'})
+            </span>
           </div>
         </div>
 
-        <div className="minimal-metric-item" style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-          Subprocess pipes & EventStreams
-        </div>
+        <button
+          type="button"
+          className="minimal-btn-ghost"
+          onClick={() => setShowBuiltin((prev) => !prev)}
+          style={{ fontSize: '0.74rem', padding: '0.28rem 0.65rem' }}
+          title={showBuiltin ? 'Sembunyikan MCP server bawaan sistem' : 'Tampilkan MCP server bawaan sistem'}
+        >
+          {showBuiltin ? <EyeOff size={12} /> : <Eye size={12} />}
+          <span>{showBuiltin ? 'Sembunyikan Default' : `Tampilkan Default (${builtinServers.length})`}</span>
+        </button>
       </div>
 
       {/* ================= MINIMAL TOOLBAR ================= */}
@@ -455,7 +474,7 @@ export default function McpView({ onClose, showToast }) {
               className={`minimal-tab-btn ${statusFilter === 'all' ? 'active' : ''}`}
               onClick={() => setStatusFilter('all')}
             >
-              Semua ({servers.length})
+              Semua ({filteredServers.length})
             </button>
             <button
               type="button"
@@ -499,11 +518,35 @@ export default function McpView({ onClose, showToast }) {
         <div className="minimal-card" style={{ textAlign: 'center', padding: '2.5rem 1rem' }}>
           <Server size={28} style={{ color: 'var(--text-muted)', margin: '0 auto 0.5rem' }} />
           <h3 style={{ margin: '0 0 0.25rem', color: 'var(--text-primary)', fontSize: '0.92rem' }}>
-            Tidak ada server MCP yang cocok
+            {!showBuiltin
+              ? 'Server MCP Default Bawaan Sedang Disembunyikan'
+              : 'Tidak ada server MCP yang cocok'}
           </h3>
-          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-            Sesuaikan filter atau kata kunci pencarian.
+          <p style={{ margin: '0 0 1rem', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+            {!showBuiltin
+              ? 'Server default bawaan disembunyikan. Anda dapat menambahkan server pihak ketiga baru atau menampilkan server bawaan kapan saja.'
+              : 'Sesuaikan kata kunci pencarian atau reset filter kategori/status.'}
           </p>
+          {!showBuiltin && (
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
+              <button
+                type="button"
+                className="minimal-btn-primary"
+                onClick={() => setShowAddModal(true)}
+              >
+                <Plus size={12} />
+                <span>Tambah Server Pihak Ketiga</span>
+              </button>
+              <button
+                type="button"
+                className="minimal-btn-ghost"
+                onClick={() => setShowBuiltin(true)}
+              >
+                <Eye size={12} />
+                <span>Tampilkan Server Default ({builtinServers.length})</span>
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="minimal-grid-cards">
