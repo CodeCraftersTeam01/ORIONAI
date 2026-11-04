@@ -18,6 +18,7 @@ import {
   Server,
   Workflow,
   Clock,
+  Radio,
 } from 'lucide-react';
 import OrionLogo from './OrionLogo';
 
@@ -141,6 +142,18 @@ export default function Sidebar({
               >
                 <Server size={14} className="nav-item-icon" />
                 <span className="nav-item-label">MCP Server</span>
+              </button>
+
+              <button
+                type="button"
+                className={`sidebar-nav-item ${currentView === 'channels' ? 'active' : ''}`}
+                onClick={() => {
+                  onNavigate?.('channels');
+                  if (window.innerWidth < 768) onCloseMobile();
+                }}
+              >
+                <Radio size={14} className="nav-item-icon" />
+                <span className="nav-item-label">Channels</span>
               </button>
 
               <button

@@ -15,6 +15,7 @@ import {
   Workflow,
   Boxes,
   Clock,
+  Radio,
 } from 'lucide-react';
 
 export default function CommandPaletteModal({
@@ -116,6 +117,18 @@ export default function CommandPaletteModal({
       icon: <Server size={14} />,
       action: () => {
         onNavigate('mcp');
+        onClose();
+      },
+    });
+
+    list.push({
+      id: 'action-manage-channels',
+      category: 'Navigasi',
+      title: 'Channels & Messaging Gateway',
+      subtitle: 'Integrasi Telegram, WhatsApp, Discord, Slack, Mattermost, Matrix',
+      icon: <Radio size={14} />,
+      action: () => {
+        onNavigate('channels');
         onClose();
       },
     });

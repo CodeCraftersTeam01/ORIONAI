@@ -76,6 +76,7 @@ const LogsView = lazy(() => import('./components/LogsView'));
 const ModelsView = lazy(() => import('./components/ModelsView'));
 const SkillsView = lazy(() => import('./components/SkillsView'));
 const McpView = lazy(() => import('./components/McpView'));
+const ChannelsView = lazy(() => import('./components/ChannelsView'));
 const JobsView = lazy(() => import('./components/JobsView'));
 const CronJobsView = lazy(() => import('./components/CronJobsView'));
 const UpdateCheckView = lazy(() => import('./components/UpdateCheckView'));
@@ -3240,6 +3241,8 @@ PANDUAN KOMUNIKASI LISAN (VOICE CALL):
           <SkillsView onClose={() => setCurrentView('dashboard')} showToast={showToast} />
         ) : currentView === 'mcp' ? (
           <McpView onClose={() => setCurrentView('dashboard')} showToast={showToast} />
+        ) : currentView === 'channels' ? (
+          <ChannelsView onClose={() => setCurrentView('dashboard')} showToast={showToast} />
         ) : currentView === 'jobs' ? (
           <JobsView onClose={() => setCurrentView('dashboard')} showToast={showToast} />
         ) : currentView === 'cron' ? (

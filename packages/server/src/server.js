@@ -17,6 +17,7 @@ import systemRoutes from './routes/systemRoutes.js';
 import mcpRoutes from './routes/mcpRoutes.js';
 import jobRoutes from './routes/jobRoutes.js';
 import cronRoutes from './routes/cronRoutes.js';
+import channelRoutes from './routes/channelRoutes.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 import { logger } from './services/loggerService.js';
 
@@ -125,6 +126,7 @@ app.use('/api/mcp', mcpRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/tasks', jobRoutes);
 app.use('/api/cron', cronRoutes);
+app.use('/api/channels', channelRoutes);
 
 // SPA routing: any non-API GET request serves web index.html if dist exists
 if (hasDist) {
