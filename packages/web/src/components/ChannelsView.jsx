@@ -180,6 +180,9 @@ export default function ChannelsView({ onClose, showToast }) {
   const [whatsappPairing, setWhatsappPairing] = useState(null);
   const [whatsappQrUrl, setWhatsappQrUrl] = useState('');
   const [whatsappLoading, setWhatsappLoading] = useState(false);
+  const [whatsappConnected, setWhatsappConnected] = useState(false);
+  const [whatsappPhone, setWhatsappPhone] = useState('');
+  const [whatsappDisconnecting, setWhatsappDisconnecting] = useState(false);
 
   // Load Channels from API
   const loadChannels = useCallback(async () => {
@@ -446,6 +449,7 @@ export default function ChannelsView({ onClose, showToast }) {
   const handleStartWhatsappQr = async () => {
     setWhatsappLoading(true);
     setShowWhatsappModal(true);
+    setWhatsappQrUrl('');
     try {
       const res = await fetch('/api/channels/whatsapp/onboarding/start', {
         method: 'POST',
@@ -453,8 +457,13 @@ export default function ChannelsView({ onClose, showToast }) {
         body: JSON.stringify({ mode: 'bot' }),
       });
       const data = await res.json();
-      if (data.qr_string) {
-        setWhatsappPairing(data);
+      setWhatsappPairing(data);
+      if (data.connected || data.status === 'connected') {
+        setWhatsappConnected(true);
+        setWhatsappPhone(data.phone || '');
+        await loadChannels();
+      } else if (data.qr_string) {
+        setWhatsappConnected(false);
         const qr = await QRCode.toDataURL(data.qr_string, {
           width: 220,
           margin: 1,
@@ -468,6 +477,77 @@ export default function ChannelsView({ onClose, showToast }) {
       setWhatsappLoading(false);
     }
   };
+
+  // WhatsApp Disconnect
+  const handleDisconnectWhatsapp = async () => {
+    setWhatsappDisconnecting(true);
+    try {
+      const res = await fetch('/api/channels/whatsapp/disconnect', { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        showToast?.('WhatsApp berhasil diputuskan.');
+        setWhatsappConnected(false);
+        setWhatsappPhone('');
+        setWhatsappQrUrl('');
+        setShowWhatsappModal(false);
+        await loadChannels();
+      } else {
+        showToast?.('Gagal memutuskan WhatsApp: ' + (data.detail || data.error));
+      }
+    } catch (err) {
+      showToast?.('Error: ' + err.message);
+    } finally {
+      setWhatsappDisconnecting(false);
+    }
+  };
+
+  // Live polling for WhatsApp pairing scan
+  useEffect(() => {
+    let timer = null;
+    let isCancelled = false;
+
+    if (showWhatsappModal && !whatsappConnected) {
+      const checkStatus = async () => {
+        try {
+          const pairingId = whatsappPairing?.pairing_id || 'latest';
+          const res = await fetch(`/api/channels/whatsapp/onboarding/${pairingId}`);
+          if (!res.ok) return;
+          const data = await res.json();
+          if (isCancelled) return;
+
+          if (data.connected || data.status === 'connected') {
+            setWhatsappConnected(true);
+            setWhatsappPhone(data.phone || '');
+            setWhatsappQrUrl('');
+            showToast?.(`WhatsApp terhubung (+${data.phone || 'Connected'})!`);
+            loadChannels();
+            return;
+          }
+
+          if (data.qr_string && data.qr_string !== whatsappPairing?.qr_string) {
+            setWhatsappPairing((prev) => ({ ...(prev || {}), ...data }));
+            const qr = await QRCode.toDataURL(data.qr_string, {
+              width: 220,
+              margin: 1,
+              color: { dark: '#000000', light: '#ffffff' },
+            });
+            if (!isCancelled) {
+              setWhatsappQrUrl(qr);
+            }
+          }
+        } catch (e) {
+          // ignore transient poll errors
+        }
+      };
+
+      timer = setInterval(checkStatus, 2000);
+    }
+
+    return () => {
+      isCancelled = true;
+      if (timer) clearInterval(timer);
+    };
+  }, [showWhatsappModal, whatsappConnected, whatsappPairing?.pairing_id, whatsappPairing?.qr_string, loadChannels, showToast]);
 
   // Filtered Channels
   const filteredChannels = useMemo(() => {
@@ -875,9 +955,9 @@ export default function ChannelsView({ onClose, showToast }) {
                       type="button"
                       onClick={handleStartWhatsappQr}
                       className="channel-btn-qr"
-                      title="Pairing WhatsApp via QR Code"
+                      title={platform.state === 'connected' ? 'Lihat status koneksi WhatsApp' : 'Pairing WhatsApp via QR Code'}
                     >
-                      <QrCode size={12} /> QR PAIRING
+                      <QrCode size={12} /> {platform.state === 'connected' ? 'QR STATUS' : 'QR PAIRING'}
                     </button>
                   )}
 
@@ -1395,61 +1475,157 @@ export default function ChannelsView({ onClose, showToast }) {
                 </button>
               </div>
 
-              <div style={{ padding: '1.4rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-                {whatsappQrUrl ? (
+              {whatsappConnected ? (
+                /* Connected State */
+                <div style={{ padding: '2rem 1.4rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '1rem' }}>
                   <div
                     style={{
-                      padding: '0.75rem',
-                      background: '#ffffff',
-                      borderRadius: '8px',
+                      width: '64px',
+                      height: '64px',
+                      borderRadius: '50%',
+                      background: 'rgba(34, 197, 94, 0.12)',
+                      border: '1px solid rgba(34, 197, 94, 0.35)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}
                   >
-                    <img src={whatsappQrUrl} alt="WhatsApp QR" style={{ width: '160px', height: '160px' }} />
+                    <CheckCircle2 size={36} style={{ color: '#4ade80' }} />
                   </div>
-                ) : (
-                  <div
-                    style={{
-                      width: '160px',
-                      height: '160px',
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      borderRadius: '8px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <RotateCw size={24} className="spin-slow" style={{ color: 'rgba(255, 255, 255, 0.4)' }} />
+                  <div>
+                    <h4 style={{ fontSize: '1.05rem', fontWeight: 600, color: '#ffffff', margin: '0 0 0.35rem' }}>
+                      WhatsApp Berhasil Terhubung!
+                    </h4>
+                    {whatsappPhone ? (
+                      <p style={{ fontSize: '0.85rem', color: '#4ade80', fontFamily: 'monospace', margin: '0 0 0.5rem' }}>
+                        +{whatsappPhone}
+                      </p>
+                    ) : (
+                      <p style={{ fontSize: '0.78rem', color: '#4ade80', margin: '0 0 0.5rem' }}>
+                        Gateway Baileys aktif &amp; tersambung
+                      </p>
+                    )}
+                    <p style={{ fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.6)', margin: 0, lineHeight: 1.45 }}>
+                      Gateway Baileys aktif di Orion AI. Pesan yang masuk akan diproses dan dijawab secara otomatis menggunakan model Orion AI.
+                    </p>
                   </div>
-                )}
-
-                <div style={{ textAlign: 'center' }}>
-                  <p style={{ fontSize: '0.8rem', color: '#ffffff', fontWeight: 600, margin: '0 0 0.35rem' }}>
-                    Scan QR Code dari WhatsApp di Smartphone Anda
-                  </p>
-                  <p style={{ fontSize: '0.74rem', color: 'rgba(255, 255, 255, 0.55)', margin: 0, lineHeight: 1.4 }}>
-                    Buka WhatsApp &gt; Perangkat Tertaut &gt; Tautkan Perangkat. Arahkan kamera ke kode QR di atas.
-                  </p>
                 </div>
-              </div>
+              ) : (
+                /* QR Scan State */
+                <div style={{ padding: '1.4rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                  {whatsappQrUrl ? (
+                    <div
+                      style={{
+                        padding: '0.75rem',
+                        background: '#ffffff',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <img src={whatsappQrUrl} alt="WhatsApp QR" style={{ width: '180px', height: '180px' }} />
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        width: '180px',
+                        height: '180px',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.6rem',
+                      }}
+                    >
+                      <RotateCw size={26} className="spin-slow" style={{ color: 'rgba(255, 255, 255, 0.4)' }} />
+                      <span style={{ fontSize: '0.72rem', color: 'rgba(255, 255, 255, 0.5)' }}>Menyiapkan QR Baileys...</span>
+                    </div>
+                  )}
+
+                  <div style={{ textAlign: 'center' }}>
+                    <p style={{ fontSize: '0.82rem', color: '#ffffff', fontWeight: 600, margin: '0 0 0.35rem' }}>
+                      Scan QR Code dari WhatsApp di Smartphone Anda
+                    </p>
+                    <p style={{ fontSize: '0.74rem', color: 'rgba(255, 255, 255, 0.55)', margin: 0, lineHeight: 1.45 }}>
+                      Buka <b>WhatsApp</b> &gt; <b>Perangkat Tertaut</b> &gt; <b>Tautkan Perangkat</b>.<br />
+                      Arahkan kamera ke kode QR di atas untuk menghubungkan Orion AI ke WhatsApp.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div
                 style={{
                   padding: '1rem 1.4rem',
                   borderTop: '1px solid rgba(255, 255, 255, 0.08)',
                   display: 'flex',
-                  justifyContent: 'flex-end',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: '0.65rem',
                 }}
               >
-                <button
-                  type="button"
-                  onClick={() => setShowWhatsappModal(false)}
-                  className="channel-btn-configure"
-                >
-                  SELESAI
-                </button>
+                {whatsappConnected ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleDisconnectWhatsapp}
+                      disabled={whatsappDisconnecting}
+                      style={{
+                        padding: '0.45rem 0.95rem',
+                        fontSize: '0.74rem',
+                        fontWeight: 600,
+                        borderRadius: '4px',
+                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                        background: 'rgba(239, 68, 68, 0.1)',
+                        color: '#f87171',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {whatsappDisconnecting ? 'MEMUTUSKAN...' : 'PUTUSKAN KONEKSI'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowWhatsappModal(false)}
+                      className="channel-btn-configure"
+                    >
+                      SELESAI
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleStartWhatsappQr}
+                      disabled={whatsappLoading}
+                      style={{
+                        padding: '0.45rem 0.95rem',
+                        fontSize: '0.74rem',
+                        fontWeight: 600,
+                        borderRadius: '4px',
+                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                        background: 'transparent',
+                        color: 'rgba(255, 255, 255, 0.75)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                      }}
+                    >
+                      <RotateCw size={12} className={whatsappLoading ? 'spin-slow' : ''} />
+                      REFRESH QR
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowWhatsappModal(false)}
+                      className="channel-btn-configure"
+                    >
+                      BATAL
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>

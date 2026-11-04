@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
+import { whatsappGatewayService } from './whatsappGatewayService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -55,9 +56,9 @@ const CHANNEL_CATALOG = [
         key: 'WHATSAPP_PHONE_NUMBER',
         label: 'Nomor WhatsApp',
         prompt: 'Nomor WhatsApp Terdaftar',
-        required: true,
+        required: false,
         is_password: false,
-        help: 'Nomor telepon format internasional tanpa simbol + (contoh: 6281234567890)',
+        help: 'Nomor WhatsApp terhubung (otomatis terisi saat memindai kode QR Baileys)',
       },
       {
         key: 'WHATSAPP_ALLOWED_USERS',
@@ -489,6 +490,13 @@ class ChannelService {
         };
         this.saveConfig();
       }
+
+      // Auto-connect WhatsApp Baileys if session exists
+      if (this.channelsConfig.whatsapp?.enabled || whatsappGatewayService.hasExistingSession()) {
+        whatsappGatewayService.initSocket(false).catch((err) => {
+          console.warn('[ChannelService] Could not auto-connect WhatsApp Baileys on startup:', err.message);
+        });
+      }
     } catch (err) {
       console.error('[ChannelService] Error initializing channels:', err);
     }
@@ -624,7 +632,23 @@ class ChannelService {
 
       // Calculate state: "connected" | "disabled" | "not_configured" | "pending_restart"
       let state = 'not_configured';
-      if (!configured) {
+      if (cat.id === 'whatsapp') {
+        if (whatsappGatewayService.status === 'connected') {
+          state = 'connected';
+          configured = true;
+        } else if (whatsappGatewayService.hasExistingSession()) {
+          state = enabled ? 'connected' : 'disabled';
+          configured = true;
+        } else if (whatsappGatewayService.status === 'waiting_scan') {
+          state = 'pending_restart';
+        } else if (!configured) {
+          state = 'not_configured';
+        } else if (!enabled) {
+          state = 'disabled';
+        } else {
+          state = 'connected';
+        }
+      } else if (!configured) {
         state = 'not_configured';
       } else if (!enabled) {
         state = 'disabled';
@@ -809,11 +833,27 @@ class ChannelService {
       }
 
       if (channelId === 'whatsapp') {
-        const phone = stored.values.WHATSAPP_PHONE_NUMBER || envMap.WHATSAPP_PHONE_NUMBER;
+        if (whatsappGatewayService.status === 'connected') {
+          const phone = whatsappGatewayService.getPhoneNumber() || stored.values.WHATSAPP_PHONE_NUMBER;
+          return {
+            ok: true,
+            state: 'connected',
+            message: `Gateway Baileys aktif & tersambung ke WhatsApp (+${phone || 'pengguna'}).`,
+          };
+        }
+
+        if (whatsappGatewayService.hasExistingSession()) {
+          return {
+            ok: true,
+            state: 'connected',
+            message: 'Sesi WhatsApp Baileys tersimpan pada Orion Core. Gateway siap menerima pesan.',
+          };
+        }
+
         return {
-          ok: true,
-          state: 'connected',
-          message: `Gateway WhatsApp siap untuk nomor pengirim +${phone.replace(/\D/g, '')}.`,
+          ok: false,
+          state: 'not_configured',
+          message: 'WhatsApp belum dipasangkan. Buka "QR PAIRING" untuk memindai kode QR WhatsApp.',
         };
       }
 
@@ -933,42 +973,13 @@ class ChannelService {
     };
   }
 
-  // WhatsApp QR Onboarding
-  startWhatsAppOnboarding({ mode = 'bot', allowed_users = '' } = {}) {
-    const pairingId = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString(); // 5 minutes
-    // Simulated Baileys pairing string for QR display
-    const qrString = `2@${crypto.randomBytes(16).toString('base64')},${crypto.randomBytes(32).toString('base64')},${crypto.randomBytes(32).toString('base64')}`;
-
-    const session = {
-      pairing_id: pairingId,
-      mode,
-      allowed_users,
-      status: 'waiting',
-      qr_string: qrString,
-      expires_at: expiresAt,
-    };
-
-    this.whatsappPairings.set(pairingId, session);
-
-    return {
-      pairing_id: pairingId,
-      qr_string: qrString,
-      expires_at: expiresAt,
-      mode,
-    };
+  // WhatsApp Baileys QR Onboarding
+  async startWhatsAppOnboarding({ mode = 'bot', allowed_users = '' } = {}) {
+    return await whatsappGatewayService.startPairing();
   }
 
   getWhatsAppOnboardingStatus(pairingId) {
-    const session = this.whatsappPairings.get(pairingId);
-    if (!session) {
-      throw new Error('Sesi pairing WhatsApp tidak ditemukan.');
-    }
-    return {
-      pairing_id: session.pairing_id,
-      status: session.status,
-      expires_at: session.expires_at,
-    };
+    return whatsappGatewayService.getStatus(pairingId);
   }
 }
 
