@@ -68,6 +68,7 @@ import ChatInput from './components/ChatInput';
 import FormattedMessage from './components/FormattedMessage';
 
 // Dynamic code-splitting: Lazy-load heavy views and modals for peak frontend performance & instant initial render
+const DashboardView = lazy(() => import('./components/DashboardView'));
 const SettingsModal = lazy(() => import('./components/SettingsModal'));
 const ManageProvidersModal = lazy(() => import('./components/ManageProvidersModal'));
 const ProjectDirectoryModal = lazy(() => import('./components/ProjectDirectoryModal'));
@@ -3030,8 +3031,8 @@ PANDUAN KOMUNIKASI LISAN (VOICE CALL):
 
       {/* Main Area */}
       <main className={`chat-main ${isVoiceCalling ? 'is-voice-calling-active' : ''}`}>
-        {/* Top Header: OpenCode Console header for non-chat views, simple header for chat/dashboard */}
-        {['models', 'providers', 'skills', 'logs', 'updates', 'settings', 'jobs', 'mcp', 'cron'].includes(currentView) ? (
+        {/* Top Header: OpenCode Console header for non-chat views, simple header for chat */}
+        {['models', 'providers', 'skills', 'logs', 'updates', 'settings', 'jobs', 'mcp', 'cron', 'dashboard'].includes(currentView) ? (
           <header className="opencode-console-header">
             <div className="opencode-header-left">
               <button
@@ -3256,75 +3257,57 @@ PANDUAN KOMUNIKASI LISAN (VOICE CALL):
               onPerformUpdate={handlePerformUpdate}
             />
           </div>
+        ) : currentView === 'dashboard' ? (
+          <DashboardView
+            onNavigate={handleNavigateView}
+            onNewSession={handleNewSession}
+            onSelectSession={handleSelectSession}
+            onSendMessage={handleSendMessage}
+            sessions={sessions}
+            activeSessionId={activeSessionId}
+            selectedModel={selectedModel}
+            customProviders={customProviders}
+            authUser={authStatus.user?.split('@')[0] || 'Arjuna'}
+            showToast={showToast}
+          />
         ) : (
           <>
-            {/* Message Stream or Unified Spatial Hero (Seamless shared elements) */}
-            <div className={`messages-container ${(messages.length === 0 || currentView === 'dashboard') ? 'is-empty' : ''}`}>
-              {(messages.length === 0 || currentView === 'dashboard') ? (
-                /* Unified Hero Container (Persists seamlessly across Dashboard & Chat) */
-                <div className={`welcome-hero-container ${currentView === 'dashboard' ? 'is-dashboard-mode' : 'is-chat-mode'}`}>
+            {/* Message Stream or Unified Spatial Hero for Chat */}
+            <div className={`messages-container ${messages.length === 0 ? 'is-empty' : ''}`}>
+              {messages.length === 0 ? (
+                /* Unified Hero Container for Empty Chat */
+                <div className="welcome-hero-container is-chat-mode">
                   <div className="welcome-logo-badge">
                     <OrionLogo size="lg" isGenerating={isGenerating} />
                   </div>
 
-              {/* Seamless Text Morph */}
-              <div className="welcome-titles-wrapper">
-                {currentView === 'dashboard' ? (
-                  <div key="dashboard-titles" className="welcome-text-fader animate-title-fade">
-                    <h1 className="welcome-headline compact-gap">
-                      {`Hi Arjuna, ${getTimeGreeting()}`.split('').map((char, index) => (
-                        <span
-                          key={`greet-${char}-${index}`}
-                          className="blur-char"
-                          style={{ animationDelay: `${0.06 + index * 0.024}s` }}
-                        >
-                          {char === ' ' ? '\u00A0' : char}
-                        </span>
-                      ))}
-                    </h1>
-
-                    <div className="dashboard-rotating-subtitle" key={subtitleIndex}>
-                      {rotatingSubtitles[subtitleIndex].split('').map((char, index) => (
-                        <span
-                          key={`sub-${subtitleIndex}-${char}-${index}`}
-                          className="blur-subtitle-char"
-                          style={{ animationDelay: `${0.04 + index * 0.02}s` }}
-                        >
-                          {char === ' ' ? '\u00A0' : char}
-                        </span>
-                      ))}
+                  {/* Seamless Text Morph */}
+                  <div className="welcome-titles-wrapper">
+                    <div key="chat-titles" className="welcome-text-fader animate-title-fade">
+                      <h1 className="welcome-headline compact-gap">
+                        {'Hi Arjuna, what’s on your mind?'.split('').map((char, index) => (
+                          <span
+                            key={`chat-${char}-${index}`}
+                            className="blur-char"
+                            style={{ animationDelay: `${0.05 + index * 0.022}s` }}
+                          >
+                            {char === ' ' ? '\u00A0' : char}
+                          </span>
+                        ))}
+                      </h1>
                     </div>
                   </div>
-                ) : (
-                  <div key="chat-titles" className="welcome-text-fader animate-title-fade">
-                    <h1 className="welcome-headline compact-gap">
-                      {'Hi Arjuna, what’s on your mind?'.split('').map((char, index) => (
-                        <span
-                          key={`chat-${char}-${index}`}
-                          className="blur-char"
-                          style={{ animationDelay: `${0.05 + index * 0.022}s` }}
-                        >
-                          {char === ' ' ? '\u00A0' : char}
-                        </span>
-                      ))}
-                    </h1>
-                  </div>
-                )}
-              </div>
 
-              {/* Reserved spatial slot for floating centered input (Smooth collapse/expand) */}
-              <div
-                className={`welcome-input-slot ${currentView === 'dashboard' ? 'is-collapsed' : 'is-expanded'}`}
-                aria-hidden="true"
-              />
+                  {/* Reserved spatial slot for floating centered input */}
+                  <div className="welcome-input-slot is-expanded" aria-hidden="true" />
 
-              {/* Minimalist Dynamic Recommendations (Smooth slide-up entrance) */}
-              <div className={`dynamic-recs-wrapper ${currentView === 'dashboard' ? 'is-hidden-recs' : 'is-visible-recs'}`}>
-                <div className="dynamic-recs-header">
-                  <span className="dynamic-recs-caption">Rekomendasi</span>
-                </div>
+                  {/* Minimalist Dynamic Recommendations */}
+                  <div className="dynamic-recs-wrapper is-visible-recs">
+                    <div className="dynamic-recs-header">
+                      <span className="dynamic-recs-caption">Rekomendasi</span>
+                    </div>
 
-                <div className="dynamic-recs-list">
+                    <div className="dynamic-recs-list">
                   {recommendations.map((item) => (
                     <button
                       key={item.id}
@@ -3594,8 +3577,8 @@ PANDUAN KOMUNIKASI LISAN (VOICE CALL):
           onStop={handleStopGeneration}
           onStartVoiceCall={handleStartVoiceCalling}
           isGenerating={isGenerating}
-          isCentered={messages.length === 0 || currentView === 'dashboard'}
-          isHiddenDashboard={currentView === 'dashboard'}
+          isCentered={messages.length === 0}
+          isHiddenDashboard={currentView !== 'chat'}
           selectedModel={selectedModel}
           setSelectedModel={handleModelChange}
           reasoningTier={reasoningTier}

@@ -85,6 +85,18 @@ export default function Sidebar({
             <nav className="sidebar-nav-menu">
               <button
                 type="button"
+                className={`sidebar-nav-item ${currentView === 'dashboard' ? 'active' : ''}`}
+                onClick={() => {
+                  onNavigate?.('dashboard');
+                  if (window.innerWidth < 768) onCloseMobile();
+                }}
+              >
+                <LayoutDashboard size={14} className="nav-item-icon" />
+                <span className="nav-item-label">Dashboard</span>
+              </button>
+
+              <button
+                type="button"
                 className={`sidebar-nav-item ${currentView === 'chat' ? 'active' : ''}`}
                 onClick={() => {
                   onNavigate?.('chat');
