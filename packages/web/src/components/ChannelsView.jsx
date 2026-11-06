@@ -24,12 +24,12 @@ import {
   Eye,
   EyeOff,
   Search,
-  Copy,
-  Info,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import QRCode from 'qrcode';
 
-// State to badge styling mapping in Orion design
+// Status badge mapping for Orion design system
 const STATE_BADGES = {
   connected: {
     label: 'Connected',
@@ -70,30 +70,30 @@ const STATE_BADGES = {
 };
 
 // Platform Icon mapping
-function getPlatformIcon(id, size = 18) {
+function getPlatformIcon(id, size = 16) {
   switch (id) {
     case 'telegram':
-      return <Send size={size} className="channel-icon-telegram" />;
+      return <Send size={size} style={{ color: '#38bdf8' }} />;
     case 'whatsapp':
-      return <MessageCircle size={size} className="channel-icon-whatsapp" />;
+      return <MessageCircle size={size} style={{ color: '#22c55e' }} />;
     case 'discord':
-      return <Hash size={size} className="channel-icon-discord" />;
+      return <Hash size={size} style={{ color: '#818cf8' }} />;
     case 'slack':
-      return <MessageSquare size={size} className="channel-icon-slack" />;
+      return <MessageSquare size={size} style={{ color: '#e879f9' }} />;
     case 'mattermost':
-      return <Shield size={size} className="channel-icon-mattermost" />;
+      return <Shield size={size} style={{ color: '#38bdf8' }} />;
     case 'matrix':
-      return <Globe size={size} className="channel-icon-matrix" />;
+      return <Globe size={size} style={{ color: '#2dd4bf' }} />;
     case 'signal':
-      return <Radio size={size} className="channel-icon-signal" />;
+      return <Radio size={size} style={{ color: '#60a5fa' }} />;
     case 'email':
-      return <Mail size={size} className="channel-icon-email" />;
+      return <Mail size={size} style={{ color: '#fb923c' }} />;
     case 'api_server':
-      return <Terminal size={size} className="channel-icon-api" />;
+      return <Terminal size={size} style={{ color: '#a78bfa' }} />;
     case 'webhook':
-      return <Webhook size={size} className="channel-icon-webhook" />;
+      return <Webhook size={size} style={{ color: '#f43f5e' }} />;
     default:
-      return <Radio size={size} className="channel-icon-default" />;
+      return <Radio size={size} style={{ color: '#94a3b8' }} />;
   }
 }
 
@@ -144,7 +144,6 @@ export default function ChannelsView({ onClose, showToast }) {
   const [channels, setChannels] = useState([]);
   const [summary, setSummary] = useState({ total: 0, configured: 0, enabled: 0 });
   const [envPath, setEnvPath] = useState('~/.env');
-  const [gatewayCommand, setGatewayCommand] = useState('npm run start');
   const [gatewayRunning, setGatewayRunning] = useState(true);
   const [restartNeeded, setRestartNeeded] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -152,6 +151,9 @@ export default function ChannelsView({ onClose, showToast }) {
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'connected' | 'configured' | 'disabled'
+
+  // Telegram card expand/collapse options
+  const [telegramExpanded, setTelegramExpanded] = useState(true);
 
   // Per-action busy states
   const [togglingId, setTogglingId] = useState(null);
@@ -177,9 +179,10 @@ export default function ChannelsView({ onClose, showToast }) {
   const [showWhatsappModal, setShowWhatsappModal] = useState(false);
   const [whatsappPairing, setWhatsappPairing] = useState(null);
   const [whatsappQrUrl, setWhatsappQrUrl] = useState('');
-  const [whatsappPhone, setWhatsappPhone] = useState('');
-  const [whatsappAllowed, setWhatsappAllowed] = useState('');
   const [whatsappLoading, setWhatsappLoading] = useState(false);
+  const [whatsappConnected, setWhatsappConnected] = useState(false);
+  const [whatsappPhone, setWhatsappPhone] = useState('');
+  const [whatsappDisconnecting, setWhatsappDisconnecting] = useState(false);
 
   // Load Channels from API
   const loadChannels = useCallback(async () => {
@@ -194,7 +197,6 @@ export default function ChannelsView({ onClose, showToast }) {
           enabled: data.enabled || 0,
         });
         if (data.env_path) setEnvPath(data.env_path);
-        if (data.gateway_start_command) setGatewayCommand(data.gateway_start_command);
         setGatewayRunning(data.gateway_running !== false);
         if (typeof data.restart_needed === 'boolean') {
           setRestartNeeded(data.restart_needed);
@@ -314,7 +316,6 @@ export default function ChannelsView({ onClose, showToast }) {
   const handleSaveConfig = async () => {
     if (!editingPlatform) return;
 
-    // Validate fields
     const nextErrors = {};
     const envToSend = {};
     const clearEnv = [];
@@ -329,7 +330,6 @@ export default function ChannelsView({ onClose, showToast }) {
       if (val) {
         envToSend[field.key] = val;
       } else if (field.is_set && val === '') {
-        // If field was previously set and now explicitly empty, clear it
         clearEnv.push(field.key);
       }
     });
@@ -340,7 +340,6 @@ export default function ChannelsView({ onClose, showToast }) {
       return;
     }
 
-    // Check required fields if configuring for the first time
     const missing = editingPlatform.env_vars.filter(
       (v) => v.required && !v.is_set && !envToSend[v.key]
     );
@@ -390,7 +389,7 @@ export default function ChannelsView({ onClose, showToast }) {
       if (data.pairing_url) {
         setTelegramPairing(data);
         const qr = await QRCode.toDataURL(data.pairing_url, {
-          width: 240,
+          width: 220,
           margin: 1,
           color: { dark: '#000000', light: '#ffffff' },
         });
@@ -450,6 +449,7 @@ export default function ChannelsView({ onClose, showToast }) {
   const handleStartWhatsappQr = async () => {
     setWhatsappLoading(true);
     setShowWhatsappModal(true);
+    setWhatsappQrUrl('');
     try {
       const res = await fetch('/api/channels/whatsapp/onboarding/start', {
         method: 'POST',
@@ -457,10 +457,15 @@ export default function ChannelsView({ onClose, showToast }) {
         body: JSON.stringify({ mode: 'bot' }),
       });
       const data = await res.json();
-      if (data.qr_string) {
-        setWhatsappPairing(data);
+      setWhatsappPairing(data);
+      if (data.connected || data.status === 'connected') {
+        setWhatsappConnected(true);
+        setWhatsappPhone(data.phone || '');
+        await loadChannels();
+      } else if (data.qr_string) {
+        setWhatsappConnected(false);
         const qr = await QRCode.toDataURL(data.qr_string, {
-          width: 240,
+          width: 220,
           margin: 1,
           color: { dark: '#000000', light: '#ffffff' },
         });
@@ -473,10 +478,80 @@ export default function ChannelsView({ onClose, showToast }) {
     }
   };
 
+  // WhatsApp Disconnect
+  const handleDisconnectWhatsapp = async () => {
+    setWhatsappDisconnecting(true);
+    try {
+      const res = await fetch('/api/channels/whatsapp/disconnect', { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        showToast?.('WhatsApp berhasil diputuskan.');
+        setWhatsappConnected(false);
+        setWhatsappPhone('');
+        setWhatsappQrUrl('');
+        setShowWhatsappModal(false);
+        await loadChannels();
+      } else {
+        showToast?.('Gagal memutuskan WhatsApp: ' + (data.detail || data.error));
+      }
+    } catch (err) {
+      showToast?.('Error: ' + err.message);
+    } finally {
+      setWhatsappDisconnecting(false);
+    }
+  };
+
+  // Live polling for WhatsApp pairing scan
+  useEffect(() => {
+    let timer = null;
+    let isCancelled = false;
+
+    if (showWhatsappModal && !whatsappConnected) {
+      const checkStatus = async () => {
+        try {
+          const pairingId = whatsappPairing?.pairing_id || 'latest';
+          const res = await fetch(`/api/channels/whatsapp/onboarding/${pairingId}`);
+          if (!res.ok) return;
+          const data = await res.json();
+          if (isCancelled) return;
+
+          if (data.connected || data.status === 'connected') {
+            setWhatsappConnected(true);
+            setWhatsappPhone(data.phone || '');
+            setWhatsappQrUrl('');
+            showToast?.(`WhatsApp terhubung (+${data.phone || 'Connected'})!`);
+            loadChannels();
+            return;
+          }
+
+          if (data.qr_string && data.qr_string !== whatsappPairing?.qr_string) {
+            setWhatsappPairing((prev) => ({ ...(prev || {}), ...data }));
+            const qr = await QRCode.toDataURL(data.qr_string, {
+              width: 220,
+              margin: 1,
+              color: { dark: '#000000', light: '#ffffff' },
+            });
+            if (!isCancelled) {
+              setWhatsappQrUrl(qr);
+            }
+          }
+        } catch (e) {
+          // ignore transient poll errors
+        }
+      };
+
+      timer = setInterval(checkStatus, 2000);
+    }
+
+    return () => {
+      isCancelled = true;
+      if (timer) clearInterval(timer);
+    };
+  }, [showWhatsappModal, whatsappConnected, whatsappPairing?.pairing_id, whatsappPairing?.qr_string, loadChannels, showToast]);
+
   // Filtered Channels
   const filteredChannels = useMemo(() => {
     return channels.filter((item) => {
-      // Search
       const matchesSearch =
         searchQuery === '' ||
         item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -485,7 +560,6 @@ export default function ChannelsView({ onClose, showToast }) {
 
       if (!matchesSearch) return false;
 
-      // Status Filter
       if (statusFilter === 'connected') return item.state === 'connected';
       if (statusFilter === 'configured') return item.configured;
       if (statusFilter === 'disabled') return !item.enabled;
@@ -493,39 +567,34 @@ export default function ChannelsView({ onClose, showToast }) {
     });
   }, [channels, searchQuery, statusFilter]);
 
-  // Separate telegram as featured if present
   const telegramPlatform = channels.find((p) => p.id === 'telegram');
   const otherChannels = filteredChannels.filter((p) => p.id !== 'telegram');
 
   return (
-    <div className="minimal-view-wrapper">
-      <div className="minimal-view-container" style={{ maxWidth: '1080px' }}>
+    <div className="channels-view-wrapper">
+      <div className="channels-container">
         {/* ================= TOP HEADER ================= */}
-        <div className="hermes-header-top">
-          <div>
-            <h1 className="hermes-title">Channels</h1>
-            <p
-              style={{
-                fontSize: '0.78rem',
-                color: 'var(--text-secondary, #94a3b8)',
-                margin: '0.35rem 0 0',
-                lineHeight: 1.45,
-              }}
-            >
+        <div className="channels-header">
+          <div className="channels-title-wrap">
+            <div className="channels-title-row">
+              <h1 className="channels-title">Channels</h1>
+            </div>
+            <p className="channels-subtitle">
               <span style={{ color: 'var(--text-primary, #ffffff)', fontWeight: 600 }}>
-                {summary.configured} dari {summary.total} channel terkonfigurasi.
+                {summary.configured} of {summary.total} channels configured.
               </span>{' '}
-              Kredensial disimpan aman pada <code className="font-courier" style={{ color: '#e2e8f0' }}>{envPath}</code>. Gateway Orion menyambungkan setiap channel aktif saat dimuat ulang.
+              Credentials are saved securely in <code className="font-courier">{envPath}</code>. The gateway connects each enabled channel on restart.
             </p>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
             <button
               type="button"
-              className="hermes-header-btn"
+              className="channel-btn-configure"
               onClick={handleRestartGateway}
               disabled={restarting}
-              title="Muat ulang gateway untuk menerapkan kredensial terbaru"
+              title="Restart gateway to apply pending credentials"
+              style={{ padding: '0.42rem 1.05rem' }}
             >
               {restarting ? (
                 <>
@@ -553,29 +622,17 @@ export default function ChannelsView({ onClose, showToast }) {
 
         {/* ================= RESTART NEEDED BANNER ================= */}
         {restartNeeded && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0.85rem 1.15rem',
-              marginBottom: '1.5rem',
-              borderRadius: '6px',
-              background: 'rgba(245, 158, 11, 0.08)',
-              border: '1px solid rgba(245, 158, 11, 0.28)',
-              gap: '1rem',
-            }}
-          >
+          <div className="channels-restart-banner">
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
               <AlertTriangle size={16} style={{ color: '#fbbf24', flexShrink: 0 }} />
-              <span style={{ fontSize: '0.82rem', color: '#fef3c7' }}>
-                Perubahan tersimpan. Muat ulang gateway agar channel terbaru mulai aktif tersambung.
+              <span style={{ fontSize: '0.8rem', color: '#fef3c7' }}>
+                Perubahan tersimpan. Muat ulang gateway agar konfigurasi channel terbaru segera aktif.
               </span>
             </div>
 
             <button
               type="button"
-              className="hermes-header-btn"
+              className="channel-btn-configure"
               style={{
                 fontSize: '0.7rem',
                 padding: '0.35rem 0.85rem',
@@ -590,27 +647,18 @@ export default function ChannelsView({ onClose, showToast }) {
           </div>
         )}
 
-        {/* ================= SEARCH & STATUS FILTER ================= */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '0.75rem',
-            marginBottom: '1.5rem',
-          }}
-        >
-          {/* Search Box */}
-          <div style={{ position: 'relative', minWidth: '260px', flex: '1 1 300px' }}>
+        {/* ================= FILTER & SEARCH BAR ================= */}
+        <div className="channels-filter-bar">
+          <div className="channels-search-box">
             <Search
-              size={14}
+              size={13}
               style={{
                 position: 'absolute',
-                left: '0.85rem',
+                left: '0.8rem',
                 top: '50%',
                 transform: 'translateY(-50%)',
                 color: 'rgba(255, 255, 255, 0.4)',
+                pointerEvents: 'none',
               }}
             />
             <input
@@ -618,22 +666,31 @@ export default function ChannelsView({ onClose, showToast }) {
               placeholder="Cari channel perpesanan..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="hermes-search-input"
-              style={{
-                width: '100%',
-                padding: '0.55rem 0.85rem 0.55rem 2.3rem',
-                borderRadius: '6px',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                background: 'rgba(255, 255, 255, 0.03)',
-                color: '#ffffff',
-                fontSize: '0.82rem',
-                outline: 'none',
-              }}
+              className="channels-search-input"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                style={{
+                  position: 'absolute',
+                  right: '0.65rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  color: 'rgba(255, 255, 255, 0.4)',
+                  cursor: 'pointer',
+                  padding: '0.2rem',
+                }}
+              >
+                <X size={12} />
+              </button>
+            )}
           </div>
 
           {/* Filter Pills */}
-          <div style={{ display: 'flex', gap: '0.35rem' }}>
+          <div className="channels-filter-pills">
             {[
               { id: 'all', label: `Semua (${summary.total})` },
               { id: 'connected', label: 'Connected' },
@@ -644,23 +701,7 @@ export default function ChannelsView({ onClose, showToast }) {
                 key={f.id}
                 type="button"
                 onClick={() => setStatusFilter(f.id)}
-                style={{
-                  fontSize: '0.74rem',
-                  padding: '0.35rem 0.75rem',
-                  borderRadius: '4px',
-                  border:
-                    statusFilter === f.id
-                      ? '1px solid rgba(255, 255, 255, 0.3)'
-                      : '1px solid rgba(255, 255, 255, 0.06)',
-                  background:
-                    statusFilter === f.id
-                      ? 'rgba(255, 255, 255, 0.1)'
-                      : 'rgba(255, 255, 255, 0.02)',
-                  color: statusFilter === f.id ? '#ffffff' : 'rgba(255, 255, 255, 0.6)',
-                  cursor: 'pointer',
-                  fontWeight: statusFilter === f.id ? 600 : 400,
-                  transition: 'all 0.15s ease',
-                }}
+                className={`channels-filter-pill ${statusFilter === f.id ? 'active' : ''}`}
               >
                 {f.label}
               </button>
@@ -668,341 +709,231 @@ export default function ChannelsView({ onClose, showToast }) {
           </div>
         </div>
 
-        {/* ================= TELEGRAM FEATURED CARD ================= */}
-        {telegramPlatform && (statusFilter === 'all' || (statusFilter === 'connected' && telegramPlatform.state === 'connected') || (statusFilter === 'configured' && telegramPlatform.configured) || (statusFilter === 'disabled' && !telegramPlatform.enabled)) && (
-          <div
-            className="hermes-card"
-            style={{
-              padding: '1.4rem 1.6rem',
-              marginBottom: '1.25rem',
-              background: 'rgba(255, 255, 255, 0.025)',
-              border: '1px solid rgba(255, 255, 255, 0.09)',
-              borderRadius: '6px',
-            }}
-          >
-            {/* Card Header */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: '0.75rem',
-                marginBottom: '1rem',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <div
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '6px',
-                    background: 'rgba(56, 189, 248, 0.12)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#38bdf8',
-                  }}
-                >
-                  <Send size={16} />
-                </div>
-
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                    <span style={{ fontSize: '1rem', fontWeight: 600, color: '#ffffff' }}>
-                      Telegram
-                    </span>
-                    {/* Badge */}
-                    <span
-                      style={{
-                        fontSize: '0.68rem',
-                        fontWeight: 600,
-                        padding: '0.2rem 0.55rem',
-                        borderRadius: '3px',
-                        background: STATE_BADGES[telegramPlatform.state]?.bg || 'rgba(255, 255, 255, 0.05)',
-                        color: STATE_BADGES[telegramPlatform.state]?.color || '#ffffff',
-                        border: `1px solid ${STATE_BADGES[telegramPlatform.state]?.border || 'transparent'}`,
-                      }}
-                    >
-                      {STATE_BADGES[telegramPlatform.state]?.label || telegramPlatform.state}
-                    </span>
-                  </div>
-                  <p style={{ fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.6)', margin: '0.2rem 0 0' }}>
-                    {telegramPlatform.description}
-                  </p>
-                </div>
-              </div>
-
-              {/* Header Right Actions */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                {/* Switch Toggle */}
-                <label
-                  style={{
-                    position: 'relative',
-                    display: 'inline-block',
-                    width: '36px',
-                    height: '20px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={telegramPlatform.enabled}
-                    onChange={() => handleToggle(telegramPlatform)}
-                    disabled={togglingId === 'telegram'}
-                    style={{ opacity: 0, width: 0, height: 0 }}
-                  />
-                  <span
-                    style={{
-                      position: 'absolute',
-                      cursor: 'pointer',
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      backgroundColor: telegramPlatform.enabled ? '#ffffff' : 'rgba(255, 255, 255, 0.15)',
-                      borderRadius: '20px',
-                      transition: '0.2s',
-                    }}
-                  >
-                    <span
-                      style={{
-                        position: 'absolute',
-                        content: "''",
-                        height: '14px',
-                        width: '14px',
-                        left: telegramPlatform.enabled ? '19px' : '3px',
-                        bottom: '3px',
-                        backgroundColor: telegramPlatform.enabled ? '#000000' : '#ffffff',
-                        borderRadius: '50%',
-                        transition: '0.2s',
-                      }}
-                    />
-                  </span>
-                </label>
-
-                {/* Test Button */}
-                <button
-                  type="button"
-                  onClick={() => handleTest(telegramPlatform)}
-                  disabled={testingId === 'telegram' || !telegramPlatform.configured}
-                  title="Uji koneksi bot Telegram"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
-                    fontSize: '0.72rem',
-                    fontWeight: 600,
-                    padding: '0.35rem 0.75rem',
-                    borderRadius: '4px',
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                    background: 'transparent',
-                    color: '#ffffff',
-                    cursor: telegramPlatform.configured ? 'pointer' : 'not-allowed',
-                    opacity: telegramPlatform.configured ? 1 : 0.45,
-                  }}
-                >
-                  {testingId === 'telegram' ? (
-                    <RotateCw size={12} className="spin-slow" />
-                  ) : (
-                    <Zap size={12} />
-                  )}
-                  TEST
-                </button>
-              </div>
-            </div>
-
-            {/* Telegram Options Container */}
-            <div
-              style={{
-                marginTop: '1.15rem',
-                paddingTop: '1.15rem',
-                borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-              }}
-            >
-              <div style={{ marginBottom: '0.85rem' }}>
-                <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#ffffff' }}>
-                  Choose how to connect your Telegram bot
-                </span>
-                <p style={{ fontSize: '0.74rem', color: 'rgba(255, 255, 255, 0.5)', margin: '0.15rem 0 0' }}>
-                  Both options connect a bot you control and save its credentials securely to this Orion AI installation.
-                </p>
-              </div>
-
-              {/* Side-by-side Option Cards */}
+        {/* ================= TELEGRAM SPECIAL CARD (HERMES PARITY) ================= */}
+        {telegramPlatform &&
+          (statusFilter === 'all' ||
+            (statusFilter === 'connected' && telegramPlatform.state === 'connected') ||
+            (statusFilter === 'configured' && telegramPlatform.configured) ||
+            (statusFilter === 'disabled' && !telegramPlatform.enabled)) && (
+            <div className="channel-telegram-card">
+              {/* Header row of Telegram card */}
               <div
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
                   gap: '1rem',
+                  flexWrap: 'nowrap',
                 }}
               >
-                {/* QUICK SETUP */}
-                <div
-                  style={{
-                    padding: '1rem',
-                    borderRadius: '6px',
-                    background: 'rgba(255, 255, 255, 0.02)',
-                    border: '1px solid rgba(255, 255, 255, 0.07)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                  }}
-                >
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.04em', color: '#ffffff' }}>
-                        QUICK SETUP
-                      </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flex: 1, minWidth: 0 }}>
+                  <div className="channel-icon-avatar" style={{ background: 'rgba(56, 189, 248, 0.08)', borderColor: 'rgba(56, 189, 248, 0.25)' }}>
+                    <Send size={16} style={{ color: '#38bdf8' }} />
+                  </div>
+
+                  <div className="channel-meta-col">
+                    <div className="channel-name-row">
+                      <span className="channel-name">Telegram</span>
                       <span
+                        className="channel-status-badge"
                         style={{
-                          fontSize: '0.62rem',
-                          padding: '0.15rem 0.45rem',
-                          borderRadius: '3px',
-                          background: 'rgba(34, 197, 94, 0.15)',
-                          color: '#4ade80',
-                          border: '1px solid rgba(34, 197, 94, 0.3)',
-                          fontWeight: 600,
+                          background: STATE_BADGES[telegramPlatform.state]?.bg,
+                          color: STATE_BADGES[telegramPlatform.state]?.color,
+                          border: `1px solid ${STATE_BADGES[telegramPlatform.state]?.border}`,
                         }}
                       >
-                        recommended
+                        {STATE_BADGES[telegramPlatform.state]?.label || telegramPlatform.state}
                       </span>
                     </div>
-                    <p style={{ fontSize: '0.74rem', color: 'rgba(255, 255, 255, 0.65)', lineHeight: 1.45, marginBottom: '1rem' }}>
-                      Scan QR code and confirm in Telegram. Orion creates the bot and detects your Telegram user ID automatically.
+                    <p className="channel-desc">
+                      {telegramPlatform.description}
                     </p>
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={handleStartTelegramQr}
-                    className="hermes-header-btn"
-                    style={{
-                      width: '100%',
-                      justifyContent: 'center',
-                      background: '#ffffff',
-                      color: '#000000',
-                      padding: '0.45rem',
-                      fontSize: '0.72rem',
-                    }}
-                  >
-                    <QrCode size={13} /> CREATE WITH QR
-                  </button>
                 </div>
 
-                {/* MANUAL SETUP */}
-                <div
-                  style={{
-                    padding: '1rem',
-                    borderRadius: '6px',
-                    background: 'rgba(255, 255, 255, 0.02)',
-                    border: '1px solid rgba(255, 255, 255, 0.07)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                  }}
-                >
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.04em', color: '#ffffff' }}>
-                        USE YOUR OWN BOT
-                      </span>
-                    </div>
-                    <p style={{ fontSize: '0.74rem', color: 'rgba(255, 255, 255, 0.65)', lineHeight: 1.45, marginBottom: '1rem' }}>
-                      Create a bot with @BotFather, or connect one you already have, by entering its token and choosing who can use it.
-                    </p>
-                  </div>
+                <div className="channel-card-right">
+                  {/* Switch Toggle */}
+                  <label className="channel-toggle-switch" title={telegramPlatform.enabled ? 'Nonaktifkan Telegram' : 'Aktifkan Telegram'}>
+                    <input
+                      type="checkbox"
+                      checked={telegramPlatform.enabled}
+                      onChange={() => handleToggle(telegramPlatform)}
+                      disabled={togglingId === 'telegram'}
+                    />
+                    <span className="channel-toggle-slider" />
+                  </label>
 
+                  {/* Test Button */}
                   <button
                     type="button"
-                    onClick={() => openConfigModal(telegramPlatform)}
-                    style={{
-                      width: '100%',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.4rem',
-                      background: 'rgba(255, 255, 255, 0.06)',
-                      color: '#ffffff',
-                      border: '1px solid rgba(255, 255, 255, 0.15)',
-                      padding: '0.45rem',
-                      borderRadius: '4px',
-                      fontSize: '0.72rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)')}
+                    onClick={() => handleTest(telegramPlatform)}
+                    disabled={testingId === 'telegram' || !telegramPlatform.configured}
+                    className="channel-btn-test"
+                    title="Uji koneksi bot Telegram"
                   >
-                    <Settings2 size={13} /> MANUAL SETUP
+                    {testingId === 'telegram' ? (
+                      <RotateCw size={11} className="spin-slow" />
+                    ) : (
+                      <Zap size={11} />
+                    )}
+                    TEST
+                  </button>
+
+                  {/* Toggle Options Button */}
+                  <button
+                    type="button"
+                    onClick={() => setTelegramExpanded((prev) => !prev)}
+                    className="channel-btn-qr"
+                    title="Tampilkan / Sembunyikan opsi setup Telegram"
+                  >
+                    <span>Opsi Setup</span>
+                    {telegramExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                   </button>
                 </div>
               </div>
 
-              {/* Status Note */}
-              {telegramPlatform.configured && (
-                <div style={{ marginTop: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                  <CheckCircle2 size={12} style={{ color: '#4ade80' }} />
-                  <span style={{ fontSize: '0.72rem', color: 'rgba(255, 255, 255, 0.5)' }}>
-                    Telegram credentials are configured. A new QR setup or bot token will replace the current bot when you save.
-                  </span>
+              {/* Collapsible Options Container */}
+              {telegramExpanded && (
+                <div
+                  style={{
+                    paddingTop: '0.85rem',
+                    borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.85rem',
+                  }}
+                >
+                  <div>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#ffffff' }}>
+                      Choose how to connect your Telegram bot
+                    </span>
+                    <p style={{ fontSize: '0.74rem', color: 'rgba(255, 255, 255, 0.5)', margin: '0.15rem 0 0' }}>
+                      Both options connect a bot you control and save its credentials securely to this Orion AI installation.
+                    </p>
+                  </div>
+
+                  {/* Side-by-side Options */}
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                      gap: '0.85rem',
+                    }}
+                  >
+                    {/* QUICK SETUP */}
+                    <div
+                      style={{
+                        padding: '0.95rem 1.15rem',
+                        borderRadius: '6px',
+                        background: 'rgba(255, 255, 255, 0.02)',
+                        border: '1px solid rgba(255, 255, 255, 0.07)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        gap: '0.75rem',
+                      }}
+                    >
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.35rem' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.04em', color: '#ffffff' }}>
+                            QUICK SETUP
+                          </span>
+                          <span
+                            style={{
+                              fontSize: '0.62rem',
+                              padding: '0.12rem 0.45rem',
+                              borderRadius: '3px',
+                              background: 'rgba(34, 197, 94, 0.12)',
+                              color: '#4ade80',
+                              border: '1px solid rgba(34, 197, 94, 0.25)',
+                              fontWeight: 600,
+                            }}
+                          >
+                            recommended
+                          </span>
+                        </div>
+                        <p style={{ fontSize: '0.74rem', color: 'rgba(255, 255, 255, 0.65)', lineHeight: 1.4, margin: 0 }}>
+                          Scan a QR code and confirm in Telegram. Orion creates the bot and detects your Telegram user ID automatically.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleStartTelegramQr}
+                        className="channel-btn-configure"
+                        style={{ width: '100%', justifyContent: 'center' }}
+                      >
+                        <QrCode size={13} /> CREATE WITH QR
+                      </button>
+                    </div>
+
+                    {/* MANUAL SETUP */}
+                    <div
+                      style={{
+                        padding: '0.95rem 1.15rem',
+                        borderRadius: '6px',
+                        background: 'rgba(255, 255, 255, 0.02)',
+                        border: '1px solid rgba(255, 255, 255, 0.07)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        gap: '0.75rem',
+                      }}
+                    >
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.35rem' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.04em', color: '#ffffff' }}>
+                            USE YOUR OWN BOT
+                          </span>
+                        </div>
+                        <p style={{ fontSize: '0.74rem', color: 'rgba(255, 255, 255, 0.65)', lineHeight: 1.4, margin: 0 }}>
+                          Create a bot with @BotFather, or connect one you already have, by entering its token and choosing who can use it.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => openConfigModal(telegramPlatform)}
+                        className="channel-btn-test"
+                        style={{ width: '100%', justifyContent: 'center', padding: '0.45rem' }}
+                      >
+                        <Settings2 size={13} /> MANUAL SETUP
+                      </button>
+                    </div>
+                  </div>
+
+                  {telegramPlatform.configured && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                      <CheckCircle2 size={12} style={{ color: '#4ade80', flexShrink: 0 }} />
+                      <span style={{ fontSize: '0.72rem', color: 'rgba(255, 255, 255, 0.5)' }}>
+                        Telegram credentials are already configured. A new QR setup or bot token will replace the current bot when you save.
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* ================= OTHER CHANNELS LIST ================= */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+        {/* ================= COMPACT CHANNELS LIST (HERMES PARITY) ================= */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           {otherChannels.map((platform) => {
             const badge = STATE_BADGES[platform.state] || STATE_BADGES.not_configured;
 
             return (
-              <div
-                key={platform.id}
-                className="hermes-card"
-                style={{
-                  padding: '1.15rem 1.4rem',
-                  background: 'rgba(255, 255, 255, 0.02)',
-                  border: '1px solid rgba(255, 255, 255, 0.07)',
-                  borderRadius: '6px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  gap: '1rem',
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                {/* Left: Icon & Meta */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flex: '1 1 340px' }}>
-                  <div
-                    style={{
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: '6px',
-                      background: 'rgba(255, 255, 255, 0.04)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'rgba(255, 255, 255, 0.8)',
-                    }}
-                  >
-                    {getPlatformIcon(platform.id, 16)}
+              <div key={platform.id} className="channel-row-card">
+                {/* Left side: Icon + Name + Badge + Description */}
+                <div className="channel-card-left">
+                  <div className="channel-icon-avatar">
+                    {getPlatformIcon(platform.id, 15)}
                   </div>
 
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                      <span style={{ fontSize: '0.92rem', fontWeight: 600, color: '#ffffff' }}>
-                        {platform.name}
-                      </span>
+                  <div className="channel-meta-col">
+                    <div className="channel-name-row">
+                      <span className="channel-name">{platform.name}</span>
                       <span
+                        className="channel-status-badge"
                         style={{
-                          fontSize: '0.66rem',
-                          fontWeight: 600,
-                          padding: '0.15rem 0.5rem',
-                          borderRadius: '3px',
                           background: badge.bg,
                           color: badge.color,
                           border: `1px solid ${badge.border}`,
@@ -1011,89 +942,37 @@ export default function ChannelsView({ onClose, showToast }) {
                         {badge.label}
                       </span>
                     </div>
-                    <p
-                      style={{
-                        fontSize: '0.76rem',
-                        color: 'rgba(255, 255, 255, 0.55)',
-                        margin: '0.18rem 0 0',
-                        lineHeight: 1.35,
-                      }}
-                    >
+                    <p className="channel-desc" title={platform.description}>
                       {platform.description}
                     </p>
                   </div>
                 </div>
 
-                {/* Right: Toggle Switch & Actions */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  {/* WhatsApp Quick QR button */}
+                {/* Right side: QR (if WhatsApp) + Toggle + Test + Configure */}
+                <div className="channel-card-right">
                   {platform.id === 'whatsapp' && (
                     <button
                       type="button"
                       onClick={handleStartWhatsappQr}
-                      title="Scan QR Code WhatsApp"
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.35rem',
-                        fontSize: '0.72rem',
-                        fontWeight: 600,
-                        padding: '0.38rem 0.75rem',
-                        borderRadius: '4px',
-                        border: '1px solid rgba(255, 255, 255, 0.15)',
-                        background: 'rgba(255, 255, 255, 0.04)',
-                        color: '#ffffff',
-                        cursor: 'pointer',
-                      }}
+                      className="channel-btn-qr"
+                      title={platform.state === 'connected' ? 'Lihat status koneksi WhatsApp' : 'Pairing WhatsApp via QR Code'}
                     >
-                      <QrCode size={12} /> QR PAIRING
+                      <QrCode size={12} /> {platform.state === 'connected' ? 'QR STATUS' : 'QR PAIRING'}
                     </button>
                   )}
 
                   {/* Switch Toggle */}
                   <label
-                    style={{
-                      position: 'relative',
-                      display: 'inline-block',
-                      width: '36px',
-                      height: '20px',
-                      cursor: 'pointer',
-                    }}
+                    className="channel-toggle-switch"
+                    title={platform.enabled ? `Nonaktifkan ${platform.name}` : `Aktifkan ${platform.name}`}
                   >
                     <input
                       type="checkbox"
                       checked={platform.enabled}
                       onChange={() => handleToggle(platform)}
                       disabled={togglingId === platform.id}
-                      style={{ opacity: 0, width: 0, height: 0 }}
                     />
-                    <span
-                      style={{
-                        position: 'absolute',
-                        cursor: 'pointer',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        backgroundColor: platform.enabled ? '#ffffff' : 'rgba(255, 255, 255, 0.15)',
-                        borderRadius: '20px',
-                        transition: '0.2s',
-                      }}
-                    >
-                      <span
-                        style={{
-                          position: 'absolute',
-                          content: "''",
-                          height: '14px',
-                          width: '14px',
-                          left: platform.enabled ? '19px' : '3px',
-                          bottom: '3px',
-                          backgroundColor: platform.enabled ? '#000000' : '#ffffff',
-                          borderRadius: '50%',
-                          transition: '0.2s',
-                        }}
-                      />
-                    </span>
+                    <span className="channel-toggle-slider" />
                   </label>
 
                   {/* Test Button */}
@@ -1101,41 +980,22 @@ export default function ChannelsView({ onClose, showToast }) {
                     type="button"
                     onClick={() => handleTest(platform)}
                     disabled={testingId === platform.id || !platform.configured}
+                    className="channel-btn-test"
                     title={`Uji koneksi ${platform.name}`}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.35rem',
-                      fontSize: '0.72rem',
-                      fontWeight: 600,
-                      padding: '0.38rem 0.75rem',
-                      borderRadius: '4px',
-                      border: '1px solid rgba(255, 255, 255, 0.15)',
-                      background: 'transparent',
-                      color: '#ffffff',
-                      cursor: platform.configured ? 'pointer' : 'not-allowed',
-                      opacity: platform.configured ? 1 : 0.45,
-                    }}
                   >
                     {testingId === platform.id ? (
-                      <RotateCw size={12} className="spin-slow" />
+                      <RotateCw size={11} className="spin-slow" />
                     ) : (
-                      <Zap size={12} />
+                      <Zap size={11} />
                     )}
                     TEST
                   </button>
 
-                  {/* White CONFIGURE Button (Hermes/Orion Specification) */}
+                  {/* White CONFIGURE Button */}
                   <button
                     type="button"
                     onClick={() => openConfigModal(platform)}
-                    className="hermes-header-btn"
-                    style={{
-                      background: '#ffffff',
-                      color: '#000000',
-                      padding: '0.38rem 0.95rem',
-                      fontSize: '0.72rem',
-                    }}
+                    className="channel-btn-configure"
                   >
                     CONFIGURE
                   </button>
@@ -1151,6 +1011,8 @@ export default function ChannelsView({ onClose, showToast }) {
                 textAlign: 'center',
                 color: 'rgba(255, 255, 255, 0.45)',
                 fontSize: '0.82rem',
+                borderRadius: '6px',
+                border: '1px dashed rgba(255, 255, 255, 0.08)',
               }}
             >
               Tidak ada channel yang cocok dengan pencarian "{searchQuery}".
@@ -1188,7 +1050,6 @@ export default function ChannelsView({ onClose, showToast }) {
                 overflow: 'hidden',
               }}
             >
-              {/* Modal Header */}
               <div
                 style={{
                   display: 'flex',
@@ -1225,7 +1086,6 @@ export default function ChannelsView({ onClose, showToast }) {
                 </button>
               </div>
 
-              {/* Modal Body */}
               <div
                 style={{
                   padding: '1.25rem 1.4rem',
@@ -1265,7 +1125,6 @@ export default function ChannelsView({ onClose, showToast }) {
                         )}
                       </div>
 
-                      {/* Input Box */}
                       <div style={{ position: 'relative' }}>
                         <input
                           type={isPass && !isVisible ? 'password' : 'text'}
@@ -1298,6 +1157,7 @@ export default function ChannelsView({ onClose, showToast }) {
                             fontSize: '0.8rem',
                             fontFamily: isPass ? 'monospace' : 'inherit',
                             outline: 'none',
+                            boxSizing: 'border-box',
                           }}
                         />
 
@@ -1327,7 +1187,6 @@ export default function ChannelsView({ onClose, showToast }) {
                         )}
                       </div>
 
-                      {/* Error / Help Hint */}
                       {error ? (
                         <span style={{ fontSize: '0.7rem', color: '#f87171' }}>{error}</span>
                       ) : field.help ? (
@@ -1340,7 +1199,6 @@ export default function ChannelsView({ onClose, showToast }) {
                 })}
               </div>
 
-              {/* Modal Footer */}
               <div
                 style={{
                   padding: '1rem 1.4rem',
@@ -1371,13 +1229,7 @@ export default function ChannelsView({ onClose, showToast }) {
                   type="button"
                   onClick={handleSaveConfig}
                   disabled={savingConfig}
-                  className="hermes-header-btn"
-                  style={{
-                    padding: '0.45rem 1.15rem',
-                    fontSize: '0.74rem',
-                    background: '#ffffff',
-                    color: '#000000',
-                  }}
+                  className="channel-btn-configure"
                 >
                   {savingConfig ? 'MENYIMPAN...' : 'SIMPAN KONFIGURASI'}
                 </button>
@@ -1405,7 +1257,7 @@ export default function ChannelsView({ onClose, showToast }) {
             <div
               style={{
                 width: '100%',
-                maxWidth: '480px',
+                maxWidth: '460px',
                 background: '#0e1118',
                 border: '1px solid rgba(255, 255, 255, 0.12)',
                 borderRadius: '8px',
@@ -1458,13 +1310,13 @@ export default function ChannelsView({ onClose, showToast }) {
                       justifyContent: 'center',
                     }}
                   >
-                    <img src={telegramQrUrl} alt="Telegram QR" style={{ width: '180px', height: '180px' }} />
+                    <img src={telegramQrUrl} alt="Telegram QR" style={{ width: '160px', height: '160px' }} />
                   </div>
                 ) : (
                   <div
                     style={{
-                      width: '180px',
-                      height: '180px',
+                      width: '160px',
+                      height: '160px',
                       background: 'rgba(255, 255, 255, 0.05)',
                       borderRadius: '8px',
                       display: 'flex',
@@ -1481,11 +1333,11 @@ export default function ChannelsView({ onClose, showToast }) {
                     1. Scan QR Code atau buka @BotFather di Telegram
                   </p>
                   <p style={{ fontSize: '0.74rem', color: 'rgba(255, 255, 255, 0.55)', margin: 0, lineHeight: 1.4 }}>
-                    Buat bot baru melalui perintah <code>/newbot</code>, lalu salin HTTP API Token yang diberikan ke bawah.
+                    Buat bot baru melalui perintah <code>/newbot</code>, lalu salin HTTP API Token ke form bawah.
                   </p>
                 </div>
 
-                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.65rem', marginTop: '0.5rem' }}>
+                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
                   <input
                     type="text"
                     placeholder="Tempel token bot (contoh: 123456789:ABCDef...)"
@@ -1500,6 +1352,7 @@ export default function ChannelsView({ onClose, showToast }) {
                       color: '#ffffff',
                       fontSize: '0.8rem',
                       outline: 'none',
+                      boxSizing: 'border-box',
                     }}
                   />
 
@@ -1517,6 +1370,7 @@ export default function ChannelsView({ onClose, showToast }) {
                       color: '#ffffff',
                       fontSize: '0.8rem',
                       outline: 'none',
+                      boxSizing: 'border-box',
                     }}
                   />
                 </div>
@@ -1552,13 +1406,7 @@ export default function ChannelsView({ onClose, showToast }) {
                   type="button"
                   onClick={handleSaveTelegramManual}
                   disabled={telegramLoading}
-                  className="hermes-header-btn"
-                  style={{
-                    padding: '0.45rem 1.15rem',
-                    fontSize: '0.74rem',
-                    background: '#ffffff',
-                    color: '#000000',
-                  }}
+                  className="channel-btn-configure"
                 >
                   {telegramLoading ? 'MENYAMBUNGKAN...' : 'HUBUNGKAN BOT'}
                 </button>
@@ -1586,7 +1434,7 @@ export default function ChannelsView({ onClose, showToast }) {
             <div
               style={{
                 width: '100%',
-                maxWidth: '480px',
+                maxWidth: '460px',
                 background: '#0e1118',
                 border: '1px solid rgba(255, 255, 255, 0.12)',
                 borderRadius: '8px',
@@ -1627,67 +1475,157 @@ export default function ChannelsView({ onClose, showToast }) {
                 </button>
               </div>
 
-              <div style={{ padding: '1.4rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-                {whatsappQrUrl ? (
+              {whatsappConnected ? (
+                /* Connected State */
+                <div style={{ padding: '2rem 1.4rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '1rem' }}>
                   <div
                     style={{
-                      padding: '0.75rem',
-                      background: '#ffffff',
-                      borderRadius: '8px',
+                      width: '64px',
+                      height: '64px',
+                      borderRadius: '50%',
+                      background: 'rgba(34, 197, 94, 0.12)',
+                      border: '1px solid rgba(34, 197, 94, 0.35)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}
                   >
-                    <img src={whatsappQrUrl} alt="WhatsApp QR" style={{ width: '180px', height: '180px' }} />
+                    <CheckCircle2 size={36} style={{ color: '#4ade80' }} />
                   </div>
-                ) : (
-                  <div
-                    style={{
-                      width: '180px',
-                      height: '180px',
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      borderRadius: '8px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <RotateCw size={24} className="spin-slow" style={{ color: 'rgba(255, 255, 255, 0.4)' }} />
+                  <div>
+                    <h4 style={{ fontSize: '1.05rem', fontWeight: 600, color: '#ffffff', margin: '0 0 0.35rem' }}>
+                      WhatsApp Berhasil Terhubung!
+                    </h4>
+                    {whatsappPhone ? (
+                      <p style={{ fontSize: '0.85rem', color: '#4ade80', fontFamily: 'monospace', margin: '0 0 0.5rem' }}>
+                        +{whatsappPhone}
+                      </p>
+                    ) : (
+                      <p style={{ fontSize: '0.78rem', color: '#4ade80', margin: '0 0 0.5rem' }}>
+                        Gateway Baileys aktif &amp; tersambung
+                      </p>
+                    )}
+                    <p style={{ fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.6)', margin: 0, lineHeight: 1.45 }}>
+                      Gateway Baileys aktif di Orion AI. Pesan yang masuk akan diproses dan dijawab secara otomatis menggunakan model Orion AI.
+                    </p>
                   </div>
-                )}
-
-                <div style={{ textAlign: 'center' }}>
-                  <p style={{ fontSize: '0.8rem', color: '#ffffff', fontWeight: 600, margin: '0 0 0.35rem' }}>
-                    Scan QR Code dari WhatsApp di Smartphone Anda
-                  </p>
-                  <p style={{ fontSize: '0.74rem', color: 'rgba(255, 255, 255, 0.55)', margin: 0, lineHeight: 1.4 }}>
-                    Buka WhatsApp &gt; Perangkat Tertaut &gt; Tautkan Perangkat. Arahkan kamera ke kode QR di atas.
-                  </p>
                 </div>
-              </div>
+              ) : (
+                /* QR Scan State */
+                <div style={{ padding: '1.4rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                  {whatsappQrUrl ? (
+                    <div
+                      style={{
+                        padding: '0.75rem',
+                        background: '#ffffff',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <img src={whatsappQrUrl} alt="WhatsApp QR" style={{ width: '180px', height: '180px' }} />
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        width: '180px',
+                        height: '180px',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.6rem',
+                      }}
+                    >
+                      <RotateCw size={26} className="spin-slow" style={{ color: 'rgba(255, 255, 255, 0.4)' }} />
+                      <span style={{ fontSize: '0.72rem', color: 'rgba(255, 255, 255, 0.5)' }}>Menyiapkan QR Baileys...</span>
+                    </div>
+                  )}
+
+                  <div style={{ textAlign: 'center' }}>
+                    <p style={{ fontSize: '0.82rem', color: '#ffffff', fontWeight: 600, margin: '0 0 0.35rem' }}>
+                      Scan QR Code dari WhatsApp di Smartphone Anda
+                    </p>
+                    <p style={{ fontSize: '0.74rem', color: 'rgba(255, 255, 255, 0.55)', margin: 0, lineHeight: 1.45 }}>
+                      Buka <b>WhatsApp</b> &gt; <b>Perangkat Tertaut</b> &gt; <b>Tautkan Perangkat</b>.<br />
+                      Arahkan kamera ke kode QR di atas untuk menghubungkan Orion AI ke WhatsApp.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div
                 style={{
                   padding: '1rem 1.4rem',
                   borderTop: '1px solid rgba(255, 255, 255, 0.08)',
                   display: 'flex',
-                  justifyContent: 'flex-end',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: '0.65rem',
                 }}
               >
-                <button
-                  type="button"
-                  onClick={() => setShowWhatsappModal(false)}
-                  className="hermes-header-btn"
-                  style={{
-                    padding: '0.45rem 1.15rem',
-                    fontSize: '0.74rem',
-                    background: '#ffffff',
-                    color: '#000000',
-                  }}
-                >
-                  SELESAI
-                </button>
+                {whatsappConnected ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleDisconnectWhatsapp}
+                      disabled={whatsappDisconnecting}
+                      style={{
+                        padding: '0.45rem 0.95rem',
+                        fontSize: '0.74rem',
+                        fontWeight: 600,
+                        borderRadius: '4px',
+                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                        background: 'rgba(239, 68, 68, 0.1)',
+                        color: '#f87171',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {whatsappDisconnecting ? 'MEMUTUSKAN...' : 'PUTUSKAN KONEKSI'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowWhatsappModal(false)}
+                      className="channel-btn-configure"
+                    >
+                      SELESAI
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleStartWhatsappQr}
+                      disabled={whatsappLoading}
+                      style={{
+                        padding: '0.45rem 0.95rem',
+                        fontSize: '0.74rem',
+                        fontWeight: 600,
+                        borderRadius: '4px',
+                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                        background: 'transparent',
+                        color: 'rgba(255, 255, 255, 0.75)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                      }}
+                    >
+                      <RotateCw size={12} className={whatsappLoading ? 'spin-slow' : ''} />
+                      REFRESH QR
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowWhatsappModal(false)}
+                      className="channel-btn-configure"
+                    >
+                      BATAL
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>

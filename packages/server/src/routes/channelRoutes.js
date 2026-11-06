@@ -76,9 +76,9 @@ router.post('/telegram/onboarding/:id/apply', (req, res) => {
 });
 
 // WhatsApp Onboarding
-router.post('/whatsapp/onboarding/start', (req, res) => {
+router.post('/whatsapp/onboarding/start', async (req, res) => {
   try {
-    const result = channelService.startWhatsAppOnboarding(req.body || {});
+    const result = await channelService.startWhatsAppOnboarding(req.body || {});
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: 'Gagal memulai pairing WhatsApp', detail: err.message });
@@ -91,6 +91,17 @@ router.get('/whatsapp/onboarding/:id', (req, res) => {
     res.json(result);
   } catch (err) {
     res.status(404).json({ error: err.message });
+  }
+});
+
+router.post('/whatsapp/disconnect', async (req, res) => {
+  try {
+    const { whatsappGatewayService } = await import('../services/whatsappGatewayService.js');
+    const result = await whatsappGatewayService.disconnect();
+    channelService.updateChannel('whatsapp', { enabled: false });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: 'Gagal memutuskan WhatsApp', detail: err.message });
   }
 });
 
